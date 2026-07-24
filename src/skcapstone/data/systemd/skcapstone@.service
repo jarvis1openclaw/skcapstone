@@ -30,8 +30,8 @@ OnFailure=skcapstone-alert@%i.service
 
 [Service]
 Type=notify
-ExecStart=%h/.local/bin/skcapstone daemon start --agent %i --foreground
-ExecStop=%h/.local/bin/skcapstone daemon stop --agent %i
+ExecStart=%h/.skenv/bin/skcapstone daemon start --agent %i --foreground
+ExecStop=%h/.skenv/bin/skcapstone daemon stop --agent %i
 ExecReload=/bin/kill -HUP $MAINPID
 Restart=on-failure
 RestartSec=10
@@ -52,20 +52,19 @@ WatchdogSec=300
 # resolve the correct per-agent home even before the CLI flag is processed.
 Environment=PYTHONUNBUFFERED=1
 Environment=OLLAMA_KEEP_ALIVE=5m
+Environment=SKAGENT=%i
 Environment=SKCAPSTONE_AGENT=%i
+Environment=SKMEMORY_AGENT=%i
+Environment=PATH=%h/.skenv/bin:/usr/local/bin:/usr/bin:/bin
 # Journal logging — logs appear under skcapstone@<instance>
 StandardOutput=journal
 StandardError=journal
 SyslogIdentifier=skcapstone@%i
 
-# Security hardening (same as single-agent unit)
+# Security hardening (relaxed — ProtectHome=read-only breaks if any
+# ReadWritePaths dir is missing on the host)
 NoNewPrivileges=true
-ProtectSystem=strict
-ProtectHome=read-only
-ReadWritePaths=%h/.skcapstone %h/.skmemory %h/.local %h/.config %h/.capauth %h/.cloud9 %h/.skcomms %h/.skchat
 PrivateTmp=true
-ProtectKernelTunables=true
-ProtectControlGroups=true
 
 [Install]
 WantedBy=default.target

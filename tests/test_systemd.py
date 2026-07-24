@@ -30,6 +30,21 @@ from skcapstone.systemd import (
 )
 
 
+def _active_directives(content: str) -> set[str]:
+    """Return the set of non-comment, non-blank directive lines in a unit.
+
+    Comment lines (starting with ``#``) are skipped so that a directive name
+    mentioned inside an explanatory comment does not count as active config.
+    """
+    directives: set[str] = set()
+    for raw in content.splitlines():
+        line = raw.strip()
+        if not line or line.startswith("#") or line.startswith("["):
+            continue
+        directives.add(line)
+    return directives
+
+
 class TestGenerateUnitFile:
     """Tests for unit file generation."""
 
@@ -56,12 +71,17 @@ class TestGenerateUnitFile:
         assert "Environment=PORT=8888" in content
 
     def test_security_hardening_present(self) -> None:
-        """Security directives are in the generated unit."""
+        """Generated unit carries the relaxed hardening matching the canonical
+        top-level units. ProtectSystem=strict / ProtectHome=read-only are
+        deliberately absent: they fail-closed when a ReadWritePaths dir is
+        missing on the host, which is the known-breaking config the top-level
+        units removed."""
         content = generate_unit_file()
-        assert "ProtectSystem=strict" in content
-        assert "ProtectHome=read-only" in content
-        assert "PrivateTmp=true" in content
-        assert "ReadWritePaths=" in content
+        directives = _active_directives(content)
+        assert "NoNewPrivileges=true" in directives
+        assert "PrivateTmp=true" in directives
+        assert "ProtectSystem=strict" not in directives
+        assert "ProtectHome=read-only" not in directives
 
     def test_resource_caps_and_restart_backoff(self) -> None:
         """Generated unit has memory caps, restart backoff, and an alert hook."""
@@ -401,3 +421,102 @@ class TestTimerInstall:
 
         stop_calls = [c[0] for c in calls if c[0] == "stop"]
         assert len(stop_calls) >= 3
+
+
+class TestUnitTreeSingleSourceOfTruth:
+    """Drift guard: the packaged unit tree must mirror the canonical one.
+
+    There are two on-disk unit trees that MUST stay byte-identical:
+
+      * ``systemd/`` (canonical, top-level) — deployed by scripts/install.sh
+      * ``src/skcapstone/data/systemd/`` (BUNDLED_DIR) — ships in the wheel and
+        is deployed by ``install_service`` on the PyPI / cold-machine path
+
+    If they drift, a cold machine installing from PyPI gets units with the wrong
+    ExecStart paths and/or known-breaking hardening. ``scripts/sync-systemd-units.py``
+    regenerates the packaged tree from the canonical one; these tests fail if
+    someone edits one tree without syncing the other.
+    """
+
+    _UNIT_GLOBS = ("*.service", "*.socket", "*.timer")
+
+    def _canonical_dir(self) -> Path:
+        # tests/ lives at the repo root, next to the top-level systemd/ tree.
+        return Path(__file__).resolve().parent.parent / "systemd"
+
+    def _packaged_dir(self) -> Path:
+        from skcapstone.systemd import BUNDLED_DIR
+        return BUNDLED_DIR
+
+    def _units(self, directory: Path) -> dict[str, Path]:
+        found: dict[str, Path] = {}
+        for pattern in self._UNIT_GLOBS:
+            for path in directory.glob(pattern):
+                found[path.name] = path
+        return found
+
+    def test_canonical_tree_present(self) -> None:
+        """The canonical top-level tree exists in a source checkout."""
+        canonical = self._canonical_dir()
+        if not canonical.is_dir():
+            pytest.skip("canonical systemd/ tree not present (installed, not a checkout)")
+        assert self._units(canonical), "canonical systemd/ tree has no unit files"
+
+    def test_packaged_tree_matches_canonical(self) -> None:
+        """Every canonical unit is present and byte-identical in the packaged tree."""
+        canonical_dir = self._canonical_dir()
+        if not canonical_dir.is_dir():
+            pytest.skip("canonical systemd/ tree not present (installed, not a checkout)")
+
+        canonical = self._units(canonical_dir)
+        packaged = self._units(self._packaged_dir())
+
+        missing = sorted(set(canonical) - set(packaged))
+        assert not missing, (
+            f"units missing from packaged tree: {missing}. "
+            f"Run: python scripts/sync-systemd-units.py"
+        )
+
+        extra = sorted(set(packaged) - set(canonical))
+        assert not extra, (
+            f"packaged tree has units not in canonical tree: {extra}. "
+            f"Run: python scripts/sync-systemd-units.py"
+        )
+
+        drifted = [
+            name
+            for name in sorted(canonical)
+            if canonical[name].read_bytes() != packaged[name].read_bytes()
+        ]
+        assert not drifted, (
+            f"packaged units drifted from canonical: {drifted}. "
+            f"Run: python scripts/sync-systemd-units.py"
+        )
+
+    def test_packaged_agent_units_use_skenv_paths(self) -> None:
+        """Packaged agent units must use %h/.skenv/bin ExecStart, not %h/.local/bin.
+
+        A .local/bin path does not exist under the .skenv install convention, so
+        a cold PyPI install would get a unit whose ExecStart binary is missing.
+        """
+        packaged = self._packaged_dir()
+        for name in ("skcapstone.service", "skcapstone@.service"):
+            content = (packaged / name).read_text()
+            assert "%h/.skenv/bin/skcapstone" in content, f"{name} lost .skenv path"
+            assert "%h/.local/bin/skcapstone" not in content, f"{name} has stale .local path"
+
+    def test_packaged_agent_units_drop_breaking_hardening(self) -> None:
+        """Packaged agent units must not carry the known-breaking strict hardening."""
+        packaged = self._packaged_dir()
+        for name in ("skcapstone.service", "skcapstone@.service"):
+            directives = _active_directives((packaged / name).read_text())
+            assert "ProtectSystem=strict" not in directives, f"{name} regained strict hardening"
+            assert "ProtectHome=read-only" not in directives, f"{name} regained read-only home"
+
+    def test_packaged_template_has_agent_env_block(self) -> None:
+        """Packaged template must set the SKAGENT/SKCAPSTONE_AGENT/SKMEMORY_AGENT/PATH env."""
+        content = (self._packaged_dir() / "skcapstone@.service").read_text()
+        assert "Environment=SKAGENT=%i" in content
+        assert "Environment=SKCAPSTONE_AGENT=%i" in content
+        assert "Environment=SKMEMORY_AGENT=%i" in content
+        assert "Environment=PATH=%h/.skenv/bin:" in content

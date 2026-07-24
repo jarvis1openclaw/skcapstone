@@ -12,8 +12,8 @@ OnFailure=skcapstone-alert@skcapstone.service
 
 [Service]
 Type=simple
-ExecStart=%h/.local/bin/skcapstone daemon start --foreground
-ExecStop=%h/.local/bin/skcapstone daemon stop
+ExecStart=%h/.skenv/bin/skcapstone daemon start --foreground
+ExecStop=%h/.skenv/bin/skcapstone daemon stop
 ExecReload=/bin/kill -HUP $MAINPID
 Restart=on-failure
 RestartSec=10
@@ -28,22 +28,18 @@ MemoryMax=4G
 # Keep Ollama models warm for 5 minutes between requests
 Environment=PYTHONUNBUFFERED=1
 Environment=OLLAMA_KEEP_ALIVE=5m
-# Set SKCAPSTONE_AGENT to your agent name (or use skcapstone@<agent>.service template instead)
-# Environment=SKCAPSTONE_AGENT=sovereign
-Environment=SKCAPSTONE_HOME=%h/.skcapstone
+Environment=SKAGENT=lumina
+Environment=SKCAPSTONE_AGENT=lumina
+Environment=SKMEMORY_AGENT=lumina
 # Journal logging
 StandardOutput=journal
 StandardError=journal
 SyslogIdentifier=skcapstone
 
-# Security hardening
+# Security hardening (relaxed — ProtectHome=read-only breaks if any
+# ReadWritePaths dir is missing on the host)
 NoNewPrivileges=true
-ProtectSystem=strict
-ProtectHome=read-only
-ReadWritePaths=%h/.skcapstone %h/.skenv %h/.local %h/.config %h/.capauth %h/.cloud9 %h/.skcomms %h/.skchat
 PrivateTmp=true
-ProtectKernelTunables=true
-ProtectControlGroups=true
 
 [Install]
 WantedBy=default.target
