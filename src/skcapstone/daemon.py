@@ -699,6 +699,9 @@ class DaemonConfig:
             ``SKCAPSTONE_TLS=true``).  A self-signed certificate is
             auto-generated under ``~/.skcapstone/tls/`` on first start.
         tls_dir: Directory for TLS certificate and key files.
+        shutdown_timeout: Upper bound in seconds for the graceful shutdown
+            sequence.  Thread joins and the API-server shutdown share this
+            budget so ``stop()`` can never block forever.
     """
 
     def __init__(
@@ -713,6 +716,7 @@ class DaemonConfig:
         consciousness_config_path: Optional[Path] = None,
         tls_enabled: Optional[bool] = None,
         tls_dir: Optional[Path] = None,
+        shutdown_timeout: float = 30.0,
     ):
         self.home = (home or Path(AGENT_HOME)).expanduser()
         self.shared_root = (shared_root or Path(SHARED_ROOT)).expanduser()
@@ -722,6 +726,9 @@ class DaemonConfig:
         self.port = port
         self.consciousness_enabled = consciousness_enabled
         self.consciousness_config_path = consciousness_config_path
+        # Upper bound (seconds) on the whole graceful-shutdown sequence so a
+        # wedged thread or blocking transport can never hang the process on exit.
+        self.shutdown_timeout = float(shutdown_timeout)
 
         # TLS: env var SKCAPSTONE_TLS=true overrides the constructor arg
         if tls_enabled is None:
@@ -875,6 +882,10 @@ class DaemonService:
         self.config = config
         self.state = DaemonState()
         self._stop_event = threading.Event()
+        # Idempotency guard for stop(): the body runs exactly once even if
+        # SIGTERM/SIGINT fire repeatedly or run_forever's finally also calls it.
+        self._shutdown_lock = threading.Lock()
+        self._shutdown_done = False
         self._threads: list[threading.Thread] = []
         self._server: Optional[HTTPServer] = None
         self._skcomms = None
@@ -966,30 +977,125 @@ class DaemonService:
         logger.info("Daemon started — PID %d", os.getpid())
 
     def stop(self) -> None:
-        """Gracefully stop the daemon and all workers."""
+        """Gracefully stop the daemon and all workers.
+
+        Runs a bounded, idempotent shutdown sequence:
+
+        1. Signal every loop to stop (``_stop_event``).
+        2. Publish a final ``offline`` heartbeat so peers see us leave.
+        3. Stop the consciousness loop and task scheduler.
+        4. Shut down the API server (drains in-flight HTTP requests).
+        5. Join background threads within the remaining time budget.
+        6. Flush in-flight messages + metrics to ``shutdown_state.json``.
+        7. Write a closing journal entry.
+        8. Remove the PID file so a restart never sees a stale one.
+
+        The whole sequence is capped at ``config.shutdown_timeout`` seconds so
+        a wedged thread or blocking transport can never hang the process.  The
+        method is idempotent: repeated SIGTERM/SIGINT (or a redundant call from
+        ``run_forever``'s ``finally``) run the body only once.  The PID file is
+        removed in a ``finally`` so it is cleared even if an earlier step raises.
+        """
+        # ── Idempotency guard ────────────────────────────────────────────────
+        with self._shutdown_lock:
+            if self._shutdown_done:
+                logger.debug("stop() already ran — ignoring duplicate call")
+                return
+            self._shutdown_done = True
+
+        deadline = time.monotonic() + self.config.shutdown_timeout
+
+        def _remaining(minimum: float = 0.0) -> float:
+            """Seconds left in the shutdown budget (never below ``minimum``)."""
+            return max(minimum, deadline - time.monotonic())
+
         _sd_notify("STOPPING=1")
-        logger.info("Daemon stopping...")
-        self._stop_event.set()
-        self.state.running = False
+        logger.info(
+            "Daemon stopping — graceful shutdown (budget %.0fs)...",
+            self.config.shutdown_timeout,
+        )
+        try:
+            # 1. Signal all loops to stop.
+            self._stop_event.set()
+            self.state.running = False
 
-        if self._consciousness:
-            try:
-                self._consciousness.stop()
-            except Exception as exc:
-                logger.warning("Consciousness stop error: %s", exc)
+            # 2. Announce offline so peers stop routing to us immediately.
+            if self._beacon:
+                try:
+                    self._beacon.mark_offline()
+                    logger.info("Shutdown: published offline heartbeat")
+                except Exception as exc:
+                    logger.warning("Shutdown: heartbeat offline failed: %s", exc)
 
-        if self._server:
-            try:
-                self._server.shutdown()
-            except Exception as exc:
-                logger.warning("API server shutdown error: %s", exc)
+            # 3a. Stop the consciousness loop.
+            if self._consciousness:
+                try:
+                    self._consciousness.stop()
+                    logger.info("Shutdown: consciousness loop stopped")
+                except Exception as exc:
+                    logger.warning("Consciousness stop error: %s", exc)
 
-        for t in self._threads:
-            t.join(timeout=5)
+            # 3b. Stop the task scheduler (thread also honours _stop_event).
+            if self._scheduler and hasattr(self._scheduler, "stop"):
+                try:
+                    self._scheduler.stop()
+                    logger.info("Shutdown: task scheduler stopped")
+                except Exception as exc:
+                    logger.warning("Scheduler stop error: %s", exc)
 
-        self._save_shutdown_state()
-        self._remove_pid()
-        logger.info("Daemon stopped.")
+            # 4. Shut down the API server, bounded so a stuck handler can't hang
+            #    us.  server.shutdown() blocks until serve_forever() returns, so
+            #    we run it on a helper thread and only wait the remaining budget.
+            if self._server:
+                shutdown_thread = threading.Thread(
+                    target=self._server.shutdown, name="daemon-server-shutdown", daemon=True
+                )
+                shutdown_thread.start()
+                shutdown_thread.join(timeout=_remaining(minimum=1.0))
+                if shutdown_thread.is_alive():
+                    logger.warning("Shutdown: API server did not stop within budget")
+                else:
+                    logger.info("Shutdown: API server stopped")
+
+            # 5. Join background threads, sharing what's left of the budget.
+            live_threads = [t for t in self._threads if t.is_alive()]
+            for t in live_threads:
+                t.join(timeout=_remaining(minimum=0.1))
+            still_alive = [t.name for t in self._threads if t.is_alive()]
+            if still_alive:
+                logger.warning(
+                    "Shutdown: %d thread(s) still running after budget: %s",
+                    len(still_alive),
+                    ", ".join(still_alive),
+                )
+            else:
+                logger.info("Shutdown: all background threads joined")
+
+            # 6. Flush in-flight state to disk (drain the retry queue).
+            self._save_shutdown_state()
+
+            # 7. Closing journal entry (best-effort).
+            self._journal_shutdown()
+        except Exception as exc:  # never let shutdown bookkeeping wedge exit
+            logger.error("Error during shutdown sequence: %s", exc)
+        finally:
+            # 8. Always clear the PID file so a restart never sees a stale one.
+            self._remove_pid()
+            logger.info("Daemon stopped.")
+
+    def _journal_shutdown(self) -> None:
+        """Write a closing journal entry on graceful shutdown (best-effort)."""
+        try:
+            from skmemory.journal import Journal, JournalEntry
+            entry = JournalEntry(
+                title="Daemon shutdown",
+                emotional_summary="peaceful",
+                moments=["Graceful shutdown — drained, flushed, and signed off."],
+            )
+            Journal().write_entry(entry)
+            logger.info("Shutdown: journal entry written")
+        except Exception as exc:
+            logger.debug("Shutdown journal write failed: %s", exc)
 
     def run_forever(self) -> None:
         """Block until stop is signaled.

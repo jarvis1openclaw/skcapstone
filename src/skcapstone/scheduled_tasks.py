@@ -199,6 +199,25 @@ class TaskScheduler:
         )
         return self._thread
 
+    def stop(self, timeout: float = 5.0) -> None:
+        """Stop the scheduler loop and join its thread (idempotent).
+
+        Sets the shared stop event so the tick loop exits, then waits up to
+        ``timeout`` seconds for the thread to finish.  Safe to call more than
+        once and safe to call when the scheduler was never started.
+
+        Args:
+            timeout: Maximum seconds to wait for the scheduler thread to exit.
+        """
+        self._stop_event.set()
+        thread = self._thread
+        if thread is not None and thread.is_alive():
+            thread.join(timeout=timeout)
+            if thread.is_alive():
+                logger.warning("Task scheduler thread did not stop within %.0fs", timeout)
+            else:
+                logger.debug("Task scheduler stopped")
+
     def status(self) -> list[dict]:
         """Return serializable status for all registered tasks.
 
