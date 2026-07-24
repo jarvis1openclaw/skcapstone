@@ -15,7 +15,6 @@ from __future__ import annotations
 
 import json
 import logging
-import os
 import re
 import socket
 import uuid
@@ -25,6 +24,8 @@ from pathlib import Path
 from typing import Callable, Optional
 
 from pydantic import BaseModel, Field
+
+from .atomic_io import atomic_write_text
 
 logger = logging.getLogger(__name__)
 
@@ -281,9 +282,9 @@ class Board:
         self.ensure_dirs()
         agent.last_seen = datetime.now(timezone.utc).isoformat()
         path = self.agents_dir / f"{agent.agent}.json"
-        path.write_text(
-            json.dumps(agent.model_dump(), indent=2) + "\n"
-        , encoding="utf-8")
+        atomic_write_text(
+            path, json.dumps(agent.model_dump(), indent=2) + "\n"
+        )
         return path
 
     def create_task(self, task: Task) -> Path:
@@ -300,9 +301,9 @@ class Board:
         # Reason: filename includes id + slug for human readability
         filename = f"{task.id}-{slug}.json"
         path = self.tasks_dir / filename
-        path.write_text(
-            json.dumps(task.model_dump(), indent=2) + "\n"
-        , encoding="utf-8")
+        atomic_write_text(
+            path, json.dumps(task.model_dump(), indent=2) + "\n"
+        )
         self._mirror_card_store("create", task=task)
         return path
 
@@ -360,9 +361,7 @@ class Board:
         path = matches[0]
         data = json.loads(path.read_text(encoding="utf-8"))
         mutate(data)
-        tmp = path.with_suffix(path.suffix + ".tmp")
-        tmp.write_text(json.dumps(data, indent=2) + "\n", encoding="utf-8")
-        os.replace(tmp, path)
+        atomic_write_text(path, json.dumps(data, indent=2) + "\n")
         return path
 
     def score_task(self, task_id: str, round: int, score: int, notes: str = "",
@@ -779,7 +778,7 @@ class Board:
         self.ensure_dirs()
         content = self.generate_board_md()
         path = self.coord_dir / "BOARD.md"
-        path.write_text(content, encoding="utf-8")
+        atomic_write_text(path, content)
         return path
 
 

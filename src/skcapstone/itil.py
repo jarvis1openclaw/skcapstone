@@ -38,6 +38,8 @@ from typing import Any, Optional
 
 from pydantic import BaseModel, Field
 
+from .atomic_io import atomic_write_text
+
 logger = logging.getLogger("skcapstone.itil")
 
 # Node identifier used to make every writer file globally unique
@@ -349,6 +351,7 @@ class ITILManager:
             return core_path
         try:
             os.write(fd, payload)
+            os.fsync(fd)
         finally:
             os.close(fd)
         return core_path
@@ -1310,9 +1313,8 @@ class ITILManager:
         )
         filename = f"{change_id}-{agent}.json"
         path = self.cab_dir / filename
-        path.write_text(
-            json.dumps(vote.model_dump(), indent=2, default=str) + "\n",
-            encoding="utf-8",
+        atomic_write_text(
+            path, json.dumps(vote.model_dump(), indent=2, default=str) + "\n"
         )
         return vote
 
@@ -1355,9 +1357,8 @@ class ITILManager:
             tags=tags or [],
         )
         path = self.kedb_dir / f"{entry.id}.json"
-        path.write_text(
-            json.dumps(entry.model_dump(), indent=2, default=str) + "\n",
-            encoding="utf-8",
+        atomic_write_text(
+            path, json.dumps(entry.model_dump(), indent=2, default=str) + "\n"
         )
         return entry
 
@@ -1593,7 +1594,7 @@ class ITILManager:
         self.ensure_dirs()
         content = self.generate_board_md()
         path = self.itil_dir / "ITIL-BOARD.md"
-        path.write_text(content, encoding="utf-8")
+        atomic_write_text(path, content)
         return path
 
     # ── GTD integration — ITIL is a push adapter on the skos gtd-ingest port ──
