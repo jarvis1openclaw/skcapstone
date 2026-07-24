@@ -163,3 +163,127 @@ without any dump.
 | Move an agent to a new machine | `skcapstone backup create` → `restore` |
 | Nightly point-in-time history with depth | GFS cron (`skcapstone-gfs-backup.sh`) |
 | Reclaim space from transient churn | [`skcapstone housekeeping`](HOUSEKEEPING.md) |
+
+---
+
+## Integrated GFS job + monitor (`skcapstone backup gfs` / `backup health`)
+
+The operator cron above (`skcapstone-gfs-backup.sh`) is a self-contained
+shell rotation of a **trimmed** `~/.skcapstone`. Alongside it, skcapstone ships
+an **integrated** GFS job built on the `skcapstone backup create` primitive plus
+a **staleness monitor** - the same thing wired into the CLI, the systemd timers,
+and the fleet scheduler, and covered by unit tests (`tests/test_gfs_backup.py`).
+Use this when you want the rotation to ride on the tested backup primitive and
+be watched for "the backup did not run".
+
+Module: `skcapstone.gfs_backup`. It only ever creates and prunes the
+`backup-*.tar.gz` artifacts written by `backup create`, so it coexists with the
+shell cron's `backups/gfs/{daily,weekly,...}/skcapstone-state-*` tree without
+touching it.
+
+```bash
+skcapstone backup gfs            # create a backup, then GFS-prune the dir
+skcapstone backup gfs --json     # machine-readable result
+skcapstone backup health         # ok / stale / missing / failed (exit != 0 if unhealthy)
+skcapstone backup health --json
+```
+
+### Retention (Grandfather-Father-Son)
+
+`select_gfs_retention()` follows borg/restic semantics: for each tier it keeps
+the newest artifact in each of the most-recent *N* distinct periods, and the
+kept set is the union across tiers. Everything else is pruned. Defaults:
+
+| Tier | Env var | Default |
+| ---- | ------- | ------- |
+| daily (Son) | `SKCAPSTONE_BACKUP_KEEP_DAILY` | 7 |
+| weekly (Father) | `SKCAPSTONE_BACKUP_KEEP_WEEKLY` | 4 |
+| monthly (Grandfather) | `SKCAPSTONE_BACKUP_KEEP_MONTHLY` | 6 |
+| yearly (optional) | `SKCAPSTONE_BACKUP_KEEP_YEARLY` | 0 (off) |
+
+A policy where every tier is `0` is treated as "pruning disabled" (keep all) -
+never as "delete everything". Pruning is confined to the backup directory: each
+candidate is resolved and must sit directly inside it and match the
+`backup-*.tar.gz` name before it is unlinked.
+
+### Config
+
+Config-driven with safe defaults. Precedence: built-in defaults <
+`config.yaml` `backup:` block < `SKCAPSTONE_BACKUP_*` env vars < explicit
+caller overrides.
+
+```yaml
+# ~/.skcapstone/config/config.yaml
+backup:
+  dir: ~/.skcapstone/backups         # default: <home>/backups
+  keep_daily: 7
+  keep_weekly: 4
+  keep_monthly: 6
+  keep_yearly: 0
+  max_age_seconds: 93600             # monitor freshness threshold (26h)
+  min_interval_seconds: 0            # >0 => skip create if newest is younger
+```
+
+Each run writes a `gfs-state.json` sidecar into the backup dir recording the
+last run time, outcome, and kept/pruned counts - the monitor reads it to flag a
+`failed` run even when an older artifact is still present.
+
+### Monitor semantics
+
+`check_backup_health()` returns a status object:
+
+- `missing` - no artifacts in the backup dir.
+- `failed` - the last recorded run errored.
+- `stale` - newest artifact older than `max_age_seconds`.
+- `ok` - a fresh artifact exists and the last run succeeded.
+
+`skcapstone backup health` exits non-zero when unhealthy (usable as a probe).
+The scheduler callback `make_backup_monitor_task()` logs a warning and, when
+`SKCAPSTONE_BACKUP_ALERT=1`, fires an `sk-alert` to Telegram.
+
+### Install the systemd timer (NOT auto-installed)
+
+Template units live in `systemd/`. They are plain files - nothing enables them
+until you copy and enable them yourself:
+
+```bash
+install -m644 systemd/skcapstone-gfs-backup.service \
+              systemd/skcapstone-gfs-backup.timer \
+              systemd/skcapstone-gfs-backup-monitor.service \
+              systemd/skcapstone-gfs-backup-monitor.timer \
+              ~/.config/systemd/user/
+systemctl --user daemon-reload
+systemctl --user enable --now skcapstone-gfs-backup.timer          # daily backup + prune
+systemctl --user enable --now skcapstone-gfs-backup-monitor.timer  # daily freshness check
+systemctl --user list-timers | grep gfs                            # verify
+```
+
+Add extra `ReadWritePaths=` lines to the `.service` for an off-box backup mount
+(e.g. `/mnt/usb/backups`) and point `SKCAPSTONE_BACKUP_DIR` at it.
+
+### Or register it as a fleet scheduler job
+
+Instead of systemd, drop a fragment into `~/.skcapstone/config/jobs.d/` (loaded
+by the unified scheduler via the conf.d merge). Both entrypoints are zero-arg
+`type: python` callbacks:
+
+```yaml
+# ~/.skcapstone/config/jobs.d/gfs-backup.yaml
+jobs:
+  gfs-backup:
+    type: python
+    callback: skcapstone.gfs_backup:run_scheduled_backup
+    schedule: "45 2 * * *"       # daily 02:45
+    nodes: all
+    timeout: 900
+    notify: on_failure
+    enabled: true
+  gfs-backup-monitor:
+    type: python
+    callback: skcapstone.gfs_backup:run_backup_monitor
+    schedule: "0 10 * * *"       # daily 10:00 - after the backup window
+    nodes: all
+    timeout: 120
+    notify: on_failure
+    enabled: true
+```

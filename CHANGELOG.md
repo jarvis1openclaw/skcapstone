@@ -8,6 +8,27 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 ## [Unreleased]
 
 ### Added
+- **GFS backup job + staleness monitor** (`gfs_backup.py`). A scheduled backup
+  built on the existing `backup.create_backup` primitive with Grandfather-Father-Son
+  retention and a health monitor. `select_gfs_retention()` is a pure function that,
+  given timestamped artifacts and a `GFSPolicy` (daily/weekly/monthly/yearly counts),
+  returns the keep/prune partition using borg/restic union semantics (newest per
+  distinct period, per tier); an all-zero policy means "pruning disabled", never
+  "delete all". `run_backup_job()` creates an artifact in a configurable dir, prunes
+  with hard confinement (only `backup-*.tar.gz` files directly inside the backup dir
+  are ever unlinked), and records a `gfs-state.json` sidecar. `check_backup_health()`
+  reports `ok`/`stale`/`missing`/`failed` against a freshness threshold. All
+  destinations/thresholds are config-driven (`config.yaml` `backup:` block or
+  `SKCAPSTONE_BACKUP_*` env vars) with safe defaults (7 daily / 4 weekly / 6 monthly,
+  26h threshold). New CLI `skcapstone backup gfs` and `skcapstone backup health`
+  (exits non-zero when unhealthy). Zero-arg scheduler entrypoints
+  `skcapstone.gfs_backup:run_scheduled_backup` and `:run_backup_monitor` for a
+  `type: python` job; `make_backup_monitor_task()` logs and (with
+  `SKCAPSTONE_BACKUP_ALERT=1`) fires `sk-alert`. Template systemd units in `systemd/`
+  (`skcapstone-gfs-backup{,-monitor}.{service,timer}`) are inert until manually
+  installed; install + `jobs.d` wiring documented in `docs/BACKUP.md`. Coexists with
+  the operator shell cron (`scripts/skcapstone-gfs-backup.sh`) without touching its
+  `skcapstone-state-*` output. Covered by `tests/test_gfs_backup.py` (22 tests).
 - **Context-window management in the consciousness loop.** New
   `ContextWindowManager` (`context_window.py`) is wired into `ConsciousnessLoop._process`:
   after each reply it tracks per-sender cumulative token usage and, once a peer's
