@@ -81,6 +81,7 @@ graph TB
         ADAPTER["PromptAdapter<br/>(prompt_adapter.py)"]
         BRIDGE["LLMBridge<br/>(route+adapt+call+fallback)"]
         PROMPT["SystemPromptBuilder<br/>(identity+soul+history)"]
+        CTXWIN["ContextWindowManager<br/>(per-sender compress @80%)"]
     end
 
     subgraph plat["Platform primitives (hosted here)"]
@@ -116,6 +117,8 @@ graph TB
     BRIDGE --> PROMPT
     BRIDGE --> OLLAMA
     BRIDGE --> CLOUD
+    BRIDGE -->|reply stored| CTXWIN
+    CTXWIN -->|summarize + replace| MEM
     PROMPT --> IDENT
     daemon --> pillars
     MEM -->|store interaction| BRIDGE
@@ -140,6 +143,24 @@ graph TB
   trust / sksecurity / sync into `~/.skcapstone/`.
 - `docs/ARCHITECTURE.md` — the full technical reference (message flow, fallback cascade,
   self-healing, daemon lifecycle) this SOP summarizes.
+- `src/skcapstone/context_window.py`: `ContextWindowManager`, per-sender token
+  tracking + LLM history compression at 80% of the context budget.
+
+**Consciousness loop: context-window + memory-promotion gates.**
+- **Context-window management.** After each reply, `ConsciousnessLoop._process` calls
+  `ContextWindowManager.check_and_compress(sender, store, bridge)`. It tracks per-sender
+  cumulative tokens and, once a peer's history crosses **80% of
+  `ConsciousnessConfig.max_context_tokens` (default 8000)**, it summarizes the oldest
+  messages into one paragraph via the LLM (keeping the 4 most recent verbatim), rewrites
+  the history atomically with `ConversationStore.replace()`, and persists the summary as
+  a durable memory. Token counting uses `tiktoken` (`cl100k_base`) when installed, else
+  `len // 4`. The whole check is fail-safe (any error is logged, never breaks the loop).
+  Inspect live per-sender usage with the `context_stats` MCP tool.
+- **Memory-promotion truth gate.** The SHORT_TERM → MID_TERM promotion (both the
+  `memory_engine._promote` / `store()` fast-path and `PromotionEngine._promote`) now
+  passes candidates through `memory_verifier.verify_before_promotion`. Blocked
+  candidates stay in short-term. The gate is **fail-open**: when the verifier backend
+  is unavailable, promotion proceeds so existing behavior is preserved.
 
 ---
 
@@ -213,6 +234,43 @@ Rollback = stop the daemon, `pip install skcapstone==<prev>`, restart. Agent sta
 `~/.skcapstone/` is version-independent; the daemon rebuilds derived indexes on start
 via `SelfHealingDoctor`.
 
+**systemd unit templates (per-agent).** The fleet runs the daemon under the
+`skcapstone@<agent>` template (`systemd/skcapstone@.service`, mirrored in the packaged
+copy `src/skcapstone/data/systemd/` and the `generate_unit_file()` code path). The unit
+is hardened for the unattended fleet:
+
+| Directive | Value | Why |
+|---|---|---|
+| `MemoryHigh` / `MemoryMax` | `3G` / `4G` | Soft reclaim then hard cap. Normal agent RSS is ~230 MB; 4G is ~17x headroom but stops a runaway before it OOM-thrashes the box. |
+| `RestartSteps` / `RestartMaxDelaySec` | `5` / `300` | Exponential restart backoff (10s → 20s → 40s … capped at 5 min) instead of a fixed 10s hot-loop (systemd ≥ 254). |
+| `StartLimitIntervalSec` / `StartLimitBurst` | `1800` / `6` | Crash-loop guard: a persistently failing daemon stops and stays failed inside a bounded window. |
+| `OnFailure` | `skcapstone-alert@%i.service` | Pages when the agent enters the failed state instead of failing silently. |
+
+`skcapstone-alert@.service` is a best-effort oneshot: it always writes a visible
+journal event (`journalctl --user -t skcapstone-alert`, priority `err`) and
+opportunistically pages via `sk-alert` when that transport is installed. It never fails
+itself, so a missing `sk-alert` can never turn a daemon failure into a second failure.
+
+**Deploying a unit change (batched restart).** Unit files are not live until synced.
+After bumping the templates:
+```bash
+# sync BOTH tracked copies (top-level systemd/ + packaged data/systemd/) to the user unit dir
+cp systemd/skcapstone@.service systemd/skcapstone-alert@.service ~/.config/systemd/user/
+systemctl --user daemon-reload
+# restart every running agent instance together so the new caps take effect
+for a in $(systemctl --user list-units 'skcapstone@*' --no-legend | awk '{print $1}'); do
+  systemctl --user restart "$a"
+done
+```
+Verify a template edit before deploy with `systemd-analyze verify systemd/skcapstone@.service`.
+
+> **Gotcha (orphan/stale pidfile).** `~/.skcapstone/daemon.pid` (per-agent home) is the
+> liveness source `read_pid` / `is_running` read. A hard-killed daemon (or an OOM-kill
+> before the exponential backoff catches it) can leave a stale PID whose number was
+> reused by an unrelated process, so `skcapstone daemon status` can read "running" while
+> the port is dead. If a start refuses because the port looks busy, confirm with
+> `curl -s 127.0.0.1:7777/ping` and clear the orphan pidfile before restarting.
+
 **Front-end / Exposure.** The daemon exposes a local HTTP API. Per the Unified Ingress
 Standard:
 - **Bind address:** `127.0.0.1:7777` (loopback only — hard-coded
@@ -236,7 +294,7 @@ over a shared `~/.skcapstone/` root (coord, heartbeats, peers).
 
 | File | Controls |
 |---|---|
-| `consciousness.yaml` | `ConsciousnessConfig` — poll intervals, rate limits, auto-ack |
+| `consciousness.yaml` | `ConsciousnessConfig`: poll intervals, rate limits, auto-ack, `max_context_tokens` (default 8000; context-window compression fires at 80%) |
 | `router.yaml` | `ModelRouterConfig` — tier→model map, tag rules, priorities |
 | `model_profiles.yaml` | per-model prompt shaping (temperature, format, thinking) |
 | `config.yaml` | general agent config |
@@ -251,6 +309,7 @@ over a shared `~/.skcapstone/` root (coord, heartbeats, peers).
 | `ANTHROPIC_API_KEY` / `OPENAI_API_KEY` / `XAI_API_KEY` / `MOONSHOT_API_KEY` / `NVIDIA_API_KEY` | enable the corresponding cloud backend (presence = availability) |
 | `CAPAUTH_API_URL` | remote CapAuth validation endpoint |
 | `SKCOMMS_TURN_SECRET` | HMAC secret for coturn credentials |
+| `SKCAPSTONE_DESKTOP_NOTIFY` | opt-in (default off); when enabled, the loop fires a gated desktop notification on each generated response |
 
 **Secrets sourcing (hard rules).** LLM provider API keys are read from the
 **environment** (or the operator's shell profile / a systemd `EnvironmentFile`) — never
@@ -307,13 +366,28 @@ skcapstone mcp           # run the MCP server (skcapstone-mcp)
 | `GET /`, `/dashboard` | HTML status dashboard |
 | `GET /api/v1/logs` (WebSocket) | log stream — **CapAuth required** |
 
-**MCP server** (`skcapstone-mcp`): 80+ tools proxying every subsystem (memory, coord,
+**MCP server** (`skcapstone-mcp`): 125 tools proxying every subsystem (memory, coord,
 did, soul, comm, itil, gtd, trust, …) to Claude Code and other MCP clients — see
-`src/skcapstone/mcp_tools/`.
+`src/skcapstone/mcp_tools/`. Includes `context_stats` (per-sender token/message counts,
+percent of the context budget, last-compressed timestamp). GTD write tools
+(`gtd_capture` / `clarify` / `move` / `done`) route through the shared locked, atomic,
+deduped `skos.gtd_ingest` sink so concurrent MCP + cron + skos writers cannot lose or
+corrupt updates.
+
+**coord fold-drift repair.** The CardStore fold reads the sanctioned legacy append-only
+paths (`coordination/archive/<host>.jsonl` + `coordination/card_events/*.jsonl`), so a
+mutation that only reached a legacy file is still counted. If `coord status` open-counts
+look wrong, run the repair in order:
+```bash
+skcapstone coord parity                 # diff store fold vs legacy; raises PARITY ALERT on open-count drift
+skcapstone coord migrate                # import any legacy cards missing from the store (dry-run default)
+skcapstone coord reconcile --apply      # append idempotent corrective events to converge on legacy
+skcapstone coord parity --check         # re-verify (exit non-zero on any residual drift)
+```
 
 **Self-report / evidence commands:** `skcapstone status`, `skcapstone doctor`,
-`skcapstone consciousness ...`, `skcapstone metrics`, `GET /status`,
-`GET /consciousness`, `GET /api/v1/metrics`.
+`skcapstone consciousness ...`, `skcapstone metrics`, `skcapstone coord parity`,
+`GET /status`, `GET /consciousness`, `GET /api/v1/metrics`.
 
 ---
 
@@ -329,6 +403,9 @@ did, soul, comm, itil, gtd, trust, …) to Claude Code and other MCP clients —
 | Memory index errors | `SelfHealingDoctor` rebuilds `memory/index.json` from `memory/**/*.json`; run `skcapstone doctor`. |
 | inotify watcher dead | self-healing restarts the observer every 300s; `skcapstone doctor` re-checks; verify `sync/comms/inbox/` exists. |
 | Multi-agent state confusion | Confirm `SKCAPSTONE_AGENT` / `SKCAPSTONE_ROOT`; per-agent home is `~/.skcapstone/agents/<name>/`. |
+| `coord status` open-count looks wrong | Store fold vs legacy drift. `skcapstone coord parity` (PARITY ALERT on open-count drift), then `coord migrate` → `coord reconcile --apply` → `coord parity --check`. |
+| Agent unit keeps restarting then goes `failed` | Expected crash-loop guard: `StartLimitBurst=6` inside `StartLimitIntervalSec=1800` gives up on a persistent failure. Check the `skcapstone-alert` page + `journalctl --user -u skcapstone@<agent>` for the root cause; `systemctl --user reset-failed skcapstone@<agent>` after the fix. |
+| `daemon status` says running but port is dead | Stale/orphan `~/.skcapstone/daemon.pid` (reused PID). `curl -s 127.0.0.1:7777/ping`; clear the pidfile and restart. |
 | API key leaked into a shell | Rotate at the provider; keys are env-sourced — never commit them. See `SECURITY.md`. |
 
 ---

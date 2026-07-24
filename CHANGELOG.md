@@ -7,6 +7,78 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased]
 
+### Added
+- **Context-window management in the consciousness loop.** New
+  `ContextWindowManager` (`context_window.py`) is wired into `ConsciousnessLoop._process`:
+  after each reply it tracks per-sender cumulative token usage and, once a peer's
+  history reaches 80% of `ConsciousnessConfig.max_context_tokens` (default `8000`),
+  the oldest messages are summarized by the LLM into a single paragraph (keeping the
+  4 most recent verbatim) and atomically rewritten. Token counting uses `tiktoken`
+  (`cl100k_base`) when installed, else a `len // 4` estimate. The compression summary
+  is also persisted as a durable memory (`_store_context_summary_memory`) so nothing
+  is lost. Adds `ConversationStore.replace()` for the atomic whole-history rewrite and
+  a new `context_stats` MCP tool (per-sender token/message counts, percent of budget,
+  last-compressed timestamp), bumping the MCP tool count 124 → 125. The whole check is
+  fail-safe: any error is caught and never breaks the loop.
+- **Gated desktop notification on consciousness-loop responses.** After generating a
+  reply the loop routes through the shared `skcapstone.notifications` path
+  (`_notify_response`): title `"Agent response"`, body the first 120 chars. It is
+  strictly opt-in via `SKCAPSTONE_DESKTOP_NOTIFY` (default off, checked through
+  `desktop_notifications_enabled()`), so background agents never flood the desktop
+  tray, and any failure is swallowed. Replaces an ad-hoc raw `notify-send` subprocess.
+- **Agent systemd unit hardening.** The per-agent template `skcapstone@.service` (and
+  the legacy single-agent unit, the packaged copy under `src/skcapstone/data/systemd/`,
+  and the `generate_unit_file()` code path) now ship with `MemoryHigh=3G` /
+  `MemoryMax=4G`, exponential restart backoff (`RestartSteps=5` +
+  `RestartMaxDelaySec=300`, so restarts ramp 10s → 20s → 40s … capped at 5 min instead
+  of a fixed 10s hot-loop), and a crash-loop guard (`StartLimitIntervalSec=1800` +
+  `StartLimitBurst=6`) so a persistently failing daemon stops and stays failed inside
+  a bounded window. Adds `OnFailure=skcapstone-alert@%i.service`: a new best-effort
+  oneshot unit that always writes a visible journal event (tag `skcapstone-alert`,
+  priority `err`) and opportunistically pages via `sk-alert`. This encodes the .41
+  outage fix (previously hand-applied host state only) into the repo so rebuilt
+  machines inherit it.
+- **`coord reconcile` command + parity open-count alert.** New `coord reconcile`
+  (`--apply`) converges the CardStore fold on the authoritative legacy board via
+  append-only, idempotent corrective events (`card_store.reconcile_from_legacy`). The
+  `coord parity` soak check now also compares store-served vs legacy open-counts and
+  raises a `PARITY ALERT` when the drift exceeds `OPEN_DRIFT_THRESHOLD`, pointing at
+  the `coord migrate` → `coord reconcile --apply` repair path.
+
+### Changed
+- **Model tier defaults now resolve to backend-verified models.** The default
+  `ModelRouterConfig` tier map referenced Ollama names never pulled on the fleet
+  (`devstral`, `deepseek-r1:8b`, `qwen3-coder`) which 404'd, and a stale
+  `claude-sonnet-4-5` alt. Defaults are re-pointed to models verified live against
+  Ollama `/api/tags` (`qwen3.5:4b`, `gemma3:1b`) and the SKGateway `/v1/models`
+  catalog (`claude-sonnet-4-6`, `claude-haiku-4-5`, `claude-opus-4-8`).
+
+### Fixed
+- **CardStore fold-drift.** The store fold now consumes the two sanctioned legacy
+  append-only paths (`coordination/archive/<host>.jsonl` archive index +
+  `coordination/card_events/*.jsonl` kanban overlay) as synthesized fold events
+  (`load_legacy_mutations`), merged into each card's event stream. Mutations that only
+  reached a legacy file (mirror off, or claims/completes recorded pre-cutover) are now
+  seen by the fold, so `coord status` no longer overcounts open cards.
+- **MCP GTD writes routed through the locked/atomic/deduped skos sink.** `gtd_tools`
+  was the last writer using bare `path.write_text` (in-place truncate, no flock, no
+  tmp+fsync+os.replace, no whole-store dedupe). `_handle_gtd_capture` now routes
+  through `skos.gtd_ingest.capture()` (whole-store `(source, source_ref)` dedupe +
+  lock + atomic save) when available; the id-keyed `clarify`/`move`/`done` mutations
+  wrap their load-modify-save under the shared `_store_lock()` and persist via the
+  atomic saver. Soft-imports skos's exact mechanism (with a local fallback keyed on the
+  same lock) so cross-process exclusion with skos holds either way.
+- **Repaired pre-existing test failures + wired the memory-promotion truth gate.**
+  `fuse_mount.SovereignFS.__init__` no longer crashes with `PosixPath / None` when no
+  agent resolves (mirrors `memory_engine._memory_dir` resolution). The memory-promotion
+  truth-check gate (`memory_verifier.verify_before_promotion`) is now wired into the
+  SHORT_TERM → MID_TERM transition in `memory_engine._promote` / `store()` and
+  `PromotionEngine._promote` (fail-open when the backend is unavailable; blocked
+  candidates stay in short-term). Test isolation was hardened so the suite reads no
+  live `~/.skcapstone` and needs no network, and `daemon._load_components` registers
+  the dreaming-job loop reference outside the scheduler-build try-block. Clean
+  `pytest -m "not integration and not e2e"` run is green.
+
 ## [0.14.0] - 2026-07-03
 
 ### Added

@@ -623,6 +623,8 @@ wandering the graph:
   material of its own**; all crypto identity is delegated here.
 - ⬆️ **Depends on:** [skmemory](https://github.com/smilinTux/skmemory) — the persistent
   short/mid/long-term memory store; the single source of truth for durable agent state.
+- ⬇️ **Used by:** [skops](https://github.com/smilinTux/skops): reuses skcapstone's
+  ITIL ops tools (incidents / problems / changes / CAB / KEDB) wholesale.
 - ↔️ **Sibling:** [skcomms](https://github.com/smilinTux/skcomms) — the encrypted P2P
   envelope transport the daemon polls to send/receive agent messages.
 - ↔️ **Sibling:** [skchat](https://github.com/smilinTux/skchat) — the messaging layer
