@@ -39,6 +39,11 @@ TEMPLATE_NAME = "skcapstone@.service"
 # Copied alongside the main unit (not enabled/started directly — systemd
 # instantiates it on demand when a service enters the failed state).
 ALERT_TEMPLATE = "skcapstone-alert@.service"
+# Retired unit (card 36d11ec3). The old skcapstone-api.socket hardcoded
+# 127.0.0.1:7777 and matched no real service — the daemon binds its own
+# per-agent status-API port (see AGENT_PORTS) and never used systemd socket
+# activation. It is no longer installed (absent from ALL_UNITS), but is still
+# removed on uninstall so hosts that installed the old unit get cleaned up.
 SOCKET_NAME = "skcapstone-api.socket"
 HEARTBEAT_SERVICE = "skcomms-heartbeat.service"
 HEARTBEAT_TIMER = "skcomms-heartbeat.timer"
@@ -47,12 +52,14 @@ QUEUE_DRAIN_TIMER = "skcomms-queue-drain.timer"
 
 ALL_UNITS = [
     SERVICE_NAME,
-    SOCKET_NAME,
     HEARTBEAT_SERVICE,
     HEARTBEAT_TIMER,
     QUEUE_DRAIN_SERVICE,
     QUEUE_DRAIN_TIMER,
 ]
+
+# Units no longer shipped but still cleaned up on uninstall (see SOCKET_NAME).
+RETIRED_UNITS = [SOCKET_NAME]
 
 TIMER_UNITS = [HEARTBEAT_TIMER, QUEUE_DRAIN_TIMER]
 
@@ -258,7 +265,7 @@ def uninstall_service(unit_dir: Optional[Path] = None) -> dict:
     _systemctl("disable", SERVICE_NAME)
     result["disabled"] = True
 
-    for name in [*ALL_UNITS, TEMPLATE_NAME, ALERT_TEMPLATE]:
+    for name in [*ALL_UNITS, *RETIRED_UNITS, TEMPLATE_NAME, ALERT_TEMPLATE]:
         unit_path = target / name
         if unit_path.exists():
             unit_path.unlink()

@@ -14,7 +14,7 @@ from ._common import AGENT_HOME, console
 from rich.console import Console
 from rich.panel import Panel
 
-from .. import AGENT_PORTS, DEFAULT_PORT, SKCAPSTONE_ROOT
+from .. import AGENT_PORTS, DEFAULT_PORT, SKCAPSTONE_ROOT, hashed_agent_port
 
 
 def _resolve_agent_home(agent: str | None, home: str) -> Path:
@@ -30,11 +30,23 @@ def _resolve_agent_home(agent: str | None, home: str) -> Path:
 
 
 def _resolve_agent_port(agent: str | None, explicit_port: int | None) -> int:
-    """Return the port for *agent*, falling back to *explicit_port* or 7777."""
+    """Return the deterministic daemon status-API port for *agent*.
+
+    Resolution order:
+      1. An explicit ``--port`` always wins.
+      2. A known agent gets its distinct registered port from ``AGENT_PORTS``.
+      3. An unknown agent gets a stable hash-based port in the dynamic range
+         (``hashed_agent_port``) that avoids every documented fleet port — so
+         two agents on one host never collide and unknown agents never land on
+         skcomms' 9384 or any other reserved fleet port.
+      4. The no-agent (single-daemon) path keeps the package ``DEFAULT_PORT``.
+    """
     if explicit_port is not None:
         return explicit_port
     if agent:
-        return AGENT_PORTS.get(agent, max(AGENT_PORTS.values(), default=DEFAULT_PORT) + 1)
+        if agent in AGENT_PORTS:
+            return AGENT_PORTS[agent]
+        return hashed_agent_port(agent)
     return DEFAULT_PORT
 
 

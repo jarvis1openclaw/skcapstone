@@ -126,6 +126,7 @@ class TestInstallService:
         source = tmp_path / "source"
         source.mkdir()
         (source / SERVICE_NAME).write_text("[Unit]\nDescription=Test\n")
+        # The retired socket unit must NOT be installed even if present in source.
         (source / SOCKET_NAME).write_text("[Socket]\nListenStream=127.0.0.1:7777\n")
 
         target = tmp_path / "target"
@@ -136,7 +137,8 @@ class TestInstallService:
 
         assert result["installed"] is True
         assert (target / SERVICE_NAME).exists()
-        assert (target / SOCKET_NAME).exists()
+        # Retired (card 36d11ec3): the daemon binds its own per-agent API port.
+        assert not (target / SOCKET_NAME).exists()
 
     @patch("skcapstone.systemd._systemctl")
     def test_install_enables_and_starts(self, mock_ctl: MagicMock, tmp_path: Path) -> None:
@@ -275,8 +277,12 @@ class TestUnitConstants:
         assert QUEUE_DRAIN_TIMER in TIMER_UNITS
 
     def test_all_units_count(self) -> None:
-        """ALL_UNITS has the expected number of units."""
-        assert len(ALL_UNITS) == 6
+        """ALL_UNITS has the expected number of units (socket retired, card 36d11ec3)."""
+        assert len(ALL_UNITS) == 5
+
+    def test_retired_socket_not_installed(self) -> None:
+        """The retired skcapstone-api.socket is no longer part of ALL_UNITS."""
+        assert SOCKET_NAME not in ALL_UNITS
 
     def test_bundled_service_file_exists(self) -> None:
         """The bundled skcapstone.service file exists."""
