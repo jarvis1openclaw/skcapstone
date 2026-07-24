@@ -393,13 +393,13 @@ MemoryHigh=3G
 MemoryMax=4G
 WatchdogSec=120
 
+# Security hardening (relaxed — matches the canonical top-level units).
+# ProtectSystem=strict / ProtectHome=read-only were removed on purpose: they
+# fail-closed if any ReadWritePaths dir is missing on the host, which stops the
+# daemon from ever starting. Keep only the directives that are safe with the
+# %h/.skenv install layout.
 NoNewPrivileges=true
-ProtectSystem=strict
-ProtectHome=read-only
-ReadWritePaths=%h/.skcapstone %h/.capauth %h/.cloud9 %h/.skcomms %h/.skchat
 PrivateTmp=true
-ProtectKernelTunables=true
-ProtectControlGroups=true
 
 Environment=PYTHONUNBUFFERED=1
 {env_lines}
