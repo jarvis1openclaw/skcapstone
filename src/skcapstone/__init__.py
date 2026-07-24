@@ -7,6 +7,7 @@ Install once. Your agent awakens everywhere.
 A smilinTux Open Source Project.
 """
 
+import hashlib
 import os
 import platform
 from pathlib import Path
@@ -74,11 +75,69 @@ DEFAULT_PORT = int(os.environ.get("SKCAPSTONE_PORT", "9383"))
 # Backwards-compatible aliases (used by CLI, peers, dashboard, etc.)
 SHARED_ROOT = os.environ.get("SKCAPSTONE_SHARED_ROOT", AGENT_HOME)
 SKCAPSTONE_ROOT = os.environ.get("SKCAPSTONE_ROOT", AGENT_HOME)
+# ── Daemon status-API port assignment ────────────────────────────────────────
+#
+# Each agent daemon exposes its own local HTTP status/health API. When two
+# agents run on one host (via the skcapstone@ template) they MUST bind distinct
+# ports or the second daemon's bind fails and it runs blind (no status/health).
+#
+# Rules (source of truth for the fleet: docs/PORTS.md):
+#   * Known agents get an explicit, distinct, deterministic port here.
+#   * They must stay clear of the SKComms / skchat / sk-access fleet band
+#     9384-9390 — assigning onto 9384 (skcomms) is the original bug.
+#   * Unknown agents get a stable hash-based port in a dedicated dynamic range
+#     (see hashed_agent_port) that never overlaps the fleet band.
 AGENT_PORTS: dict[str, int] = {
-    "opus": 9383,
-    "lumina": 9383,
-    "jarvis": 9383,
+    "lumina": 9383,  # documented in docs/PORTS.md as skcapstone@lumina; keep stable
+    "opus": 9389,    # free slot between skchat-opus (9388) and signaling (9390)
+    "jarvis": 9391,  # above the signaling broker; clear of jarvis-heartbeat (9387)
 }
+
+# Ports owned by *other* fleet services on this host. Auto-assignment must never
+# land on one of these. Source of truth: docs/PORTS.md.
+FLEET_RESERVED_PORTS: frozenset[int] = frozenset({
+    9384,  # skcomms federation S2S API
+    9385,  # skchat daemon (lumina) health/metrics
+    9386,  # sk-access MCP (tailnet)
+    9387,  # jarvis-heartbeat
+    9388,  # skchat daemon (opus) health/metrics
+    9390,  # skcomms signaling broker
+})
+
+# Dedicated range for auto-assigned (unregistered) agent daemon API ports.
+# Chosen above the crowded 938x/939x fleet band so a hashed port never shadows
+# a documented service. Scanned for a free slot at bind time.
+DYNAMIC_PORT_BASE = 9400
+DYNAMIC_PORT_SPAN = 100  # 9400-9499 inclusive-exclusive
+
+
+def hashed_agent_port(agent: str) -> int:
+    """Return a deterministic, restart-stable daemon API port for *agent*.
+
+    Used for agents not present in :data:`AGENT_PORTS`. Python's built-in
+    ``hash()`` is per-process salted, so it is unusable for a stable mapping;
+    this uses a SHA-256 digest instead. The result lands in the dedicated
+    dynamic range (:data:`DYNAMIC_PORT_BASE`) and is guaranteed to avoid both
+    the documented fleet ports and the explicit known-agent ports, so an
+    unknown agent never silently reuses a taken fleet port.
+
+    Args:
+        agent: Agent name (e.g. "artisan", "scholar").
+
+    Returns:
+        A TCP port in the dynamic range, deterministic for a given agent name.
+    """
+    digest = hashlib.sha256(agent.encode("utf-8")).digest()
+    offset = int.from_bytes(digest[:4], "big") % DYNAMIC_PORT_SPAN
+    taken = FLEET_RESERVED_PORTS | set(AGENT_PORTS.values())
+    for _ in range(DYNAMIC_PORT_SPAN):
+        port = DYNAMIC_PORT_BASE + offset
+        if port not in taken:
+            return port
+        offset = (offset + 1) % DYNAMIC_PORT_SPAN
+    # Range fully reserved (should never happen with a 100-wide span); fall back
+    # to the base so the caller still gets a stable, non-fleet port.
+    return DYNAMIC_PORT_BASE
 
 
 def agent_home(agent_name: str | None = None) -> Path:

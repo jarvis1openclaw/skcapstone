@@ -12,6 +12,7 @@ This is what turns a CLI tool into a living agent.
 from __future__ import annotations
 
 import base64
+import errno
 import hashlib
 import json
 import logging
@@ -30,6 +31,11 @@ from pathlib import Path
 from typing import Optional
 
 from . import AGENT_HOME, SHARED_ROOT
+from . import (
+    DYNAMIC_PORT_BASE,
+    DYNAMIC_PORT_SPAN,
+    FLEET_RESERVED_PORTS,
+)
 from . import activity as _activity
 
 logger = logging.getLogger("skcapstone.daemon")
@@ -764,6 +770,10 @@ class DaemonState:
         self.healing_history: list[dict] = []
         self.inflight_messages: dict[str, dict] = {}
         self.sync_pipeline_status: dict = {}
+        # Status-API server health. "pending" until the bind is attempted, then
+        # "ok" (bound on the intended port), "rebound" (had to move to a free
+        # port after a collision — degraded), or "down" (no API at all).
+        self.api_server: dict = {"status": "pending", "port": None, "detail": ""}
 
     def snapshot(self) -> dict:
         """Return a serializable snapshot of current state.
@@ -792,6 +802,7 @@ class DaemonState:
                 "sync_pipeline": self.sync_pipeline_status,
                 "recent_errors": self.errors[-10:],
                 "inflight_count": len(self.inflight_messages),
+                "api_server": dict(self.api_server),
                 "pid": os.getpid(),
             }
 
@@ -829,6 +840,30 @@ class DaemonState:
             self.errors.append(f"[{ts}] {error}")
             if len(self.errors) > 50:
                 self.errors = self.errors[-50:]
+
+    def record_api_server(
+        self, status: str, port: Optional[int] = None, detail: str = ""
+    ) -> None:
+        """Record the status-API server health.
+
+        Args:
+            status: One of "ok", "rebound" (degraded — bound on a fallback
+                port after a collision), or "down" (no API server running).
+            port: The port the server actually bound to, if any.
+            detail: Human-readable context (e.g. the bind error).
+        """
+        with self._lock:
+            self.api_server = {"status": status, "port": port, "detail": detail}
+
+    def is_degraded(self) -> bool:
+        """Return True if the daemon is running in a degraded state.
+
+        Currently driven by the status-API server: a "rebound" (collision
+        fallback) or "down" (no API) state means status/health monitoring is
+        impaired even though the core daemon loop is alive.
+        """
+        with self._lock:
+            return self.api_server.get("status") in ("rebound", "down")
 
     def record_healing_run(self, report: dict) -> None:
         """Record a self-healing run result, keeping the last 20 entries.
@@ -2641,7 +2676,9 @@ class DaemonService:
                 logger.debug("API: %s", format % args)
 
         try:
-            self._server = ThreadingHTTPServer(("127.0.0.1", config.port), DaemonHandler)
+            self._server, bound_port = self._bind_api_server(
+                config.port, DaemonHandler
+            )
 
             if config.tls_enabled:
                 from .tls import build_ssl_context, cert_fingerprint_sha256, ensure_tls_cert
@@ -2668,10 +2705,104 @@ class DaemonService:
             )
             t.start()
             self._threads.append(t)
-            logger.info("API server listening on %s://127.0.0.1:%d", scheme, config.port)
+            logger.info(
+                "API server listening on %s://127.0.0.1:%d", scheme, bound_port
+            )
+            if bound_port == config.port:
+                self.state.record_api_server("ok", port=bound_port)
+            else:
+                # Bound, but not on the intended port — degraded. Loud, not silent.
+                detail = (
+                    f"intended port {config.port} was in use; "
+                    f"rebound on {bound_port}"
+                )
+                self.state.record_api_server(
+                    "rebound", port=bound_port, detail=detail
+                )
+                self.state.record_error(f"ALERT: API server {detail}")
+                logger.warning("ALERT: API server %s", detail)
+                self._emit_api_alert(
+                    "rebound", config.port, detail, bound_port=bound_port
+                )
         except OSError as exc:
-            logger.error("Failed to start API server: %s", exc)
-            self.state.record_error(f"API server: {exc}")
+            # No API server at all — the daemon is running blind (no status /
+            # health monitoring). This must be loud: alert event + degraded
+            # health, never a lone log line.
+            detail = f"could not bind status API on port {config.port}: {exc}"
+            self.state.record_api_server("down", port=None, detail=detail)
+            self.state.record_error(f"ALERT: API server {detail}")
+            logger.error("ALERT: API server %s", detail)
+            self._emit_api_alert("down", config.port, detail)
+
+    def _bind_api_server(self, preferred_port: int, handler):
+        """Bind the status-API HTTP server, retrying on a port collision.
+
+        Tries *preferred_port* first. If it is already in use, scans the
+        dedicated dynamic range for the next free port that is not a documented
+        fleet port, so a collision degrades to a fallback port instead of
+        killing the API server outright. Any other bind error propagates.
+
+        Args:
+            preferred_port: The port the agent is supposed to use.
+            handler: The ``BaseHTTPRequestHandler`` subclass to serve.
+
+        Returns:
+            Tuple of (bound ``ThreadingHTTPServer``, actual port).
+
+        Raises:
+            OSError: If no port in the scan could be bound.
+        """
+        try:
+            return ThreadingHTTPServer(("127.0.0.1", preferred_port), handler), preferred_port
+        except OSError as exc:
+            if exc.errno != errno.EADDRINUSE:
+                raise
+
+        # Preferred port taken — scan the dynamic range for a free, non-fleet port.
+        last_exc: Optional[OSError] = None
+        for offset in range(DYNAMIC_PORT_SPAN):
+            candidate = DYNAMIC_PORT_BASE + offset
+            if candidate == preferred_port or candidate in FLEET_RESERVED_PORTS:
+                continue
+            try:
+                return ThreadingHTTPServer(("127.0.0.1", candidate), handler), candidate
+            except OSError as exc:
+                if exc.errno != errno.EADDRINUSE:
+                    raise
+                last_exc = exc
+                continue
+        raise last_exc or OSError(
+            errno.EADDRINUSE,
+            f"no free port in dynamic range {DYNAMIC_PORT_BASE}-"
+            f"{DYNAMIC_PORT_BASE + DYNAMIC_PORT_SPAN}",
+        )
+
+    def _emit_api_alert(
+        self,
+        status: str,
+        intended_port: int,
+        detail: str,
+        bound_port: Optional[int] = None,
+    ) -> None:
+        """Emit an alert-severity activity event for an API-server bind problem.
+
+        Best-effort: a failure to publish the alert must never take down the
+        daemon (that would replace one silent failure with another).
+        """
+        try:
+            _activity.push(
+                "alert",
+                {
+                    "severity": "alert",
+                    "component": "api_server",
+                    "status": status,
+                    "intended_port": intended_port,
+                    "bound_port": bound_port,
+                    "detail": detail,
+                },
+            )
+        except Exception as exc:  # pragma: no cover - defensive
+            logger.warning("Failed to emit API-server alert event: %s", exc)
 
     def _setup_logging(self) -> None:
         """Configure structured JSON file logging and console logging."""

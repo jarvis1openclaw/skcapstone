@@ -151,9 +151,13 @@ def _print_consciousness_metrics(console, home: Optional[Path] = None) -> None:
     import urllib.request
     import urllib.error
 
-    from .. import AGENT_PORTS, DEFAULT_PORT, SKCAPSTONE_AGENT
+    from .. import SKCAPSTONE_AGENT
+    from .daemon import _resolve_agent_port
 
-    port = AGENT_PORTS.get(SKCAPSTONE_AGENT, DEFAULT_PORT)
+    # Resolve the same per-agent port the daemon binds (known agents → explicit
+    # port; unknown agents → stable hash-based port), so status queries the
+    # right port instead of assuming the shared default.
+    port = _resolve_agent_port(SKCAPSTONE_AGENT or None, None)
     try:
         with urllib.request.urlopen(f"http://localhost:{port}/consciousness", timeout=2) as resp:
             data = json.loads(resp.read().decode("utf-8"))
