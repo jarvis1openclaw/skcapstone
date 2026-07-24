@@ -1,5 +1,11 @@
 # SKCapstone
 
+[![CI](https://github.com/smilinTux/skcapstone/actions/workflows/ci.yml/badge.svg)](https://github.com/smilinTux/skcapstone/actions/workflows/ci.yml)
+[![pytest](https://github.com/smilinTux/skcapstone/actions/workflows/pytest.yml/badge.svg)](https://github.com/smilinTux/skcapstone/actions/workflows/pytest.yml)
+[![providers](https://github.com/smilinTux/skcapstone/actions/workflows/providers.yml/badge.svg)](https://github.com/smilinTux/skcapstone/actions/workflows/providers.yml)
+[![License: GPL-3.0-or-later](https://img.shields.io/badge/License-GPLv3-blue.svg)](LICENSE)
+[![Python 3.10+](https://img.shields.io/badge/python-3.10%2B-blue.svg)](pyproject.toml)
+
 **Purpose:** the sovereign **agent runtime** of SKWorld — an always-on daemon + consciousness loop that unifies CapAuth identity, Cloud 9 trust, SKMemory persistence, and SKSecurity protection into one portable agent that lives in `~/.skcapstone/`.
 **Maturity tier:** `T0 — N/A (no key material; delegates identity/crypto to capauth)` · VERSION_LIFECYCLE phase **Active v2** · SemVer **0.13.0**.
 
