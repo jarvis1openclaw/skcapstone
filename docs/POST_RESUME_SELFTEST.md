@@ -73,54 +73,47 @@ Alerts reuse the existing notification transport
 is true (or `--alert` is passed) **and** the overall result is a critical
 failure.
 
-## Wiring it to a systemd suspend/resume hook (do this yourself)
+## Wiring it to a systemd suspend/resume hook (opt-in)
 
-This repo does **not** install a live hook - the self-test is a command you opt
-into wiring. Two supported patterns:
+This repo ships the hooks as **inert, version-controlled templates** but does
+**not** install or enable any live hook. `scripts/install.sh` never copies them,
+so an install leaves your machine untouched until you opt in. Two supported
+patterns, both templated in the tree. Pick one.
 
 ### Option A - `systemd --user` unit ordered after `suspend.target`
 
-Create `~/.config/systemd/user/skcapstone-post-resume.service`:
-
-```ini
-[Unit]
-Description=SKCapstone post-resume self-test
-After=suspend.target hibernate.target hybrid-sleep.target suspend-then-hibernate.target
-
-[Service]
-Type=oneshot
-# --alert makes a resumed laptop flag issues; --quiet keeps journald tidy.
-ExecStart=%h/.skenv/bin/skcapstone selftest post-resume --alert --quiet
-
-[Install]
-WantedBy=suspend.target hibernate.target hybrid-sleep.target suspend-then-hibernate.target
-```
-
-Then:
+Template: `systemd/skcapstone-post-resume.service` (mirrored into the wheel at
+`src/skcapstone/data/systemd/`, same as the other unit templates). It runs as
+your user on resume, so it has access to your agent home and desktop
+notification bus. Install it yourself:
 
 ```bash
+install -m 0644 systemd/skcapstone-post-resume.service \
+    ~/.config/systemd/user/skcapstone-post-resume.service
 systemctl --user daemon-reload
 systemctl --user enable skcapstone-post-resume.service
 ```
 
-The unit runs as your user on resume, so it has access to your agent home and
-desktop notification bus.
+The unit is a `Type=oneshot` ordered `After=` and `WantedBy=` the sleep targets
+(`suspend`/`hibernate`/`hybrid-sleep`/`suspend-then-hibernate`), so systemd
+starts it once on every wake. Drop `--alert` from its `ExecStart` if you prefer
+to gate alerting purely through `selftest.yaml` (`alert_enabled: true`).
 
 ### Option B - system `systemd-sleep` hook
 
-Create `/usr/lib/systemd/system-sleep/50-skcapstone-selftest` (root, `chmod +x`):
+Template: `scripts/system-sleep/50-skcapstone-selftest`. system-sleep hooks run
+as root around every suspend/hibernate; the script acts only on the `post`
+(wake) phase and drops to the agent's user so the agent home and notification
+bus resolve. Its trailing `|| true` keeps a failed self-test from blocking
+anything (it already flags via `--alert` and its exit code). Install it as root:
 
-```sh
-#!/bin/sh
-# systemd-sleep passes: $1 = pre|post, $2 = suspend|hibernate|...
-[ "$1" = "post" ] || exit 0
-SK_USER=cbrd21
-runuser -l "$SK_USER" -c '~/.skenv/bin/skcapstone selftest post-resume --alert --quiet' || true
+```bash
+sudo install -m 0755 scripts/system-sleep/50-skcapstone-selftest \
+    /usr/lib/systemd/system-sleep/50-skcapstone-selftest
 ```
 
-`system-sleep` hooks run as root before/after sleep; drop to the agent's user so
-the agent home and notification bus resolve correctly. Trailing `|| true` keeps a
-failed self-test from blocking anything (it already flags via alert + exit code).
+Set `SK_USER` at the top of the script (or export it) if the auto-detected
+login user is wrong for your host.
 
 To review outcomes:
 
