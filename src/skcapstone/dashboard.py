@@ -429,6 +429,35 @@ loadAll();setInterval(loadAll,15000);
 </html>"""
 
 
+def _trust_graph_dict(home: Path) -> dict:
+    """Build the trust graph as a plain dict for the ``/api/trust/graph`` endpoint.
+
+    Delegates to :func:`skcapstone.trust_graph.build_trust_graph` and reuses its
+    ``format_json`` renderer so the wire shape stays in one place. Any failure
+    (missing sources, unreadable home) degrades to an empty graph rather than a
+    500, so the dashboard panel always renders.
+
+    Args:
+        home: Agent home directory (``~/.skcapstone``).
+
+    Returns:
+        A dict with ``nodes``, ``edges``, ``stats`` and (on failure) a ``note``.
+    """
+    from . import trust_graph as tg
+
+    try:
+        graph = tg.build_trust_graph(home)
+        return json.loads(tg.format_json(graph))
+    except Exception as exc:  # noqa: BLE001 - never 500 the panel
+        return {
+            "agent": "unknown",
+            "nodes": [],
+            "edges": [],
+            "stats": {"nodes": 0, "edges": 0, "by_type": {}},
+            "note": f"trust graph unavailable: {exc}",
+        }
+
+
 def _json(data: dict):
     """Build a JSON API Response matching the legacy shape (indent + CORS).
 
@@ -641,6 +670,8 @@ def create_app(home: Path):
         Route("/api/cmdb/overview", lambda r: _json(_cmdb().get_overview(home))),
         Route("/api/cmdb/ci/{ci_id}", lambda r: _json(_cmdb().get_ci(home, r.path_params["ci_id"]))),
         Route("/api/cmdb/seed", lambda r: _json(_cmdb().seed(home)), methods=["POST"]),
+        Route("/trust", _page("trust.html")),
+        Route("/api/trust/graph", lambda r: _json(_trust_graph_dict(home))),
     ]
     if static_dir.exists():
         routes.append(Mount("/static", StaticFiles(directory=str(static_dir))))
