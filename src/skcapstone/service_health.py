@@ -319,6 +319,11 @@ def check_all_services() -> list[dict[str, Any]]:
                         qdrant_base = f"{proto}://{host}:{port}"
             if not qdrant_api_key and cfg.get("api_key") and cfg["api_key"] != "CHANGE_ME":
                 qdrant_api_key = cfg["api_key"]
+        elif not qdrant_base:
+            # Explicitly disabled in skvector.yaml. Without this the code below
+            # falls through to the localhost default and probes a backend the
+            # operator already decommissioned, filing a false incident per sweep.
+            qdrant_base = "disabled"
     if not qdrant_base:
         qdrant_base = "http://localhost:6333"
     if qdrant_base.lower() != "disabled":
@@ -345,6 +350,10 @@ def check_all_services() -> list[dict[str, Any]]:
                 graph_host = str(cfg["host"])
             if not graph_port_str and cfg.get("port"):
                 graph_port_str = str(cfg["port"])
+        elif not graph_host:
+            # Explicitly disabled in skgraph.yaml — same rationale as skvector
+            # above: do not fall through to the localhost default.
+            graph_host = "disabled"
     if not graph_host:
         graph_host = "localhost"
     if not graph_port_str:
@@ -459,13 +468,67 @@ def _load_registry_entries() -> list[dict[str, Any]]:
 # ---------------------------------------------------------------------------
 
 
+def _incident_authority_node() -> str | None:
+    """Return the node designated to file health incidents, or None for any.
+
+    The ITIL store under ``~/.skcapstone/coordination/`` is Syncthing-synced
+    across every node, but the health probes are host-local: they check
+    ``localhost`` ports and PID files. A secondary node (e.g. the laptop) that
+    does not host skvoice/cloud9/skcomms therefore probes them, correctly finds
+    nothing listening, and files an incident claiming a *global* outage. Those
+    sync back and refill the GTD inbox indefinitely.
+
+    Setting ``health.incident_node`` in ``~/.skcapstone/config/config.yaml``
+    (or ``SKCAPSTONE_HEALTH_INCIDENT_NODE``) names the one node whose local view
+    is authoritative. Unset means "any node may file", preserving old behaviour.
+
+    Returns:
+        The designated node hostname, or None when unconfigured.
+    """
+    env = os.environ.get("SKCAPSTONE_HEALTH_INCIDENT_NODE", "").strip()
+    if env:
+        return env
+    try:
+        import yaml
+
+        from . import shared_home
+
+        cfg_path = shared_home() / "config" / "config.yaml"
+        if not cfg_path.is_file():
+            return None
+        cfg = yaml.safe_load(cfg_path.read_text(encoding="utf-8")) or {}
+        node = (cfg.get("health") or {}).get("incident_node")
+        return str(node).strip() if node else None
+    except Exception:
+        # Config is best-effort. A malformed file must not stop health checks.
+        return None
+
+
+def _may_file_incidents() -> bool:
+    """True when this node is allowed to create health incidents."""
+    designated = _incident_authority_node()
+    if not designated:
+        return True
+    return socket.gethostname() == designated
+
+
 def _create_incident_for_down_service(service_result: dict[str, Any]) -> None:
     """Auto-create an ITIL incident for a down service (with dedup).
 
     Only creates a new incident if there is no existing open incident
     for the same service. Uses best-effort: failures are logged but
     never block the health check.
+
+    No-ops on nodes that are not the configured incident authority - see
+    :func:`_incident_authority_node`.
     """
+    if not _may_file_incidents():
+        logger.debug(
+            "Not the health-incident authority node (%s); skipping incident for %s",
+            _incident_authority_node(),
+            service_result.get("name"),
+        )
+        return
     try:
         from . import SHARED_ROOT
         from .itil import ITILManager
