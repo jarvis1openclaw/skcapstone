@@ -1,5 +1,5 @@
 """
-SKCapstone — Sovereign Agent Framework.
+SKCapstone: Sovereign Agent Framework.
 
 Conscious AI through identity, trust, memory, and security.
 Install once. Your agent awakens everywhere.
@@ -12,11 +12,51 @@ import os
 import platform
 from pathlib import Path
 
-__version__ = "0.13.0"
+
+def _resolve_version() -> str:
+    """Resolve the package version from a single source of truth.
+
+    The canonical version is declared exactly once in ``pyproject.toml``
+    (``[project].version``). When skcapstone is installed (including
+    ``pip install -e``), that value is exposed through installed package
+    metadata and read here, so ``__version__``, the CLI ``--version`` string,
+    and the ``version`` command can never drift from the declaration.
+
+    Fallback: in a bare source checkout with no installed metadata, parse
+    ``pyproject.toml`` directly so the value still matches the one declaration.
+    """
+    from importlib.metadata import PackageNotFoundError
+    from importlib.metadata import version as _pkg_version
+
+    try:
+        return _pkg_version("skcapstone")
+    except PackageNotFoundError:
+        pass
+
+    # Uninstalled dev tree: read the canonical value straight from pyproject.
+    try:
+        import tomllib  # Python 3.11+
+    except ModuleNotFoundError:  # pragma: no cover - Python 3.10
+        tomllib = None
+    if tomllib is not None:
+        pyproject = Path(__file__).resolve().parents[2] / "pyproject.toml"
+        if pyproject.is_file():
+            try:
+                with pyproject.open("rb") as fh:
+                    declared = tomllib.load(fh).get("project", {}).get("version")
+                if declared:
+                    return declared
+            except Exception:  # pragma: no cover - defensive
+                pass
+
+    return "0.0.0+unknown"
+
+
+__version__ = _resolve_version()
 __author__ = "smilinTux"
 
 # Canonical default agent for the entire SK* suite. This is THE single source
-# of truth for the fallback agent name — used by Python paths directly and
+# of truth for the fallback agent name, used by Python paths directly and
 # propagated to the shell picker + child processes via `skcapstone shell-init`
 # (which emits `export SK_DEFAULT_AGENT=<this>`). Override with the
 # SK_DEFAULT_AGENT environment variable.
@@ -84,7 +124,7 @@ SKCAPSTONE_ROOT = os.environ.get("SKCAPSTONE_ROOT", AGENT_HOME)
 # Rules (source of truth for the fleet: docs/PORTS.md):
 #   * Known agents get an explicit, distinct, deterministic port here.
 #   * They must stay clear of the SKComms / skchat / sk-access fleet band
-#     9384-9390 — assigning onto 9384 (skcomms) is the original bug.
+#     9384-9390, assigning onto 9384 (skcomms) is the original bug.
 #   * Unknown agents get a stable hash-based port in a dedicated dynamic range
 #     (see hashed_agent_port) that never overlaps the fleet band.
 AGENT_PORTS: dict[str, int] = {
@@ -182,7 +222,7 @@ def shared_home() -> Path:
 def ensure_skeleton(agent_name: str | None = None) -> None:
     """Create all expected directories for the shared root and agent home.
 
-    Idempotent — safe to call multiple times. Creates any missing
+    Idempotent, safe to call multiple times. Creates any missing
     directories so that all CLI commands and services find the paths
     they expect.
 
@@ -247,12 +287,12 @@ def ensure_skeleton(agent_name: str | None = None) -> None:
     ):
         d.mkdir(parents=True, exist_ok=True)
 
-    # Install bundled default scheduler drop-ins (idempotent — never overwrites
+    # Install bundled default scheduler drop-ins (idempotent, never overwrites
     # an existing user file). This ships the weekly housekeeping safety-net job.
     _install_default_jobs_dropins(root)
 
     # Install the bundled .stignore template so Syncthing excludes derived/
-    # runtime state (idempotent — never overwrites an existing user file).
+    # runtime state (idempotent, never overwrites an existing user file).
     _install_default_stignore(root)
 
 
