@@ -1,5 +1,5 @@
 """
-SKCapstone CLI — the sovereign agent command line.
+SKCapstone CLI - the sovereign agent command line.
 
 This package organizes the CLI into modular command groups.
 Each group lives in its own module for maintainability.
@@ -20,11 +20,11 @@ from .. import __version__
 @click.version_option(version=__version__, prog_name="skcapstone")
 @click.option(
     "--agent", envvar="SKAGENT", default="",
-    help="Agent name — resolves home to {root}/agents/{name}/",
+    help="Agent name - resolves home to {root}/agents/{name}/",
 )
 @click.pass_context
 def main(ctx, agent):
-    """SKCapstone — Sovereign Agent Framework.
+    """SKCapstone - Sovereign Agent Framework.
 
     Your agent. Everywhere. Secured. Remembering.
     """
@@ -96,6 +96,7 @@ from .joule_cmd import register_joule_commands
 from .alerts import register_alerts_commands
 from .scheduler_cmd import register_scheduler_commands
 from .identity_cmd import register_identity_commands
+from .selftest_cmd import register_selftest_commands
 
 register_setup_commands(main)
 register_shell_commands(main)
@@ -154,3 +155,4 @@ register_joule_commands(main)
 register_alerts_commands(main)
 register_scheduler_commands(main)
 register_identity_commands(main)
+register_selftest_commands(main)
