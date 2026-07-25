@@ -1,4 +1,4 @@
-"""Tests for Trustee Operations — restart, scale, rotate, health, logs."""
+"""Tests for Trustee Operations: restart, scale, rotate, health, logs."""
 
 from __future__ import annotations
 
@@ -317,6 +317,106 @@ class TestHealthReport:
         failed = [r for r in report if r["name"] == agent_name]
         assert len(failed) == 1
         assert failed[0]["healthy"] is False
+
+
+# ---------------------------------------------------------------------------
+# Focused single-agent (role) status surface
+# ---------------------------------------------------------------------------
+
+
+class TestAgentHealth:
+    """Tests for the focused Sentinel/role status surface (agent_health)."""
+
+    @staticmethod
+    def _sentinel_deployment(engine: TeamEngine) -> TeamDeployment:
+        """Deploy a team whose manager is the security ``sentinel`` role."""
+        bp = _make_blueprint(
+            agents={
+                "sentinel": {"role": "manager", "model": "reason"},
+                "worker": {"role": "worker", "model": "fast"},
+            }
+        )
+        return engine.deploy(bp)
+
+    def test_healthy_by_role(self, ops: TrusteeOps, engine: TeamEngine) -> None:
+        """A running Sentinel resolves as present and healthy by spec key."""
+        self._sentinel_deployment(engine)
+        result = ops.agent_health("sentinel")
+        assert result["present"] is True
+        assert result["healthy"] is True
+        assert result["status"] == "running"
+        assert result["spec_key"] == "sentinel"
+        assert result["name"] == "test-team-sentinel"
+
+    def test_resolves_by_instance_name(
+        self, ops: TrusteeOps, engine: TeamEngine,
+    ) -> None:
+        """The Sentinel also resolves by its full instance name."""
+        self._sentinel_deployment(engine)
+        result = ops.agent_health("test-team-sentinel")
+        assert result["present"] is True
+        assert result["spec_key"] == "sentinel"
+
+    def test_role_match_is_case_insensitive(
+        self, ops: TrusteeOps, engine: TeamEngine,
+    ) -> None:
+        """Role/name matching ignores case."""
+        self._sentinel_deployment(engine)
+        assert ops.agent_health("SENTINEL")["present"] is True
+
+    def test_unhealthy_sentinel_present_but_not_healthy(
+        self, ops: TrusteeOps, engine: TeamEngine, provider: MockProvider,
+    ) -> None:
+        """A failing Sentinel is present but reported unhealthy."""
+        self._sentinel_deployment(engine)
+        provider.fail_on.add("test-team-sentinel")
+        result = ops.agent_health("sentinel")
+        assert result["present"] is True
+        assert result["healthy"] is False
+        assert result["status"] == "failed"
+
+    def test_absent_role_is_distinct_from_unhealthy(
+        self, ops: TrusteeOps, engine: TeamEngine,
+    ) -> None:
+        """A role that is not deployed reports absent, not unhealthy."""
+        self._sentinel_deployment(engine)  # deploys sentinel + worker only
+        result = ops.agent_health("scholar")
+        assert result["present"] is False
+        assert result["healthy"] is False
+        assert result["status"] == "absent"
+        assert result["deployment_id"] is None
+
+    def test_absent_when_no_deployments(self, ops: TrusteeOps) -> None:
+        """With nothing deployed at all, the Sentinel is absent."""
+        result = ops.agent_health("sentinel")
+        assert result["present"] is False
+        assert result["status"] == "absent"
+
+    def test_scoped_to_deployment(
+        self, ops: TrusteeOps, engine: TeamEngine,
+    ) -> None:
+        """Scoping the lookup to a deployment finds the Sentinel within it."""
+        dep = self._sentinel_deployment(engine)
+        result = ops.agent_health("sentinel", deployment_id=dep.deployment_id)
+        assert result["present"] is True
+        assert result["deployment_id"] == dep.deployment_id
+
+    def test_scoped_nonexistent_deployment_raises(
+        self, ops: TrusteeOps,
+    ) -> None:
+        """A bad deployment_id raises ValueError."""
+        with pytest.raises(ValueError, match="not found"):
+            ops.agent_health("sentinel", deployment_id="ghost")
+
+    def test_uses_provider_health_check(
+        self, ops: TrusteeOps, engine: TeamEngine, provider: MockProvider,
+    ) -> None:
+        """The focused surface runs a live provider health check."""
+        self._sentinel_deployment(engine)
+        provider.calls.clear()
+        ops.agent_health("sentinel")
+        actions = [action for action, _ in provider.calls]
+        assert "health_check" in actions
 
 
 # ---------------------------------------------------------------------------

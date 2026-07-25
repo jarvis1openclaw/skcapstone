@@ -37,6 +37,65 @@ def _print_monitor_report(report, iteration: int = 0):
     console.print(line)
 
 
+def _print_agent_health(result: dict) -> None:
+    """Render a focused single-agent (role) health result to the console.
+
+    Distinguishes three states: healthy (running), unhealthy (deployed but
+    degraded/failed/stopped), and absent (no matching agent deployed).
+
+    Args:
+        result: The dict returned by ``TrusteeOps.agent_health``.
+    """
+    query = result.get("query", "?")
+
+    if not result.get("present"):
+        console.print()
+        console.print(
+            Panel(
+                f"  [bold]Agent/role:[/] {query}\n"
+                f"  [bold]Status:[/]     [red]absent[/] "
+                f"[dim](not deployed in any team)[/]\n\n"
+                f"  [dim]An absent role is unmonitored. Deploy the team that "
+                f"provides it,\n  or run[/] "
+                f"[cyan]skcapstone agents status[/] "
+                f"[dim]to see active teams.[/]",
+                title=f"Agent Health: {query}",
+                border_style="red",
+                padding=(0, 2),
+            )
+        )
+        console.print()
+        return
+
+    healthy = result.get("healthy")
+    status = result.get("status", "unknown")
+    border = "green" if healthy else "yellow"
+    status_str = f"[green]{status}[/]" if healthy else f"[yellow]{status}[/]"
+
+    lines = [
+        f"  [bold]Agent:[/]       {result.get('name', '?')}",
+        f"  [bold]Role:[/]        {result.get('spec_key', '?')}",
+        f"  [bold]Status:[/]      {status_str}",
+        f"  [bold]Deployment:[/]  {result.get('deployment_id', '?')}",
+        f"  [bold]Host:[/]        {result.get('host') or '\u2014'}",
+        f"  [bold]Last HB:[/]     "
+        f"{(result.get('last_heartbeat') or '\u2014')[:19]}",
+    ]
+    if result.get("error"):
+        lines.append(f"  [bold red]Error:[/]       [red]{result['error'][:60]}[/]")
+
+    console.print()
+    console.print(
+        Panel(
+            "\n".join(lines),
+            title=f"Agent Health: {query}",
+            border_style=border,
+            padding=(0, 2),
+        )
+    )
+    console.print()
+
+
 def register_agents_trustee_commands(agents: click.Group) -> None:
     """Register trustee management commands on the agents group."""
 
@@ -173,21 +232,62 @@ def register_agents_trustee_commands(agents: click.Group) -> None:
         console.print()
 
     @agents.command("health")
-    @click.argument("deployment_id")
+    @click.argument("deployment_id", required=False)
+    @click.option(
+        "--agent", "agent_name", default=None,
+        help="Focus on one agent by name or role (e.g. sentinel), "
+             "across all deployments.",
+    )
     @click.option("--home", default=AGENT_HOME, type=click.Path())
-    def agents_health(deployment_id: str, home: str):
-        """Run health checks on all agents and show a status table.
+    def agents_health(deployment_id: Optional[str], agent_name: Optional[str], home: str):
+        """Run health checks on a deployment, or focus on one agent/role.
+
+        With DEPLOYMENT_ID, checks every agent in that team. With --agent
+        it resolves that agent or role (e.g. the security Sentinel) across
+        all deployments and reports whether it is healthy, unhealthy, or
+        absent. This is the focused surface for watching a critical role.
 
         \b
-        Example:
+        Examples:
             skcapstone agents health myteam-1740000000
+            skcapstone agents health --agent sentinel
+            skcapstone agents health myteam-1740000000 --agent sentinel
         """
         from ..team_engine import TeamEngine
         from ..trustee_ops import TrusteeOps
 
         home_path = Path(home).expanduser()
-        engine = TeamEngine(home=home_path)
+        # A live provider lets the health check reflect current process state;
+        # without one the surface falls back to the last-known status on disk.
+        try:
+            from ..providers.local import LocalProvider
+            provider = LocalProvider(home=home_path)
+        except Exception:
+            provider = None
+        engine = TeamEngine(home=home_path, provider=provider, comms_root=None)
         ops = TrusteeOps(engine=engine, home=home_path)
+
+        # ── Focused single-agent / role surface ──────────────────────────
+        if agent_name:
+            try:
+                with console.status("[bold cyan]Resolving agent status...[/]"):
+                    result = ops.agent_health(agent_name, deployment_id=deployment_id)
+            except ValueError as exc:
+                console.print(f"\n  [red]{exc}[/]\n")
+                return
+            _print_agent_health(result)
+            return
+
+        if not deployment_id:
+            console.print(
+                "\n  [yellow]Provide a DEPLOYMENT_ID, or use --agent NAME "
+                "to focus on a single agent/role.[/]"
+            )
+            console.print(
+                "  [dim]Examples:[/] [cyan]skcapstone agents health <id>[/]  ·  "
+                "[cyan]skcapstone agents health --agent sentinel[/]\n"
+            )
+            return
 
         try:
             with console.status("[bold cyan]Running health checks...[/]"):
