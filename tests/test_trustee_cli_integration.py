@@ -71,6 +71,19 @@ def _invoke(*args: str) -> Any:
     return runner.invoke(main, list(args))
 
 
+def _invoke_cli(*args: str) -> Any:
+    """Invoke the canonical modular CLI (skcapstone.cli:main) with given args.
+
+    The focused ``agents health --agent`` surface lives in the shipped
+    modular CLI (the ``[project.scripts]`` entrypoint), which is separate
+    from the legacy ``_cli_monolith`` used by ``_invoke``.
+    """
+    from skcapstone.cli import main as cli_main
+
+    runner = CliRunner()
+    return runner.invoke(cli_main, list(args))
+
+
 # ---------------------------------------------------------------------------
 # Restart
 # ---------------------------------------------------------------------------
@@ -255,6 +268,42 @@ class TestCLIHealth:
         result = _invoke("agents", "health", "test-team-1000", "--home", str(tmp_home))
         assert result.exit_code == 0
         assert "healthy" in result.output.lower()
+
+    def test_health_agent_focus_resolves_sentinel(self, tmp_home: Path) -> None:
+        """`--agent sentinel` resolves the Sentinel role across deployments."""
+        engine = TeamEngine(home=tmp_home)
+        engine._save_deployment(
+            _make_deployment(
+                agents={
+                    "test-team-sentinel": _make_agent(
+                        name="test-team-sentinel", spec_key="sentinel",
+                    ),
+                }
+            )
+        )
+
+        result = _invoke_cli(
+            "agents", "health", "--agent", "sentinel", "--home", str(tmp_home)
+        )
+        assert result.exit_code == 0
+        assert "test-team-sentinel" in result.output
+
+    def test_health_agent_focus_reports_absent(self, tmp_home: Path) -> None:
+        """`--agent sentinel` reports absent when no Sentinel is deployed."""
+        engine = TeamEngine(home=tmp_home)
+        engine._save_deployment(_make_deployment())  # only alpha, no sentinel
+
+        result = _invoke_cli(
+            "agents", "health", "--agent", "sentinel", "--home", str(tmp_home)
+        )
+        assert result.exit_code == 0
+        assert "absent" in result.output.lower()
+
+    def test_health_without_target_prompts(self, tmp_home: Path) -> None:
+        """`agents health` with neither id nor --agent shows guidance."""
+        result = _invoke_cli("agents", "health", "--home", str(tmp_home))
+        assert result.exit_code == 0
+        assert "--agent" in result.output
 
 
 # ---------------------------------------------------------------------------

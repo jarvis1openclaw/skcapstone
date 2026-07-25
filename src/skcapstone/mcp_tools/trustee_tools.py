@@ -10,18 +10,33 @@ TOOLS: list[Tool] = [
     Tool(
         name="trustee_health",
         description=(
-            "Run health checks on all agents in a deployment. "
-            "Returns per-agent status, heartbeat, and error info."
+            "Run health checks on agents in a deployment. Returns per-agent "
+            "status, heartbeat, and error info. With 'agent_name' set, "
+            "reports the focused status of a single agent or role (e.g. "
+            "sentinel) across all deployments, including whether it is "
+            "absent (not deployed anywhere)."
         ),
         inputSchema={
             "type": "object",
             "properties": {
                 "deployment_id": {
                     "type": "string",
-                    "description": "The deployment ID to check",
+                    "description": (
+                        "The deployment ID to check. Required unless "
+                        "'agent_name' is given, in which case it narrows the "
+                        "focused lookup to one deployment."
+                    ),
+                },
+                "agent_name": {
+                    "type": "string",
+                    "description": (
+                        "Focus on a single agent by instance name or role "
+                        "(e.g. sentinel). Searches all deployments when "
+                        "'deployment_id' is omitted."
+                    ),
                 },
             },
-            "required": ["deployment_id"],
+            "required": [],
         },
     ),
     Tool(
@@ -175,12 +190,23 @@ def _get_trustee_ops():
 
 
 async def _handle_trustee_health(args: dict) -> list[TextContent]:
-    """Run health checks on a deployment."""
+    """Run health checks on a deployment, or focus on one agent/role."""
     deployment_id = args.get("deployment_id", "")
-    if not deployment_id:
-        return _error_response("deployment_id is required")
+    agent_name = args.get("agent_name")
 
     ops, _ = _get_trustee_ops()
+
+    # Focused single-agent / role surface (e.g. the security Sentinel).
+    if agent_name:
+        try:
+            result = ops.agent_health(agent_name, deployment_id=deployment_id or None)
+            return _json_response(result)
+        except ValueError as exc:
+            return _error_response(str(exc))
+
+    if not deployment_id:
+        return _error_response("deployment_id or agent_name is required")
+
     try:
         report = ops.health_report(deployment_id)
         healthy = sum(1 for r in report if r["healthy"])
