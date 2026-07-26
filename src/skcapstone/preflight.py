@@ -626,6 +626,60 @@ class PreflightChecker:
                 critical=False,
             )
 
+    def check_systemd(self) -> CheckResult:
+        """Verify the systemd runtime layer has no failed SK* units.
+
+        Non-critical: the daemon may legitimately run under another harness
+        (Claude Code / Hermes) rather than systemd. Degrades to ``ok`` when no
+        ``systemctl --user`` session exists (non-Linux, containers, CI) so it
+        never blocks startup where systemd is simply absent.
+
+        Returns:
+            CheckResult in the ``systemd`` check, ``critical=False``.
+        """
+        if platform.system() != "Linux":
+            return CheckResult(
+                "systemd", "ok", "not Linux (systemd layer not applicable)",
+                critical=False,
+            )
+        try:
+            from .systemd import systemd_available
+            if not systemd_available():
+                return CheckResult(
+                    "systemd", "ok",
+                    "systemctl --user unavailable (daemon may run under another harness)",
+                    critical=False,
+                )
+            result = subprocess.run(
+                [
+                    "systemctl", "--user", "list-units", "--all",
+                    "--state=failed", "--no-legend", "--plain", "--no-pager",
+                ],
+                capture_output=True, text=True, timeout=15,
+            )
+        except (OSError, subprocess.SubprocessError) as exc:
+            return CheckResult(
+                "systemd", "warn", f"systemd query failed: {exc}", critical=False,
+            )
+        if result.returncode != 0:
+            return CheckResult(
+                "systemd", "warn",
+                f"systemctl list-units failed: {(result.stderr or result.stdout).strip()[:80]}",
+                critical=False,
+            )
+        failed = [
+            line.split()[0]
+            for line in result.stdout.splitlines()
+            if line.split() and line.split()[0].startswith(("skcapstone", "skcomms"))
+        ]
+        if failed:
+            return CheckResult(
+                "systemd", "warn",
+                f"failed SK* units: {', '.join(sorted(failed))}",
+                critical=False,
+            )
+        return CheckResult("systemd", "ok", "no failed SK* systemd units", critical=False)
+
     # ------------------------------------------------------------------
     # Aggregate
     # ------------------------------------------------------------------
@@ -648,6 +702,7 @@ class PreflightChecker:
             self.check_home_dirs,
             self.check_config,
             self.check_disk_space,
+            self.check_systemd,
         ]
         results: list[CheckResult] = [m() for m in methods]
         failures = [r for r in results if r.failed]
