@@ -15,6 +15,7 @@ import importlib
 import json
 import logging
 import os
+import platform
 import shutil
 import subprocess
 from dataclasses import dataclass, field
@@ -124,6 +125,8 @@ def run_diagnostics(home: Path) -> DiagnosticReport:
     report.checks.extend(_check_sync(home))
     report.checks.extend(_check_sync_conflicts(home))
     report.checks.extend(_check_scheduler(home))
+    report.checks.extend(_check_systemd_runtime(home))
+    report.checks.extend(_check_store_integrity(home))
     report.checks.extend(_check_codex())
     report.checks.extend(_check_harness_env(home))
     report.checks.extend(_check_versions())
@@ -249,6 +252,361 @@ def _check_scheduler(home: Path) -> list[Check]:
                 category="system",
             )
         )
+    return checks
+
+
+def _systemd_unit_files(unit_dir: Path) -> list[str]:
+    """List installed SK* systemd unit files in *unit_dir*.
+
+    Only the framework's own units (``skcapstone*`` / ``skcomms*`` service and
+    timer files) are considered, so a shared user-systemd directory full of
+    unrelated units does not pollute the result.
+
+    Args:
+        unit_dir: The systemd user unit directory to scan.
+
+    Returns:
+        Sorted unit file names (e.g. ``skcapstone.service``). Empty when the
+        directory is absent or holds no SK* units.
+    """
+    if not unit_dir.is_dir():
+        return []
+    names: set[str] = set()
+    for prefix in ("skcapstone", "skcomms"):
+        for suffix in ("*.service", "*.timer"):
+            for path in unit_dir.glob(prefix + suffix):
+                names.add(path.name)
+    return sorted(names)
+
+
+def _failed_sk_units() -> tuple[Optional[list[str]], str]:
+    """Return the SK* systemd user units currently in the ``failed`` state.
+
+    Uses ``systemctl --user list-units --state=failed`` so failed *template
+    instances* (e.g. ``skcapstone@lumina.service``) are caught even though they
+    have no standalone unit file. Read-only.
+
+    Returns:
+        A ``(failed, error)`` tuple. ``failed`` is the list of failed SK* unit
+        names, or ``None`` if the query itself could not be run (in which case
+        ``error`` explains why). ``failed == []`` means no SK* unit is failed.
+    """
+    try:
+        proc = subprocess.run(
+            [
+                "systemctl", "--user", "list-units", "--all",
+                "--state=failed", "--no-legend", "--plain", "--no-pager",
+            ],
+            capture_output=True, text=True, timeout=15,
+        )
+    except (OSError, subprocess.SubprocessError) as exc:
+        return None, str(exc)
+    if proc.returncode != 0:
+        return None, (proc.stderr or proc.stdout).strip()[:120]
+    failed: list[str] = []
+    for line in proc.stdout.splitlines():
+        parts = line.split()
+        if not parts:
+            continue
+        unit = parts[0]
+        if unit.startswith(("skcapstone", "skcomms")):
+            failed.append(unit)
+    return sorted(failed), ""
+
+
+def _check_systemd_runtime(home: Path) -> list[Check]:
+    """Verify the systemd runtime layer for the SK* daemon and timers.
+
+    Read-only diagnostics for the user-level systemd services that run the
+    sovereign stack (the ``skcapstone`` daemon plus the ``skcomms`` heartbeat /
+    queue-drain timers). Reports, in the ``systemd`` category:
+
+    1. ``systemd:available``: whether a ``systemctl --user`` session exists.
+       On non-Linux hosts or in containers/CI without a user manager this is a
+       graceful informational pass and the remaining checks are skipped, so the
+       family never FAILs where systemd is simply absent.
+    2. ``systemd:units-installed``: how many SK* unit files are installed under
+       ``~/.config/systemd/user``. Zero is an informational pass (the daemon may
+       be run by another harness, e.g. Claude Code / Hermes), not a failure.
+    3. ``systemd:failed-units``: no installed SK* unit (or template instance) is
+       in the ``failed`` state.
+    4. ``systemd:unit-drift``: every installed unit file is byte-identical to
+       the packaged copy that ships in the wheel (``data/systemd``). A mismatch
+       means the host is running a stale unit and should re-run install.
+
+    Args:
+        home: Agent home directory (unused today; kept for signature parity with
+            the other check families and future per-agent instance checks).
+
+    Returns:
+        List of Check results in the ``systemd`` category.
+    """
+    from . import systemd as sysd
+
+    # 1. Availability gate: degrade gracefully off Linux or without a manager.
+    if platform.system() != "Linux" or not sysd.systemd_available():
+        return [
+            Check(
+                name="systemd:available",
+                description="systemd user session",
+                passed=True,
+                detail="not available (skipping systemd runtime checks)",
+                category="systemd",
+            )
+        ]
+
+    checks: list[Check] = [
+        Check(
+            name="systemd:available",
+            description="systemd user session",
+            passed=True,
+            detail="systemctl --user responsive",
+            category="systemd",
+        )
+    ]
+
+    # 2. Installed SK* unit files.
+    unit_dir = sysd.SYSTEMD_USER_DIR
+    installed = _systemd_unit_files(unit_dir)
+    checks.append(
+        Check(
+            name="systemd:units-installed",
+            description="SK* systemd units installed",
+            passed=True,
+            detail=(
+                f"{len(installed)} unit(s): {', '.join(installed)}"
+                if installed
+                else "none installed (daemon not managed by systemd, optional)"
+            ),
+            fix=(
+                ""
+                if installed
+                else "Install the daemon service with: skcapstone daemon install"
+            ),
+            category="systemd",
+        )
+    )
+
+    # 3. No SK* unit in the failed state (catches template instances too).
+    failed, err = _failed_sk_units()
+    if failed is None:
+        checks.append(
+            Check(
+                name="systemd:failed-units",
+                description="No failed SK* systemd units",
+                passed=True,
+                detail=f"could not query failed units: {err}",
+                category="systemd",
+            )
+        )
+    else:
+        checks.append(
+            Check(
+                name="systemd:failed-units",
+                description="No failed SK* systemd units",
+                passed=not failed,
+                detail="clean" if not failed else f"failed: {', '.join(failed)}",
+                fix=(
+                    ""
+                    if not failed
+                    else "Inspect with: systemctl --user status "
+                    f"{failed[0]} ; journalctl --user -u {failed[0]} -n 50"
+                ),
+                category="systemd",
+            )
+        )
+
+    # 4. Installed unit files match the packaged copies (no stale-unit drift).
+    bundled = sysd.BUNDLED_DIR
+    drifted: list[str] = []
+    for name in installed:
+        packaged = bundled / name
+        if not packaged.exists():
+            continue
+        try:
+            if (unit_dir / name).read_bytes() != packaged.read_bytes():
+                drifted.append(name)
+        except OSError:
+            continue
+    if not installed:
+        checks.append(
+            Check(
+                name="systemd:unit-drift",
+                description="Installed units match packaged tree",
+                passed=True,
+                detail="no units installed",
+                category="systemd",
+            )
+        )
+    else:
+        checks.append(
+            Check(
+                name="systemd:unit-drift",
+                description="Installed units match packaged tree",
+                passed=not drifted,
+                detail=(
+                    f"{len(installed)} unit(s) in sync"
+                    if not drifted
+                    else f"stale: {', '.join(drifted)}"
+                ),
+                fix=(
+                    ""
+                    if not drifted
+                    else "Reinstall units to pick up packaged changes: "
+                    "skcapstone daemon install ; systemctl --user daemon-reload"
+                ),
+                category="systemd",
+            )
+        )
+
+    return checks
+
+
+def _scan_json_store(
+    files: list[Path], *, jsonl: bool
+) -> tuple[int, list[str]]:
+    """Parse a set of store files, returning (scanned, unreadable descriptions).
+
+    Args:
+        files: Candidate store files to parse.
+        jsonl: When True each non-empty line must be valid JSON (append-only
+            event logs); when False the whole file must be a single JSON value.
+
+    Returns:
+        ``(scanned, problems)`` where *scanned* is the number of existing files
+        examined and *problems* is a list of ``"name: reason"`` strings for any
+        file that failed to parse.
+    """
+    scanned = 0
+    problems: list[str] = []
+    for path in files:
+        if not path.exists():
+            continue
+        scanned += 1
+        try:
+            text = path.read_text(encoding="utf-8")
+        except OSError as exc:
+            problems.append(f"{path.name}: unreadable ({exc})")
+            continue
+        try:
+            if jsonl:
+                for lineno, line in enumerate(text.splitlines(), start=1):
+                    if line.strip():
+                        json.loads(line)
+            else:
+                json.loads(text) if text.strip() else None
+        except json.JSONDecodeError as exc:
+            problems.append(f"{path.name}: {exc}")
+    return scanned, problems
+
+
+def _check_store_integrity(home: Path) -> list[Check]:
+    """Verify the on-disk coordination stores parse cleanly (read-only).
+
+    A corrupt or half-written store file silently breaks ``coord``, ``gtd`` and
+    ``itil`` fold-on-read. This family parses the store files without mutating
+    them and reports the first parse failure per store, in the ``store``
+    category:
+
+    1. ``store:cards``: every ``cards/<id>/core.json`` and its per-writer
+       ``events/*.jsonl`` log, plus the legacy ``coordination/archive`` and
+       ``coordination/card_events`` append-only indexes.
+    2. ``store:gtd``: the GTD list files under ``coordination/gtd`` (JSON
+       arrays).
+    3. ``store:itil``: every ITIL ``core.json`` and event log under
+       ``coordination/itil/{incidents,problems,changes}``.
+
+    An absent store is a pass (nothing to corrupt). The checks never write, so
+    they are safe to run anywhere.
+
+    Args:
+        home: Shared root directory (~/.skcapstone).
+
+    Returns:
+        Three Check results in the ``store`` category.
+    """
+    checks: list[Check] = []
+
+    # 1. Unified card store (core.json write-once + append-only event logs) and
+    #    the sanctioned legacy overlay/archive indexes.
+    cards_dir = home / "cards"
+    coord_dir = home / "coordination"
+    card_cores = sorted(cards_dir.glob("*/core.json"))
+    card_events = sorted(cards_dir.glob("*/events/*.jsonl"))
+    legacy_jsonl = sorted((coord_dir / "archive").glob("*.jsonl")) + sorted(
+        (coord_dir / "card_events").glob("*.jsonl")
+    )
+    scanned_j, problems_j = _scan_json_store(card_cores, jsonl=False)
+    scanned_l, problems_l = _scan_json_store(card_events + legacy_jsonl, jsonl=True)
+    card_scanned = scanned_j + scanned_l
+    card_problems = problems_j + problems_l
+    checks.append(
+        Check(
+            name="store:cards",
+            description="Coordination card store parses",
+            passed=not card_problems,
+            detail=(
+                f"{card_scanned} file(s) OK"
+                if not card_problems
+                else f"{len(card_problems)} corrupt: {'; '.join(card_problems[:3])}"
+            ),
+            fix=(
+                ""
+                if not card_problems
+                else "Repair or remove the corrupt store file(s); "
+                "append-only logs must be valid JSON per line"
+            ),
+            category="store",
+        )
+    )
+
+    # 2. GTD list files (JSON arrays).
+    gtd_dir = coord_dir / "gtd"
+    gtd_files = sorted(gtd_dir.glob("*.json")) if gtd_dir.is_dir() else []
+    gtd_scanned, gtd_problems = _scan_json_store(gtd_files, jsonl=False)
+    checks.append(
+        Check(
+            name="store:gtd",
+            description="GTD store parses",
+            passed=not gtd_problems,
+            detail=(
+                (f"{gtd_scanned} list file(s) OK" if gtd_scanned else "no GTD store (optional)")
+                if not gtd_problems
+                else f"{len(gtd_problems)} corrupt: {'; '.join(gtd_problems[:3])}"
+            ),
+            fix="" if not gtd_problems else "Fix the corrupt JSON in ~/.skcapstone/coordination/gtd/",
+            category="store",
+        )
+    )
+
+    # 3. ITIL records (core.json + append-only event logs).
+    itil_dir = coord_dir / "itil"
+    itil_cores: list[Path] = []
+    itil_events: list[Path] = []
+    for kind in ("incidents", "problems", "changes"):
+        base = itil_dir / kind
+        if base.is_dir():
+            itil_cores += sorted(base.glob("*/core.json"))
+            itil_events += sorted(base.glob("*/events/*.jsonl"))
+    itil_sc, itil_pc = _scan_json_store(itil_cores, jsonl=False)
+    itil_se, itil_pe = _scan_json_store(itil_events, jsonl=True)
+    itil_scanned = itil_sc + itil_se
+    itil_problems = itil_pc + itil_pe
+    checks.append(
+        Check(
+            name="store:itil",
+            description="ITIL store parses",
+            passed=not itil_problems,
+            detail=(
+                (f"{itil_scanned} file(s) OK" if itil_scanned else "no ITIL store (optional)")
+                if not itil_problems
+                else f"{len(itil_problems)} corrupt: {'; '.join(itil_problems[:3])}"
+            ),
+            fix="" if not itil_problems else "Repair the corrupt ITIL store file(s)",
+            category="store",
+        )
+    )
+
     return checks
 
 

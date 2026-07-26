@@ -470,7 +470,7 @@ class TestPreflightCheckerRunAll:
         names = {c["name"] for c in summary["checks"]}
         assert names == {
             "python", "packages", "ollama", "identity",
-            "home_dirs", "config", "disk_space",
+            "home_dirs", "config", "disk_space", "systemd",
         }
 
     def test_ok_false_on_critical_failure(self, tmp_path: Path) -> None:
