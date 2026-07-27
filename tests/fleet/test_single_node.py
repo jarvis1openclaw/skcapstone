@@ -1,4 +1,5 @@
 """Right-sized complexity invariant (spec 3.6): 1 box works, zero costs zero."""
+
 from __future__ import annotations
 
 from skcapstone.fleet import store
@@ -10,16 +11,23 @@ def test_zero_object_kinds_cost_nothing(paths) -> None:
     for kind in ALL_KINDS:
         assert store.list_specs(paths, kind) == []
         assert store.merged(paths, kind, "anything") is None
-    assert not paths.root.exists()      # reads created no directories at all
+    assert not paths.root.exists()  # reads created no directories at all
 
 
 def test_one_box_fleet_is_complete(paths, operator) -> None:
     solo = store.Writer(role="sknoded", node="node-solo", identity="")
     store.write_spec(paths, "node", "node-solo", {"cordoned": False}, writer=operator)
     store.write_node_file(paths, solo, "heartbeat.json", {"ts": "t"}, if_changed=False)
-    store.write_status(paths, "node", "node-solo", node="node-solo",
-                       status={"capacity": {"cores": 4}}, conditions=[],
-                       observed_generation=1, writer=solo)
+    store.write_status(
+        paths,
+        "node",
+        "node-solo",
+        node="node-solo",
+        status={"capacity": {"cores": 4}},
+        conditions=[],
+        observed_generation=1,
+        writer=solo,
+    )
     m = store.merged(paths, "node", "node-solo")
     assert m["spec"]["generation"] == 1
     assert m["statuses"][0]["stale"] is False

@@ -1,4 +1,5 @@
 """Tests for the bounded per-node event log."""
+
 from __future__ import annotations
 
 import pytest
@@ -14,8 +15,16 @@ def _fresh_dedupe():
 
 
 def _emit(paths, noded41, *, reason="Started", now=1000.0) -> bool:
-    return events.emit(paths, noded41, kind="service", name="skgateway",
-                       type="Actuation", reason=reason, message="m", now=now)
+    return events.emit(
+        paths,
+        noded41,
+        kind="service",
+        name="skgateway",
+        type="Actuation",
+        reason=reason,
+        message="m",
+        now=now,
+    )
 
 
 def test_emit_appends_and_read_filters(paths, noded41) -> None:
@@ -29,7 +38,7 @@ def test_emit_appends_and_read_filters(paths, noded41) -> None:
 
 def test_dedupe_window(paths, noded41) -> None:
     assert _emit(paths, noded41, now=1000.0) is True
-    assert _emit(paths, noded41, now=1100.0) is False       # inside window
+    assert _emit(paths, noded41, now=1100.0) is False  # inside window
     assert _emit(paths, noded41, now=1000.0 + 301.0) is True  # window passed
 
 
@@ -42,11 +51,12 @@ def test_rotation_bounded_to_two_files(paths, noded41, monkeypatch) -> None:
     assert live.exists() and rotated.exists()
     assert live.stat().st_size <= 400
     siblings = [p.name for p in live.parent.iterdir() if p.name.startswith("events.jsonl")]
-    assert sorted(siblings) == ["events.jsonl", "events.jsonl.1"]   # two files, ever
+    assert sorted(siblings) == ["events.jsonl", "events.jsonl.1"]  # two files, ever
     assert events.read(paths, "node-41", limit=5)[-1]["reason"] == "r19"
 
 
 def test_emit_ownership(paths, operator) -> None:
     with pytest.raises(store.OwnershipError):
-        events.emit(paths, operator, kind="service", name="x",
-                    type="Actuation", reason="r", message="m")
+        events.emit(
+            paths, operator, kind="service", name="x", type="Actuation", reason="r", message="m"
+        )

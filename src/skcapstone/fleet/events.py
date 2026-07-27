@@ -4,6 +4,7 @@ One rotating JSONL file per node, never per object and never per event.
 Events are causal history for the cognitive layer; they are observability,
 not control flow: no controller may key a decision off this log.
 """
+
 from __future__ import annotations
 
 import fcntl

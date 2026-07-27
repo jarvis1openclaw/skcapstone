@@ -5,6 +5,7 @@ module is the only code allowed to touch fleet files, and it enforces
 ownership at write time: operator role writes spec, sknoded writes only
 its own node's status subtree, scheduler (Phase 2) writes placements.
 """
+
 from __future__ import annotations
 
 import json
@@ -248,9 +249,7 @@ def is_frozen(paths: FleetPaths) -> bool:
     return bool(payload.get("frozen"))
 
 
-def set_frozen(
-    paths: FleetPaths, frozen: bool, *, writer: Writer, reason: str = ""
-) -> dict:
+def set_frozen(paths: FleetPaths, frozen: bool, *, writer: Writer, reason: str = "") -> dict:
     """Toggle the kill-switch. Operator seat only (spec section 8)."""
     if writer.role != "operator":
         raise OwnershipError("only the operator seat may toggle freeze")

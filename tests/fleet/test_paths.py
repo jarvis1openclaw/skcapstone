@@ -1,4 +1,5 @@
 """Tests for the fleet tree layout helpers."""
+
 from __future__ import annotations
 
 from pathlib import Path
@@ -9,8 +10,14 @@ from skcapstone.fleet.paths import FleetPaths, default_paths, self_node_name, va
 def test_tree_layout(paths: FleetPaths) -> None:
     root = paths.root
     assert paths.spec_path("node", "node-41") == root / "objects" / "node" / "node-41.json"
-    assert paths.placement_path("service", "skgateway") == root / "placements" / "service" / "skgateway.json"
-    assert paths.status_path("node-41", "service", "skgateway") == root / "status" / "node-41" / "service" / "skgateway.json"
+    assert (
+        paths.placement_path("service", "skgateway")
+        == root / "placements" / "service" / "skgateway.json"
+    )
+    assert (
+        paths.status_path("node-41", "service", "skgateway")
+        == root / "status" / "node-41" / "service" / "skgateway.json"
+    )
     assert paths.heartbeat_path("node-41") == root / "status" / "node-41" / "heartbeat.json"
     assert paths.node_report_path("node-41") == root / "status" / "node-41" / "node.json"
     assert paths.join_path("node-41") == root / "status" / "node-41" / "join.json"

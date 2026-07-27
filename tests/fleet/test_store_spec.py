@@ -1,4 +1,5 @@
 """Tests for spec writes: generation, ownership, writer block."""
+
 from __future__ import annotations
 
 import pytest

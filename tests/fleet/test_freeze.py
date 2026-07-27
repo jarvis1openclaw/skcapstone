@@ -1,4 +1,5 @@
 """Tests for the fleet-wide freeze kill-switch."""
+
 from __future__ import annotations
 
 import pytest
@@ -29,4 +30,4 @@ def test_only_operator_may_toggle(paths, noded41) -> None:
 def test_garbage_freeze_file_fails_safe_frozen(paths) -> None:
     paths.freeze_path().parent.mkdir(parents=True, exist_ok=True)
     paths.freeze_path().write_text("not json")
-    assert store.is_frozen(paths) is True     # unreadable flag = halt, not run
+    assert store.is_frozen(paths) is True  # unreadable flag = halt, not run
