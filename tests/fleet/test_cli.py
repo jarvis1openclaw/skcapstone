@@ -87,9 +87,7 @@ def test_cli_admit_bootstrap_and_preset(paths) -> None:
 def test_cli_admit_with_explicit_labels(paths) -> None:
     sknoded.run_once(paths, "node-cli")
     runner = CliRunner()
-    out = runner.invoke(
-        fleet, ["admit", "node-cli", "--label", "role=edge"], env=_env(paths)
-    )
+    out = runner.invoke(fleet, ["admit", "node-cli", "--label", "role=edge"], env=_env(paths))
     assert out.exit_code == 0
     spec = store.read_spec(paths, "node", "node-cli")
     assert spec["labels"] == {"role": "edge"}

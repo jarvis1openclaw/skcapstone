@@ -113,8 +113,14 @@ def admit_cmd(name: str, labels: tuple[str, ...], preset: bool, bootstrap: bool)
     """Admit a joining node, minting its node object."""
     label_map = dict(part.split("=", 1) for part in labels) if labels else None
     try:
-        spec = admission.admit(default_paths(), name, writer=_operator(),
-                               labels=label_map, preset=preset, bootstrap=bootstrap)
+        spec = admission.admit(
+            default_paths(),
+            name,
+            writer=_operator(),
+            labels=label_map,
+            preset=preset,
+            bootstrap=bootstrap,
+        )
     except LookupError as exc:
         raise click.ClickException(str(exc)) from exc
     click.echo(f"admitted {name} (generation {spec['generation']})")

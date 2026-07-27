@@ -4,6 +4,7 @@ A fresh box self-reports a join request; admission mints its node object.
 No hand-authored fleet files anywhere on the path from bare box to
 managed fleet.
 """
+
 from __future__ import annotations
 
 from . import store
@@ -75,8 +76,7 @@ def admit(
         "address": (join or {}).get("addresses", {}),
         "identity": (join or {}).get("identity", ""),
     }
-    return store.write_spec(paths, "node", node, spec, writer=writer,
-                            labels=labels or {})
+    return store.write_spec(paths, "node", node, spec, writer=writer, labels=labels or {})
 
 
 def auto_admit(paths: FleetPaths, trusted: set[str], *, writer: store.Writer) -> list[str]:
