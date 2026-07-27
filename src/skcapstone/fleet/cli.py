@@ -9,7 +9,7 @@ import json as jsonlib
 
 import click
 
-from . import node_controller, store
+from . import admission, node_controller, store
 from . import sknoded as sknoded_mod
 from .explain import explain as explain_kind
 from .paths import default_paths, self_node_name
@@ -102,6 +102,28 @@ def unfreeze_cmd() -> None:
 def sknoded_cmd(once: bool, interval: int) -> None:
     """Run the node agent self-report loop for this machine."""
     sknoded_mod.main_loop(default_paths(), self_node_name(), interval=interval, once=once)
+
+
+@fleet.command("admit")
+@click.argument("name")
+@click.option("--label", "labels", multiple=True, help="k=v, repeatable.")
+@click.option("--preset", is_flag=True, help="Use the known-node preset labels/taints.")
+@click.option("--bootstrap", is_flag=True, help="First node: admit without a join request.")
+def admit_cmd(name: str, labels: tuple[str, ...], preset: bool, bootstrap: bool) -> None:
+    """Admit a joining node, minting its node object."""
+    label_map = dict(part.split("=", 1) for part in labels) if labels else None
+    try:
+        spec = admission.admit(
+            default_paths(),
+            name,
+            writer=_operator(),
+            labels=label_map,
+            preset=preset,
+            bootstrap=bootstrap,
+        )
+    except LookupError as exc:
+        raise click.ClickException(str(exc)) from exc
+    click.echo(f"admitted {name} (generation {spec['generation']})")
 
 
 def register_fleet_commands(main: click.Group) -> None:
