@@ -97,6 +97,7 @@ from .alerts import register_alerts_commands
 from .scheduler_cmd import register_scheduler_commands
 from .identity_cmd import register_identity_commands
 from .selftest_cmd import register_selftest_commands
+from ..fleet.cli import register_fleet_commands
 
 register_setup_commands(main)
 register_shell_commands(main)
@@ -156,3 +157,4 @@ register_alerts_commands(main)
 register_scheduler_commands(main)
 register_identity_commands(main)
 register_selftest_commands(main)
+register_fleet_commands(main)
