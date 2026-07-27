@@ -4,11 +4,20 @@ from __future__ import annotations
 
 import json
 
+import pytest
 from click.testing import CliRunner
 
 from skcapstone.fleet import sknoded, store
 from skcapstone.fleet.cli import fleet
 from skcapstone.fleet.explain import explain
+
+
+@pytest.fixture(autouse=True)
+def _fixed_capacity(monkeypatch):
+    monkeypatch.setattr(
+        "skcapstone.fleet.sknoded.node_capacity",
+        lambda: {"cores": 4, "ram_gb": 8.0, "disk_gb": 50.0, "gpu": None, "vram_gb": None},
+    )
 
 
 def _env(paths) -> dict:
@@ -64,3 +73,30 @@ def test_cli_cordon_and_freeze(paths, operator) -> None:
     assert store.is_frozen(paths) is True
     assert runner.invoke(fleet, ["unfreeze"], env=_env(paths)).exit_code == 0
     assert store.is_frozen(paths) is False
+
+
+def test_cli_admit_bootstrap_and_preset(paths) -> None:
+    runner = CliRunner()
+    out = runner.invoke(fleet, ["admit", "node-158", "--bootstrap", "--preset"], env=_env(paths))
+    assert out.exit_code == 0
+    assert "admitted node-158 (generation 1)" in out.output
+    spec = store.read_spec(paths, "node", "node-158")
+    assert spec["labels"]["control-plane"] == "true"
+
+
+def test_cli_admit_with_explicit_labels(paths) -> None:
+    sknoded.run_once(paths, "node-cli")
+    runner = CliRunner()
+    out = runner.invoke(
+        fleet, ["admit", "node-cli", "--label", "role=edge"], env=_env(paths)
+    )
+    assert out.exit_code == 0
+    spec = store.read_spec(paths, "node", "node-cli")
+    assert spec["labels"] == {"role": "edge"}
+
+
+def test_cli_admit_requires_join_unless_bootstrap(paths) -> None:
+    runner = CliRunner()
+    out = runner.invoke(fleet, ["admit", "node-ghost"], env=_env(paths))
+    assert out.exit_code != 0
+    assert "no join request" in out.output
