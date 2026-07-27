@@ -359,6 +359,9 @@ class ComponentHealth:
         self.started_at: Optional[datetime] = None
         self.last_heartbeat: Optional[datetime] = None
         self.restart_count: int = 0
+        self.restart_times: list[datetime] = []
+        self.last_restart_at: Optional[datetime] = None
+        self.gave_up: bool = False
         self.last_error: Optional[str] = None
         self._lock = threading.Lock()
 
@@ -385,10 +388,42 @@ class ComponentHealth:
                 self.last_error = error
 
     def mark_restarting(self) -> None:
-        """Transition to restarting and increment the restart counter."""
+        """Transition to restarting and record the attempt.
+
+        Bumps the lifetime counter and appends a timestamp to the sliding
+        window used for restart-intensity checks.
+        """
         with self._lock:
             self.status = "restarting"
+            now = datetime.now(timezone.utc)
             self.restart_count += 1
+            self.restart_times.append(now)
+            self.last_restart_at = now
+
+    def recent_restarts(self, window_seconds: int) -> int:
+        """Count restart attempts inside the trailing window.
+
+        Prunes entries older than the window so the list cannot grow without
+        bound on a long-lived daemon.
+
+        Args:
+            window_seconds: Width of the trailing window, in seconds.
+
+        Returns:
+            Number of restart attempts recorded within the window.
+        """
+        cutoff = datetime.now(timezone.utc) - timedelta(seconds=window_seconds)
+        with self._lock:
+            self.restart_times = [t for t in self.restart_times if t >= cutoff]
+            return len(self.restart_times)
+
+    def mark_failed(self, error: str = "") -> None:
+        """Mark component as failed — restart budget exhausted, giving up."""
+        with self._lock:
+            self.status = "failed"
+            self.gave_up = True
+            if error:
+                self.last_error = error
 
     def mark_disabled(self) -> None:
         """Mark component as permanently disabled (not started)."""
@@ -425,6 +460,11 @@ class ComponentHealth:
                 ),
                 "heartbeat_age_seconds": age,
                 "restart_count": self.restart_count,
+                "recent_restarts": len(self.restart_times),
+                "last_restart_at": (
+                    self.last_restart_at.isoformat() if self.last_restart_at else None
+                ),
+                "gave_up": self.gave_up,
                 "last_error": self.last_error,
             }
 
@@ -441,7 +481,9 @@ class ComponentManager:
     """
 
     WATCHDOG_INTERVAL = 30  # seconds between watchdog checks
-    MAX_RESTARTS = 5  # maximum auto-restart attempts per component
+    MAX_RESTARTS = 5  # max auto-restart attempts per RESTART_WINDOW (a rate, not a total)
+    RESTART_WINDOW = 3600  # seconds — sliding window the restart budget applies to
+    RESTART_BACKOFF = 5  # seconds to wait between consecutive restart attempts
 
     def __init__(self, stop_event: threading.Event):
         self._stop_event = stop_event
@@ -650,21 +692,39 @@ class ComponentManager:
             if not needs_restart:
                 continue
 
-            if comp.restart_count >= self.MAX_RESTARTS:
-                logger.error(
-                    "Component '%s' exceeded max restarts (%d) — giving up",
-                    name,
-                    self.MAX_RESTARTS,
-                )
+            # Restart intensity is a *rate*: MAX_RESTARTS within RESTART_WINDOW.
+            # A component that blipped a few times over weeks is not crash-looping.
+            recent = comp.recent_restarts(self.RESTART_WINDOW)
+            if recent >= self.MAX_RESTARTS:
+                if not comp.gave_up:
+                    logger.error(
+                        "Component '%s' exceeded restart budget (%d in %ds) — giving up",
+                        name,
+                        recent,
+                        self.RESTART_WINDOW,
+                    )
+                    comp.mark_failed(
+                        f"restart budget exhausted ({recent} in {self.RESTART_WINDOW}s)"
+                    )
                 continue
+
+            if comp.gave_up:
+                logger.info("Component '%s' restart budget recovered — re-arming watchdog", name)
+                comp.gave_up = False
+
+            if comp.last_restart_at:
+                since = (datetime.now(timezone.utc) - comp.last_restart_at).total_seconds()
+                if since < self.RESTART_BACKOFF:
+                    continue
 
             target = factories.get(name)
             if target:
                 logger.warning(
-                    "Watchdog auto-restarting '%s' (attempt %d/%d)",
+                    "Watchdog auto-restarting '%s' (attempt %d/%d in %ds window)",
                     name,
-                    comp.restart_count + 1,
+                    recent + 1,
                     self.MAX_RESTARTS,
+                    self.RESTART_WINDOW,
                 )
                 comp.mark_restarting()
                 self._launch(name, target)
