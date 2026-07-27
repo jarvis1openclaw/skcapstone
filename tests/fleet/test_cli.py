@@ -1,4 +1,5 @@
 """Tests for the skfleet CLI surface."""
+
 from __future__ import annotations
 
 import json
@@ -23,12 +24,19 @@ def test_explain_registry() -> None:
 
 
 def test_cli_nodes_and_describe(paths, operator, monkeypatch) -> None:
-    monkeypatch.setattr("skcapstone.fleet.sknoded.node_capacity",
-                        lambda: {"cores": 4, "ram_gb": 8.0, "disk_gb": 50.0,
-                                 "gpu": None, "vram_gb": None})
+    monkeypatch.setattr(
+        "skcapstone.fleet.sknoded.node_capacity",
+        lambda: {"cores": 4, "ram_gb": 8.0, "disk_gb": 50.0, "gpu": None, "vram_gb": None},
+    )
     sknoded.run_once(paths, "node-cli")
-    store.write_spec(paths, "node", "node-cli", {"cordoned": False},
-                     writer=operator, labels={"interactive": "true"})
+    store.write_spec(
+        paths,
+        "node",
+        "node-cli",
+        {"cordoned": False},
+        writer=operator,
+        labels={"interactive": "true"},
+    )
     runner = CliRunner()
     out = runner.invoke(fleet, ["nodes"], env=_env(paths))
     assert out.exit_code == 0

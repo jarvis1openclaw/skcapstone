@@ -9,14 +9,14 @@ import json as jsonlib
 
 import click
 
-from . import node_controller, sknoded as sknoded_mod, store
+from . import node_controller, store
+from . import sknoded as sknoded_mod
 from .explain import explain as explain_kind
 from .paths import default_paths, self_node_name
 
 
 def _operator() -> store.Writer:
-    return store.Writer(role="operator", node=self_node_name(),
-                        identity=store.writer_identity())
+    return store.Writer(role="operator", node=self_node_name(), identity=store.writer_identity())
 
 
 @click.group(name="fleet")
@@ -101,8 +101,7 @@ def unfreeze_cmd() -> None:
 @click.option("--interval", default=sknoded_mod.HEARTBEAT_INTERVAL_S, show_default=True)
 def sknoded_cmd(once: bool, interval: int) -> None:
     """Run the node agent self-report loop for this machine."""
-    sknoded_mod.main_loop(default_paths(), self_node_name(),
-                          interval=interval, once=once)
+    sknoded_mod.main_loop(default_paths(), self_node_name(), interval=interval, once=once)
 
 
 def register_fleet_commands(main: click.Group) -> None:

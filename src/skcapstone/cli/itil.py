@@ -163,6 +163,21 @@ def register_itil_commands(main: click.Group) -> None:
                 note=note,
                 resolution_summary=resolution,
             )
+            # An illegal transition is recorded as a conflicted event and folded
+            # away, leaving status unchanged. Without this check the command
+            # prints a green "Updated:" line for a no-op, which reads as success.
+            if new_status and inc.status.value != new_status:
+                from ..itil import _INCIDENT_TRANSITIONS
+
+                allowed = sorted(_INCIDENT_TRANSITIONS.get(inc.status.value, set()))
+                console.print(
+                    f"\n  [yellow]No change:[/yellow] {inc.id} is still "
+                    f"[bold]{inc.status.value}[/bold] — "
+                    f"{inc.status.value} -> {new_status} is not a legal transition.\n"
+                    f"  Allowed from {inc.status.value}: "
+                    f"{', '.join(allowed) if allowed else '(terminal state)'}\n"
+                )
+                return
             console.print(
                 f"\n  [green]Updated:[/green] {inc.id} -> {inc.status.value} "
                 f"({inc.severity.value})\n"

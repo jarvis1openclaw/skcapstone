@@ -84,5 +84,6 @@ def cordon(paths: FleetPaths, name: str, cordoned: bool, *, writer: store.Writer
     if current is None:
         raise LookupError(f"no such node object: {name!r}")
     new_spec = dict(current.get("spec", {}), cordoned=cordoned)
-    return store.write_spec(paths, "node", name, new_spec, writer=writer,
-                            labels=current.get("labels", {}))
+    return store.write_spec(
+        paths, "node", name, new_spec, writer=writer, labels=current.get("labels", {})
+    )

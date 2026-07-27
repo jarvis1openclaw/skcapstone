@@ -1,4 +1,5 @@
 """Tests for NodeController phase derivation and cordon."""
+
 from __future__ import annotations
 
 from datetime import datetime, timedelta, timezone
@@ -11,14 +12,24 @@ NOW = datetime(2026, 7, 27, 12, 0, 0, tzinfo=timezone.utc)
 def _beat(paths, node: str, age_s: float) -> None:
     writer = store.Writer(role="sknoded", node=node, identity="")
     ts = (NOW - timedelta(seconds=age_s)).strftime("%Y-%m-%dT%H:%M:%SZ")
-    store.write_node_file(paths, writer, "heartbeat.json",
-                          {"kind": "Node", "name": node, "node": node, "ts": ts},
-                          if_changed=False)
+    store.write_node_file(
+        paths,
+        writer,
+        "heartbeat.json",
+        {"kind": "Node", "name": node, "node": node, "ts": ts},
+        if_changed=False,
+    )
 
 
 def _admit(paths, operator, node: str) -> None:
-    store.write_spec(paths, "node", node, {"cordoned": False, "taints": []},
-                     writer=operator, labels={"tier": "test"})
+    store.write_spec(
+        paths,
+        "node",
+        node,
+        {"cordoned": False, "taints": []},
+        writer=operator,
+        labels={"tier": "test"},
+    )
 
 
 def test_phases_from_heartbeat_age(paths, operator) -> None:
@@ -35,8 +46,7 @@ def test_phases_from_heartbeat_age(paths, operator) -> None:
 def test_never_beaten_is_dead_and_join_is_pending(paths, operator) -> None:
     _admit(paths, operator, "node-silent")
     joiner = store.Writer(role="sknoded", node="node-new", identity="")
-    store.write_node_file(paths, joiner, "join.json", {"name": "node-new"},
-                          if_changed=False)
+    store.write_node_file(paths, joiner, "join.json", {"name": "node-new"}, if_changed=False)
     views = {v.name: v for v in node_controller.node_views(paths, now=NOW)}
     assert views["node-silent"].phase == "Dead"
     assert views["node-new"].phase == "Pending"
