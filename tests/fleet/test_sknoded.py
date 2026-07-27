@@ -1,4 +1,5 @@
 """Tests for sknoded v1: self-report + join request."""
+
 from __future__ import annotations
 
 import pytest
@@ -20,7 +21,7 @@ def test_first_run_writes_all_three(paths) -> None:
     assert hb["name"] == "node-41" and "ts" in hb
     report = store.read_node_file(paths, "node-41", "node.json")
     assert report["status"]["capacity"]["cores"] == 4
-    assert report["observedGeneration"] == 0           # unadmitted
+    assert report["observedGeneration"] == 0  # unadmitted
     join = store.read_node_file(paths, "node-41", "join.json")
     assert join["name"] == "node-41" and join["capacity"]["ram_gb"] == 8.0
 
@@ -28,16 +29,16 @@ def test_first_run_writes_all_three(paths) -> None:
 def test_second_run_is_write_on_change(paths) -> None:
     sknoded.run_once(paths, "node-41")
     result = sknoded.run_once(paths, "node-41")
-    assert result["heartbeat"] is True     # heartbeat always beats
-    assert result["node"] is False         # unchanged report skipped
-    assert result["join"] is False         # join written once
+    assert result["heartbeat"] is True  # heartbeat always beats
+    assert result["node"] is False  # unchanged report skipped
+    assert result["join"] is False  # join written once
 
 
 def test_admitted_node_reports_generation_and_stops_joining(paths, operator) -> None:
     sknoded.run_once(paths, "node-41")
     store.write_spec(paths, "node", "node-41", {"cordoned": False}, writer=operator)
     result = sknoded.run_once(paths, "node-41")
-    assert result["node"] is True          # observedGeneration 0 -> 1 changed
+    assert result["node"] is True  # observedGeneration 0 -> 1 changed
     assert store.read_node_file(paths, "node-41", "node.json")["observedGeneration"] == 1
 
 
@@ -52,9 +53,7 @@ def test_never_writes_outside_own_subtree(paths) -> None:
 def test_main_loop_once_runs_a_single_pass_without_sleeping(paths, monkeypatch) -> None:
     calls = []
     monkeypatch.setattr(sknoded, "run_once", lambda p, n: calls.append(n))
-    monkeypatch.setattr(
-        sknoded.time, "sleep", lambda s: pytest.fail("once=True must not sleep")
-    )
+    monkeypatch.setattr(sknoded.time, "sleep", lambda s: pytest.fail("once=True must not sleep"))
     sknoded.main_loop(paths, "node-41", once=True)
     assert calls == ["node-41"]
 

@@ -1,4 +1,5 @@
 """Tests for the capacity probe and condition derivation."""
+
 from __future__ import annotations
 
 import sys
@@ -72,7 +73,8 @@ def test_gpu_probe_present_parses_name_and_vram(monkeypatch) -> None:
     import subprocess
 
     monkeypatch.setattr(
-        subprocess, "run",
+        subprocess,
+        "run",
         lambda *a, **k: _FakeCompletedProcess(0, "RTX 5060 Ti, 16384\n"),
     )
     assert capacity._gpu_info() == {"name": "RTX 5060 Ti", "vram_gb": 16.0}
@@ -82,7 +84,8 @@ def test_gpu_probe_malformed_output_returns_none(monkeypatch) -> None:
     import subprocess
 
     monkeypatch.setattr(
-        subprocess, "run",
+        subprocess,
+        "run",
         lambda *a, **k: _FakeCompletedProcess(0, "RTX 5060 Ti, not-a-number\n"),
     )
     assert capacity._gpu_info() is None
@@ -92,7 +95,8 @@ def test_gpu_probe_nonzero_returncode_returns_none(monkeypatch) -> None:
     import subprocess
 
     monkeypatch.setattr(
-        subprocess, "run",
+        subprocess,
+        "run",
         lambda *a, **k: _FakeCompletedProcess(1, ""),
     )
     assert capacity._gpu_info() is None
@@ -106,7 +110,7 @@ def test_conditions_pressure_and_conflict(tmp_path) -> None:
     cap = {"cores": 4, "ram_gb": 1.0, "disk_gb": 100.0, "gpu": None, "vram_gb": None}
     conds = _by_type(conditions.node_conditions(cap, tmp_path, NOW))
     assert conds["Ready"]["status"] == "True"
-    assert conds["MemoryPressure"]["status"] == "True"      # 1.0 < 2.0
+    assert conds["MemoryPressure"]["status"] == "True"  # 1.0 < 2.0
     assert conds["DiskPressure"]["status"] == "False"
     assert conds["SyncConflict"]["status"] == "False"
     assert "GPUAvailable" not in conds
@@ -116,19 +120,27 @@ def test_conditions_pressure_and_conflict(tmp_path) -> None:
 
 
 def test_gpu_condition_when_present(tmp_path) -> None:
-    cap = {"cores": 4, "ram_gb": 8.0, "disk_gb": 100.0,
-           "gpu": "RTX 5060 Ti", "vram_gb": 16.0}
+    cap = {"cores": 4, "ram_gb": 8.0, "disk_gb": 100.0, "gpu": "RTX 5060 Ti", "vram_gb": 16.0}
     conds = _by_type(conditions.node_conditions(cap, tmp_path, NOW))
     assert conds["GPUAvailable"]["status"] == "True"
 
 
 def test_merge_transitions_preserves_unchanged(tmp_path) -> None:
-    old = [{"type": "Ready", "status": "True", "reason": "r", "message": "m",
-            "lastTransition": "2026-07-26T00:00:00Z"}]
-    new = [{"type": "Ready", "status": "True", "reason": "r", "message": "m",
-            "lastTransition": NOW}]
+    old = [
+        {
+            "type": "Ready",
+            "status": "True",
+            "reason": "r",
+            "message": "m",
+            "lastTransition": "2026-07-26T00:00:00Z",
+        }
+    ]
+    new = [
+        {"type": "Ready", "status": "True", "reason": "r", "message": "m", "lastTransition": NOW}
+    ]
     merged = conditions.merge_transitions(new, old)
     assert merged[0]["lastTransition"] == "2026-07-26T00:00:00Z"
-    flipped = [{"type": "Ready", "status": "False", "reason": "r", "message": "m",
-                "lastTransition": NOW}]
+    flipped = [
+        {"type": "Ready", "status": "False", "reason": "r", "message": "m", "lastTransition": NOW}
+    ]
     assert conditions.merge_transitions(flipped, old)[0]["lastTransition"] == NOW

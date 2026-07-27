@@ -4,6 +4,7 @@ The fleet tree is a Syncthing-shared directory of JSON files. This module
 is the single source of truth for where every file lives; nothing else in
 the package builds fleet paths by hand.
 """
+
 from __future__ import annotations
 
 import os

@@ -3,6 +3,7 @@
 Phase 1 is report-only: heartbeat + node.json + join request. Actuation
 arrives in Phase 3 and will gate on store.actuation_allowed().
 """
+
 from __future__ import annotations
 
 import platform

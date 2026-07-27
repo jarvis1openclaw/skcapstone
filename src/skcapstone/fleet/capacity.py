@@ -4,6 +4,7 @@ Reuses skharness.autocode.autoscale as a library (the single source of
 capacity math fleet-wide, spec section 10). A same-shape fallback covers a
 fresh box that does not have skharness installed yet (bootstrap, spec 9).
 """
+
 from __future__ import annotations
 
 import os
@@ -37,9 +38,10 @@ def _gpu_info() -> dict | None:
     """GPU name and VRAM via nvidia-smi, or None when absent."""
     try:
         out = subprocess.run(
-            ["nvidia-smi", "--query-gpu=name,memory.total",
-             "--format=csv,noheader,nounits"],
-            capture_output=True, text=True, timeout=5,
+            ["nvidia-smi", "--query-gpu=name,memory.total", "--format=csv,noheader,nounits"],
+            capture_output=True,
+            text=True,
+            timeout=5,
         )
     except Exception:
         return None

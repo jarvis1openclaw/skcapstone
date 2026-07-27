@@ -3,6 +3,7 @@
 Reuses skcapstone.doctor as a library for the sync-conflict probe (spec
 3.4: a conflict file under the fleet tree is an ownership bug).
 """
+
 from __future__ import annotations
 
 from pathlib import Path
@@ -27,17 +28,25 @@ def node_conditions(capacity: dict, fleet_root: Path, now_iso: str) -> list[dict
 
     conds = [
         _cond("Ready", True, "SelfReport", "sknoded self-report alive", now_iso),
-        _cond("MemoryPressure", float(capacity.get("ram_gb", 0.0)) < RAM_PRESSURE_GB,
-              "FreeRam", f"{capacity.get('ram_gb')}GB available", now_iso),
-        _cond("DiskPressure", float(capacity.get("disk_gb", 0.0)) < DISK_PRESSURE_GB,
-              "FreeDisk", f"{capacity.get('disk_gb')}GB free", now_iso),
+        _cond(
+            "MemoryPressure",
+            float(capacity.get("ram_gb", 0.0)) < RAM_PRESSURE_GB,
+            "FreeRam",
+            f"{capacity.get('ram_gb')}GB available",
+            now_iso,
+        ),
+        _cond(
+            "DiskPressure",
+            float(capacity.get("disk_gb", 0.0)) < DISK_PRESSURE_GB,
+            "FreeDisk",
+            f"{capacity.get('disk_gb')}GB free",
+            now_iso,
+        ),
     ]
     check = _check_sync_conflicts(fleet_root)[0]
-    conds.append(_cond("SyncConflict", not check.passed, "DoctorProbe",
-                       check.detail, now_iso))
+    conds.append(_cond("SyncConflict", not check.passed, "DoctorProbe", check.detail, now_iso))
     if capacity.get("gpu"):
-        conds.append(_cond("GPUAvailable", True, "NvidiaSmi",
-                           str(capacity["gpu"]), now_iso))
+        conds.append(_cond("GPUAvailable", True, "NvidiaSmi", str(capacity["gpu"]), now_iso))
     return conds
 
 
