@@ -50,6 +50,24 @@ def describe_cmd(kind: str, name: str) -> None:
     click.echo(jsonlib.dumps(payload, indent=2, sort_keys=True))
 
 
+@fleet.command("placements")
+@click.option("--kind", "kind", default=None,
+              help="Filter by kind (e.g. job, service).")
+@click.option("--json", "as_json", is_flag=True, help="Machine-readable output.")
+def placements_cmd(kind: str | None, as_json: bool) -> None:
+    """Show current placements with the scheduler's reason for each decision."""
+    records = store.list_placements(default_paths(), kind)
+    if as_json:
+        click.echo(jsonlib.dumps(records, indent=2, sort_keys=True))
+        return
+    if not records:
+        click.echo("no placements")
+        return
+    for r in records:
+        click.echo(f"{r['kind'].lower()}/{r['name']}\t-> {r['node']}\t"
+                   f"gen={r['placementGeneration']}\t{r['reason']}")
+
+
 @fleet.command("cordon")
 @click.argument("name")
 def cordon_cmd(name: str) -> None:
