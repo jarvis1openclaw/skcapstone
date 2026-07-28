@@ -295,8 +295,7 @@ def write_placement(
         raise OwnershipError(f"invalid kind/name: {kind!r}/{name!r}")
     path = paths.placement_path(kind, name)
     existing = _load(path)
-    if (existing is not None and existing.get("node") == node
-            and existing.get("reason") == reason):
+    if existing is not None and existing.get("node") == node and existing.get("reason") == reason:
         return existing, False
     payload = {
         "kind": kind.capitalize(),
@@ -320,8 +319,11 @@ def list_placements(paths: FleetPaths, kind: str | None = None) -> list[dict]:
     """All placement records, sorted by (kind, name). Zero objects cost nothing."""
     if not paths.placements.exists():
         return []
-    kinds = ([kind] if kind is not None
-             else sorted(p.name for p in paths.placements.iterdir() if p.is_dir()))
+    kinds = (
+        [kind]
+        if kind is not None
+        else sorted(p.name for p in paths.placements.iterdir() if p.is_dir())
+    )
     out: list[dict] = []
     for k in kinds:
         kind_dir = paths.placements / k
