@@ -38,6 +38,44 @@ KINDS: dict[str, dict] = {
             "skfleet admit <name>",
         ],
     },
+    "service": {
+        "kind": "Service",
+        "description": "A long-running workload (systemd --user unit or Docker container).",
+        "spec": {
+            "runtime": "systemd-user | docker",
+            "unit": "systemd unit name, or container name for docker",
+            "replicas": "always 1 in v1",
+            "nodeSelector": "label map used by the scheduler (exact match, AND)",
+            "tolerations": "list of {key, optional value} tolerating NoSchedule taints",
+            "resources": "requested {cores, ram_gb}, advisory, checked as headroom",
+            "healthCheck": "{'port': int} tcp probe, or null",
+            "restartPolicy": "on-failure (heal with backoff) | never",
+            "failover": "manual (default: alert on node-Dead) | auto (re-place)",
+            "paused": "bool; true stops healing, never stops the unit",
+            "compose": "docker only: {'file': path, 'service': name} for compose",
+            "deleted": "tombstone; stops management, never stops the unit",
+        },
+        "status": {
+            "state": "active | failed | inactive | activating | missing | unknown",
+            "pid": "main PID when running",
+            "since": "ActiveEnterTimestamp (or container StartedAt)",
+            "restarts": "heal attempts in the current episode",
+            "conditions": "list of {type, status, reason, message, lastTransition}",
+        },
+        "conditions": {
+            "Ready": "unit active and health check (if any) passing",
+            "Progressing": "sknoded is actively converging this service",
+            "CrashLooping": "bounded restart attempts exhausted; healing stopped",
+            "SpecUnverified": "spec/placement signature missing or invalid (Card 3.5)",
+        },
+        "actions": [
+            "skfleet apply -f <file>",
+            "skfleet services",
+            "skfleet describe service <name>",
+            "skfleet reconcile",
+            "skfleet drain <node>",
+        ],
+    },
 }
 
 

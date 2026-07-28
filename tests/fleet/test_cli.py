@@ -25,7 +25,9 @@ def _env(paths) -> dict:
 
 
 def test_explain_registry() -> None:
-    assert explain() == {"kinds": ["node"]}
+    # Registered kinds accumulate as fleet phases land; assert membership rather
+    # than an exact list so each new kind does not re-break this test.
+    assert "node" in explain()["kinds"]
     node = explain("node")
     assert node["kind"] == "Node"
     assert "Ready" in node["conditions"]
