@@ -17,7 +17,7 @@ def register_errors_commands(main: click.Group) -> None:
 
     @main.group("errors")
     def errors_grp():
-        """Error recovery queue — inspect and replay failed operations.
+        """Error recovery queue - inspect and replay failed operations.
 
         Failed LLM calls, message sends, and sync operations land here
         and are retried automatically with exponential backoff (max 3 times).
@@ -55,7 +55,7 @@ def register_errors_commands(main: click.Group) -> None:
 
         stats = q.stats()
         console.print(
-            f"\n  Error queue — "
+            f"\n  Error queue - "
             f"[yellow]{stats.get('pending', 0)}[/] pending  "
             f"[red]{stats.get('exhausted', 0)}[/] exhausted  "
             f"[green]{stats.get('resolved', 0)}[/] resolved  "
@@ -89,7 +89,7 @@ def register_errors_commands(main: click.Group) -> None:
                 entry.error_message[:60] + ("…" if len(entry.error_message) > 60 else ""),
                 str(entry.retry_count),
                 Text(entry.status, style=color),
-                entry.next_retry_at[:19].replace("T", " ") if entry.next_retry_at else "—",
+                entry.next_retry_at[:19].replace("T", " ") if entry.next_retry_at else "-",
             )
 
         console.print(table)
@@ -136,7 +136,7 @@ def register_errors_commands(main: click.Group) -> None:
             ok = sum(1 for v in results.values() if v)
             fail = len(results) - ok
             console.print(
-                f"\n  Retried [bold]{len(results)}[/] entries — "
+                f"\n  Retried [bold]{len(results)}[/] entries - "
                 f"[green]{ok} resolved[/]  [yellow]{fail} still pending[/]\n"
             )
             return
@@ -149,7 +149,7 @@ def register_errors_commands(main: click.Group) -> None:
             sys.exit(1)
         if len(matched) > 1:
             console.print(
-                f"[yellow]Ambiguous prefix '[/]{entry_id}[yellow]' — "
+                f"[yellow]Ambiguous prefix '[/]{entry_id}[yellow]' - "
                 f"matches {len(matched)} entries. Use more characters.[/]"
             )
             sys.exit(1)
@@ -247,7 +247,7 @@ def register_errors_commands(main: click.Group) -> None:
             sys.exit(1)
         if len(matched) > 1:
             console.print(
-                f"[yellow]Ambiguous prefix '[/]{entry_id}[yellow]' — "
+                f"[yellow]Ambiguous prefix '[/]{entry_id}[yellow]' - "
                 f"matches {len(matched)} entries.[/]"
             )
             sys.exit(1)

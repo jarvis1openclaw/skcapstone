@@ -1,4 +1,4 @@
-"""Tests for the Memory Adapter — bridge between skcapstone and skmemory."""
+"""Tests for the Memory Adapter - bridge between skcapstone and skmemory."""
 
 from __future__ import annotations
 

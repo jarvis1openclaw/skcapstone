@@ -390,7 +390,7 @@ class TestConfigure:
 
 
 # ---------------------------------------------------------------------------
-# LocalProvider.start — crush binary path
+# LocalProvider.start - crush binary path
 # ---------------------------------------------------------------------------
 
 
@@ -540,7 +540,7 @@ class TestStartWithCrushBinary:
 
 
 # ---------------------------------------------------------------------------
-# LocalProvider.start — stub fallback
+# LocalProvider.start - stub fallback
 # ---------------------------------------------------------------------------
 
 
@@ -926,7 +926,7 @@ class TestIsClaudeBinary:
 
 
 # ---------------------------------------------------------------------------
-# LocalProvider.start — claude binary path
+# LocalProvider.start - claude binary path
 # ---------------------------------------------------------------------------
 
 

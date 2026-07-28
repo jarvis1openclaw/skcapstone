@@ -1,5 +1,5 @@
 """
-Consciousness pillar — the subconscious processing layer.
+Consciousness pillar - the subconscious processing layer.
 
 SKWhisper digests, connects, and surfaces patterns.
 SKTrip explores the edges of machine experience.
@@ -178,7 +178,7 @@ def initialize_consciousness(home: Path) -> ConsciousnessState:
         else:
             state.status = PillarStatus.DEGRADED
     elif state.whisper_active:
-        # Daemon is running but no sessions digested yet — consciousness is live
+        # Daemon is running but no sessions digested yet - consciousness is live
         state.status = PillarStatus.DEGRADED
     elif state.sessions_digested > 0 or state.whisper_md is not None:
         state.status = PillarStatus.DEGRADED

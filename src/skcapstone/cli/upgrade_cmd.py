@@ -1,12 +1,12 @@
-"""Upgrade / update command — smart sovereign package management.
+"""Upgrade / update command - smart sovereign package management.
 
 Checks installed sovereign packages, upgrades all that are present,
 and interactively prompts about optional pillar components that are
 not yet installed.
 
 Commands:
-    skcapstone upgrade   — full upgrade of installed sovereign packages
-    skcapstone update    — alias for upgrade (friendlier name)
+    skcapstone upgrade   - full upgrade of installed sovereign packages
+    skcapstone update    - alias for upgrade (friendlier name)
 """
 
 from __future__ import annotations
@@ -157,13 +157,13 @@ def _restart_daemon(home: Path) -> None:
             console.print("  Daemon: [green]restarted[/]")
         else:
             err = result.stderr.strip() or result.stdout.strip()
-            console.print(f"  Daemon: [yellow]restart failed[/] — {err}")
+            console.print(f"  Daemon: [yellow]restart failed[/] - {err}")
     except FileNotFoundError:
         console.print("  Daemon: [yellow]skcapstone not in PATH[/]")
     except subprocess.TimeoutExpired:
         console.print("  Daemon: [yellow]restart timed out[/]")
     except Exception as exc:
-        console.print(f"  Daemon: [yellow]restart error[/] — {exc}")
+        console.print(f"  Daemon: [yellow]restart error[/] - {exc}")
 
 
 # ── Package descriptions ──────────────────────────────────────────────────────
@@ -257,7 +257,7 @@ def _run_upgrade(
 
     for pkg in pkg_list:
         ok, v_before, v_after = results[pkg]
-        before_str = v_before or "[dim]—[/]"
+        before_str = v_before or "[dim]-[/]"
         after_str = v_after or "[dim]unknown[/]"
 
         if not ok:
@@ -281,7 +281,7 @@ def _run_upgrade(
     if restart:
         if any_failed:
             console.print()
-            console.print("[yellow]Warning:[/] some packages failed — skipping daemon restart.")
+            console.print("[yellow]Warning:[/] some packages failed - skipping daemon restart.")
         else:
             _restart_daemon(home_path)
 
@@ -335,7 +335,7 @@ def _run_auto_register() -> None:
         else:
             console.print("  [dim]All registrations up to date[/]")
     except Exception as exc:
-        console.print(f"  [yellow]Registration skipped[/] — {exc}")
+        console.print(f"  [yellow]Registration skipped[/] - {exc}")
 
 
 # ── Click commands ────────────────────────────────────────────────────────────
@@ -370,7 +370,7 @@ def register_upgrade_commands(main: click.Group) -> None:
         "-y",
         is_flag=True,
         default=False,
-        help="Skip interactive prompts — do not install optional packages that are missing.",
+        help="Skip interactive prompts - do not install optional packages that are missing.",
     )
     @click.option(
         "--all",
@@ -402,11 +402,11 @@ def register_upgrade_commands(main: click.Group) -> None:
         skmemory, capauth) and any optional pillars already present.
 
         For optional packages that are NOT installed (skcomms, skchat),
-        you will be prompted whether you want to add them — unless
+        you will be prompted whether you want to add them - unless
         --yes (skip) or --all (install all) is passed.
 
         Use --force-reinstall to overwrite everything regardless of current
-        version — useful for fixing broken installs.
+        version - useful for fixing broken installs.
 
         Examples:
 
@@ -544,7 +544,7 @@ def register_upgrade_commands(main: click.Group) -> None:
         install_all: bool,
         force_reinstall: bool,
     ) -> None:
-        """Alias for 'upgrade' — update all sovereign packages.
+        """Alias for 'upgrade' - update all sovereign packages.
 
         Checks installed pillar programs and upgrades them to the latest
         available versions. Prompts about optional components (skcomms,

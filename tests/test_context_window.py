@@ -1,4 +1,4 @@
-"""Tests for skcapstone.context_window — per-sender context-window management.
+"""Tests for skcapstone.context_window - per-sender context-window management.
 
 Covers:
   * token estimators (tiktoken / chars//4 fallback)

@@ -48,7 +48,7 @@ def _make_agent_home(tmp_path: Path, agent: str) -> Path:
 
 
 # ---------------------------------------------------------------------------
-# 1. _resolve_agent_home  — home directory isolation
+# 1. _resolve_agent_home  - home directory isolation
 # ---------------------------------------------------------------------------
 
 
@@ -93,7 +93,7 @@ class TestResolveAgentHome:
 
 
 # ---------------------------------------------------------------------------
-# 2. _resolve_agent_port  — port isolation
+# 2. _resolve_agent_port  - port isolation
 # ---------------------------------------------------------------------------
 
 
@@ -236,7 +236,7 @@ class TestAgentPortsRegistry:
 
 
 # ---------------------------------------------------------------------------
-# 4. PID-file isolation — is_running / read_pid are home-scoped
+# 4. PID-file isolation - is_running / read_pid are home-scoped
 # ---------------------------------------------------------------------------
 
 
@@ -288,7 +288,7 @@ class TestPidIsolation:
 
 
 # ---------------------------------------------------------------------------
-# 5. DaemonConfig — simultaneous distinct configs
+# 5. DaemonConfig - simultaneous distinct configs
 # ---------------------------------------------------------------------------
 
 
@@ -358,7 +358,7 @@ class TestAgentHomeEnvVar:
 
 
 # ---------------------------------------------------------------------------
-# 7. hashed_agent_port — stable, non-fleet dynamic assignment
+# 7. hashed_agent_port - stable, non-fleet dynamic assignment
 # ---------------------------------------------------------------------------
 
 
@@ -404,7 +404,7 @@ class TestHashedAgentPort:
 
 
 # ---------------------------------------------------------------------------
-# 8. Bind-time behavior — collision fallback + loud degraded health
+# 8. Bind-time behavior - collision fallback + loud degraded health
 # ---------------------------------------------------------------------------
 
 

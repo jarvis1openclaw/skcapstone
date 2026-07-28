@@ -1,4 +1,4 @@
-"""ITIL service management tools — Incident, Problem, Change, KEDB."""
+"""ITIL service management tools - Incident, Problem, Change, KEDB."""
 
 from __future__ import annotations
 

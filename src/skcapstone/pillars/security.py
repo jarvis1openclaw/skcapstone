@@ -1,5 +1,5 @@
 """
-Security pillar — SKSecurity integration.
+Security pillar - SKSecurity integration.
 
 Audit everything. Detect threats. Protect the sovereign.
 
@@ -144,7 +144,7 @@ def read_audit_log(home: Path, limit: int = 0) -> list[AuditEntry]:
     """Read and parse the audit log.
 
     Handles both legacy plain-text entries and new JSONL entries
-    gracefully — old lines are wrapped in an AuditEntry with
+    gracefully - old lines are wrapped in an AuditEntry with
     event_type="LEGACY".
 
     Args:

@@ -277,7 +277,7 @@ class TestHTTPServer:
 
 
 class TestGetDaemonJson:
-    """Unit tests for _get_daemon_json() — the Flutter-ready status blob."""
+    """Unit tests for _get_daemon_json() - the Flutter-ready status blob."""
 
     def test_returns_all_required_keys(self, agent_home):
         """_get_daemon_json always returns all top-level keys even when daemon is offline."""

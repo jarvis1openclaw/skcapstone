@@ -1,4 +1,4 @@
-"""Agent profile — the unified per-agent capability manifest.
+"""Agent profile - the unified per-agent capability manifest.
 
 One view, one file per agent, that pulls together everything that defines an
 agent's *capabilities*: its soul overlay, the LLM/model backend, the MCP
@@ -172,7 +172,7 @@ def register_agent_profile_commands(main: click.Group) -> None:
 
     @main.group()
     def agent() -> None:
-        """Per-agent capability manifest — soul + tools + skills, unified."""
+        """Per-agent capability manifest - soul + tools + skills, unified."""
 
     @agent.command("profile")
     @click.option("--agent", "agent_name", default="", help="Agent to inspect (default: active).")

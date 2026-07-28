@@ -15,8 +15,8 @@ def test_render_html_contains_card_and_no_dashes(tmp_path):
     assert "Render me" in html_out
     assert "backlog" in html_out.lower()
     # hard project rule: no em or en dashes in generated output
-    assert "—" not in html_out
-    assert "–" not in html_out
+    assert "-" not in html_out
+    assert "-" not in html_out
 
 
 def test_render_html_escapes_titles(tmp_path):

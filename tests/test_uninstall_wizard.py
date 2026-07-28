@@ -1,4 +1,4 @@
-"""Tests for the uninstall wizard — inventory, teardown, safety checks."""
+"""Tests for the uninstall wizard - inventory, teardown, safety checks."""
 
 from __future__ import annotations
 

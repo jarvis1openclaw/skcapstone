@@ -1,5 +1,5 @@
 """
-Self-Healing Doctor — auto-diagnosing, auto-remediating agent health.
+Self-Healing Doctor - auto-diagnosing, auto-remediating agent health.
 
 Extends the existing doctor.py diagnostics with auto-fix capabilities.
 Follows the TrusteeMonitor escalation pattern:
@@ -117,7 +117,7 @@ class SelfHealingDoctor:
         return self._last_report
 
     # -------------------------------------------------------------------
-    # Check methods — each returns {"name", "status", "message"}
+    # Check methods - each returns {"name", "status", "message"}
     # -------------------------------------------------------------------
 
     def _check_home_dirs(self) -> dict[str, Any]:
@@ -243,7 +243,7 @@ class SelfHealingDoctor:
             backends = self._consciousness._bridge.available_backends
             if any(backends.values()):
                 logger.info(
-                    "Re-probed backends — found available: %s",
+                    "Re-probed backends - found available: %s",
                     [k for k, v in backends.items() if v],
                 )
             else:
@@ -258,7 +258,7 @@ class SelfHealingDoctor:
                 logger.info("Restarted inotify observer")
             except Exception as exc:
                 logger.debug("Inotify restart failed: %s", exc)
-                issues.append("Inotify thread dead — restart failed")
+                issues.append("Inotify thread dead - restart failed")
 
         if issues:
             return {

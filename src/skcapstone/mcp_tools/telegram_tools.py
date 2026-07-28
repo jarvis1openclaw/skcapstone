@@ -1,4 +1,4 @@
-"""Telegram integration tools — import, send, poll, and manage chats."""
+"""Telegram integration tools - import, send, poll, and manage chats."""
 
 from __future__ import annotations
 
@@ -54,7 +54,7 @@ TOOLS: list[Tool] = [
         description=(
             "Import messages directly from Telegram API using Telethon. "
             "Requires TELEGRAM_API_ID and TELEGRAM_API_HASH env vars. "
-            "No manual export needed — connects and pulls messages directly."
+            "No manual export needed - connects and pulls messages directly."
         ),
         inputSchema={
             "type": "object",

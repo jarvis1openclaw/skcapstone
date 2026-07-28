@@ -1,4 +1,4 @@
-"""Skills Registry Client — bridge between skcapstone and the remote skills-registry.
+"""Skills Registry Client - bridge between skcapstone and the remote skills-registry.
 
 Wraps the skskills RemoteRegistry client to provide a clean interface for
 skcapstone MCP tools and CLI commands to interact with the remote
@@ -145,5 +145,5 @@ def get_registry_client(registry_url: Optional[str] = None) -> Optional[Registry
     try:
         return RegistryClient(registry_url=registry_url)
     except ImportError:
-        logger.debug("skskills not installed — remote registry unavailable")
+        logger.debug("skskills not installed - remote registry unavailable")
         return None

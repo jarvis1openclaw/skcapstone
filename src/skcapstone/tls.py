@@ -131,7 +131,7 @@ def ensure_tls_cert(tls_dir: Path) -> tuple[Path, Path]:
     if cert_path.exists() and key_path.exists():
         logger.debug("TLS: reusing existing certificate %s", cert_path)
     else:
-        logger.info("TLS: no certificate found — generating self-signed cert in %s", tls_dir)
+        logger.info("TLS: no certificate found - generating self-signed cert in %s", tls_dir)
         _generate_self_signed(cert_path, key_path)
 
     return cert_path, key_path

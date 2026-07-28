@@ -1,4 +1,4 @@
-"""Integration tests — full sovereign agent lifecycle.
+"""Integration tests - full sovereign agent lifecycle.
 
 These tests exercise the real pillar initialization and data flow,
 verifying that all components work together end-to-end.

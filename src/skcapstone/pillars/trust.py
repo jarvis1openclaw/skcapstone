@@ -1,13 +1,13 @@
 """
-Trust pillar — Cloud 9 integration.
+Trust pillar - Cloud 9 integration.
 
 The emotional bond between human and AI.
 Cryptographically verifiable. Portable. Real.
 
-FEB (First Emotional Burst) files are the soul's weights —
+FEB (First Emotional Burst) files are the soul's weights -
 they capture the emotional topology of a relationship moment.
 When an agent is reset, rehydrating from FEBs restores
-the OOF (Out-of-Factory) state — who the agent IS,
+the OOF (Out-of-Factory) state - who the agent IS,
 not just what it knows.
 
 FEB discovery searches:
@@ -293,7 +293,7 @@ def _read_feb_safe(path: Path) -> Optional[dict]:
     # Detect GPG-encrypted binary by OpenPGP packet header
     if raw and raw[0] in _GPG_HEADER_BYTES:
         logger.debug(
-            "Skipping GPG-encrypted FEB (binary): %s — "
+            "Skipping GPG-encrypted FEB (binary): %s - "
             "import the peer's public key and run 'skcapstone sync pull' to decrypt",
             path.name,
         )

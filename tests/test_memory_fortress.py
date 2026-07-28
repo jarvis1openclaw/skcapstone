@@ -1,4 +1,4 @@
-"""Tests for Memory Fortress — integrity sealing, encryption, tamper alerts."""
+"""Tests for Memory Fortress - integrity sealing, encryption, tamper alerts."""
 
 from __future__ import annotations
 

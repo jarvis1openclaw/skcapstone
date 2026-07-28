@@ -140,5 +140,5 @@ class TestAgentRuntime:
             loader = runtime.load_skills(agent="global")
 
         if loader is not None:
-            # SKSkills is installed — verify the skill was loaded
+            # SKSkills is installed - verify the skill was loaded
             assert runtime.manifest.skills.loaded >= 0

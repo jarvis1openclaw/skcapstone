@@ -35,11 +35,11 @@ def _require_linux() -> None:
 SERVICE_NAME = "skcapstone.service"
 TEMPLATE_NAME = "skcapstone@.service"
 # OnFailure= hook unit referenced by both the template and legacy service.
-# Copied alongside the main unit (not enabled/started directly — systemd
+# Copied alongside the main unit (not enabled/started directly - systemd
 # instantiates it on demand when a service enters the failed state).
 ALERT_TEMPLATE = "skcapstone-alert@.service"
 # Retired unit (card 36d11ec3). The old skcapstone-api.socket hardcoded
-# 127.0.0.1:7777 and matched no real service — the daemon binds its own
+# 127.0.0.1:7777 and matched no real service - the daemon binds its own
 # per-agent status-API port (see AGENT_PORTS) and never used systemd socket
 # activation. It is no longer installed (absent from ALL_UNITS), but is still
 # removed on uninstall so hosts that installed the old unit get cleaned up.
@@ -406,7 +406,7 @@ MemoryHigh=3G
 MemoryMax=4G
 WatchdogSec=120
 
-# Security hardening (relaxed — matches the canonical top-level units).
+# Security hardening (relaxed - matches the canonical top-level units).
 # ProtectSystem=strict / ProtectHome=read-only were removed on purpose: they
 # fail-closed if any ReadWritePaths dir is missing on the host, which stops the
 # daemon from ever starting. Keep only the directives that are safe with the

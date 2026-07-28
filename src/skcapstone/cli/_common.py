@@ -46,7 +46,7 @@ def apply_agent_override(agent: str) -> None:
 
     Only mutates SKCAPSTONE_AGENT so that agent_home() resolves to
     the correct per-agent directory. Does NOT mutate AGENT_HOME
-    (the shared root) — that would break agent_home() (double
+    (the shared root) - that would break agent_home() (double
     nesting) and shared_home() (wrong path).
 
     Args:

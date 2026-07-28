@@ -1,4 +1,4 @@
-"""Tests for the session skills bridge — wiring SKSkills into agent runtime sessions."""
+"""Tests for the session skills bridge - wiring SKSkills into agent runtime sessions."""
 
 import json
 import os

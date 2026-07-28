@@ -1,5 +1,5 @@
 """
-Sub-agent Spawner — spin up task-specific agents on correct nodes.
+Sub-agent Spawner - spin up task-specific agents on correct nodes.
 
 Unlike the TeamEngine which deploys full teams from blueprints, the
 spawner creates lightweight single-purpose agents for specific tasks.

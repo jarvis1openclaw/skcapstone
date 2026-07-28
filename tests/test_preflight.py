@@ -481,7 +481,7 @@ class TestPreflightCheckerRunAll:
     def test_ok_false_on_critical_failure(self, tmp_path: Path) -> None:
         """If home dirs missing and no identity, ok should be False."""
         checker = PreflightChecker(home=tmp_path)
-        # No identity, no dirs — critical failures expected
+        # No identity, no dirs - critical failures expected
         summary = checker.run_all()
         assert isinstance(summary["ok"], bool)
         # At minimum, critical_failures + failures are ints

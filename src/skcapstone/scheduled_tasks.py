@@ -5,12 +5,12 @@ Runs a single daemon thread that wakes up every TICK_INTERVAL seconds,
 checks which tasks are due, and fires their callbacks.
 
 Built-in recurring tasks:
-    - heartbeat_pulse        — every 30 seconds
-    - backend_reprobe        — every 5 minutes
-    - memory_promotion_sweep — every hour
-    - profile_freshness_check — every 24 hours
+    - heartbeat_pulse        - every 30 seconds
+    - backend_reprobe        - every 5 minutes
+    - memory_promotion_sweep - every hour
+    - profile_freshness_check - every 24 hours
 
-Dreaming moved to a jobs.yaml config job (dreaming-reflection) on 2026-07-09 —
+Dreaming moved to a jobs.yaml config job (dreaming-reflection) on 2026-07-09 -
 see docs/superpowers/plans/2026-07-09-dreaming-skscheduler-migration.md.
 
 Usage:
@@ -72,7 +72,7 @@ class ScheduledTask:
         """Return True if the task interval has elapsed since last_run.
 
         A task with no prior run is always considered due, unless
-        ``delay_first_run`` is set — in that case the first run is
+        ``delay_first_run`` is set - in that case the first run is
         deferred by that many seconds from process start.
 
         Args:
@@ -193,7 +193,7 @@ class TaskScheduler:
         )
         self._thread.start()
         logger.info(
-            "Task scheduler started — %d task(s), tick=%.0fs",
+            "Task scheduler started - %d task(s), tick=%.0fs",
             len(self._tasks),
             self._tick_interval,
         )
@@ -288,7 +288,7 @@ class TaskScheduler:
         Each due job is dispatched to its own short-lived daemon thread so
         the tick returns immediately.  Long-running jobs (e.g. ``agent``
         type, timeout up to 900 s) therefore never block the scheduler daemon
-        thread — which also drives heartbeats and all built-in tasks.
+        thread - which also drives heartbeats and all built-in tasks.
 
         The due-check is intentionally kept in the tick thread (it is cheap).
         The overlap lock is acquired *inside* the worker thread so it spans
@@ -297,7 +297,7 @@ class TaskScheduler:
         Note: because ``record_run`` is called asynchronously inside the
         worker, the next tick may evaluate the same job as "due" before
         ``record_run`` completes.  The per-job overlap lock prevents a second
-        concurrent execution in that window — the second worker acquires
+        concurrent execution in that window - the second worker acquires
         ``got=False`` and returns immediately.  :class:`SchedulerState` uses
         a ``threading.Lock`` so concurrent ``record_run`` calls are safe.
 
@@ -328,7 +328,7 @@ class TaskScheduler:
         :class:`~skcapstone.scheduler_state.SchedulerState`.
 
         If the lock cannot be obtained the method returns immediately without
-        running or recording — this is the safe path when the previous run is
+        running or recording - this is the safe path when the previous run is
         still in progress (which can happen if a job's execution time exceeds
         one tick interval).
 
@@ -341,7 +341,7 @@ class TaskScheduler:
         """
         with self._job_runner.lock(job) as got:
             if not got:
-                logger.debug("job '%s' still running — skip", job.name)
+                logger.debug("job '%s' still running - skip", job.name)
                 return
             # Jitter: random splay before dispatch so fleet nodes sharing a cron
             # slot don't stampede a shared resource (LLM endpoint, registry, etc).
@@ -356,7 +356,7 @@ class TaskScheduler:
                     break
                 if i < attempts - 1:
                     logger.warning(
-                        "job '%s' attempt %d/%d failed: %s — retrying",
+                        "job '%s' attempt %d/%d failed: %s - retrying",
                         job.name,
                         i + 1,
                         attempts,
@@ -382,7 +382,7 @@ class TaskScheduler:
         Policy values: ``off`` (default), ``on_failure``, ``on_success``,
         ``always``.  Sends the job name, status, attempt count, and a tail of
         the captured output to Chef's Telegram via the ``sk-alert`` primitive.
-        Never raises — notification failure must not break the scheduler.
+        Never raises - notification failure must not break the scheduler.
 
         Args:
             job: The job that ran.
@@ -409,7 +409,7 @@ class TaskScheduler:
         alert = shutil.which("sk-alert") or os.path.expanduser("~/.skenv/bin/sk-alert")
         try:
             subprocess.run([alert, "-l", level, msg], timeout=30, check=False)
-        except Exception as exc:  # noqa: BLE001 — notify must never break the loop
+        except Exception as exc:  # noqa: BLE001 - notify must never break the loop
             logger.warning("notify failed for job '%s': %s", job.name, exc)
 
     # ------------------------------------------------------------------
@@ -417,7 +417,7 @@ class TaskScheduler:
     # ------------------------------------------------------------------
 
     def _run(self) -> None:
-        """Main scheduler loop — ticks every TICK_INTERVAL seconds."""
+        """Main scheduler loop - ticks every TICK_INTERVAL seconds."""
         while not self._stop_event.is_set():
             now = datetime.now(timezone.utc)
             with self._lock:
@@ -475,7 +475,7 @@ def make_memory_promotion_task(home: Path) -> Callable[[], None]:
 
     def _run() -> None:
         if _running.is_set():
-            logger.debug("Memory promotion sweep already running — skipping")
+            logger.debug("Memory promotion sweep already running - skipping")
             return
         _running.set()
         t = threading.Thread(
@@ -523,7 +523,7 @@ def make_heartbeat_task(
 
     Args:
         beacon: HeartbeatBeacon instance (or None).
-        consciousness_active_fn: Zero-arg callable returning bool — whether
+        consciousness_active_fn: Zero-arg callable returning bool - whether
             the consciousness loop is currently active.
     """
 
@@ -563,7 +563,7 @@ def make_profile_freshness_task(home: Path, max_age_days: int = 7) -> Callable[[
             age_days = (now - mtime).days
             if age_days > max_age_days:
                 warnings.append(
-                    f"identity.json is {age_days}d old — consider re-running 'skcapstone init'"
+                    f"identity.json is {age_days}d old - consider re-running 'skcapstone init'"
                 )
 
         # Model profile files
@@ -579,7 +579,7 @@ def make_profile_freshness_task(home: Path, max_age_days: int = 7) -> Callable[[
             for msg in warnings:
                 logger.warning("Profile freshness: %s", msg)
         else:
-            logger.debug("Profile freshness check passed — all profiles current")
+            logger.debug("Profile freshness check passed - all profiles current")
 
     return _run
 
@@ -652,7 +652,7 @@ def build_scheduler(
 ) -> TaskScheduler:
     """Build and register all standard scheduled tasks.
 
-    Tasks registered (in priority order — shortest interval first):
+    Tasks registered (in priority order - shortest interval first):
 
     +--------------------------+------------+
     | Task                     | Interval   |
@@ -672,7 +672,7 @@ def build_scheduler(
 
     Args:
         home: Agent home directory.
-        stop_event: Daemon stop event — scheduler thread exits when set.
+        stop_event: Daemon stop event - scheduler thread exits when set.
         consciousness_loop: Optional ConsciousnessLoop for backend re-probe.
         beacon: Optional HeartbeatBeacon for heartbeat pulse.
         sync_watcher: Optional SyncWatcher for inbox polling fallback.
@@ -704,7 +704,7 @@ def build_scheduler(
             callback=make_sync_inbox_scan_task(sync_watcher),
         )
     except ImportError:
-        logger.debug("sync_watcher not available — sync_inbox_scan task skipped")
+        logger.debug("sync_watcher not available - sync_inbox_scan task skipped")
 
     scheduler.register(
         name="backend_reprobe",
@@ -725,7 +725,7 @@ def build_scheduler(
         callback=make_profile_freshness_task(home),
     )
 
-    # Service health check — pings Qdrant, FalkorDB, Syncthing, daemons
+    # Service health check - pings Qdrant, FalkorDB, Syncthing, daemons
     try:
         from .service_health import make_service_health_task
 
@@ -735,9 +735,9 @@ def build_scheduler(
             callback=make_service_health_task(),
         )
     except ImportError:
-        logger.debug("service_health not available — service_health_check task skipped")
+        logger.debug("service_health not available - service_health_check task skipped")
 
-    # ITIL escalation check — SLA breach detection every 5 minutes
+    # ITIL escalation check - SLA breach detection every 5 minutes
     try:
         from . import SHARED_ROOT
 
@@ -753,7 +753,7 @@ def build_scheduler(
             callback=make_itil_auto_close_task(shared),
         )
     except Exception:
-        logger.debug("ITIL scheduled tasks not available — skipped")
+        logger.debug("ITIL scheduled tasks not available - skipped")
 
     import socket
 

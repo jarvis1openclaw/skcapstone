@@ -1,7 +1,7 @@
 """Lightweight in-process activity bus for the SKCapstone daemon.
 
 Stores the last 100 events in a thread-safe deque and fans out live
-events to registered SSE client queues.  No external dependencies —
+events to registered SSE client queues.  No external dependencies -
 stdlib only.
 
 Usage::

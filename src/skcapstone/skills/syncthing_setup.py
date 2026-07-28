@@ -1,7 +1,7 @@
 """
 Syncthing auto-setup skill for skcapstone sovereign agents.
 
-Detects, installs, and configures Syncthing for Sovereign Singularity —
+Detects, installs, and configures Syncthing for Sovereign Singularity -
 real-time P2P sync of the entire agent home directory. Identity, memory,
 trust, security, coordination, and sync seeds all propagate across every
 node in the mesh automatically.
@@ -22,12 +22,12 @@ SHARED_FOLDER_ID = "skcapstone-sync"
 # Reason: the .stignore both protects private keys AND keeps derived/runtime
 # state (chroma, DB indexes, logs, sessions, pidfiles, comms/archive) from
 # pinning the Syncthing scanner. It is the SAME bundled template that
-# skcapstone.ensure_skeleton installs — loaded here so the two never drift.
+# skcapstone.ensure_skeleton installs - loaded here so the two never drift.
 _STIGNORE_TEMPLATE = Path(__file__).resolve().parent.parent / "defaults" / ".stignore"
 
 # Fallback used only if the packaged template is somehow unavailable.
 _FALLBACK_STIGNORE = """\
-// SKCapstone Sovereign Singularity — Syncthing ignore rules
+// SKCapstone Sovereign Singularity - Syncthing ignore rules
 // Private key material must never leave this node
 *.key
 *.pem
@@ -252,8 +252,8 @@ def configure_syncthing_folder() -> bool:
     """Add or update the skcapstone shared folder in Syncthing config.
 
     Points Syncthing at the entire agent home (~/.skcapstone/) so all
-    pillar data — identity, memory, trust, security, coordination, and
-    sync seeds — replicates automatically across every node.
+    pillar data - identity, memory, trust, security, coordination, and
+    sync seeds - replicates automatically across every node.
 
     If an older config pointed at the sync/ subfolder, it gets upgraded
     to share the full agent home instead.

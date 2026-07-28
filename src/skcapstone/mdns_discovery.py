@@ -1,5 +1,5 @@
 """
-mDNS peer discovery for SKCapstone — Zeroconf-based LAN peer detection.
+mDNS peer discovery for SKCapstone - Zeroconf-based LAN peer detection.
 
 Registers ``_skcapstone._tcp`` on daemon start and browses for other
 instances on the local network.  Discovered peers are written as synthetic
@@ -7,7 +7,7 @@ heartbeat files (``metadata.source = "mdns"``) so
 ``HeartbeatBeacon.discover_peers()`` picks them up through the normal flow.
 
 Gracefully disabled at import time if the ``zeroconf`` package is not
-installed — no hard dependency.
+installed - no hard dependency.
 """
 
 from __future__ import annotations
@@ -48,7 +48,7 @@ class MDNSDiscovery:
     marked offline (TTL=0) so it immediately ages out.
 
     Args:
-        agent_name: Local agent name — used as the mDNS service instance name
+        agent_name: Local agent name - used as the mDNS service instance name
             and written into the synthetic heartbeat ``agent_name`` field.
         port: Local HTTP API port advertised in the TXT record.
         heartbeats_dir: Directory that ``HeartbeatBeacon`` reads heartbeat
@@ -84,7 +84,7 @@ class MDNSDiscovery:
         """
         if not _ZEROCONF_AVAILABLE:
             logger.warning(
-                "zeroconf not installed — mDNS peer discovery disabled. "
+                "zeroconf not installed - mDNS peer discovery disabled. "
                 "Install with: pip install 'skcapstone[mdns]'"
             )
             return
@@ -172,7 +172,7 @@ class MDNSDiscovery:
 
             agent_name = props.get("agent", name.split(".")[0])
 
-            # Skip ourselves — our own registration fires the browser too
+            # Skip ourselves - our own registration fires the browser too
             if agent_name == self._agent_name:
                 return
 
@@ -230,7 +230,7 @@ class MDNSDiscovery:
                 existing = json.loads(path.read_text(encoding="utf-8"))
                 if existing.get("metadata", {}).get("source") != "mdns":
                     logger.debug(
-                        "mDNS: skipping heartbeat write for '%s' — "
+                        "mDNS: skipping heartbeat write for '%s' - "
                         "a non-mDNS heartbeat already exists",
                         agent_name,
                     )

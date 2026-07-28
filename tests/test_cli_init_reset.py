@@ -10,7 +10,7 @@ from click.testing import CliRunner
 from skcapstone.cli import main
 
 # ---------------------------------------------------------------------------
-# skcapstone init — alias for onboard
+# skcapstone init - alias for onboard
 # ---------------------------------------------------------------------------
 
 
@@ -157,6 +157,6 @@ class TestReset:
         )
         assert result.exit_code == 0
         assert "backup" in result.output.lower()
-        # Rich may wrap long paths — join lines before checking
+        # Rich may wrap long paths - join lines before checking
         joined = result.output.replace("\n", "")
         assert ".skcapstone-backup-" in joined

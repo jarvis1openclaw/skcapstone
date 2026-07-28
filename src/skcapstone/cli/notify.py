@@ -53,7 +53,7 @@ def register_notify_commands(main: click.Group) -> None:
             )
         else:
             console.print(
-                "\n  [yellow]Notification not dispatched[/] — no supported notification "
+                "\n  [yellow]Notification not dispatched[/] - no supported notification "
                 "system found (gi.repository.Notify / notify-send / osascript).\n"
             )
 
@@ -113,7 +113,7 @@ def register_notify_commands(main: click.Group) -> None:
         table.add_column("Content", max_width=70)
 
         for entry in results:
-            created = entry.created_at.strftime("%Y-%m-%d %H:%M:%S") if entry.created_at else "—"
+            created = entry.created_at.strftime("%Y-%m-%d %H:%M:%S") if entry.created_at else "-"
             preview = entry.content[:100] + ("..." if len(entry.content) > 100 else "")
             table.add_row(entry.memory_id, created, preview)
 

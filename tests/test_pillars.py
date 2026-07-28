@@ -140,8 +140,8 @@ class TestSecurityPillar:
         security_dir.mkdir(parents=True, exist_ok=True)
         log = security_dir / "audit.log"
         log.write_text(
-            "[2026-02-22T12:00:00+00:00] INIT — old format\n"
-            "[2026-02-22T12:01:00+00:00] AUTH — legacy auth\n"
+            "[2026-02-22T12:00:00+00:00] INIT - old format\n"
+            "[2026-02-22T12:01:00+00:00] AUTH - legacy auth\n"
         )
 
         entries = read_audit_log(tmp_agent_home)

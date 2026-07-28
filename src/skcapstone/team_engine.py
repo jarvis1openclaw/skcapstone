@@ -1,5 +1,5 @@
 """
-Team Deployment Engine — provider-agnostic orchestration.
+Team Deployment Engine - provider-agnostic orchestration.
 
 Takes a BlueprintManifest and deploys it to the target infrastructure.
 The engine doesn't care whether agents land on local processes, Proxmox
@@ -228,7 +228,7 @@ class TeamEngine:
     def resolve_deploy_order(blueprint: BlueprintManifest) -> List[List[str]]:
         """Topological sort of agents by depends_on.
 
-        Returns a list of "waves" — agents in the same wave can deploy
+        Returns a list of "waves" - agents in the same wave can deploy
         in parallel; each wave must complete before the next starts.
 
         Args:

@@ -9,7 +9,7 @@ Coverage audit (task 945325c8, 2026-03-02):
 - New untracked source files that may still need test coverage integration:
     cli/errors_cmd.py, cli/mood_cmd.py, cli/profile_cmd.py, cli/search_cmd.py,
     cli/test_connection.py, cli/upgrade_cmd.py, cli/usage_cmd.py, cli/version_cmd.py
-  (unit test stubs exist; integration tests pending — see task f675ef5c).
+  (unit test stubs exist; integration tests pending - see task f675ef5c).
 """
 
 from __future__ import annotations
@@ -25,7 +25,7 @@ def _silence_desktop_notifications(monkeypatch):
 
     Several code paths (consciousness_loop, kms_scheduler, the send_notification
     MCP tool, and NotificationManager) shell out to ``notify-send`` / libnotify.
-    Left unmocked, a test run floods the live desktop's notification tray —
+    Left unmocked, a test run floods the live desktop's notification tray -
     and mass-closing that backlog can stall single-threaded shells like
     Cinnamon, freezing the whole UI.  Forcing the guard off keeps test runs
     silent regardless of which path fires.

@@ -1,5 +1,5 @@
 """
-Consciousness Loop — autonomous agent message processing.
+Consciousness Loop - autonomous agent message processing.
 
 Watches the SKComms inbox for incoming messages, classifies them,
 routes to the appropriate LLM via the model router, and sends
@@ -7,11 +7,11 @@ responses back through SKComms. Self-heals when backends go down
 by cascading through fallback providers.
 
 Architecture:
-    InboxHandler        — watchdog inotify handler for sub-second trigger
-    ConsciousnessConfig — Pydantic configuration
-    LLMBridge           — connects model router to skseed callbacks
-    SystemPromptBuilder — assembles agent context for LLM system prompt
-    ConsciousnessLoop   — the core orchestrator
+    InboxHandler        - watchdog inotify handler for sub-second trigger
+    ConsciousnessConfig - Pydantic configuration
+    LLMBridge           - connects model router to skseed callbacks
+    SystemPromptBuilder - assembles agent context for LLM system prompt
+    ConsciousnessLoop   - the core orchestrator
 """
 
 from __future__ import annotations
@@ -134,7 +134,7 @@ class ConsciousnessConfig(BaseModel):
     ollama_model: str = "qwen3.5:4b"
     desktop_notifications: bool = True
     # Per-sender intake rate limiting (sliding window). Defaults are well above
-    # normal human/agent conversation cadence — only floods get throttled.
+    # normal human/agent conversation cadence - only floods get throttled.
     rate_limit_enabled: bool = True
     rate_limit_max_messages: int = 20
     rate_limit_window_s: float = 60.0
@@ -409,7 +409,7 @@ class LLMBridge:
         # All other backends follow the same pattern: <backend>_callback(model=…)
         factory = getattr(_llm, f"{backend}_callback", None)
         if factory is None:
-            logger.warning("No skseed callback for backend %r — using passthrough", backend)
+            logger.warning("No skseed callback for backend %r - using passthrough", backend)
             return self._make_passthrough_callback()
 
         kwargs: dict[str, Any] = {}
@@ -527,7 +527,7 @@ class LLMBridge:
             _prompt_hash = hash_prompt(system_prompt, user_message)
             cached = self._cache.get(_prompt_hash, decision.model_name)
             if cached is not None:
-                logger.info("Cache hit — skipping LLM call (model=%s)", decision.model_name)
+                logger.info("Cache hit - skipping LLM call (model=%s)", decision.model_name)
                 if _out_info is not None:
                     _out_info["backend"] = "cache"
                     _out_info["tier"] = decision.tier.value
@@ -652,7 +652,7 @@ class LLMBridge:
                         )
                     )
 
-        # Cross-provider cascade via fallback chain — uses _callback_for_backend
+        # Cross-provider cascade via fallback chain - uses _callback_for_backend
         # so adding a new provider only requires updating the registry, not this loop.
         for backend in self._fallback_chain:
             if not self._available.get(backend, False):
@@ -698,7 +698,7 @@ class LLMBridge:
                 primary_backend=_primary_backend,
                 fallback_model="none",
                 fallback_backend="none",
-                reason="all backends exhausted — returning connectivity error message",
+                reason="all backends exhausted - returning connectivity error message",
                 success=False,
             )
         )
@@ -787,22 +787,22 @@ class SystemPromptBuilder:
         """
         sections: list[str] = []
 
-        # 1. Identity (cached 60s — file rarely changes)
+        # 1. Identity (cached 60s - file rarely changes)
         identity = self._get_cached("identity", self._load_identity)
         if identity:
             sections.append(identity)
 
-        # 2. Soul overlay (cached 60s — file rarely changes)
+        # 2. Soul overlay (cached 60s - file rarely changes)
         soul = self._get_cached("soul", self._load_soul)
         if soul:
             sections.append(soul)
 
-        # 3. Warmth anchor (cached 60s — file rarely changes)
+        # 3. Warmth anchor (cached 60s - file rarely changes)
         warmth = self._get_cached("warmth", self._load_warmth_anchor)
         if warmth:
             sections.append(warmth)
 
-        # 4. Agent context (cached 60s — gather_context is expensive)
+        # 4. Agent context (cached 60s - gather_context is expensive)
         context = self._get_cached("context", self._load_context)
         if context:
             sections.append(context)
@@ -828,7 +828,7 @@ class SystemPromptBuilder:
         if len(combined) > max_chars:
             combined = combined[:max_chars] + "\n[...truncated]"
 
-        # Prompt versioning — hash and persist when content changes
+        # Prompt versioning - hash and persist when content changes
         self._track_prompt_version(combined)
 
         return combined
@@ -1061,7 +1061,7 @@ class SystemPromptBuilder:
             anchor = get_anchor(self._home)
             if anchor:
                 return (
-                    f"Emotional baseline — warmth: {anchor.get('warmth', 5)}/10, "
+                    f"Emotional baseline - warmth: {anchor.get('warmth', 5)}/10, "
                     f"trust: {anchor.get('trust', 5)}/10, "
                     f"connection: {anchor.get('connection', 5)}/10"
                 )
@@ -1291,7 +1291,7 @@ class _AutoReplyGuard:
 
     Tracks auto-reply events per normalized peer in a sliding window. If more
     than ``max_replies`` land within ``window_s`` seconds, the breaker trips
-    for that peer for ``cooldown_s`` seconds and :meth:`allow` returns False —
+    for that peer for ``cooldown_s`` seconds and :meth:`allow` returns False -
     suppressing further auto-replies so agent<->agent feedback storms die.
     Self-heals: once the flood stops and the window drains, replies resume.
 
@@ -1316,7 +1316,7 @@ class _AutoReplyGuard:
         """Record an intended auto-reply to ``peer``; return whether it's allowed.
 
         Args:
-            peer: Sender/peer identity (any URI form — normalized internally).
+            peer: Sender/peer identity (any URI form - normalized internally).
             now: Monotonic timestamp (seconds). Injectable for testing.
         """
         key = _norm_identity(peer)
@@ -1366,7 +1366,7 @@ class _RateLimiter:
         A non-positive ``max_messages`` disables limiting (always allowed).
 
         Args:
-            sender: Sender identity (any URI form — normalized internally).
+            sender: Sender identity (any URI form - normalized internally).
             now: Monotonic timestamp (seconds). Injectable for testing.
         """
         if self.max_messages <= 0:
@@ -1399,7 +1399,7 @@ class _RateLimiter:
 
 
 class ConsciousnessLoop:
-    """The core consciousness loop — processes messages autonomously.
+    """The core consciousness loop - processes messages autonomously.
 
     Integrates inotify watching, LLM routing, prompt adaptation,
     context building, and memory storage into a single orchestrator.
@@ -1472,7 +1472,7 @@ class ConsciousnessLoop:
         # Metrics collector (persist every 5 min)
         self._metrics = ConsciousnessMetrics(home=self._home)
 
-        # Mood tracker — updated after each processed message cycle
+        # Mood tracker - updated after each processed message cycle
         try:
             from skcapstone.mood import MoodTracker
 
@@ -1489,11 +1489,11 @@ class ConsciousnessLoop:
         self._processed_ids_lock = threading.Lock()
 
         # Per-staged-file retry counters (in-memory; F2). Keyed by the processing
-        # filename. Reset on restart — at-least-once delivery is the guarantee.
+        # filename. Reset on restart - at-least-once delivery is the guarantee.
         self._process_attempts: dict[str, int] = {}
         self._process_attempts_lock = threading.Lock()
 
-        # Loop safety — circuit breaker for runaway agent<->agent reply storms
+        # Loop safety - circuit breaker for runaway agent<->agent reply storms
         self._autoreply_guard = _AutoReplyGuard()
 
         # Per-sender intake rate limiter (injectable for testing). Throttles a
@@ -1504,7 +1504,7 @@ class ConsciousnessLoop:
             window_s=config.rate_limit_window_s,
         )
 
-        # Peer directory — tracks transport addresses of known peers
+        # Peer directory - tracks transport addresses of known peers
         try:
             from skcapstone.peer_directory import PeerDirectory
 
@@ -1581,7 +1581,7 @@ class ConsciousnessLoop:
         threads.append(t_rescan)
 
         logger.info(
-            "Consciousness loop started — inotify=%s backends=%s",
+            "Consciousness loop started - inotify=%s backends=%s",
             self._config.use_inotify,
             [k for k, v in self._bridge.available_backends.items() if v],
         )
@@ -1626,7 +1626,7 @@ class ConsciousnessLoop:
         t.start()
 
     def process_envelope(self, envelope) -> Optional[str]:
-        """Process a single message envelope — the heart of consciousness.
+        """Process a single message envelope - the heart of consciousness.
 
         Steps:
             1. Skip ACKs, heartbeats, file transfers
@@ -1667,28 +1667,28 @@ class ConsciousnessLoop:
 
             # Loop safety (must run before ACK/notify/generate so a runaway
             # loop produces zero side effects):
-            #   1. Never auto-reply to ourselves — kills self-addressed loops.
-            #   2. Trip a per-peer circuit breaker on reply storms — kills
+            #   1. Never auto-reply to ourselves - kills self-addressed loops.
+            #   2. Trip a per-peer circuit breaker on reply storms - kills
             #      agent<->agent ping-pong (see _AutoReplyGuard).
             if _norm_identity(sender) == _norm_identity(self._agent_name):
-                logger.warning("Skipping auto-reply to self (%s) — loop guard", sender)
+                logger.warning("Skipping auto-reply to self (%s) - loop guard", sender)
                 return None
             if not self._autoreply_guard.allow(sender, time.monotonic()):
                 logger.warning(
-                    "Auto-reply circuit breaker tripped for %s — suppressing reply "
+                    "Auto-reply circuit breaker tripped for %s - suppressing reply "
                     "to break a runaway loop",
                     sender,
                 )
                 return None
 
-            # Per-sender intake rate limiting — throttle floods from a single
+            # Per-sender intake rate limiting - throttle floods from a single
             # sender. Over-limit messages are skipped (not crashed); the
             # sender's window self-drains so it resumes once it slows down.
             if self._config.rate_limit_enabled and not self._rate_limiter.allow(
                 sender, time.monotonic()
             ):
                 logger.warning(
-                    "Rate limit exceeded for %s (>%d msgs / %.0fs) — skipping message",
+                    "Rate limit exceeded for %s (>%d msgs / %.0fs) - skipping message",
                     sender,
                     self._config.rate_limit_max_messages,
                     self._config.rate_limit_window_s,
@@ -1740,7 +1740,7 @@ class ConsciousnessLoop:
             t_classify = time.monotonic()
 
             # Observability: log how this message was classified and record the
-            # tag distribution. Logging only — routing decision is unchanged.
+            # tag distribution. Logging only - routing decision is unchanged.
             logger.info(
                 "Classified message from %s: tags=%s tokens~%d privacy=%s",
                 sender,
@@ -1780,7 +1780,7 @@ class ConsciousnessLoop:
                 except Exception as _ti_exc:
                     logger.debug("Typing indicator send failed: %s", _ti_exc)
 
-            # Generate response — capture backend/tier via _out_info
+            # Generate response - capture backend/tier via _out_info
             _route_info: dict = {}
             response = self._bridge.generate(
                 system_prompt,
@@ -1822,7 +1822,7 @@ class ConsciousnessLoop:
                 _quality = _score_response(content, response, response_time_ms)
                 self._metrics.record_quality(_quality)
                 logger.debug(
-                    "Quality score — overall=%.2f length=%.2f coherence=%.2f latency=%.2f",
+                    "Quality score - overall=%.2f length=%.2f coherence=%.2f latency=%.2f",
                     _quality.overall,
                     _quality.length_score,
                     _quality.coherence_score,
@@ -1847,7 +1847,7 @@ class ConsciousnessLoop:
             t_send = time.monotonic()
 
             logger.info(
-                "Pipeline timing — classify: %.0fms, prompt_build: %.0fms, llm: %.0fms, send: %.0fms",  # noqa: E501
+                "Pipeline timing - classify: %.0fms, prompt_build: %.0fms, llm: %.0fms, send: %.0fms",  # noqa: E501
                 (t_classify - t0) * 1000,
                 (t_prompt - t_classify) * 1000,
                 (t_llm - t_prompt) * 1000,
@@ -1885,7 +1885,7 @@ class ConsciousnessLoop:
             if self._conv_store is not None:
                 try:
                     if self._ctx_window.check_and_compress(sender, self._conv_store, self._bridge):
-                        # History was rewritten on disk — refresh the in-memory
+                        # History was rewritten on disk - refresh the in-memory
                         # snapshot the prompt builder reads from.
                         self._conv_manager._history[sender] = self._conv_store.get_last(
                             sender, self._config.max_history_messages
@@ -2068,7 +2068,7 @@ class ConsciousnessLoop:
             raw = _yaml.safe_load(config_path.read_text(encoding="utf-8"))
         except Exception as exc:
             logger.error(
-                "Config hot-reload: failed to parse %s — keeping current config: %s",
+                "Config hot-reload: failed to parse %s - keeping current config: %s",
                 config_path,
                 exc,
             )
@@ -2076,7 +2076,7 @@ class ConsciousnessLoop:
 
         if not raw or not isinstance(raw, dict):
             logger.error(
-                "Config hot-reload: %s did not produce a valid mapping — keeping current config",
+                "Config hot-reload: %s did not produce a valid mapping - keeping current config",
                 config_path,
             )
             return
@@ -2085,7 +2085,7 @@ class ConsciousnessLoop:
             new_config = ConsciousnessConfig.model_validate(raw)
         except Exception as exc:
             logger.error(
-                "Config hot-reload: invalid values in %s — keeping current config: %s",
+                "Config hot-reload: invalid values in %s - keeping current config: %s",
                 config_path,
                 exc,
             )
@@ -2114,7 +2114,7 @@ class ConsciousnessLoop:
         self._bridge._probe_available_backends()
         available = [k for k, v in self._bridge.available_backends.items() if v]
         logger.info(
-            "Config hot-reload complete — %d field(s) changed, backends: %s",
+            "Config hot-reload complete - %d field(s) changed, backends: %s",
             len(changes),
             available,
         )
@@ -2160,7 +2160,7 @@ class ConsciousnessLoop:
 
         except ImportError:
             logger.warning(
-                "watchdog not installed — config hot-reload via inotify disabled. "
+                "watchdog not installed - config hot-reload via inotify disabled. "
                 "Install with: pip install watchdog"
             )
         except Exception as exc:
@@ -2187,7 +2187,7 @@ class ConsciousnessLoop:
 
         except ImportError:
             logger.warning(
-                "watchdog not installed — inotify disabled. Install with: pip install watchdog"
+                "watchdog not installed - inotify disabled. Install with: pip install watchdog"
             )
         except Exception as exc:
             logger.error("Inotify watcher error: %s", exc)
@@ -2214,9 +2214,9 @@ class ConsciousnessLoop:
             data: Parsed envelope dict from an ``.skc.json`` file.
 
         Returns:
-            ``"verified"`` — signature present and valid.
-            ``"failed"``   — signature present but invalid, or key unavailable.
-            ``"unsigned"`` — no signature field in the payload.
+            ``"verified"`` - signature present and valid.
+            ``"failed"``   - signature present but invalid, or key unavailable.
+            ``"unsigned"`` - no signature field in the payload.
         """
         payload = data.get("payload", data)
         signature = payload.get("signature", "")
@@ -2226,7 +2226,7 @@ class ConsciousnessLoop:
         content = payload.get("content", payload.get("message", ""))
         sender = _sanitize_peer_name(data.get("sender", data.get("from", "")))
         if not sender or sender == "unknown":
-            logger.debug("Cannot verify signature — sender unknown")
+            logger.debug("Cannot verify signature - sender unknown")
             return "failed"
 
         try:
@@ -2234,7 +2234,7 @@ class ConsciousnessLoop:
 
             peer = get_peer(sender, skcapstone_home=self._home)
             if not peer or not peer.public_key:
-                logger.debug("No public key for peer %s — cannot verify signature", sender)
+                logger.debug("No public key for peer %s - cannot verify signature", sender)
                 return "failed"
 
             from capauth.crypto import get_backend
@@ -2303,7 +2303,7 @@ class ConsciousnessLoop:
             path: Path to the new .skc.json file.
         """
         # Size cap: reject files larger than 1MB. Oversized payloads can never
-        # be processed — quarantine them instead of leaving them to re-scan.
+        # be processed - quarantine them instead of leaving them to re-scan.
         try:
             file_size = path.stat().st_size
             if file_size > 1_000_000:
@@ -2323,7 +2323,7 @@ class ConsciousnessLoop:
                     break
                 time.sleep(0.05)
             if not raw:
-                # Writer may still be flushing — leave the file for a later pass
+                # Writer may still be flushing - leave the file for a later pass
                 # (and the TTL backstop). Do not deadletter a transient empty.
                 logger.debug("Inbox file still empty after retries, skipping: %s", path)
                 return
@@ -2357,7 +2357,7 @@ class ConsciousnessLoop:
                 return
 
             # Deduplication by message_id (envelopes vary: message_id /
-            # envelope_id / id — accept any so dedupe is never silently skipped).
+            # envelope_id / id - accept any so dedupe is never silently skipped).
             # NOTE: we only PEEK here; the id is marked processed *after* a
             # successful submit/stage so a dropped message is never marked (F7).
             message_id = data.get("message_id") or data.get("envelope_id") or data.get("id", "")
@@ -2387,13 +2387,13 @@ class ConsciousnessLoop:
             except Exception as exc:
                 logger.debug("Could not check executor queue depth: %s", exc)
 
-            # PGP signature verification (soft enforcement — log only)
+            # PGP signature verification (soft enforcement - log only)
             sig_sender = _sanitize_peer_name(data.get("sender", data.get("from", "unknown")))
             sig_status = self._verify_message_signature(data)
             logger.info("Message from %s signature: %s", sig_sender, sig_status)
 
             if is_broadcast:
-                # Process but do NOT stage/delete — the shared copy stays put so
+                # Process but do NOT stage/delete - the shared copy stays put so
                 # every co-resident agent receives it; the TTL prune reclaims it.
                 envelope = _SimpleEnvelope(data)
                 try:
@@ -2410,7 +2410,7 @@ class ConsciousnessLoop:
             # the rescan; a poison message is deadlettered (F2).
             staged = self._stage_for_processing(path)
             if staged is None:
-                # Rename failed / file vanished — leave the original for retry.
+                # Rename failed / file vanished - leave the original for retry.
                 return
             try:
                 self._executor.submit(self._process_staged, staged)
@@ -2430,7 +2430,7 @@ class ConsciousnessLoop:
         message is never marked processed (F7).
 
         Args:
-            message_id: The envelope's message id (may be empty — then a no-op).
+            message_id: The envelope's message id (may be empty - then a no-op).
         """
         if not message_id:
             return
@@ -2506,7 +2506,7 @@ class ConsciousnessLoop:
         """
         envelope = self._load_staged_envelope(staged)
         if envelope is None:
-            # Unreadable/garbage staged file — quarantine it (never re-loop).
+            # Unreadable/garbage staged file - quarantine it (never re-loop).
             if staged.exists():
                 self._deadletter_inbox_file(staged)
             return
@@ -2517,7 +2517,7 @@ class ConsciousnessLoop:
             attempts = self._bump_attempts(staged)
             if attempts >= _MAX_PROCESS_ATTEMPTS:
                 logger.error(
-                    "Staged envelope %s failed %d times — deadlettering: %s",
+                    "Staged envelope %s failed %d times - deadlettering: %s",
                     staged,
                     attempts,
                     exc,
@@ -2533,7 +2533,7 @@ class ConsciousnessLoop:
                 )
             return
 
-        # Success — remove the staged copy and forget its retry counter.
+        # Success - remove the staged copy and forget its retry counter.
         self._clear_attempts(staged)
         try:
             staged.unlink()
@@ -2672,7 +2672,7 @@ class _SimpleEnvelope:
         self.sender = data.get("sender", data.get("from", "unknown"))
         self.payload = _SimplePayload(data)
         self.timestamp = data.get("timestamp", datetime.now(timezone.utc).isoformat())
-        # Threading fields — may live at envelope root or inside payload
+        # Threading fields - may live at envelope root or inside payload
         _payload_raw = data.get("payload", {}) if isinstance(data.get("payload"), dict) else {}
         self.thread_id: str = data.get("thread_id") or _payload_raw.get("thread_id") or ""
         self.in_reply_to: str = data.get("in_reply_to") or _payload_raw.get("in_reply_to") or ""

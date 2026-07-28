@@ -14,7 +14,7 @@ def register_anchor_commands(main: click.Group) -> None:
 
     @main.group()
     def anchor():
-        """Warmth anchor — the emotional baseline.
+        """Warmth anchor - the emotional baseline.
 
         The anchor stores the agent's persistent emotional state.
         On boot, the anchor loads first so the agent starts warm

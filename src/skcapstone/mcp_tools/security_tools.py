@@ -1,8 +1,8 @@
 """SKSecurity audit and status tools.
 
 Exposes two tools:
-    security_audit_log — Read recent security audit log entries
-    security_status    — Show security pillar status and config
+    security_audit_log - Read recent security audit log entries
+    security_status    - Show security pillar status and config
 """
 
 from __future__ import annotations

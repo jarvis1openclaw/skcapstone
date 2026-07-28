@@ -1,5 +1,5 @@
 """
-Memory Engine — the sovereign agent's persistent mind.
+Memory Engine - the sovereign agent's persistent mind.
 
 Store, search, recall, and manage memories across sessions and platforms.
 Every memory is a JSON file in ~/.skcapstone/memory/<layer>/. Memories
@@ -8,9 +8,9 @@ patterns and importance scores.
 
 Architecture:
     memory/
-    ├── short-term/   # Ephemeral — auto-expire after 72h if unused
-    ├── mid-term/     # Promoted — accessed 3+ times or importance >= 0.7
-    ├── long-term/    # Permanent — accessed 10+ times or importance >= 0.9
+    ├── short-term/   # Ephemeral - auto-expire after 72h if unused
+    ├── mid-term/     # Promoted - accessed 3+ times or importance >= 0.7
+    ├── long-term/    # Permanent - accessed 10+ times or importance >= 0.9
     └── index.json    # Full-text search index
 """
 
@@ -85,10 +85,10 @@ def _load_entry(path: Path) -> Optional[MemoryEntry]:
         MemoryEntry or None if the file is invalid.
     """
     # Known non-memory sidecars (e.g. render_scores.json) live in the tier dir
-    # but aren't MemoryEntry objects — skip them silently.
+    # but aren't MemoryEntry objects - skip them silently.
     if path.name in _NON_MEMORY_SIDECARS:
         return None
-    # Empty/truncated files (0 bytes) carry no recoverable memory — skip quietly
+    # Empty/truncated files (0 bytes) carry no recoverable memory - skip quietly
     # at debug level rather than warning on every load cycle.
     try:
         if path.stat().st_size == 0:
@@ -601,7 +601,7 @@ def _remove_from_index(home: Path, memory_id: str) -> None:
     from skmemory's SQLite ``index.db`` when present. Keeping index.db in step is
     what prevents "skmemory drift": archiving a memory moves its flat file out of
     the active tiers, so a lingering SQLite row would be reported as a phantom
-    orphan by ``skmemory health``/drift checks. Best-effort — a missing db, a
+    orphan by ``skmemory health``/drift checks. Best-effort - a missing db, a
     missing table, or a lock never blocks archival (the flat file is truth).
     """
     index = _load_index(home)

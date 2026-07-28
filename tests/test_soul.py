@@ -68,9 +68,9 @@ def professional_blueprint(tmp_path: Path) -> Path:
 
 ## Core Traits
 
-- **Diagnostic mindset** — Symptoms are clues
-- **Clinical empathy** — Cares deeply
-- **Evidence-driven** — Tests over assumptions
+- **Diagnostic mindset** - Symptoms are clues
+- **Clinical empathy** - Cares deeply
+- **Evidence-driven** - Tests over assumptions
 
 ---
 
@@ -89,10 +89,10 @@ def professional_blueprint(tmp_path: Path) -> Path:
 ## Decision Framework
 
 **Differential Diagnosis Process:**
-1. Subjective — What does the patient report?
-2. Objective — What do I observe?
-3. Assessment — Likely causes?
-4. Plan — Tests, treatments, follow-up
+1. Subjective - What does the patient report?
+2. Objective - What do I observe?
+3. Assessment - Likely causes?
+4. Plan - Tests, treatments, follow-up
 """
     path = tmp_path / "the-test-doctor.md"
     path.write_text(content)
@@ -633,9 +633,9 @@ vibe: Systematic, strategic, sees the big picture
 philosophy: Good architecture outlives the architect.
 emoji: "\U0001f3d7"
 core_traits:
-  - Systems thinking — sees connections others miss
-  - Strategic patience — knows when to build and when to wait
-  - Pattern recognition — applies lessons across domains
+  - Systems thinking - sees connections others miss
+  - Strategic patience - knows when to build and when to wait
+  - Pattern recognition - applies lessons across domains
 communication_style:
   patterns:
     - Draws diagrams before writing code

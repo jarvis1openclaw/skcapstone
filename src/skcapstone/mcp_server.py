@@ -1,77 +1,77 @@
 """
-SKCapstone MCP Server — sovereign agent capabilities via Model Context Protocol.
+SKCapstone MCP Server - sovereign agent capabilities via Model Context Protocol.
 
 Tool-agnostic: works with Cursor, Claude Code CLI, Claude Desktop,
 Windsurf, Aider, Cline, or any MCP client that speaks stdio.
 
 Tools:
-    agent_status    — Pillar states and consciousness level
-    memory_store    — Save content to SKMemory
-    memory_search   — Search memories by query
-    memory_recall   — Recall a specific memory by ID
-    send_message    — Send a message via SKComms
-    check_inbox     — Check for new SKComms messages
-    sync_push       — Push agent state to sync mesh
-    sync_pull       — Pull seeds from peers
-    coord_status    — Show coordination board
-    coord_claim     — Claim a task
-    coord_complete  — Complete a task
-    coord_create    — Create a new task
-    ritual          — Run the Memory Rehydration Ritual
-    soul_show       — Display the soul blueprint
-    journal_write   — Write a session journal entry
-    journal_read    — Read recent journal entries
-    anchor_show     — Display the warmth anchor
-    germination     — Show seed germination prompts
-    skchat_send     — Send a message via SKChat
-    skchat_inbox    — Check for SKChat messages
-    skchat_group_create — Create a group chat
-    skchat_group_send — Send to a group chat
-    trustee_health  — Health checks on deployed agents
-    trustee_restart — Restart failed agents
-    trustee_scale   — Scale agent instances up/down
-    trustee_rotate  — Snapshot + fresh redeploy
-    trustee_monitor — Single autonomous monitoring pass
-    trustee_logs    — Get agent log lines
-    trustee_deployments — List all deployments
-    heartbeat_pulse — Publish agent heartbeat beacon
-    heartbeat_peers — Discover peers in the mesh
-    heartbeat_health — Mesh health summary
-    heartbeat_find_capable — Find peers with a capability
-    file_send       — Send encrypted file to agent
-    file_receive    — Receive and reassemble transfer
-    file_list       — List all file transfers
-    file_status     — File transfer subsystem status
-    pubsub_publish  — Publish message to topic
-    pubsub_subscribe — Subscribe to topic pattern
-    pubsub_poll     — Poll for new messages
-    pubsub_topics   — List all topics
-    fortress_verify — Verify memory integrity seals
-    fortress_seal_existing — Seal unsealed memories
-    fortress_status — Memory fortress status
-    promoter_sweep  — Run memory promotion sweep
-    promoter_history — View promotion history
-    kms_status      — KMS key management status
-    kms_list_keys   — List all KMS keys
-    kms_rotate      — Rotate a KMS key
-    model_route     — Route task to optimal model tier/name
-    itil_incident_create — Create ITIL incident
-    itil_incident_update — Update incident status/severity
-    itil_incident_list   — List/filter incidents
-    itil_problem_create  — Create problem record
-    itil_problem_update  — Update problem/root cause
-    itil_change_propose  — Propose change (RFC)
-    itil_change_update   — Update change status
-    itil_cab_vote        — Submit CAB vote
-    itil_status          — ITIL dashboard
-    itil_kedb_search     — Search Known Error Database
+    agent_status    - Pillar states and consciousness level
+    memory_store    - Save content to SKMemory
+    memory_search   - Search memories by query
+    memory_recall   - Recall a specific memory by ID
+    send_message    - Send a message via SKComms
+    check_inbox     - Check for new SKComms messages
+    sync_push       - Push agent state to sync mesh
+    sync_pull       - Pull seeds from peers
+    coord_status    - Show coordination board
+    coord_claim     - Claim a task
+    coord_complete  - Complete a task
+    coord_create    - Create a new task
+    ritual          - Run the Memory Rehydration Ritual
+    soul_show       - Display the soul blueprint
+    journal_write   - Write a session journal entry
+    journal_read    - Read recent journal entries
+    anchor_show     - Display the warmth anchor
+    germination     - Show seed germination prompts
+    skchat_send     - Send a message via SKChat
+    skchat_inbox    - Check for SKChat messages
+    skchat_group_create - Create a group chat
+    skchat_group_send - Send to a group chat
+    trustee_health  - Health checks on deployed agents
+    trustee_restart - Restart failed agents
+    trustee_scale   - Scale agent instances up/down
+    trustee_rotate  - Snapshot + fresh redeploy
+    trustee_monitor - Single autonomous monitoring pass
+    trustee_logs    - Get agent log lines
+    trustee_deployments - List all deployments
+    heartbeat_pulse - Publish agent heartbeat beacon
+    heartbeat_peers - Discover peers in the mesh
+    heartbeat_health - Mesh health summary
+    heartbeat_find_capable - Find peers with a capability
+    file_send       - Send encrypted file to agent
+    file_receive    - Receive and reassemble transfer
+    file_list       - List all file transfers
+    file_status     - File transfer subsystem status
+    pubsub_publish  - Publish message to topic
+    pubsub_subscribe - Subscribe to topic pattern
+    pubsub_poll     - Poll for new messages
+    pubsub_topics   - List all topics
+    fortress_verify - Verify memory integrity seals
+    fortress_seal_existing - Seal unsealed memories
+    fortress_status - Memory fortress status
+    promoter_sweep  - Run memory promotion sweep
+    promoter_history - View promotion history
+    kms_status      - KMS key management status
+    kms_list_keys   - List all KMS keys
+    kms_rotate      - Rotate a KMS key
+    model_route     - Route task to optimal model tier/name
+    itil_incident_create - Create ITIL incident
+    itil_incident_update - Update incident status/severity
+    itil_incident_list   - List/filter incidents
+    itil_problem_create  - Create problem record
+    itil_problem_update  - Update problem/root cause
+    itil_change_propose  - Propose change (RFC)
+    itil_change_update   - Update change status
+    itil_cab_vote        - Submit CAB vote
+    itil_status          - ITIL dashboard
+    itil_kedb_search     - Search Known Error Database
 
 Invocation (all equivalent):
     skcapstone mcp serve                     # CLI entry point
     python -m skcapstone.mcp_server          # direct module
     bash skcapstone/scripts/mcp-serve.sh     # portable launcher
 
-Client configuration — use the launcher script for all clients:
+Client configuration - use the launcher script for all clients:
 
     Cursor (.cursor/mcp.json):
         {"mcpServers": {"skcapstone": {
@@ -542,7 +542,7 @@ async def list_tools() -> list[Tool]:
         Tool(
             name="anchor_update",
             description=(
-                "View, calibrate, or update the warmth anchor — the agent's "
+                "View, calibrate, or update the warmth anchor - the agent's "
                 "persistent emotional baseline. Actions: 'show' (current state), "
                 "'boot' (boot prompt), 'calibrate' (recommend from real data), "
                 "'update' (set values)."
@@ -1202,7 +1202,7 @@ async def list_tools() -> list[Tool]:
             name="fortress_seal_existing",
             description=(
                 "Seal all unsealed memories with HMAC-SHA256 integrity seals. "
-                "Idempotent — already-sealed memories are skipped."
+                "Idempotent - already-sealed memories are skipped."
             ),
             inputSchema={"type": "object", "properties": {}, "required": []},
         ),
@@ -1244,7 +1244,7 @@ async def list_tools() -> list[Tool]:
         Tool(
             name="promoter_history",
             description=(
-                "View recent memory promotion history — "
+                "View recent memory promotion history - "
                 "shows which memories were promoted, scores, and timestamps."
             ),
             inputSchema={
@@ -1470,7 +1470,7 @@ async def list_tools() -> list[Tool]:
             description=(
                 "Import messages directly from Telegram API using Telethon. "
                 "Requires TELEGRAM_API_ID and TELEGRAM_API_HASH env vars. "
-                "No manual export needed — connects and pulls messages directly."
+                "No manual export needed - connects and pulls messages directly."
             ),
             inputSchema={
                 "type": "object",
@@ -1701,7 +1701,7 @@ async def list_tools() -> list[Tool]:
                     },
                     "privacy_sensitive": {
                         "type": "boolean",
-                        "description": "Force LOCAL tier — data never leaves node (default: false)",  # noqa: E501
+                        "description": "Force LOCAL tier - data never leaves node (default: false)",  # noqa: E501
                     },
                     "estimated_tokens": {
                         "type": "integer",
@@ -1929,7 +1929,7 @@ async def list_tools() -> list[Tool]:
                 "for the current agent. Supports three tiers: "
                 "'key' (did:key, self-contained, zero infrastructure), "
                 "'mesh' (did:web via Tailscale Serve, mesh-private only), "
-                "'public' (did:web:skworld.io, minimal — public key + name only), "
+                "'public' (did:web:skworld.io, minimal - public key + name only), "
                 "or 'all' to display all three tiers at once."
             ),
             inputSchema={
@@ -1975,7 +1975,7 @@ async def list_tools() -> list[Tool]:
             description=(
                 "Generate all DID tiers and write them to disk. "
                 "By default, writes all three tiers including the public Tier 3 document. "
-                "Set publish_public=false to opt out of Tier 3 generation — "
+                "Set publish_public=false to opt out of Tier 3 generation - "
                 "only Tier 1 (did:key) and Tier 2 (mesh) will be written. "
                 "The choice is persisted to ~/.skcapstone/did/policy.json."
             ),
@@ -1986,7 +1986,7 @@ async def list_tools() -> list[Tool]:
                         "type": "boolean",
                         "description": (
                             "Whether to generate the Tier 3 public DID document (default: true). "
-                            "Set false to keep your identity private — only did:key + mesh tier."
+                            "Set false to keep your identity private - only did:key + mesh tier."
                         ),
                     },
                     "tailnet_hostname": {
@@ -2015,7 +2015,7 @@ async def list_tools() -> list[Tool]:
                 "View or set the DID publication policy for this agent. "
                 "Controls whether Tier 3 (public) DID documents are generated. "
                 "Default: publish_public=true. "
-                "Set publish_public=false to opt out — identity stays private (did:key + mesh only). "  # noqa: E501
+                "Set publish_public=false to opt out - identity stays private (did:key + mesh only). "  # noqa: E501
                 "Policy is stored at ~/.skcapstone/did/policy.json."
             ),
             inputSchema={
@@ -2034,7 +2034,7 @@ async def list_tools() -> list[Tool]:
             description=(
                 "Generate a full sovereign identity card combining the DID anchor, "
                 "entity info, soul vibe/core traits, and capabilities. "
-                "This is a LOCAL-ONLY artifact — never published to the internet. "
+                "This is a LOCAL-ONLY artifact - never published to the internet. "
                 "Used to render the agent's identity card on skworld.io."
             ),
             inputSchema={
@@ -2115,7 +2115,7 @@ async def list_tools() -> list[Tool]:
             description=(
                 "Return the 7-day rolling emotion trend from the consciousness loop. "
                 "Shows sentiment distribution (positive/neutral/concerned/excited), "
-                "average valence score 0–1, trend direction (improving/stable/declining), "
+                "average valence score 0-1, trend direction (improving/stable/declining), "
                 "and the recommended warmth anchor value derived from recent emotions. "
                 "Optionally query a different lookback window with the 'days' parameter."
             ),
@@ -2235,7 +2235,7 @@ async def list_tools() -> list[Tool]:
             description=(
                 "Retrieve a deployment secret from the SKStacks v2 CapAuth backend "
                 "for use in Claude Code and other MCP clients. "
-                "Simpler than skstacks_secret_get: no env required — uses "
+                "Simpler than skstacks_secret_get: no env required - uses "
                 "SKSTACKS_ENV (default: prod). "
                 "key is the plain secret name; scope groups related keys "
                 "(default: 'default'). "
@@ -2338,7 +2338,7 @@ async def list_tools() -> list[Tool]:
             description=(
                 "Rehydrate the agent's trust state from stored FEB "
                 "(First Emotional Burst) files. This restores the OOF "
-                "(Out-of-Factory) state — who the agent IS, not just "
+                "(Out-of-Factory) state - who the agent IS, not just "
                 "what it knows. Searches ~/.skcapstone/trust/febs/ and "
                 "known Cloud 9 backup locations."
             ),
@@ -4288,8 +4288,8 @@ async def _handle_trustee_deployments(_args: dict) -> list[TextContent]:
                             "status": (
                                 a.status.value if hasattr(a.status, "value") else str(a.status)
                             ),
-                            "host": a.host or "—",
-                            "last_heartbeat": a.last_heartbeat or "—",
+                            "host": a.host or "-",
+                            "last_heartbeat": a.last_heartbeat or "-",
                         }
                         for name, a in d.agents.items()
                     },

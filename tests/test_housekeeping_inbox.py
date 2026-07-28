@@ -1,8 +1,8 @@
 """Tests for inbox / deadletter TTL backstop + derived-junk sweep in housekeeping.
 
 F3 (HIGH/MED): the inbox TTL prune must target the tree the consciousness loop
-actually consumes — ``{shared_root}/sync/comms/inbox/{peer}/*.skc.json``
-(recursive, per-peer subdirs) — and must NOT touch ``agents/<agent>/comms/inbox``
+actually consumes - ``{shared_root}/sync/comms/inbox/{peer}/*.skc.json``
+(recursive, per-peer subdirs) - and must NOT touch ``agents/<agent>/comms/inbox``
 (SKCHAT's inbox, owned by a different service).
 
 F5 (LOW/MED): the deadletter tree (``sync/comms/deadletter``) is synced +
@@ -67,7 +67,7 @@ class TestPruneInbox:
         assert not env.exists()
 
     def test_does_not_touch_skchat_agent_inbox(self, tmp_path):
-        """agents/<agent>/comms/inbox is SKCHAT's — skcapstone must not TTL it."""
+        """agents/<agent>/comms/inbox is SKCHAT's - skcapstone must not TTL it."""
         skchat_inbox = tmp_path / "agents" / "lumina" / "comms" / "inbox"
         aged = _mk_envelope(skchat_inbox, "skchat.skc.json", 500)
         # Also the legacy top-level comms/inbox must NOT be swept anymore.
@@ -76,7 +76,7 @@ class TestPruneInbox:
         deleted = prune_inbox(tmp_path)
 
         assert deleted == 0
-        assert aged.exists(), "SKCHAT inbox is owned by another service — untouched"
+        assert aged.exists(), "SKCHAT inbox is owned by another service - untouched"
         assert legacy.exists(), "legacy top-level comms/inbox is not the consumed tree"
 
     def test_only_touches_skc_json(self, tmp_path):

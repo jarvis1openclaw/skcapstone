@@ -30,7 +30,7 @@ import re
 from dataclasses import dataclass, field
 
 # ---------------------------------------------------------------------------
-# Stopwords — filtered out before coherence keyword matching
+# Stopwords - filtered out before coherence keyword matching
 # ---------------------------------------------------------------------------
 
 _STOPWORDS: frozenset[str] = frozenset(
@@ -190,7 +190,7 @@ def _score_length(question: str, response: str) -> float:
     if r_words < lo:
         # Linear ramp from 0 at r_words=0 up to 1 at r_words=lo
         return round(r_words / lo, 4)
-    # r_words > hi — verbose, but penalise gently (verbose > silent)
+    # r_words > hi - verbose, but penalise gently (verbose > silent)
     return round(max(0.3, hi / r_words), 4)
 
 
@@ -213,7 +213,7 @@ def _score_coherence(question: str, response: str) -> float:
 
     q_tokens = set(re.findall(r"\b\w+\b", question.lower())) - _STOPWORDS
     if not q_tokens:
-        # No content words in question — treat as neutral
+        # No content words in question - treat as neutral
         return 0.5
 
     r_tokens = set(re.findall(r"\b\w+\b", response.lower()))

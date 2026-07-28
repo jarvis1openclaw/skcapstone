@@ -1,4 +1,4 @@
-"""CLI command: skcapstone service check — service health checks."""
+"""CLI command: skcapstone service check - service health checks."""
 
 from __future__ import annotations
 

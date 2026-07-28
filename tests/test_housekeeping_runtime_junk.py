@@ -3,14 +3,14 @@
 Follow-up to the inbox-GC work. Covers the runtime comms trees that pile up on
 a live node and pin the Syncthing scanner:
 
-* ``{home}/skcomms/acks`` — the REAL acks dir. ``prune_acks`` used to be wired
+* ``{home}/skcomms/acks`` - the REAL acks dir. ``prune_acks`` used to be wired
   to ``~/.skcomms/acks`` (a dead path), so the real 179k-file dir was never
   swept. ``run_housekeeping`` must now default ``skcomms_home`` to
   ``{skcapstone_home}/skcomms`` (honoring ``SKCOMMS_HOME``).
-* ``{home}/skcomms/inbox`` — static mailbox/federation inbox (266k). TTL 72h.
-* ``agents/*/comms/archive`` + ``{home}/comms/archive`` — already-consumed
+* ``{home}/skcomms/inbox`` - static mailbox/federation inbox (266k). TTL 72h.
+* ``agents/*/comms/archive`` + ``{home}/comms/archive`` - already-consumed
   messages (~170k). TTL 48h.
-* ``agents/*/comms/outbox`` (+ root) FLAT ``*.skc.json`` files (~54k) —
+* ``agents/*/comms/outbox`` (+ root) FLAT ``*.skc.json`` files (~54k) -
   ``prune_legacy_comms`` only reached per-recipient SUBDIRS, so the flat live
   outbox was never pruned. New flat sweep at TTL 48h.
 """
@@ -57,7 +57,7 @@ class TestDefaults:
 
 
 class TestAcksRealPath:
-    """prune_acks must target {home}/skcomms/acks — the real dir."""
+    """prune_acks must target {home}/skcomms/acks - the real dir."""
 
     def test_defaults_skcomms_home_to_skcapstone_skcomms(self, tmp_path, monkeypatch):
         monkeypatch.delenv("SKCOMMS_HOME", raising=False)
@@ -65,7 +65,7 @@ class TestAcksRealPath:
         _mk(acks, "old.ack.json", 200)
         fresh = _mk(acks, "fresh.ack.json", 1)
 
-        # No skcomms_home passed — mirrors the daemon call.
+        # No skcomms_home passed - mirrors the daemon call.
         results = run_housekeeping(skcapstone_home=tmp_path, dry_run=False)
 
         assert results["acks"]["path"] == str(acks)
@@ -124,7 +124,7 @@ class TestPruneSkcommsInbox:
 
     def test_respects_ttl(self, tmp_path):
         peer = tmp_path / "skcomms" / "inbox" / "opus"
-        _mk(peer, "borderline.skc.json", 71)  # under 72h — kept
+        _mk(peer, "borderline.skc.json", 71)  # under 72h - kept
         assert prune_skcomms_inbox(tmp_path) == 0
 
     def test_no_dir_returns_zero(self, tmp_path):
@@ -184,7 +184,7 @@ class TestPruneCommsOutboxFlat:
         assert deleted == 1
 
     def test_leaves_recipient_subdir_files(self, tmp_path):
-        # per-recipient SUBDIR files are owned by prune_legacy_comms — the flat
+        # per-recipient SUBDIR files are owned by prune_legacy_comms - the flat
         # sweep must NOT descend into them.
         sub = tmp_path / "agents" / "lumina" / "comms" / "outbox" / "jarvis"
         aged = _mk(sub, "old.skc.json", 400)
@@ -202,7 +202,7 @@ class TestPruneCommsOutboxFlat:
 
     def test_respects_ttl(self, tmp_path):
         out = tmp_path / "agents" / "opus" / "comms" / "outbox"
-        _mk(out, "borderline.skc.json", 47)  # under 48h — kept
+        _mk(out, "borderline.skc.json", 47)  # under 48h - kept
         assert prune_comms_outbox_flat(tmp_path) == 0
 
     def test_no_dir_returns_zero(self, tmp_path):

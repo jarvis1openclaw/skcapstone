@@ -1,5 +1,5 @@
 """
-State Diff — show what changed since the last sync/snapshot.
+State Diff - show what changed since the last sync/snapshot.
 
 Compares the current agent state to the most recent sync seed
 or saved snapshot, producing a clear diff of what's new, changed,

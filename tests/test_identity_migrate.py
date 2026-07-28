@@ -2,7 +2,7 @@
 
 The walker backfills realm/operator/fqid/pgp_fingerprint into every
 provisioned agent's identity.json. These tests use a tmp ``~/.skcapstone`` home
-with fixture agents + cluster.json — they NEVER touch the real home. The
+with fixture agents + cluster.json - they NEVER touch the real home. The
 canonical resolver (``capauth.resolve_agent_identity``) is patched so fqid and
 fingerprint are deterministic and no real profile/cluster is read.
 

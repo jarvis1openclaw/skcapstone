@@ -19,7 +19,7 @@ def register_consciousness_commands(main: click.Group) -> None:
 
     @main.group()
     def consciousness():
-        """Consciousness loop — autonomous message processing.
+        """Consciousness loop - autonomous message processing.
 
         Manages the LLM-powered consciousness loop that lets agents
         respond to messages autonomously, route to the right model,
@@ -219,7 +219,7 @@ def register_consciousness_commands(main: click.Group) -> None:
 
         quality: dict = {}
 
-        # Try live daemon first — it may have unsaved in-memory data
+        # Try live daemon first - it may have unsaved in-memory data
         try:
             url = f"http://127.0.0.1:{port}/consciousness"
             with urllib.request.urlopen(url, timeout=2) as resp:
@@ -227,7 +227,7 @@ def register_consciousness_commands(main: click.Group) -> None:
                 if "quality_avg" in data:
                     quality = data["quality_avg"]
         except Exception:
-            pass  # Daemon unreachable — fall through to file
+            pass  # Daemon unreachable - fall through to file
 
         # Fall back to daily metrics file
         if not quality:
@@ -263,7 +263,7 @@ def register_consciousness_commands(main: click.Group) -> None:
             filled = int(round(score * 10))
             return "█" * filled + "░" * (10 - filled)
 
-        table = Table(title=f"Response Quality — {count} response(s) today", show_header=True)
+        table = Table(title=f"Response Quality - {count} response(s) today", show_header=True)
         table.add_column("Dimension", style="bold")
         table.add_column("Score", justify="right")
         table.add_column("Bar")
@@ -316,7 +316,7 @@ def register_consciousness_commands(main: click.Group) -> None:
 
         usage: dict = {}
 
-        # Try live daemon first — it may hold unsaved in-memory counters.
+        # Try live daemon first - it may hold unsaved in-memory counters.
         try:
             url = f"http://127.0.0.1:{port}/consciousness"
             with urllib.request.urlopen(url, timeout=2) as resp:
@@ -324,7 +324,7 @@ def register_consciousness_commands(main: click.Group) -> None:
                 if "classification_usage" in data:
                     usage = data["classification_usage"]
         except Exception:
-            pass  # Daemon unreachable — fall through to file
+            pass  # Daemon unreachable - fall through to file
 
         # Fall back to daily metrics file.
         if not usage:
@@ -354,7 +354,7 @@ def register_consciousness_commands(main: click.Group) -> None:
         from rich.table import Table
 
         total = sum(usage.values())
-        table = Table(title=f"Message Classification — {total} tag hit(s) today", show_header=True)
+        table = Table(title=f"Message Classification - {total} tag hit(s) today", show_header=True)
         table.add_column("Tag", style="bold")
         table.add_column("Count", justify="right")
         table.add_column("Share", justify="right")
@@ -456,7 +456,7 @@ def register_consciousness_commands(main: click.Group) -> None:
     @click.option("--json-out", is_flag=True, help="Output as JSON.")
     @click.option("--clear", "do_clear", is_flag=True, help="Clear all stored fallback events.")
     def consciousness_fallbacks(limit: int, json_out: bool, do_clear: bool):
-        """Show LLM fallback history — when and why the agent degraded.
+        """Show LLM fallback history - when and why the agent degraded.
 
         Each entry records the primary model that failed, the backend that
         was tried next, whether the fallback succeeded, and the reason.

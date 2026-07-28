@@ -352,7 +352,7 @@ def _compute_token_id(payload: TokenPayload) -> str:
 def _pgp_sign_payload(payload: TokenPayload, home: Path) -> Optional[str]:
     """PGP-sign a token payload using the agent's CapAuth key."""
     if not shutil.which("gpg"):
-        logger.warning("gpg not found — token will be unsigned")
+        logger.warning("gpg not found - token will be unsigned")
         return None
 
     issuer_fp = _get_issuer_fingerprint(home)

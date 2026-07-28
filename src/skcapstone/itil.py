@@ -1,5 +1,5 @@
 """
-SKCapstone ITIL Service Management — Incident, Problem, and Change Management.
+SKCapstone ITIL Service Management - Incident, Problem, and Change Management.
 
 Conflict-free design (prb-7810b08e / chg-11d0e1c7): each mutable record is a
 directory keyed only by its id.  The immutable birth-facts live in a write-once
@@ -107,7 +107,7 @@ class CABDecisionValue(str, Enum):
 
 
 # ---------------------------------------------------------------------------
-# Lifecycle state machines — valid transitions
+# Lifecycle state machines - valid transitions
 # ---------------------------------------------------------------------------
 
 _INCIDENT_TRANSITIONS: dict[str, set[str]] = {
@@ -1533,7 +1533,7 @@ class ITILManager:
 
         lines = [
             "# ITIL Service Management Board",
-            f"*Auto-generated {now} — do not edit manually*",
+            f"*Auto-generated {now} - do not edit manually*",
             "",
         ]
 
@@ -1593,7 +1593,7 @@ class ITILManager:
         atomic_write_text(path, content)
         return path
 
-    # ── GTD integration — ITIL is a push adapter on the skos gtd-ingest port ──
+    # ── GTD integration - ITIL is a push adapter on the skos gtd-ingest port ──
 
     def _gtd_emit(
         self, text: str, source_ref: str, status: str, priority: Optional[str] = None

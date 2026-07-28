@@ -1,4 +1,4 @@
-"""Test runner command — unified pytest across all ecosystem packages.
+"""Test runner command - unified pytest across all ecosystem packages.
 
 Usage:
     skcapstone test                     # run all packages
@@ -69,7 +69,7 @@ def _render_table(report: TestReport) -> None:
                 "-",
                 "-",
                 "-",
-                "[dim]—[/]",
+                "[dim]-[/]",
             )
             continue
 

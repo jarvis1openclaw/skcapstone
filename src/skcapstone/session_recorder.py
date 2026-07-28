@@ -1,5 +1,5 @@
 """
-SKCapstone Session Recorder — capture MCP tool calls + responses as JSONL.
+SKCapstone Session Recorder - capture MCP tool calls + responses as JSONL.
 
 Each MCP session is auto-saved to ~/.skcapstone/sessions/ and rotated to
 keep the last 5.  An explicit output path can be set via SKCAPSTONE_RECORD_FILE

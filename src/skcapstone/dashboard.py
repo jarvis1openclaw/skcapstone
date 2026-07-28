@@ -2,7 +2,7 @@
 Sovereign agent web dashboard.
 
 A self-contained status page at localhost:7778. Uses only the
-Python stdlib (http.server + json) — no FastAPI, no npm, no
+Python stdlib (http.server + json) - no FastAPI, no npm, no
 build step. Open any browser, see your agent's health.
 
 Serves:
@@ -205,7 +205,7 @@ def _get_daemon_json(home: Path, daemon_port: int = 7777) -> dict:
     single JSON-serializable snapshot suitable for machine consumers
     such as the SKChat Flutter app.
 
-    Gracefully handles a stopped or unreachable daemon — all sections
+    Gracefully handles a stopped or unreachable daemon - all sections
     fall back to safe defaults so callers always get a complete dict.
 
     Args:
@@ -330,7 +330,7 @@ _DASHBOARD_HTML = """\
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>SKCapstone — Sovereign Agent Dashboard</title>
+<title>SKCapstone - Sovereign Agent Dashboard</title>
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
 body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;

@@ -1,4 +1,4 @@
-"""Tests for SKSecurity KMS — sovereign key management.
+"""Tests for SKSecurity KMS - sovereign key management.
 
 Tests the skcapstone KMS wrapper which delegates crypto operations
 to sksecurity.kms (AES-256-GCM key wrapping, HKDF-SHA256 derivation).

@@ -23,7 +23,7 @@ class SchedulerState:
     State is deliberately node-local: the file lives outside any Syncthing-
     watched subtree so the scheduler never races with sync.  Each instance
     reads from disk on construction and writes through on every
-    :meth:`record_run` call — there is no in-process cache staleness issue
+    :meth:`record_run` call - there is no in-process cache staleness issue
     because schedulers are single-process per host.
 
     Attributes:

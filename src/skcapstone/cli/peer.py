@@ -19,7 +19,7 @@ def register_peer_commands(main: click.Group) -> None:
 
     @main.group()
     def peer():
-        """Peer management — discover, add, and manage trusted contacts.
+        """Peer management - discover, add, and manage trusted contacts.
 
         Identity-layer peers (PGP keys, trust). For transport routing, see 'peers'."""
 
@@ -49,7 +49,7 @@ def register_peer_commands(main: click.Group) -> None:
                 console.print(f"  Trust: {peer_record.trust_level}")
                 console.print(f"  Capabilities: {', '.join(peer_record.capabilities[:5])}")
                 if peer_record.public_key:
-                    console.print("  [green]Public key imported[/] — encrypted messaging enabled")
+                    console.print("  [green]Public key imported[/] - encrypted messaging enabled")
                 console.print()
             except (FileNotFoundError, ValueError) as exc:
                 console.print(f"\n  [red]Error:[/] {exc}\n")

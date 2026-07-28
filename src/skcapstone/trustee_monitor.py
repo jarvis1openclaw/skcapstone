@@ -1,4 +1,4 @@
-"""Autonomous agent monitoring — heartbeat detection, auto-remediation, escalation.
+"""Autonomous agent monitoring - heartbeat detection, auto-remediation, escalation.
 
 The TrusteeMonitor watches deployed agent teams and takes autonomous
 action when issues are detected:
@@ -9,7 +9,7 @@ action when issues are detected:
 - Context fill detection → auto-rotate before degradation
 
 All actions are logged to the audit trail. The monitor follows the
-Trustee Oath: "I escalate when uncertain — never guess with sovereignty."
+Trustee Oath: "I escalate when uncertain - never guess with sovereignty."
 """
 
 from __future__ import annotations

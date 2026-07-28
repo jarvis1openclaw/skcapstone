@@ -104,7 +104,7 @@ class TestSyncthingBackend:
 
         nonexistent = tmp_path / "missing.tar.gz"
         manifest = tmp_path / "missing.manifest.json"
-        # Don't create them — shutil.copy2 will raise OSError
+        # Don't create them - shutil.copy2 will raise OSError
         result = backend.push(nonexistent, manifest)
         assert result is False
 

@@ -1,4 +1,4 @@
-"""Tests for consciousness_loop inbox GC — staging, retry, rescan, broadcast.
+"""Tests for consciousness_loop inbox GC - staging, retry, rescan, broadcast.
 
 Presence-on-disk == unconsumed. The primary GC is NO LONGER "delete on submit"
 (which lost the message if the async worker later failed). Instead a directed
@@ -35,7 +35,7 @@ def _make_loop(tmp_path: Path) -> ConsciousnessLoop:
         home=tmp_path / ".skcapstone",
         shared_root=tmp_path,
     )
-    # Do not run real work — a truthy MagicMock stands in for a Future.
+    # Do not run real work - a truthy MagicMock stands in for a Future.
     loop._executor = MagicMock()
     return loop
 

@@ -451,7 +451,7 @@ def register_status_commands(main: click.Group) -> None:
             sync_status, "dim"
         )
         seed_count = sync.get("seed_count", 0)
-        transport = sync.get("transport") or "–"
+        transport = sync.get("transport") or "-"
         last_push = sync.get("last_push")
         if last_push:
             try:
@@ -495,7 +495,7 @@ def register_status_commands(main: click.Group) -> None:
             enc = "[green]enc[/]" if backups.get("encrypted") else "[yellow]plain[/]"
             stats_table.add_row("[bold]Backup[/]", f"[dim]{backups['latest']}[/] {enc}")
         else:
-            stats_table.add_row("[bold]Backup[/]", "[dim]none — run skcapstone backup create[/]")
+            stats_table.add_row("[bold]Backup[/]", "[dim]none - run skcapstone backup create[/]")
 
         if journal.get("entries", 0) > 0:
             j_title = journal.get("latest_title", "")
@@ -552,8 +552,8 @@ def register_status_commands(main: click.Group) -> None:
         Non-fixable checks (package installs, key generation, transport
         config) are reported but skipped.
 
-        With --verbose, every check is printed in full — including passing
-        ones — with its check name, category, detail, and any available fix.
+        With --verbose, every check is printed in full - including passing
+        ones - with its check name, category, detail, and any available fix.
         """
         from ..doctor import run_diagnostics, run_fixes
 
@@ -742,7 +742,7 @@ def register_status_commands(main: click.Group) -> None:
 
         With --json, prints a machine-readable JSON snapshot of daemon
         status, consciousness stats, backend health, active conversations,
-        message counts, and error count — then exits without starting a
+        message counts, and error count - then exits without starting a
         server.  Designed for Flutter app consumption.
         """
         from ..dashboard import _get_daemon_json, start_dashboard
@@ -923,7 +923,7 @@ def register_status_commands(main: click.Group) -> None:
 
         if report.all_passed:
             console.print(
-                f"  [bold green]ALL PASS[/] — {total_p} tests across "
+                f"  [bold green]ALL PASS[/] - {total_p} tests across "
                 f"{report.packages_tested} packages in {duration}"
             )
         else:

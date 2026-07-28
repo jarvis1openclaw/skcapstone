@@ -1,5 +1,5 @@
 """
-SKSecurity KMS — Sovereign Key Management Service.
+SKSecurity KMS - Sovereign Key Management Service.
 
 Wraps sksecurity.kms.KMS for cryptographic operations while providing
 agent-specific features: service key derivation, team member ACLs,
@@ -14,7 +14,7 @@ Key hierarchy:
         ├── Team keys (shared keys with member ACL)
         └── Subkeys (delegatable, revocable)
 
-Crypto backend: sksecurity.kms — AES-256-GCM key wrapping,
+Crypto backend: sksecurity.kms - AES-256-GCM key wrapping,
 HKDF-SHA256 derivation, scrypt master key sealing.
 
 Storage layout:
@@ -137,7 +137,7 @@ class RotationEntry(BaseModel):
 
 
 # ---------------------------------------------------------------------------
-# Cryptographic helpers — delegates to sksecurity when available
+# Cryptographic helpers - delegates to sksecurity when available
 # ---------------------------------------------------------------------------
 
 
@@ -245,7 +245,7 @@ def _fernet_decrypt(token: bytes, key: bytes) -> bytes:
 
     Args:
         token: Fernet token bytes produced by :func:`_fernet_encrypt`.
-        key: Raw key material (any length) — must match the key used to encrypt.
+        key: Raw key material (any length) - must match the key used to encrypt.
 
     Returns:
         Decrypted plaintext bytes.
@@ -546,7 +546,7 @@ class KeyStore:
         return record
 
     def rotate_key(self, key_id: str, reason: str = "") -> KeyRecord:
-        """Rotate a key — generate new material, increment version.
+        """Rotate a key - generate new material, increment version.
 
         The old key is marked ROTATED and a new active key replaces it.
 
@@ -618,7 +618,7 @@ class KeyStore:
         return new_record
 
     def revoke_key(self, key_id: str, reason: str = "") -> KeyRecord:
-        """Revoke a key — mark it unusable.
+        """Revoke a key - mark it unusable.
 
         Args:
             key_id: Key to revoke.
@@ -863,7 +863,7 @@ class KeyStore:
             except (json.JSONDecodeError, OSError) as exc:
                 logger.warning("Failed to read identity file %s: %s", identity_file, exc)
 
-        logger.warning("No identity found for KMS — using random master seed")
+        logger.warning("No identity found for KMS - using random master seed")
         return secrets.token_bytes(64)
 
     def _load_records(self) -> list[KeyRecord]:
@@ -952,4 +952,4 @@ class KeyStore:
 
             audit_event(self._home, event_type, detail, agent="kms", metadata=metadata)
         except Exception:
-            logger.debug("Audit log unavailable: %s — %s", event_type, detail)
+            logger.debug("Audit log unavailable: %s - %s", event_type, detail)

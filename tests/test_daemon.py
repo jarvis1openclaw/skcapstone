@@ -15,7 +15,7 @@ import pytest
 # that triggers ``_load_components`` (which lazily imports skcapstone.dreaming_job)
 # does so *inside* a patch.dict context; on exit patch.dict wipes the newly-added
 # key, and later tests re-import a fresh module whose ``_consciousness_loop``
-# global is a different object than the one _load_components writes to — making
+# global is a different object than the one _load_components writes to - making
 # TestHeartbeatBeaconWiring order-dependent.
 import skcapstone.dreaming_job  # noqa: F401
 from skcapstone.daemon import (

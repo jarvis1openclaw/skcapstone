@@ -103,7 +103,7 @@ class TestBoard:
         """A malformed task file is skipped (not crashed on) and logged loudly.
 
         Regression: notes-as-string used to fail Pydantic validation, and
-        load_tasks swallowed the error silently — dropping the task from the
+        load_tasks swallowed the error silently - dropping the task from the
         board entirely (invisible: neither open nor done). The valid task must
         still load; the bad one must produce a warning, not a silent vanish.
         """

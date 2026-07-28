@@ -1,5 +1,5 @@
 """
-ConversationManager — centralized manager for all peer conversation histories.
+ConversationManager - centralized manager for all peer conversation histories.
 
 Owns the {home}/conversations/ directory. Provides a clean API for adding,
 retrieving, searching, and exporting conversations instead of ad-hoc file

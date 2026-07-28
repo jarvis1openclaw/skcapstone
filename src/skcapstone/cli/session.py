@@ -16,7 +16,7 @@ def register_session_commands(main: click.Group) -> None:
 
     @main.group()
     def session():
-        """Session auto-capture — the agent never forgets.
+        """Session auto-capture - the agent never forgets.
 
         Capture AI conversation content as sovereign memories.
         Works with any tool: pipe from Claude Code, paste from

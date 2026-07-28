@@ -1,5 +1,5 @@
 """
-Proxmox Provider — deploy agents as LXC containers on Proxmox VE.
+Proxmox Provider - deploy agents as LXC containers on Proxmox VE.
 
 Uses the Proxmox REST API to create, configure, and manage LXC
 containers. Each agent gets its own isolated container with

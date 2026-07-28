@@ -636,7 +636,7 @@ class ConsciousnessMetrics:
         self._responses_sent: int = 0
         self._errors: int = 0
 
-        # Response-time histogram samples (ms) — capped at 1 000 entries
+        # Response-time histogram samples (ms) - capped at 1 000 entries
         self._response_times: list[float] = []
 
         # Per-backend, per-tier, per-peer counters
@@ -644,7 +644,7 @@ class ConsciousnessMetrics:
         self._tier_usage: dict[str, int] = {}
         self._messages_per_peer: dict[str, int] = {}
 
-        # Per-classification-tag counters (observability only — the loop's
+        # Per-classification-tag counters (observability only - the loop's
         # routing decision is unaffected). A message may carry several tags,
         # so each tag is counted independently.
         self._classification_usage: dict[str, int] = {}
@@ -688,7 +688,7 @@ class ConsciousnessMetrics:
         with self._lock:
             self._responses_sent += 1
             self._response_times.append(response_time_ms)
-            # Bound memory — keep the most recent 1 000 samples
+            # Bound memory - keep the most recent 1 000 samples
             if len(self._response_times) > 1000:
                 self._response_times = self._response_times[-1000:]
             self._backend_usage[backend] = self._backend_usage.get(backend, 0) + 1
@@ -699,7 +699,7 @@ class ConsciousnessMetrics:
 
         Increments a counter for each classification tag so operators can see
         the distribution of message types the loop is handling. Logging /
-        observability only — it never influences routing behavior.
+        observability only - it never influences routing behavior.
 
         Args:
             tags: Iterable of classification tags (e.g. ``["code", "analyze"]``).

@@ -1,5 +1,5 @@
 """
-Prompt Adapter — per-model best-practice prompt formatting.
+Prompt Adapter - per-model best-practice prompt formatting.
 
 Each LLM family has different expectations for system prompts,
 temperatures, thinking modes, and structural formatting. The
@@ -7,9 +7,9 @@ PromptAdapter reads ModelProfile configs and reformats prompts
 to match each model's optimal input format.
 
 Architecture:
-    ModelProfile   — Pydantic model describing a model's prompt expectations
-    AdaptedPrompt  — The output: messages, system_param, temperature, extras
-    PromptAdapter  — Loads profiles, matches models, adapts prompts
+    ModelProfile   - Pydantic model describing a model's prompt expectations
+    AdaptedPrompt  - The output: messages, system_param, temperature, extras
+    PromptAdapter  - Loads profiles, matches models, adapts prompts
 """
 
 from __future__ import annotations
@@ -89,7 +89,7 @@ class ModelProfile(BaseModel):
 
 
 class AdaptedPrompt(BaseModel):
-    """Result of prompt adaptation — ready to send to provider."""
+    """Result of prompt adaptation - ready to send to provider."""
 
     messages: list[dict[str, Any]] = Field(default_factory=list)
     system_param: Optional[str] = None
@@ -154,7 +154,7 @@ class PromptAdapter:
                 logger.warning("Failed to load profiles from %s: %s", path, exc)
 
         if not self._profiles:
-            logger.warning("No model profiles loaded — using generic fallback")
+            logger.warning("No model profiles loaded - using generic fallback")
 
     def resolve_profile(self, model_name: str) -> ModelProfile:
         """Match model_name against profiles via regex.
@@ -175,7 +175,7 @@ class PromptAdapter:
             except re.error:
                 continue
 
-        # No static profile matched — try Ollama auto-detection.
+        # No static profile matched - try Ollama auto-detection.
         detected = self.detect_model(model_name)
         if detected is not None:
             # Cache so subsequent lookups skip the HTTP round-trip.
@@ -502,7 +502,7 @@ class PromptAdapter:
             cleaned = re.sub(r"\*(.*?)\*", r"\1", cleaned)
             return cleaned
         else:
-            # markdown — return as-is (default)
+            # markdown - return as-is (default)
             return system_prompt
 
     def _resolve_temperature(
@@ -556,7 +556,7 @@ class PromptAdapter:
             # Qwen/Nemotron enable_thinking
             return {"enable_thinking": True}
         elif mode == "auto":
-            # DeepSeek R1 — automatic, don't interfere
+            # DeepSeek R1 - automatic, don't interfere
             return {}
 
         return {}

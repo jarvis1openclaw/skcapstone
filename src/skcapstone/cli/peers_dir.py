@@ -16,7 +16,7 @@ def register_peers_dir_commands(main: click.Group) -> None:
 
     @main.group("peers")
     def peers_dir():
-        """Peer transport directory — routing addresses for the mesh.
+        """Peer transport directory - routing addresses for the mesh.
 
         SKComms transport endpoints. For identity/trust peers, see 'peer'."""
 
@@ -121,5 +121,5 @@ def register_peers_dir_commands(main: click.Group) -> None:
         else:
             console.print(f"  [green]Discovered {len(added)} new peer(s):[/]")
             for entry in added:
-                console.print(f"    [cyan]{entry.name}[/] — {entry.transport} → {entry.address}")
+                console.print(f"    [cyan]{entry.name}[/] - {entry.transport} → {entry.address}")
         console.print()

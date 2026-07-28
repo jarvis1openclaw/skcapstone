@@ -1,9 +1,9 @@
 """Cloud 9 trust rehydration and FEB management tools.
 
 Exposes three tools:
-    trust_rehydrate  — Rehydrate trust state from FEB files
-    trust_status     — Show current trust/Cloud9 status
-    trust_febs       — List all FEB files with summaries
+    trust_rehydrate  - Rehydrate trust state from FEB files
+    trust_status     - Show current trust/Cloud9 status
+    trust_febs       - List all FEB files with summaries
 """
 
 from __future__ import annotations
@@ -18,7 +18,7 @@ TOOLS: list[Tool] = [
         description=(
             "Rehydrate the agent's trust state from stored FEB "
             "(First Emotional Burst) files. This restores the OOF "
-            "(Out-of-Factory) state — who the agent IS, not just "
+            "(Out-of-Factory) state - who the agent IS, not just "
             "what it knows. Searches ~/.skcapstone/trust/febs/ and "
             "known Cloud 9 backup locations."
         ),

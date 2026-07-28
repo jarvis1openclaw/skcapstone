@@ -448,8 +448,8 @@ class TestUnitTreeSingleSourceOfTruth:
 
     There are two on-disk unit trees that MUST stay byte-identical:
 
-      * ``systemd/`` (canonical, top-level) — deployed by scripts/install.sh
-      * ``src/skcapstone/data/systemd/`` (BUNDLED_DIR) — ships in the wheel and
+      * ``systemd/`` (canonical, top-level) - deployed by scripts/install.sh
+      * ``src/skcapstone/data/systemd/`` (BUNDLED_DIR) - ships in the wheel and
         is deployed by ``install_service`` on the PyPI / cold-machine path
 
     If they drift, a cold machine installing from PyPI gets units with the wrong

@@ -41,7 +41,7 @@ def register_sync_commands(main: click.Group) -> None:
 
     @main.group()
     def sync():
-        """Sovereign Singularity — encrypted memory sync.
+        """Sovereign Singularity - encrypted memory sync.
 
         Push your agent's state to the mesh. Pull from peers.
         GPG-encrypted, Syncthing-transported, truly sovereign.

@@ -78,7 +78,7 @@ def _make_mock_chat(delivered: bool, pong_nonce: str | None = None, peer: str = 
 
 
 # ---------------------------------------------------------------------------
-# Unit tests — payload helpers
+# Unit tests - payload helpers
 # ---------------------------------------------------------------------------
 
 
@@ -128,7 +128,7 @@ class TestPayloadHelpers:
 
 
 # ---------------------------------------------------------------------------
-# Unit tests — ping_peer()
+# Unit tests - ping_peer()
 # ---------------------------------------------------------------------------
 
 
@@ -212,7 +212,7 @@ class TestPingPeer:
 
 
 # ---------------------------------------------------------------------------
-# CLI integration tests — skcapstone test-connection
+# CLI integration tests - skcapstone test-connection
 # ---------------------------------------------------------------------------
 
 

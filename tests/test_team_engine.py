@@ -1,4 +1,4 @@
-"""Tests for the Team Engine — deployment orchestration for agent teams."""
+"""Tests for the Team Engine - deployment orchestration for agent teams."""
 
 from __future__ import annotations
 
@@ -423,6 +423,6 @@ class TestProviderBackend:
     """Tests for the abstract provider interface."""
 
     def test_abstract_methods_raise(self) -> None:
-        """ProviderBackend is an ABC — cannot be instantiated directly."""
+        """ProviderBackend is an ABC - cannot be instantiated directly."""
         with pytest.raises(TypeError):
             ProviderBackend()  # type: ignore[abstract]

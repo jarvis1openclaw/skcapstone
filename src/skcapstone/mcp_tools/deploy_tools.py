@@ -1,4 +1,4 @@
-"""Deploy status tool — platform detection, secrets backend, last deploy, ArgoCD sync."""
+"""Deploy status tool - platform detection, secrets backend, last deploy, ArgoCD sync."""
 
 from __future__ import annotations
 
@@ -91,9 +91,9 @@ def _find_skstacks_v2(override: Optional[str] = None) -> Optional[Path]:
 def _detect_platforms(v2_root: Path) -> list[str]:
     """Return detected platforms from skstacks/v2/ structure.
 
-    * ``rke2``  — ``platform/rke2/`` directory present
-    * ``swarm`` — any ``docker-compose*.j2`` file found recursively
-    * ``k8s``   — ``overlays/`` directory present
+    * ``rke2``  - ``platform/rke2/`` directory present
+    * ``swarm`` - any ``docker-compose*.j2`` file found recursively
+    * ``k8s``   - ``overlays/`` directory present
     """
     detected: list[str] = []
 

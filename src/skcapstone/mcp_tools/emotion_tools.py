@@ -1,4 +1,4 @@
-"""Emotion tracker MCP tools — trend analysis and warmth anchor insight."""
+"""Emotion tracker MCP tools - trend analysis and warmth anchor insight."""
 
 from __future__ import annotations
 
@@ -12,7 +12,7 @@ TOOLS: list[Tool] = [
         description=(
             "Return the 7-day rolling emotion trend from the consciousness loop. "
             "Shows sentiment distribution (positive/neutral/concerned/excited), "
-            "average valence score 0–1, trend direction (improving/stable/declining), "
+            "average valence score 0-1, trend direction (improving/stable/declining), "
             "and the recommended warmth anchor value derived from recent emotions. "
             "Optionally query a different lookback window with the 'days' parameter."
         ),

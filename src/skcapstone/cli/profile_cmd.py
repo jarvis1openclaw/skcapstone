@@ -67,7 +67,7 @@ def register_profile_commands(main: click.Group) -> None:
 
     @main.group()
     def profile():
-        """Model profile management — inspect prompt-formatting profiles.
+        """Model profile management - inspect prompt-formatting profiles.
 
         Model profiles define how prompts are formatted for each LLM family:
         system-prompt placement, structure format, thinking mode, temperature
@@ -204,18 +204,18 @@ def register_profile_commands(main: click.Group) -> None:
             ("thinking_budget_tokens", str(p.thinking_budget_tokens)),
             (
                 "default_temperature",
-                str(p.default_temperature) if p.default_temperature is not None else "[dim]—[/]",
+                str(p.default_temperature) if p.default_temperature is not None else "[dim]-[/]",
             ),
             (
                 "code_temperature",
-                str(p.code_temperature) if p.code_temperature is not None else "[dim]—[/]",
+                str(p.code_temperature) if p.code_temperature is not None else "[dim]-[/]",
             ),
             (
                 "reasoning_temperature",
                 (
                     str(p.reasoning_temperature)
                     if p.reasoning_temperature is not None
-                    else "[dim]—[/]"
+                    else "[dim]-[/]"
                 ),
             ),
             ("max_system_tokens", str(p.max_system_tokens)),
@@ -223,8 +223,8 @@ def register_profile_commands(main: click.Group) -> None:
             ("no_few_shot", str(p.no_few_shot)),
             ("no_cot_instructions", str(p.no_cot_instructions)),
             ("last_updated", p.last_updated or "[dim]unknown[/]"),
-            ("source_url", p.source_url or "[dim]—[/]"),
-            ("notes", p.notes or "[dim]—[/]"),
+            ("source_url", p.source_url or "[dim]-[/]"),
+            ("notes", p.notes or "[dim]-[/]"),
         ]
 
         for field, value in rows:
@@ -258,7 +258,7 @@ def register_profile_commands(main: click.Group) -> None:
         A profile is stale when its ``last_updated`` date is more than
         ``--days`` days in the past, or when ``last_updated`` is missing.
 
-        Stale profiles may have outdated guidance — consider refreshing
+        Stale profiles may have outdated guidance - consider refreshing
         them against the latest provider documentation.
 
         Examples:
@@ -296,7 +296,7 @@ def register_profile_commands(main: click.Group) -> None:
 
         label = (
             f"[bold]{len(stale)}[/] stale profile(s) "
-            f"(older than {days} days — cutoff [dim]{cutoff}[/])"
+            f"(older than {days} days - cutoff [dim]{cutoff}[/])"
         )
         console.print()
         console.print(Panel(label, title="Stale Profiles", border_style="yellow"))

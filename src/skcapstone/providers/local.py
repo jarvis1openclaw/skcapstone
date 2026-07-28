@@ -1,5 +1,5 @@
 """
-Local Provider — runs agent teams as local processes backed by crush/SKSkills sessions.
+Local Provider - runs agent teams as local processes backed by crush/SKSkills sessions.
 
 Each agent is spawned as a real ``crush`` subprocess that receives its full identity
 via a generated session config: soul blueprint, skills list, model tier, and
@@ -9,12 +9,12 @@ installed.
 
 Session lifecycle
 -----------------
-1. ``provision()``  — create work dir, write ``config.json`` + ``session.json``
-2. ``configure()``  — resolve soul blueprint & skill paths; write ``crush.json``
-3. ``start()``      — spawn ``crush run --session session.json`` as a daemon process
-4. ``health_check()``— read session state file; fall back to PID liveness check
-5. ``stop()``       — SIGTERM → wait → SIGKILL; write tombstone
-6. ``destroy()``    — stop + remove work dir
+1. ``provision()``  - create work dir, write ``config.json`` + ``session.json``
+2. ``configure()``  - resolve soul blueprint & skill paths; write ``crush.json``
+3. ``start()``      - spawn ``crush run --session session.json`` as a daemon process
+4. ``health_check()``- read session state file; fall back to PID liveness check
+5. ``stop()``       - SIGTERM → wait → SIGKILL; write tombstone
+6. ``destroy()``    - stop + remove work dir
 
 Per hosted-agents best practice: session-isolated state, filesystem memory,
 health checks via session state file then PID monitoring.
@@ -401,13 +401,13 @@ class LocalProvider(ProviderBackend):
     """Deploy agents as local processes backed by crush/SKSkills sessions.
 
     Each agent is given its own working directory containing:
-    - ``config.json``        — human-readable agent configuration
-    - ``session.json``       — crush session payload (soul, skills, model)
-    - ``crush.json``         — crush daemon config (written during configure())
-    - ``agent.pid``          — PID of the crush daemon process
-    - ``session_state.json`` — live state written by the crush daemon
-    - ``memory/``            — persistent memory directory
-    - ``scratch/``           — ephemeral scratch space
+    - ``config.json``        - human-readable agent configuration
+    - ``session.json``       - crush session payload (soul, skills, model)
+    - ``crush.json``         - crush daemon config (written during configure())
+    - ``agent.pid``          - PID of the crush daemon process
+    - ``session_state.json`` - live state written by the crush daemon
+    - ``memory/``            - persistent memory directory
+    - ``scratch/``           - ephemeral scratch space
 
     Args:
         home: Agent home directory (default: ``~/.skcapstone``).
@@ -595,9 +595,9 @@ class LocalProvider(ProviderBackend):
         the required session state so the rest of the engine can proceed.
 
         The session receives:
-        - ``--session session.json``    — full agent identity config
-        - ``--config crush.json``       — crush daemon config
-        - ``--headless``                — non-interactive daemon mode
+        - ``--session session.json``    - full agent identity config
+        - ``--config crush.json``       - crush daemon config
+        - ``--headless``                - non-interactive daemon mode
 
         Environment variables passed to the process:
         - ``AGENT_NAME``, ``TEAM_NAME``, ``SOUL_BLUEPRINT``
@@ -961,7 +961,7 @@ class LocalProvider(ProviderBackend):
             pid = _read_pid(work_dir)
 
         if not pid:
-            logger.debug("stop: no pid for %s — already stopped", agent_name)
+            logger.debug("stop: no pid for %s - already stopped", agent_name)
             self._write_stopped_state(agent_name, work_dir)
             return True
 
@@ -970,7 +970,7 @@ class LocalProvider(ProviderBackend):
             self._write_stopped_state(agent_name, work_dir)
             return True
 
-        # SIGTERM — polite shutdown
+        # SIGTERM - polite shutdown
         try:
             os.kill(pid, signal.SIGTERM)
         except ProcessLookupError:

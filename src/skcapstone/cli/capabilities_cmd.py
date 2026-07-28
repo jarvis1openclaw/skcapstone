@@ -49,7 +49,7 @@ def register_capabilities_commands(main: click.Group) -> None:
     @click.option("--json", "json_out", is_flag=True, help="Output as JSON.")
     @click.pass_context
     def capabilities(ctx, sk_home, json_out):
-        """Agent capability advertisement — what this agent can do.
+        """Agent capability advertisement - what this agent can do.
 
         Capabilities are included in every heartbeat beacon so peers
         know what services this agent offers.

@@ -93,7 +93,7 @@ class TestScoreLength:
         assert score >= 0.3
 
     def test_single_word_question(self) -> None:
-        """Single-word question — lo=10; response of 15 words → 1.0."""
+        """Single-word question - lo=10; response of 15 words → 1.0."""
         score = _score_length("Hi", " ".join(["word"] * 15))
         assert score == 1.0
 
@@ -134,7 +134,7 @@ class TestScoreCoherence:
         question = "Compare Python and JavaScript performance"
         # Content words: compare, python, javascript, performance
         response = "Python is great for scripting."
-        # 'python' matches — 1/4 = 0.25
+        # 'python' matches - 1/4 = 0.25
         score = _score_coherence(question, response)
         assert 0.0 < score < 1.0
 

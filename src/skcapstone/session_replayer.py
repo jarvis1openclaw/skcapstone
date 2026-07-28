@@ -1,5 +1,5 @@
 """
-SKCapstone Session Replayer — play back a recorded JSONL session.
+SKCapstone Session Replayer - play back a recorded JSONL session.
 
 Two modes:
 

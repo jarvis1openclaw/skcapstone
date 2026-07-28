@@ -1,4 +1,4 @@
-"""Tests for the FallbackTracker — graceful degradation logging."""
+"""Tests for the FallbackTracker - graceful degradation logging."""
 
 from __future__ import annotations
 
@@ -26,7 +26,7 @@ def _event(
 
 
 # ---------------------------------------------------------------------------
-# FallbackEvent — model tests
+# FallbackEvent - model tests
 # ---------------------------------------------------------------------------
 
 
@@ -48,7 +48,7 @@ class TestFallbackEvent:
 
 
 # ---------------------------------------------------------------------------
-# FallbackTracker — happy path
+# FallbackTracker - happy path
 # ---------------------------------------------------------------------------
 
 
@@ -110,7 +110,7 @@ class TestFallbackTrackerHappyPath:
 
 
 # ---------------------------------------------------------------------------
-# FallbackTracker — edge cases
+# FallbackTracker - edge cases
 # ---------------------------------------------------------------------------
 
 
@@ -167,7 +167,7 @@ class TestFallbackTrackerEdgeCases:
 
 
 # ---------------------------------------------------------------------------
-# FallbackTracker — thread safety
+# FallbackTracker - thread safety
 # ---------------------------------------------------------------------------
 
 
@@ -194,7 +194,7 @@ class TestFallbackTrackerConcurrency:
 
         assert not errors, f"Thread errors: {errors}"
         events = tracker.load_events()
-        # max_events default is 1000, 4*10=40 events — all should be present
+        # max_events default is 1000, 4*10=40 events - all should be present
         assert len(events) == 40
 
 

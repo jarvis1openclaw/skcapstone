@@ -34,7 +34,7 @@ def _resolve_agent_port(agent: str | None, explicit_port: int | None) -> int:
       1. An explicit ``--port`` always wins.
       2. A known agent gets its distinct registered port from ``AGENT_PORTS``.
       3. An unknown agent gets a stable hash-based port in the dynamic range
-         (``hashed_agent_port``) that avoids every documented fleet port — so
+         (``hashed_agent_port``) that avoids every documented fleet port - so
          two agents on one host never collide and unknown agents never land on
          skcomms' 9384 or any other reserved fleet port.
       4. The no-agent (single-daemon) path keeps the package ``DEFAULT_PORT``.
@@ -107,7 +107,7 @@ def register_daemon_commands(main: click.Group) -> None:
 
     @main.group()
     def daemon():
-        """Background daemon — the agent's heartbeat.
+        """Background daemon - the agent's heartbeat.
 
         Start the always-on daemon for inbox polling, vault sync,
         transport health monitoring, and the local status API.
@@ -232,7 +232,7 @@ def register_daemon_commands(main: click.Group) -> None:
             os.kill(pid, sig.SIGTERM)
             console.print(f"\n  [green]Sent SIGTERM to daemon (PID {pid})[/]\n")
         except ProcessLookupError:
-            console.print("[yellow]Daemon process not found — cleaning up PID file.[/]")
+            console.print("[yellow]Daemon process not found - cleaning up PID file.[/]")
             (home_path / "daemon.pid").unlink(missing_ok=True)
 
     @daemon.command("status")
@@ -342,7 +342,7 @@ def register_daemon_commands(main: click.Group) -> None:
             if result["installed"]:
                 for svc in result.get("services", []):
                     status = "[green]loaded[/]" if svc.get("loaded") else "[green]installed[/]"
-                    console.print(f"  [green]✓[/] {svc['label']} — {status}")
+                    console.print(f"  [green]✓[/] {svc['label']} - {status}")
                 console.print()
                 console.print("[dim]  Manage: launchctl list | grep skcapstone[/]")
                 if not start:
@@ -495,9 +495,9 @@ def register_daemon_commands(main: click.Group) -> None:
             color = status_colors.get(status, "white")
             restarts = str(info.get("restart_count", 0))
             age = info.get("heartbeat_age_seconds")
-            age_str = f"{age}s" if age is not None else "—"
+            age_str = f"{age}s" if age is not None else "-"
             auto = "[green]yes[/]" if info.get("auto_restart") else "[dim]no[/]"
-            last_error = (info.get("last_error") or "")[:40] or "—"
+            last_error = (info.get("last_error") or "")[:40] or "-"
             table.add_row(
                 name,
                 f"[{color}]{status}[/]",

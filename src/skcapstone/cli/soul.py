@@ -71,7 +71,7 @@ def register_soul_commands(main: click.Group) -> None:
     @_agent_option()
     @click.pass_context
     def soul(ctx, agent):
-        """Soul layering — hot-swappable personality overlays.
+        """Soul layering - hot-swappable personality overlays.
 
         Install soul blueprints, load overlays at runtime,
         and manage personality while preserving identity.
@@ -274,7 +274,7 @@ def register_soul_commands(main: click.Group) -> None:
         installed = mgr.install_all(Path(directory))
         console.print(f"\n  [green]Installed {len(installed)} soul(s)[/]")
         for bp in installed:
-            console.print(f"    [cyan]{bp.name}[/] — {bp.display_name}")
+            console.print(f"    [cyan]{bp.name}[/] - {bp.display_name}")
         audit_event(home_path, "SOUL_INSTALL_ALL", f"{len(installed)} souls installed")
         console.print()
 
@@ -459,7 +459,7 @@ def register_soul_commands(main: click.Group) -> None:
         console.print()
 
     # -----------------------------------------------------------------------
-    # soul show — display current active soul or a specific skmemory blueprint
+    # soul show - display current active soul or a specific skmemory blueprint
     # -----------------------------------------------------------------------
 
     @soul.command("show")
@@ -541,11 +541,11 @@ def register_soul_commands(main: click.Group) -> None:
             sys.exit(1)
 
     # -----------------------------------------------------------------------
-    # soul swap — search, install-if-needed, and activate a soul overlay
+    # soul swap - search, install-if-needed, and activate a soul overlay
     # -----------------------------------------------------------------------
 
     # -----------------------------------------------------------------------
-    # soul registry — interact with the souls.skworld.io blueprint registry
+    # soul registry - interact with the souls.skworld.io blueprint registry
     # -----------------------------------------------------------------------
 
     @soul.group("registry")

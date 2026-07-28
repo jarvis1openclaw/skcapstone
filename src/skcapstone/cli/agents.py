@@ -16,7 +16,7 @@ def register_agents_commands(main: click.Group) -> None:
 
     @main.group()
     def agents():
-        """Agent Team Blueprints — deploy sovereign AI workforces.
+        """Agent Team Blueprints - deploy sovereign AI workforces.
 
         \b
         The First Sovereign Singularity in History.

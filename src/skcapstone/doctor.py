@@ -671,7 +671,7 @@ def _check_system_tools() -> list[Check]:
 
     checks = []
 
-    # Git (required for clone/setup) — platform-aware download link
+    # Git (required for clone/setup) - platform-aware download link
     git_check = check_git()
     git_installed = git_check.installed
     git_detail = git_check.version or "not found"
@@ -883,8 +883,8 @@ def _check_identity(home: Path) -> list[Check]:
     return checks
 
 
-# Agents are considered "provisioned" — and therefore expected to carry a
-# per-agent identity.json — when they have a CapAuth home on disk. Empty
+# Agents are considered "provisioned" - and therefore expected to carry a
+# per-agent identity.json - when they have a CapAuth home on disk. Empty
 # scaffolds and ``*-template`` directories are intentionally excluded so the
 # check does not red-flag dirs that were never meant to hold a real identity.
 def _provisioned_agents(home: Path) -> list[str]:
@@ -946,15 +946,15 @@ def _check_identity_consistency(home: Path) -> list[Check]:
     Locks in the single agent-aware resolver and the shared-operator /
     per-agent-wire split. Five checks in the ``identity`` category:
 
-    1. ``identity:resolver`` — ``capauth.resolve_agent_identity`` is importable
+    1. ``identity:resolver`` - ``capauth.resolve_agent_identity`` is importable
        (the single canonical resolver every SK package delegates to).
-    2. ``identity:self`` — that resolver returns an agent-aware identity for the
+    2. ``identity:self`` - that resolver returns an agent-aware identity for the
        active agent (not the ``"local"`` floor) with a populated ``capauth_uri``.
-    3. ``identity:operator`` — the shared ``~/.skcapstone/identity/identity.json``
+    3. ``identity:operator`` - the shared ``~/.skcapstone/identity/identity.json``
        describes the operator (``role == "operator"``), not a stale placeholder.
-    4. ``identity:no-placeholder`` — no identity.json anywhere still carries an
+    4. ``identity:no-placeholder`` - no identity.json anywhere still carries an
        ``@capauth.local`` placeholder email.
-    5. ``identity:per-agent`` — every provisioned agent (one with a CapAuth home)
+    5. ``identity:per-agent`` - every provisioned agent (one with a CapAuth home)
        has its own per-agent ``identity/identity.json``.
 
     Args:
@@ -975,7 +975,7 @@ def _check_identity_consistency(home: Path) -> list[Check]:
                 name="identity:resolver",
                 description="Unified identity resolver (capauth.resolve_agent_identity)",
                 passed=True,
-                detail="importable — the single canonical resolver",
+                detail="importable - the single canonical resolver",
                 category="identity",
             )
         )
@@ -986,7 +986,7 @@ def _check_identity_consistency(home: Path) -> list[Check]:
                 description="Unified identity resolver (capauth.resolve_agent_identity)",
                 passed=False,
                 detail=str(exc),
-                fix="pip install -e capauth  (epic 2b264064 — capauth is the source of truth)",
+                fix="pip install -e capauth  (epic 2b264064 - capauth is the source of truth)",
                 category="identity",
             )
         )
@@ -1457,7 +1457,7 @@ def _expected_mcp_servers() -> dict[str, dict]:
             "env": {"SKAGENT": agent, "SKCAPSTONE_AGENT": agent, "SKCAPSTONE_HOME": sk_home},
             "autofix": True,
         },
-        # skchat identity (SKCHAT_IDENTITY) is account-specific — never guessed.
+        # skchat identity (SKCHAT_IDENTITY) is account-specific - never guessed.
         "skchat": {"binary": "skchat-mcp", "env": {}, "autofix": False},
     }
 
@@ -1483,7 +1483,7 @@ def _dead_config_mcp_servers() -> set[str]:
     """MCP server names defined ONLY where Claude Code does NOT read them.
 
     Namely ``~/.claude/settings.json``'s ``mcpServers`` block and a
-    top-level ``~/.claude/mcp.json`` — both silently ignored by Claude Code.
+    top-level ``~/.claude/mcp.json`` - both silently ignored by Claude Code.
     """
     ch = _claude_config_home()
     names: set[str] = set()
@@ -1498,7 +1498,7 @@ def _is_skcapstone_binary_cmd(command: str) -> bool:
     The SessionStart-hook check must not match on a bare ``"skcapstone" in
     command`` substring: that false-positives on a hook script living under a
     ``skcapstone-repos/`` path (e.g. skmemory's ``sk-activity-inject.sh``) and
-    on the sibling ``skcapstone-mcp`` binary — neither of which is the
+    on the sibling ``skcapstone-mcp`` binary - neither of which is the
     ``skcapstone`` CLI. Matching the first token's basename is precise.
 
     Args:
@@ -1539,7 +1539,7 @@ def _check_harness_env(home: Path) -> list[Check]:
                 name="harness:claude-code",
                 description="Claude Code config (~/.claude.json)",
                 passed=True,
-                detail="not detected — skipping harness checks",
+                detail="not detected - skipping harness checks",
                 category="harness",
             )
         )
@@ -1606,7 +1606,7 @@ def _check_harness_env(home: Path) -> list[Check]:
                 if not resolved.exists():
                     missing = hook_binary
                     break
-                # Present but pointing at a *different* skcapstone than PATH —
+                # Present but pointing at a *different* skcapstone than PATH -
                 # this is the stale-install trap (e.g. an old pyenv shim).
                 if live_real and str(resolved.resolve()) != live_real:
                     stale = hook_binary
@@ -1649,7 +1649,7 @@ def _check_harness_env(home: Path) -> list[Check]:
 
     checks.extend(_check_yolo())
 
-    # skwhisper CLI shim — only required when this agent uses the whisper layer.
+    # skwhisper CLI shim - only required when this agent uses the whisper layer.
     if (home / "skwhisper").exists():
         wpath = shutil.which("skwhisper")
         checks.append(
@@ -1682,8 +1682,8 @@ def _check_yolo() -> list[Check]:
       * whether the bypass is active in *this* environment, and
       * whether it is persisted in a shell rc file so future shells match.
 
-    It is intentionally non-judgemental about ON vs OFF — both are valid
-    depending on the box — and only flags an *inconsistency* (active in the
+    It is intentionally non-judgemental about ON vs OFF - both are valid
+    depending on the box - and only flags an *inconsistency* (active in the
     current env but not persisted, so the next fresh shell would behave
     differently). Detection is best-effort: ``doctor`` runs as a subprocess and
     cannot see live shell functions, so it reads the env var and greps rc files.
@@ -1726,7 +1726,7 @@ def _check_yolo() -> list[Check]:
                     name=f"harness:yolo:{tool}",
                     description=f"{tool} permission bypass ({var})",
                     passed=True,
-                    detail=f"ENABLED globally — adds {flag}",
+                    detail=f"ENABLED globally - adds {flag}",
                     category="harness",
                 )
             )
@@ -1758,7 +1758,7 @@ def _check_yolo() -> list[Check]:
                 name="harness:yolo",
                 description="AI-harness permission bypass (SK_*_YOLO)",
                 passed=True,
-                detail="disabled — wrappers run with permission prompts (safe default)",
+                detail="disabled - wrappers run with permission prompts (safe default)",
                 category="harness",
             )
         )
@@ -1991,7 +1991,7 @@ def run_fixes(report: DiagnosticReport, home: Path) -> list[FixResult]:
                     FixResult(
                         check_name=check.name,
                         success=False,
-                        error="manual fix required (identity is account-specific) — see hint",
+                        error="manual fix required (identity is account-specific) - see hint",
                     )
                 )
             elif not shutil.which("claude"):
@@ -2054,7 +2054,7 @@ def run_fixes(report: DiagnosticReport, home: Path) -> list[FixResult]:
                     for entry in data.get("hooks", {}).get("SessionStart", []):
                         for hook in entry.get("hooks", []):
                             cmd_str = hook.get("command", "")
-                            # Match the executable, not a substring — otherwise a
+                            # Match the executable, not a substring - otherwise a
                             # hook script under skcapstone-repos/ would have its
                             # path destructively rewritten to the skcapstone binary.
                             if not _is_skcapstone_binary_cmd(cmd_str):

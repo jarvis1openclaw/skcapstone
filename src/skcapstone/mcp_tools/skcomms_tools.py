@@ -1,8 +1,8 @@
 """SKComms notification and status tools.
 
 Exposes two tools:
-    comm_notify — Send a notification via SKComms transports
-    comm_status — Show SKComms subsystem status
+    comm_notify - Send a notification via SKComms transports
+    comm_status - Show SKComms subsystem status
 """
 
 from __future__ import annotations

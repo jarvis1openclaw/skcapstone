@@ -1,4 +1,4 @@
-"""Tests for the Syncthing setup skill — Sovereign Singularity."""
+"""Tests for the Syncthing setup skill - Sovereign Singularity."""
 
 import xml.etree.ElementTree as ET
 from unittest.mock import patch
@@ -59,7 +59,7 @@ def _patch_homes(monkeypatch, tmp_path):
 
 
 class TestEnsureSharedFolder:
-    """Tests for ensure_shared_folder — creates the full agent home."""
+    """Tests for ensure_shared_folder - creates the full agent home."""
 
     def test_creates_all_pillar_directories(self, tmp_path, monkeypatch):
         """Creates every pillar data directory under agent home."""
@@ -123,7 +123,7 @@ class TestEnsureSharedFolder:
 
 
 class TestConfigureSyncthingFolder:
-    """Tests for configure_syncthing_folder — Syncthing XML config."""
+    """Tests for configure_syncthing_folder - Syncthing XML config."""
 
     def _make_config(self, tmp_path, existing_folder=None):
         """Create a minimal Syncthing config.xml for testing."""

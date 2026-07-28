@@ -6,7 +6,7 @@ Covers:
 - validate_model_profiles_yaml: valid, missing key, bad regex, enum error
 - validate_identity_json: valid, missing field, JSON parse error, bad fingerprint
 - validate_soul_blueprint_json: valid, missing required field, bad type
-- validate_all: integration — correct files collected, missing files are warnings
+- validate_all: integration - correct files collected, missing files are warnings
 - CLI smoke: skcapstone config validate --json-out
 """
 

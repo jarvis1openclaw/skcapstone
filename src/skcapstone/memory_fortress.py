@@ -1,5 +1,5 @@
 """
-Memory Fortress — integrity sealing, at-rest encryption, and tamper alerts.
+Memory Fortress - integrity sealing, at-rest encryption, and tamper alerts.
 
 Every memory gets an HMAC-SHA256 integrity seal on write. On read, the
 seal is verified and a tamper alert fires if it doesn't match. Optional
@@ -200,7 +200,7 @@ class MemoryFortress:
         data.pop(_KEY_ID_FIELD, None)
 
         if stored_seal is None:
-            # Legacy unsealed memory — load without verification
+            # Legacy unsealed memory - load without verification
             try:
                 entry = MemoryEntry(**data)
                 return entry, SealResult(
@@ -233,7 +233,7 @@ class MemoryFortress:
                 sealed=True,
                 verified=False,
                 tampered=True,
-                error="Integrity seal mismatch — possible tampering",
+                error="Integrity seal mismatch - possible tampering",
             )
 
         # Decrypt if encrypted

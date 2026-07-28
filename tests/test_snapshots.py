@@ -1,5 +1,5 @@
 """
-Tests for skcapstone.snapshots — Soul Snapshot system.
+Tests for skcapstone.snapshots - Soul Snapshot system.
 
 Covers: model validation, OOF state, SnapshotStore CRUD/search,
 injection prompt format, soul blueprint conversion, and API endpoints.
@@ -198,7 +198,7 @@ class TestSoulSnapshot:
         assert "sovereign AI" in snap.key_topics
 
     def test_serialization_roundtrip(self, rich_snapshot):
-        """Serialize to JSON and deserialize — data must be identical."""
+        """Serialize to JSON and deserialize - data must be identical."""
         json_str = rich_snapshot.model_dump_json()
         loaded = SoulSnapshot.model_validate_json(json_str)
         assert loaded.snapshot_id == rich_snapshot.snapshot_id

@@ -1,5 +1,5 @@
 """
-Soul Layering System — hot-swappable personality overlays.
+Soul Layering System - hot-swappable personality overlays.
 
 Soul is a lens. Memory is the ledger. Identity is permanent.
 
@@ -50,7 +50,7 @@ class CommunicationStyle(BaseModel):
 
 
 class SoulBlueprint(BaseModel):
-    """A parsed soul blueprint — the overlay definition."""
+    """A parsed soul blueprint - the overlay definition."""
 
     name: str
     display_name: str
@@ -65,7 +65,7 @@ class SoulBlueprint(BaseModel):
 
 
 class SoulState(BaseModel):
-    """Persisted active state — who is the agent right now?"""
+    """Persisted active state - who is the agent right now?"""
 
     base_soul: str = "base"
     active_soul: Optional[str] = None
@@ -167,7 +167,7 @@ def _derive_topology(traits: list[str], vibe: str) -> dict[str, float]:
     """Derive emotional topology weights from traits and vibe text.
 
     Uses keyword matching to assign weights to emotional dimensions.
-    This is a heuristic — not a neural model.
+    This is a heuristic - not a neural model.
     """
     combined = " ".join(traits).lower() + " " + vibe.lower()
     dimensions = {
@@ -382,7 +382,7 @@ def load_yaml_blueprint(path: Path) -> SoulBlueprint:
     """Load a soul blueprint from a YAML file.
 
     YAML blueprints map directly to the SoulBlueprint model with no
-    heuristic parsing — they are the canonical structured format.
+    heuristic parsing - they are the canonical structured format.
 
     Args:
         path: Path to the .yaml or .yml blueprint file.
@@ -444,7 +444,7 @@ def parse_blueprint(path: Path) -> SoulBlueprint:
     if not path.exists():
         raise FileNotFoundError(f"Blueprint not found: {path}")
 
-    # YAML files load directly — no heuristic parsing needed
+    # YAML files load directly - no heuristic parsing needed
     if path.suffix.lower() in (".yaml", ".yml"):
         return load_yaml_blueprint(path)
 
@@ -477,7 +477,7 @@ def blend_topology(
 ) -> dict[str, float]:
     """Blend soul emotional topology onto base FEB weights.
 
-    The base FEB is never overwritten — the soul topology is applied
+    The base FEB is never overwritten - the soul topology is applied
     as a temporary modifier using weighted averaging.
 
     Args:
@@ -824,7 +824,7 @@ class SoulManager:
                         "description": desc[:80] if desc else "",
                     }
         else:
-            # 2b) Local repo not cloned — fall back to GitHub API
+            # 2b) Local repo not cloned - fall back to GitHub API
             try:
                 from .blueprint_registry import _fetch_github_blueprints
 
@@ -842,7 +842,7 @@ class SoulManager:
                             }
             except Exception as e:
                 logger.warning("soul.py: %s", e)
-                pass  # offline — show only installed souls
+                pass  # offline - show only installed souls
 
         # Sort by category, then name
         return sorted(seen.values(), key=lambda d: (d["category"], d["name"]))
@@ -903,14 +903,14 @@ class SoulManager:
 
 
 # ---------------------------------------------------------------------------
-# SoulRegistry — programmatic soul discovery and search
+# SoulRegistry - programmatic soul discovery and search
 # ---------------------------------------------------------------------------
 
 
 class SoulRegistry:
     """Registry for discovering and searching installed soul blueprints.
 
-    Unlike SoulManager (which handles lifecycle — install/load/unload),
+    Unlike SoulManager (which handles lifecycle - install/load/unload),
     the registry is a read-only index for programmatic soul discovery.
     Team blueprints and MCP tools use this to find and select souls.
 

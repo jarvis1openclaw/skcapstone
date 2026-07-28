@@ -1,4 +1,4 @@
-"""test-connection command — ping a peer via SKComms and measure latency.
+"""test-connection command - ping a peer via SKComms and measure latency.
 
 Usage:
     skcapstone test-connection <peer>
@@ -60,7 +60,7 @@ def _is_ping(payload: str) -> tuple[bool, str, str]:
         payload: Raw message content string.
 
     Returns:
-        tuple: (is_ping, nonce, sender) — nonce/sender are empty strings
+        tuple: (is_ping, nonce, sender) - nonce/sender are empty strings
         when the payload is not a ping.
     """
     try:
@@ -133,7 +133,7 @@ def ping_peer(
 
     # If we only stored locally (no live transport), report accordingly
     if not send_result.get("delivered"):
-        result["error"] = "ping stored locally — no live transport available"
+        result["error"] = "ping stored locally - no live transport available"
         return result
 
     # Poll for pong
@@ -152,7 +152,7 @@ def ping_peer(
                 return result
         time.sleep(poll_interval)
 
-    result["error"] = f"timeout after {timeout:.0f}s — no pong received"
+    result["error"] = f"timeout after {timeout:.0f}s - no pong received"
     return result
 
 

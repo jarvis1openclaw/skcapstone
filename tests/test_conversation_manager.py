@@ -1,4 +1,4 @@
-"""Tests for ConversationManager — centralized peer conversation management."""
+"""Tests for ConversationManager - centralized peer conversation management."""
 
 from __future__ import annotations
 

@@ -2,12 +2,12 @@
 
 Covers:
 - load() on empty / missing / malformed directory
-- add_peer() — creates entry, persists to YAML, overwrites on re-add
-- remove_peer() — removes known peer, returns False for unknown
-- resolve() — returns address or None
-- list_peers() — empty and with entries, sorted
-- update_last_seen() — timestamps known peer, no-op on unknown
-- auto_discover() — discovers from heartbeats dir and outbox dirs
+- add_peer() - creates entry, persists to YAML, overwrites on re-add
+- remove_peer() - removes known peer, returns False for unknown
+- resolve() - returns address or None
+- list_peers() - empty and with entries, sorted
+- update_last_seen() - timestamps known peer, no-op on unknown
+- auto_discover() - discovers from heartbeats dir and outbox dirs
 - YAML persistence round-trip
 - CLI: peers list, peers add, peers discover
 """
@@ -77,7 +77,7 @@ class TestLoad:
         (peers_dir / "directory.yaml").write_text("{{{invalid yaml", encoding="utf-8")
         d = make_directory(tmp_path)
         result = d.load()
-        # Graceful degradation — no exception
+        # Graceful degradation - no exception
         assert isinstance(result, dict)
 
 
@@ -265,7 +265,7 @@ class TestAutoDiscover:
         d.add_peer("lumina", "/custom/path")
         added = d.auto_discover(heartbeats_dir=hb_dir)
 
-        # lumina was already known — should not appear in added
+        # lumina was already known - should not appear in added
         added_names = {e.name for e in added}
         assert "lumina" not in added_names
         # And the existing address must be preserved
@@ -292,7 +292,7 @@ class TestPersistence:
         d1.add_peer("Lumina", "/outbox/lumina", transport="syncthing", fingerprint="FP99")
         d1.add_peer("Grok", "/outbox/grok", transport="tailscale")
 
-        # Fresh instance — reads from disk
+        # Fresh instance - reads from disk
         d2 = make_directory(tmp_path)
         d2.load()
         assert d2.resolve("lumina") == "/outbox/lumina"
@@ -321,7 +321,7 @@ class TestPersistence:
 
 
 # ---------------------------------------------------------------------------
-# Test 8: CLI — peers list, add, discover
+# Test 8: CLI - peers list, add, discover
 # ---------------------------------------------------------------------------
 
 

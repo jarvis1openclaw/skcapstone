@@ -3,7 +3,7 @@
 A backend the operator has formally decommissioned (skvector/Qdrant and
 skgraph/FalkorDB both moved to the local Postgres stack on 2026-06-08) must not
 be probed at all. Before the fix, `enabled: false` only skipped reading host/port
-out of the yaml — execution then fell through to the localhost default and probed
+out of the yaml - execution then fell through to the localhost default and probed
 anyway, filing a fresh false "down" incident on every health sweep.
 """
 

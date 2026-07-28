@@ -1,5 +1,5 @@
 """
-SKCapstone Shell — interactive REPL for sovereign agent operations.
+SKCapstone Shell - interactive REPL for sovereign agent operations.
 
 Tool-agnostic: works from any terminal (Claude Code, Cursor, Windsurf,
 SSH, plain bash). The sovereign agent cockpit.

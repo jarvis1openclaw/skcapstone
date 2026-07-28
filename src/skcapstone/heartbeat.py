@@ -1,5 +1,5 @@
 """
-Sovereign Heartbeat v2 — active health beacon for agent meshes.
+Sovereign Heartbeat v2 - active health beacon for agent meshes.
 
 Each agent node publishes a heartbeat file containing its current
 state, capacity, capabilities, and TTL. Syncthing distributes these
@@ -117,7 +117,7 @@ class Heartbeat(BaseModel):
     fingerprint: str = ""
     metadata: dict[str, Any] = Field(default_factory=dict)
 
-    # Service advertisement (optional — old heartbeats without these still parse)
+    # Service advertisement (optional - old heartbeats without these still parse)
     services: list[HeartbeatService] = Field(default_factory=list)
     tailscale_ip: str = ""
 
@@ -212,7 +212,7 @@ class HeartbeatBeacon:
         """Publish a heartbeat beacon.
 
         Writes the agent's current state to its heartbeat file.
-        Only writes to its own file — never touches peer files.
+        Only writes to its own file - never touches peer files.
 
         Args:
             status: Agent status (alive, busy, draining, offline).

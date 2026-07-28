@@ -1,4 +1,4 @@
-"""Ansible playbook runner tool — run_ansible_playbook.
+"""Ansible playbook runner tool - run_ansible_playbook.
 
 Streams stdout/stderr lines to the activity feed SSE queue as
 ``ansible.playbook.line`` / ``ansible.playbook.stderr`` events.
@@ -201,7 +201,7 @@ async def _handle_run_ansible_playbook(args: dict) -> list[TextContent]:
         _mem_store(
             home=_home(),
             content=(
-                f"Ansible run {'(dry-run) ' if dry_run else ''}— "
+                f"Ansible run {'(dry-run) ' if dry_run else ''}- "
                 f"playbook: {str(playbook)!r}, inventory: {inventory!r}, "
                 f"exit_code: {exit_code}, success: {success}. "
                 f"Recap: {recap_str}"

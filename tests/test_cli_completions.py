@@ -2,7 +2,7 @@
 
 Covers:
   - Dynamic completion callbacks (complete_memory_tags, complete_agent_names,
-    complete_task_ids) — unit tests with tmp_path fixtures.
+    complete_task_ids) - unit tests with tmp_path fixtures.
   - CLI commands: skcapstone install-completion --help, completions --help,
     completions show, completions install (mocked), completions uninstall.
   - Graceful degradation: callbacks return [] when dirs are missing or files
@@ -259,7 +259,7 @@ class TestDetectShell:
 
 
 # ---------------------------------------------------------------------------
-# CLI — install-completion command
+# CLI - install-completion command
 # ---------------------------------------------------------------------------
 
 
@@ -315,7 +315,7 @@ class TestInstallCompletionCommand:
 
 
 # ---------------------------------------------------------------------------
-# CLI — completions group
+# CLI - completions group
 # ---------------------------------------------------------------------------
 
 

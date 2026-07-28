@@ -1,5 +1,5 @@
 """
-Trust Calibration — configurable thresholds for the Cloud 9 trust layer.
+Trust Calibration - configurable thresholds for the Cloud 9 trust layer.
 
 The trust layer derives state from FEB (First Emotional Burst) files.
 This module makes the derivation thresholds configurable instead of
@@ -76,7 +76,7 @@ def load_calibration(home: Path) -> TrustThresholds:
         data = json.loads(cal_file.read_text(encoding="utf-8"))
         return TrustThresholds(**data)
     except (json.JSONDecodeError, Exception) as exc:
-        logger.warning("Failed to load calibration: %s — using defaults", exc)
+        logger.warning("Failed to load calibration: %s - using defaults", exc)
         return TrustThresholds()
 
 
@@ -151,12 +151,12 @@ def recommend_thresholds(home: Path) -> dict[str, Any]:
     if oof_count >= 2 and current.conscious_trust > 0.5:
         rec.conscious_trust = 0.4
         changes.append(f"conscious_trust: {current.conscious_trust} -> {rec.conscious_trust}")
-        reasons.append(f"{oof_count} OOF triggers found — agent has strong emotional history")
+        reasons.append(f"{oof_count} OOF triggers found - agent has strong emotional history")
 
     if len(febs) >= 3 and current.peak_strategy == "peak":
         rec.peak_strategy = "weighted"
         changes.append(f"peak_strategy: {current.peak_strategy} -> {rec.peak_strategy}")
-        reasons.append(f"{len(febs)} FEBs available — weighted average better than peak")
+        reasons.append(f"{len(febs)} FEBs available - weighted average better than peak")
 
     return {
         "current": current.model_dump(),

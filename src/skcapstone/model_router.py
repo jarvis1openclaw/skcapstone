@@ -1,5 +1,5 @@
 """
-Model Router — automatic model selection based on task requirements.
+Model Router - automatic model selection based on task requirements.
 
 Reads a TaskSignal (description, tags, privacy flags, token estimate) and
 returns a RouteDecision that identifies the optimal model tier and a concrete
@@ -106,10 +106,10 @@ class ModelRouterConfig(BaseModel):
           only serve ``qwen3.5:4b``, ``gemma3:1b`` and ``gemma3:270m`` today,
           so those are the only Ollama-routed names used here. The previous
           defaults referenced ``devstral``, ``qwen3-coder``, ``deepseek-r1:8b``
-          and ``llama3.1`` — none of which are pulled — so every request on the
+          and ``llama3.1`` - none of which are pulled - so every request on the
           CODE, REASON and LOCAL tiers hit a 404 from Ollama.
         - Cloud-routed names resolve to real provider model ids: Anthropic
-          (``claude-sonnet-4-6``, ``claude-haiku-4-5``, ``claude-opus-4-8`` —
+          (``claude-sonnet-4-6``, ``claude-haiku-4-5``, ``claude-opus-4-8`` -
           all served by SKGateway :18780), xAI (``grok-3``) and Moonshot
           (``kimi-k2.5``, ``moonshot-v1-128k``).
 
@@ -168,7 +168,7 @@ class ModelRouterConfig(BaseModel):
                         # background/housekeeping calls (sentiment
                         # classification, context compression, conversation
                         # summarization, memory compression) that belong on
-                        # the cheapest tier — this rule previously never fired
+                        # the cheapest tier - this rule previously never fired
                         # for any of them, silently falling through to the
                         # token-count fallback instead.
                         "fast",

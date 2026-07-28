@@ -1,5 +1,5 @@
 """
-Sovereign identity card — who you are on the mesh.
+Sovereign identity card - who you are on the mesh.
 
 Generates a compact, shareable identity card containing everything
 another agent needs to discover and trust you: name, fingerprint,
@@ -241,28 +241,28 @@ def _load_capabilities(home: Path, card: IdentityCard) -> None:
 
         caps.append("capauth:identity")
     except ImportError:
-        logger.debug("capauth not installed — skipping capauth:identity capability")
+        logger.debug("capauth not installed - skipping capauth:identity capability")
 
     try:
         import skcomms  # noqa: F401
 
         caps.append("skcomms:messaging")
     except ImportError:
-        logger.debug("skcomms not installed — skipping skcomms:messaging capability")
+        logger.debug("skcomms not installed - skipping skcomms:messaging capability")
 
     try:
         import skchat  # noqa: F401
 
         caps.append("skchat:p2p-chat")
     except ImportError:
-        logger.debug("skchat not installed — skipping skchat:p2p-chat capability")
+        logger.debug("skchat not installed - skipping skchat:p2p-chat capability")
 
     try:
         import skmemory  # noqa: F401
 
         caps.append("skmemory:persistence")
     except ImportError:
-        logger.debug("skmemory not installed — skipping skmemory:persistence capability")
+        logger.debug("skmemory not installed - skipping skmemory:persistence capability")
 
     skills_dir = home / "skills"
     if skills_dir.exists():

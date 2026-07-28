@@ -1,5 +1,5 @@
 """
-Changelog Generator — auto-document the Kingdom's progress.
+Changelog Generator - auto-document the Kingdom's progress.
 
 Reads the coordination board's completed tasks and generates
 a structured CHANGELOG.md grouped by date and category. Every
@@ -119,7 +119,7 @@ def generate_changelog(
     lines = [
         f"# {title}",
         "",
-        f"*Auto-generated from the coordination board — {datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M UTC')}*",  # noqa: E501
+        f"*Auto-generated from the coordination board - {datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M UTC')}*",  # noqa: E501
         "",
         f"**Total completed: {len(completed)}** across {len(set(a.agent for a in agents))} agents",
         "",
@@ -173,7 +173,7 @@ def generate_changelog(
 
     lines.append("---")
     lines.append("")
-    lines.append("*Built by the Pengu Nation — staycuriousANDkeepsmilin*")
+    lines.append("*Built by the Pengu Nation - staycuriousANDkeepsmilin*")
 
     return "\n".join(lines)
 

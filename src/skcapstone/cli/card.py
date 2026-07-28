@@ -17,7 +17,7 @@ def register_card_commands(main: click.Group) -> None:
 
     @main.group()
     def card():
-        """Agent card — shareable sovereign identity for P2P discovery.
+        """Agent card - shareable sovereign identity for P2P discovery.
 
         Generate, view, export, and verify sovereign agent identity cards.
         Cards contain your CapAuth identity, contact transports, and capabilities.

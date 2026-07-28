@@ -1,4 +1,4 @@
-"""Tests for the ModelRouter — automatic model selection layer.
+"""Tests for the ModelRouter - automatic model selection layer.
 
 Covers:
 - Routing by tag to each primary tier (CODE, NUANCE, FAST)
@@ -243,7 +243,7 @@ class TestTagRulePriority:
 
 # ---------------------------------------------------------------------------
 # Caller-alignment: real production callers' exact tags must actually match
-# a rule (regression coverage for the 2026-07-09 model-router audit — these
+# a rule (regression coverage for the 2026-07-09 model-router audit - these
 # tags previously fell through to the token-count fallback because no rule
 # keyword overlapped them).
 # ---------------------------------------------------------------------------
@@ -265,10 +265,10 @@ class TestRealCallerTagAlignment:
     # in every test below. With a SMALL token estimate, the pre-fix router
     # already "accidentally" lands on FAST via the token fallback (verified
     # by direct execution 2026-07-09), which would make a small-token test
-    # pass before AND after the fix — proving nothing. A large token estimate
+    # pass before AND after the fix - proving nothing. A large token estimate
     # makes the bug visible: pre-fix it wrongly falls through to REASON
     # (token fallback), post-fix the tag rule correctly wins and returns FAST
-    # regardless of token count. This also mirrors real usage —
+    # regardless of token count. This also mirrors real usage -
     # memory_compressor.py estimates estimated_tokens=len(prompt)//4+512,
     # which crosses 16_000 for any prompt over ~62 KB.
 
@@ -301,7 +301,7 @@ class TestRealCallerTagAlignment:
 
     def test_memory_compressor_tags_with_dynamic_group_tag(self, router: ModelRouter) -> None:
         # `tag` in memory_compressor.py is a dynamic per-group label (e.g. "gtd",
-        # "identity") that can't be enumerated — the static "compression"/"memory"
+        # "identity") that can't be enumerated - the static "compression"/"memory"
         # keywords must be sufficient on their own (set-intersection semantics
         # only need ONE overlapping keyword to fire).
         signal = TaskSignal(
@@ -456,7 +456,7 @@ class TestModelNameResolution:
 class TestDefaultModelsAreReal:
     """Every model in ``ModelRouterConfig.default()`` must actually exist.
 
-    Regression for card b89794c8 ("Fix model tier defaults — use real Ollama
+    Regression for card b89794c8 ("Fix model tier defaults - use real Ollama
     model names"). The prior defaults referenced ``devstral``,
     ``qwen3-coder``, ``deepseek-r1:8b`` and ``llama3.1`` for the CODE, REASON,
     FAST and LOCAL tiers. Those names pattern-match the Ollama backend (see
@@ -465,7 +465,7 @@ class TestDefaultModelsAreReal:
 
     A model name is considered real when
     :func:`skcapstone.consciousness_loop._backend_from_model` resolves it to a
-    known backend AND — if that backend is Ollama — the model is one that is
+    known backend AND - if that backend is Ollama - the model is one that is
     actually pulled on the fleet.
     """
 
@@ -496,7 +496,7 @@ class TestDefaultModelsAreReal:
             backend = _backend_from_model(model_name, tier)
             assert backend != "unknown", (
                 f"{tier.value} default {model_name!r} resolves to an unknown "
-                f"backend — it is not a real model on any configured provider."
+                f"backend - it is not a real model on any configured provider."
             )
 
     def test_ollama_routed_defaults_are_actually_pulled(self) -> None:

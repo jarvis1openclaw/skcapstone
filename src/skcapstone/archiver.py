@@ -1,4 +1,4 @@
-"""Conversation archiver — moves old peer messages to compressed archives.
+"""Conversation archiver - moves old peer messages to compressed archives.
 
 Reads active conversation files from {home}/conversations/{peer}.json,
 archives messages older than ``age_days`` days (default 30) that are
@@ -338,7 +338,7 @@ class ConversationArchiver:
                 continue
             ts = _parse_ts(msg.get("timestamp"))
             if ts is None or ts >= cutoff:
-                # Can't determine age, or not old enough — keep it
+                # Can't determine age, or not old enough - keep it
                 retain.append(msg)
             else:
                 to_archive.append(msg)

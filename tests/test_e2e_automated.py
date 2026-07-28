@@ -1,5 +1,5 @@
 """
-tests/test_e2e_automated.py — Automated multi-agent E2E test via subprocess.
+tests/test_e2e_automated.py - Automated multi-agent E2E test via subprocess.
 
 Starts the real skcapstone daemon, injects a message into the inbox,
 and verifies that a response appears within the timeout window.
@@ -32,7 +32,7 @@ import pytest
 pytestmark = [
     pytest.mark.skipif(
         not shutil.which("skcapstone"),
-        reason="skcapstone CLI not installed — skipping live E2E",
+        reason="skcapstone CLI not installed - skipping live E2E",
     ),
     pytest.mark.e2e,
 ]
@@ -63,7 +63,7 @@ def _write_test_message(inbox_dir: Path, peer: str) -> tuple[Path, str]:
         "sender": peer,
         "recipient": "Opus",
         "payload": {
-            "content": f"Ping test — automated pytest E2E at {time.strftime('%Y-%m-%dT%H:%M:%SZ', time.gmtime())}",  # noqa: E501
+            "content": f"Ping test - automated pytest E2E at {time.strftime('%Y-%m-%dT%H:%M:%SZ', time.gmtime())}",  # noqa: E501
             "content_type": "text",
         },
         "message_id": msg_id,
@@ -148,7 +148,7 @@ def daemon_process():
     )
     os.close(log_fd)
 
-    print(f"\n  [e2e] Daemon started (PID {proc.pid}) — log: {log_path}")
+    print(f"\n  [e2e] Daemon started (PID {proc.pid}) - log: {log_path}")
     print(f"  [e2e] Waiting {STARTUP_WAIT}s for startup…")
     time.sleep(STARTUP_WAIT)
 
@@ -159,7 +159,7 @@ def daemon_process():
 
     yield proc, log_path
 
-    # Teardown — send SIGTERM to the whole process group
+    # Teardown - send SIGTERM to the whole process group
     try:
         os.killpg(os.getpgid(proc.pid), signal.SIGTERM)
     except ProcessLookupError:

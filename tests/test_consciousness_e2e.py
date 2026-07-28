@@ -1,4 +1,4 @@
-"""E2E tests for the consciousness pipeline — no real LLM needed."""
+"""E2E tests for the consciousness pipeline - no real LLM needed."""
 
 from __future__ import annotations
 
@@ -68,7 +68,7 @@ def _ack_envelope() -> _SimpleEnvelope:
 
 
 class TestFullPipelineMockLLM:
-    """test_full_pipeline_mock_llm — ConsciousnessLoop with a mock LLMBridge."""
+    """test_full_pipeline_mock_llm - ConsciousnessLoop with a mock LLMBridge."""
 
     def test_returns_response(self, tmp_path):
         """process_envelope() returns the LLM response."""
@@ -135,7 +135,7 @@ class TestFullPipelineMockLLM:
 
 
 class TestPipelineSkipsAckMessages:
-    """test_pipeline_skips_ack_messages — ACK envelopes are ignored."""
+    """test_pipeline_skips_ack_messages - ACK envelopes are ignored."""
 
     def test_ack_returns_none(self, tmp_path):
         """process_envelope() returns None for an ACK message."""
@@ -164,7 +164,7 @@ class TestPipelineSkipsAckMessages:
 
 
 class TestPipelineStoresConversationHistory:
-    """test_pipeline_stores_conversation_history — history is updated."""
+    """test_pipeline_stores_conversation_history - history is updated."""
 
     def test_user_message_in_history(self, tmp_path):
         """After processing, the sender's message appears in conversation history."""
@@ -199,7 +199,7 @@ class TestPipelineStoresConversationHistory:
 
 
 class TestPipelineHandlesLLMFailure:
-    """test_pipeline_handles_llm_failure — errors are counted and None returned."""
+    """test_pipeline_handles_llm_failure - errors are counted and None returned."""
 
     def test_returns_none_on_generate_exception(self, tmp_path):
         """process_envelope() returns None when LLMBridge.generate() raises."""
@@ -237,7 +237,7 @@ class _FakeEvent:
 
 
 class TestInotifyHandlerDebounce:
-    """test_inotify_handler_debounce — rapid duplicate events are collapsed."""
+    """test_inotify_handler_debounce - rapid duplicate events are collapsed."""
 
     def test_single_call_on_rapid_duplicates(self):
         """Callback is invoked only once when the same path fires twice within debounce window."""
@@ -246,7 +246,7 @@ class TestInotifyHandlerDebounce:
 
         event = _FakeEvent("/inbox/msg.skc.json")
         handler.on_created(event)
-        handler.on_created(event)  # rapid second fire — within 5 s
+        handler.on_created(event)  # rapid second fire - within 5 s
 
         assert len(calls) == 1
 
@@ -257,7 +257,7 @@ class TestInotifyHandlerDebounce:
 
         event = _FakeEvent("/inbox/msg2.skc.json")
         handler.on_created(event)
-        time.sleep(0.06)  # 60 ms — past the 50 ms window
+        time.sleep(0.06)  # 60 ms - past the 50 ms window
         handler.on_created(event)
 
         assert len(calls) == 2
@@ -283,7 +283,7 @@ class TestInotifyHandlerDebounce:
 
 
 class TestClassifyMessageTags:
-    """test_classify_message_tags — keyword-to-tag mapping."""
+    """test_classify_message_tags - keyword-to-tag mapping."""
 
     @pytest.mark.parametrize(
         "msg,expected_tag",

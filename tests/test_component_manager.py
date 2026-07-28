@@ -279,7 +279,7 @@ class TestComponentManagerAutoRestart:
         # Run the watchdog check once
         mgr._check_components()
 
-        # A new thread was launched — give it a moment to run
+        # A new thread was launched - give it a moment to run
         time.sleep(0.1)
         assert len(call_log) >= 1
         assert comp.restart_count == 1
@@ -342,7 +342,7 @@ class TestComponentManagerAutoRestart:
         mgr._check_components()
         time.sleep(0.1)
 
-        assert len(call_log) >= 1  # restarted anyway — budget aged out
+        assert len(call_log) >= 1  # restarted anyway - budget aged out
         assert comp.gave_up is False
         assert comp.restart_times == [comp.last_restart_at]  # stale entries pruned
 
@@ -400,7 +400,7 @@ class TestComponentManagerAutoRestart:
         assert len(call_log) >= 1
 
     def test_backoff_blocks_immediate_second_restart(self):
-        """Two checks back-to-back don't burn two restarts — backoff gates it."""
+        """Two checks back-to-back don't burn two restarts - backoff gates it."""
         call_log: list[str] = []
 
         mgr = self._make_mgr()
@@ -416,7 +416,7 @@ class TestComponentManagerAutoRestart:
         first = len(call_log)
 
         comp.mark_dead("crash again")
-        mgr._check_components()  # immediately — inside RESTART_BACKOFF
+        mgr._check_components()  # immediately - inside RESTART_BACKOFF
         time.sleep(0.05)
 
         assert len(call_log) == first

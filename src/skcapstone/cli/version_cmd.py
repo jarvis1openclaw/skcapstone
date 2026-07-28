@@ -35,9 +35,9 @@ def _probe_ollama() -> dict:
     """Probe the local Ollama server.
 
     Hits /api/tags with a 2-second timeout and returns a dict with:
-      - ``running``: bool — whether Ollama responded.
-      - ``models``: list[str] — model names (empty on failure).
-      - ``host``: str — the URL that was probed.
+      - ``running``: bool - whether Ollama responded.
+      - ``models``: list[str] - model names (empty on failure).
+      - ``host``: str - the URL that was probed.
 
     Returns:
         Dict with keys ``running``, ``models``, ``host``.

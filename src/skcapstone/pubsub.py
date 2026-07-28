@@ -1,5 +1,5 @@
 """
-Sovereign pub/sub — lightweight real-time messaging for agent meshes.
+Sovereign pub/sub - lightweight real-time messaging for agent meshes.
 
 Topic-based publish/subscribe built on the file transport layer.
 Designed for 100+ node scale without requiring a central broker.

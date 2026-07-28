@@ -86,7 +86,7 @@ class TestSanitizePeerName:
 
 
 # ---------------------------------------------------------------------------
-# ConversationStore — basic operations
+# ConversationStore - basic operations
 # ---------------------------------------------------------------------------
 
 
@@ -208,7 +208,7 @@ class TestConversationStoreFormatForPrompt:
 
 
 # ---------------------------------------------------------------------------
-# ConsciousnessLoop integration — uses ConversationStore for context
+# ConsciousnessLoop integration - uses ConversationStore for context
 # ---------------------------------------------------------------------------
 
 
@@ -285,7 +285,7 @@ class TestConsciousnessLoopUsesConversationStore:
         builder = SystemPromptBuilder(home=home, conv_store=store, max_history_messages=10)
         history_text = builder._get_peer_history("lumina")
 
-        # Only messages 10–19 should appear
+        # Only messages 10-19 should appear
         assert "msg19" in history_text
         assert "msg0" not in history_text
 

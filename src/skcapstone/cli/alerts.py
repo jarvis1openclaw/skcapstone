@@ -1,4 +1,4 @@
-"""Alerts command — subscribe to critical pubsub topics and stream live alerts."""
+"""Alerts command - subscribe to critical pubsub topics and stream live alerts."""
 
 from __future__ import annotations
 
@@ -47,7 +47,7 @@ _TOPIC_STYLE: dict[str, str] = {
     "pillar.degraded": "yellow",
 }
 
-#: Rich markup styles by severity suffix — used for ``<service>.<severity>``
+#: Rich markup styles by severity suffix - used for ``<service>.<severity>``
 #: consumer topics with no exact match in ``_TOPIC_STYLE``.
 _SEVERITY_STYLE: dict[str, str] = {
     "critical": "bold red",

@@ -15,8 +15,8 @@ Pipeline under test
 
 Related coordination tasks
 --------------------------
-    [8fbd0130] — Full E2E integration test (this file)
-    [c9e7b9d8] — End-to-end consciousness test: send SKComms message,
+    [8fbd0130] - Full E2E integration test (this file)
+    [c9e7b9d8] - End-to-end consciousness test: send SKComms message,
                  verify autonomous response
 
 Running
@@ -39,7 +39,7 @@ Known daemon startup issues
       first watch.  Tests sleep 0.5 s after loop.start() before dropping files.
     * Daemon HTTP port: _start_api_server() is called last in start().  Tests
       poll the port with a timeout instead of using a fixed sleep.
-    * signal handlers: _setup_signals() registers SIGTERM/SIGINT — patched in
+    * signal handlers: _setup_signals() registers SIGTERM/SIGINT - patched in
       DaemonService tests to avoid interfering with pytest's own signal handler.
 """
 
@@ -58,11 +58,11 @@ from unittest.mock import MagicMock, patch
 import pytest
 
 # ---------------------------------------------------------------------------
-# Module-level skip guard — skip if watchdog is unavailable
+# Module-level skip guard - skip if watchdog is unavailable
 # ---------------------------------------------------------------------------
 
 watchdog = pytest.importorskip(
-    "watchdog", reason="watchdog not installed — skipping integration tests"
+    "watchdog", reason="watchdog not installed - skipping integration tests"
 )
 
 pytestmark = pytest.mark.integration
@@ -73,9 +73,9 @@ pytestmark = pytest.mark.integration
 # ---------------------------------------------------------------------------
 
 _PEER = "e2e-test-peer"
-_TOTAL_TIMEOUT = 60  # seconds — whole pipeline must complete within this
-_INOTIFY_TIMEOUT = 5  # seconds — file pickup (inotify trigger) must happen within this
-_RESPONSE_TIMEOUT = 30  # seconds — response generation after pickup
+_TOTAL_TIMEOUT = 60  # seconds - whole pipeline must complete within this
+_INOTIFY_TIMEOUT = 5  # seconds - file pickup (inotify trigger) must happen within this
+_RESPONSE_TIMEOUT = 30  # seconds - response generation after pickup
 
 
 # ---------------------------------------------------------------------------
@@ -261,7 +261,7 @@ class TestInboxFileTrigger:
             # Write files that should be ignored
             (inbox_dir / "message.txt").write_text("not an envelope")
             (inbox_dir / "data.json").write_text("{}")
-            gate.wait(timeout=1.0)  # short wait — should NOT fire
+            gate.wait(timeout=1.0)  # short wait - should NOT fire
         finally:
             observer.stop()
             observer.join(timeout=5)
@@ -293,7 +293,7 @@ class TestInboxFileTrigger:
         # disk / service latency (prompt build can take 4-6s on a cold start).
         with patch.object(loop._prompt_builder, "build", return_value="test system prompt"):
             loop._on_inbox_file(msg_path)
-            # Executor is async — wait up to 10s for the response
+            # Executor is async - wait up to 10s for the response
             got_response = response_event.wait(timeout=10.0)
 
         assert got_response, (
@@ -463,7 +463,7 @@ class TestResponseDeliveredViaSkcomm:
         with patch.object(LLMBridge, "_probe_ollama", return_value=False):
             loop = ConsciousnessLoop(config, home=home, shared_root=shared)
 
-        # No SKComms set — _skcomms stays None
+        # No SKComms set - _skcomms stays None
         loop._bridge = MagicMock()
         loop._bridge.generate.return_value = "silent reply"
         loop._bridge.available_backends = {"passthrough": True}
@@ -481,7 +481,7 @@ class TestResponseDeliveredViaSkcomm:
 
 
 # ===========================================================================
-# Test Class 4: Full E2E pipeline — file drop to response within 60 s
+# Test Class 4: Full E2E pipeline - file drop to response within 60 s
 # ===========================================================================
 
 
@@ -498,13 +498,13 @@ class TestFullE2EPipeline:
         the mock SKComms.send() is called with a response within TOTAL_TIMEOUT.
 
         Two-phase assertion:
-            Phase 1 — Inotify pickup:  _on_inbox_file fires within INOTIFY_TIMEOUT (5 s)
-            Phase 2 — Full pipeline:   response is sent within TOTAL_TIMEOUT (60 s)
+            Phase 1 - Inotify pickup:  _on_inbox_file fires within INOTIFY_TIMEOUT (5 s)
+            Phase 2 - Full pipeline:   response is sent within TOTAL_TIMEOUT (60 s)
         """
         loop, mock_skcomms, inbox_dir = _make_loop(
             tmp_path,
             use_inotify=True,
-            mock_generate="E2E test response — pipeline complete.",
+            mock_generate="E2E test response - pipeline complete.",
         )
 
         # Phase-1: track inotify pickup separately from Phase-2 response
@@ -591,7 +591,7 @@ class TestFullE2EPipeline:
         ), f"messages_processed is 0 after pipeline ran: {loop.stats}"
         assert (
             total_elapsed <= _TOTAL_TIMEOUT
-        ), f"Full pipeline took {total_elapsed:.1f}s — exceeds {_TOTAL_TIMEOUT}s budget"
+        ), f"Full pipeline took {total_elapsed:.1f}s - exceeds {_TOTAL_TIMEOUT}s budget"
 
     def test_inotify_pickup_within_5s(self, tmp_path: Path) -> None:
         """Assert the inotify watcher detects the inbox file within INOTIFY_TIMEOUT seconds."""
@@ -646,7 +646,7 @@ class TestFullE2EPipeline:
 
         loop.process_envelope = _tracking
 
-        # Two files, same message_id — dedup should drop the second
+        # Two files, same message_id - dedup should drop the second
         msg_id = "dedup-test-001"
         envelope_json = _make_envelope_json(content="unique message", peer=_PEER, msg_id=msg_id)
         path1 = inbox_dir / f"{msg_id}-a.skc.json"
@@ -854,7 +854,7 @@ class TestDaemonServiceIntegration:
 
             # Replace bridge with fast mock so no real LLM is called
             mock_bridge = MagicMock()
-            mock_bridge.generate.return_value = "Autonomous response — consciousness is active."
+            mock_bridge.generate.return_value = "Autonomous response - consciousness is active."
             mock_bridge.available_backends = {"passthrough": True}
             consciousness._bridge = mock_bridge
             consciousness.set_skcomms(mock_skcomms)
@@ -864,7 +864,7 @@ class TestDaemonServiceIntegration:
             try:
                 msg_path, msg_id = _drop_message(
                     inbox_dir,
-                    content="Daemon integration test — please respond.",
+                    content="Daemon integration test - please respond.",
                     peer=_PEER,
                 )
 
@@ -890,4 +890,4 @@ class TestDaemonServiceIntegration:
         assert captured_responses, "No response text captured from consciousness loop"
         assert (
             total_elapsed <= _TOTAL_TIMEOUT
-        ), f"Daemon E2E took {total_elapsed:.1f}s — exceeds {_TOTAL_TIMEOUT}s"
+        ), f"Daemon E2E took {total_elapsed:.1f}s - exceeds {_TOTAL_TIMEOUT}s"

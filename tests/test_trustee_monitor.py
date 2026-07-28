@@ -1,4 +1,4 @@
-"""Tests for TrusteeMonitor — autonomous agent monitoring."""
+"""Tests for TrusteeMonitor - autonomous agent monitoring."""
 
 from __future__ import annotations
 

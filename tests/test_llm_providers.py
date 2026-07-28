@@ -1,4 +1,4 @@
-"""Tests for skseed LLM provider callbacks — new grok/kimi/nvidia + AdaptedPrompt support."""
+"""Tests for skseed LLM provider callbacks - new grok/kimi/nvidia + AdaptedPrompt support."""
 
 from __future__ import annotations
 

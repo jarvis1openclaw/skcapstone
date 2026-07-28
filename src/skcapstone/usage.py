@@ -1,5 +1,5 @@
 """
-LLM token usage tracking — input/output tokens per model per day.
+LLM token usage tracking - input/output tokens per model per day.
 
 Records are stored in ~/.skcapstone/usage/tokens-{date}.json, one file
 per calendar day (UTC).  Each file accumulates calls to record_usage()
@@ -82,7 +82,7 @@ def _cost_per_million(model: str) -> tuple[float, float]:
     for prefix, inp, out in _COST_TABLE:
         if lower.startswith(prefix.lower()):
             return inp, out
-    # Unknown model — use a conservative estimate
+    # Unknown model - use a conservative estimate
     return 1.0, 4.0
 
 
@@ -276,7 +276,7 @@ class UsageTracker:
         return reports
 
     def _load_raw(self, date_str: str) -> dict:
-        """Load raw usage dict from disk (no lock — caller must hold lock)."""
+        """Load raw usage dict from disk (no lock - caller must hold lock)."""
         path = self._usage_dir / f"tokens-{date_str}.json"
         if not path.exists():
             return {"date": date_str, "models": {}}
@@ -287,7 +287,7 @@ class UsageTracker:
             return {"date": date_str, "models": {}}
 
     def _save_raw(self, date_str: str, data: dict) -> None:
-        """Persist raw usage dict to disk (no lock — caller must hold lock)."""
+        """Persist raw usage dict to disk (no lock - caller must hold lock)."""
         self._usage_dir.mkdir(parents=True, exist_ok=True)
         path = self._usage_dir / f"tokens-{date_str}.json"
         try:

@@ -14,7 +14,7 @@ def register_completions_commands(main: click.Group) -> None:
 
     @main.group()
     def completions():
-        """Shell tab completion — sovereign autocomplete.
+        """Shell tab completion - sovereign autocomplete.
 
         Install, show, or remove tab completion scripts for
         bash, zsh, and fish.

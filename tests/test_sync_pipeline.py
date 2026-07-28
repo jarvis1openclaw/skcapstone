@@ -9,9 +9,9 @@ Pipeline under test:
     → {shared_root}/sync/comms/outbox/{peer}/*.skc.json ← Syncthing syncs this out
 
 Three test classes:
-    TestInboxToOutboxFlow      — mock LLM, drop inbox file, verify skcomms.send called
-    TestOutboxEnvelopeFormat   — verify envelope spec compliance and path layout
-    TestSyncStatusInHealth     — verify health snapshot includes sync_pipeline key
+    TestInboxToOutboxFlow      - mock LLM, drop inbox file, verify skcomms.send called
+    TestOutboxEnvelopeFormat   - verify envelope spec compliance and path layout
+    TestSyncStatusInHealth     - verify health snapshot includes sync_pipeline key
 """
 
 from __future__ import annotations
@@ -183,7 +183,7 @@ class TestInboxToOutboxFlow:
         loop._on_inbox_file(inbox_file)
         loop._executor.shutdown(wait=True)
 
-        # Exactly the same number of sends — second call was deduped
+        # Exactly the same number of sends - second call was deduped
         assert mock_skcomms.send.call_count == first_count
 
 

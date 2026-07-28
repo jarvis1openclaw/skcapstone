@@ -1,12 +1,12 @@
-"""Register command — auto-register SK* skills and MCP servers.
+"""Register command - auto-register SK* skills and MCP servers.
 
 Detects the user's environments (OpenClaw, Claude Code, Cursor, VS Code,
 OpenCode CLI, Codex, mcporter) and registers SKILL.md symlinks + MCP server entries.
 
 Commands:
-    skcapstone register              — register all SK* packages
-    skcapstone register --dry-run    — show what would be done
-    skcapstone register --env claude-code  — target specific environment
+    skcapstone register              - register all SK* packages
+    skcapstone register --dry-run    - show what would be done
+    skcapstone register --env claude-code  - target specific environment
 """
 
 from __future__ import annotations
@@ -86,7 +86,7 @@ def register_register_commands(main: click.Group) -> None:
         console.print()
 
         if dry_run:
-            console.print("  [yellow]Dry run — no changes will be made.[/]")
+            console.print("  [yellow]Dry run - no changes will be made.[/]")
             console.print()
 
         # Run registration
@@ -119,7 +119,7 @@ def register_register_commands(main: click.Group) -> None:
 
         for name, pkg_result in results.get("packages", {}).items():
             skill_info = pkg_result.get("skill", {})
-            skill_action = skill_info.get("action", "—")
+            skill_action = skill_info.get("action", "-")
 
             if skill_action == "created":
                 skill_str = "[green]created[/]"
@@ -134,7 +134,7 @@ def register_register_commands(main: click.Group) -> None:
 
             mcp_info = pkg_result.get("mcp", {})
             if not mcp_info:
-                mcp_str = "[dim]—[/]"
+                mcp_str = "[dim]-[/]"
             elif isinstance(mcp_info, dict):
                 parts = []
                 for env_name, action in mcp_info.items():
@@ -146,7 +146,7 @@ def register_register_commands(main: click.Group) -> None:
                         parts.append(f"[yellow]{env_name}[/]")
                     else:
                         parts.append(f"{env_name}:{action}")
-                mcp_str = ", ".join(parts) if parts else "[dim]—[/]"
+                mcp_str = ", ".join(parts) if parts else "[dim]-[/]"
             else:
                 mcp_str = str(mcp_info)
 
@@ -161,7 +161,7 @@ def register_register_commands(main: click.Group) -> None:
             elif codex_action == "error":
                 codex_str = f"[red]{codex_info.get('error', 'error')}[/]"
             elif not codex_action:
-                codex_str = "[dim]—[/]"
+                codex_str = "[dim]-[/]"
             else:
                 codex_str = f"[dim]{codex_action}[/]"
 
@@ -175,7 +175,7 @@ def register_register_commands(main: click.Group) -> None:
             elif plugin_action and plugin_action.startswith("error"):
                 plugin_str = f"[red]{plugin_action}[/]"
             elif not plugin_action:
-                plugin_str = "[dim]—[/]"
+                plugin_str = "[dim]-[/]"
             else:
                 plugin_str = f"[dim]{plugin_action}[/]"
 

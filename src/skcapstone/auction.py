@@ -15,8 +15,8 @@ Auction state persists in:
     ~/.skcapstone/coordination/auctions/{task_id}.json
 
 Topics used:
-    coord.auction         — broadcast (auction_open / auction_resolved)
-    coord.auction.bids.*  — per-task bid topic (agent → bid payload)
+    coord.auction         - broadcast (auction_open / auction_resolved)
+    coord.auction.bids.*  - per-task bid topic (agent → bid payload)
 """
 
 from __future__ import annotations
@@ -123,7 +123,7 @@ def _collect_local_bid(task_id: str, agent_name: str, shared_root: Path) -> Auct
 class AuctionManager:
     """Manages task auctions in the skcapstone coordination system.
 
-    State is file-based and Syncthing-compatible — each auction is a
+    State is file-based and Syncthing-compatible - each auction is a
     single JSON file under coordination/auctions/.  Multiple agent
     processes on different machines will all write bids into the same
     file (via Syncthing sync); resolution reads the accumulated bids.
@@ -218,7 +218,7 @@ class AuctionManager:
         if record is None or record.status != "pending":
             return False
 
-        # Deduplicate by agent — keep the most recent bid
+        # Deduplicate by agent - keep the most recent bid
         record.bids = [b for b in record.bids if b.agent != bid.agent]
         record.bids.append(bid)
         self._save_record(record)
@@ -266,7 +266,7 @@ class AuctionManager:
             record.status = "no_bidders"
             record.resolved_at = now_iso
             self._save_record(record)
-            logger.info("Auction %s: no bids received — task remains open", task_id)
+            logger.info("Auction %s: no bids received - task remains open", task_id)
             try:
                 pubsub.publish(
                     AUCTION_TOPIC,
@@ -290,7 +290,7 @@ class AuctionManager:
             board = Board(self.shared_root)
             board.claim_task(winner, task_id)
             logger.info(
-                "Auction %s: resolved — winner=%s (score=%.3f)",
+                "Auction %s: resolved - winner=%s (score=%.3f)",
                 task_id,
                 winner,
                 _load_score(winner_bid),
@@ -424,7 +424,7 @@ async def run_auto_bidder(
     seen_task_ids: set[str] = set()
 
     # Initialise last_poll to now so we only pick up auctions opened
-    # after this agent started — avoids re-bidding on stale messages.
+    # after this agent started - avoids re-bidding on stale messages.
     last_poll: Optional[datetime] = datetime.now(timezone.utc)
 
     logger.info("Auto-bidder started for agent '%s'", agent_name)

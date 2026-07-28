@@ -88,7 +88,7 @@ def agent_home(tmp_path: Path) -> Path:
 
 
 # ---------------------------------------------------------------------------
-# TestSkillDiscovery — discover_skills() filesystem integration
+# TestSkillDiscovery - discover_skills() filesystem integration
 # ---------------------------------------------------------------------------
 
 
@@ -204,7 +204,7 @@ class TestSkillDiscovery:
 
 
 # ---------------------------------------------------------------------------
-# TestRegistryClientIntegration — RegistryClient with mocked HTTP
+# TestRegistryClientIntegration - RegistryClient with mocked HTTP
 # ---------------------------------------------------------------------------
 
 
@@ -379,7 +379,7 @@ def _make_aggregator_module(
 
 
 # ---------------------------------------------------------------------------
-# TestSkillsListToolsMCP — skskills_list_tools handler
+# TestSkillsListToolsMCP - skskills_list_tools handler
 # ---------------------------------------------------------------------------
 
 
@@ -509,7 +509,7 @@ class TestSkillsListToolsMCP:
 
 
 # ---------------------------------------------------------------------------
-# TestSkillsRunToolMCP — skskills_run_tool handler
+# TestSkillsRunToolMCP - skskills_run_tool handler
 # ---------------------------------------------------------------------------
 
 
@@ -679,7 +679,7 @@ class TestSkillsRunToolMCP:
 
 
 # ---------------------------------------------------------------------------
-# TestMCPToolRegistration — verify TOOLS and HANDLERS are wired correctly
+# TestMCPToolRegistration - verify TOOLS and HANDLERS are wired correctly
 # ---------------------------------------------------------------------------
 
 

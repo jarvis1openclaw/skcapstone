@@ -125,7 +125,7 @@ def register_record_commands(main: click.Group) -> None:
         results = list(replayer.replay())
 
         if fmt == "json":
-            # Pure JSON output — no decorative header so callers can parse stdout.
+            # Pure JSON output - no decorative header so callers can parse stdout.
             rows = []
             for r in results:
                 rows.append(

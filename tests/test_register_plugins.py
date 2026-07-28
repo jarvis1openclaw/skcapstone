@@ -3,7 +3,7 @@
 Covers the pure `_discover_plugin_servers` function in skcapstone.register,
 which scans `<workspace>/skskills/dist/*/.mcp.json` (the `skskills plugin
 build` output) for MCP server envelopes. Deliberately does NOT call
-`register_all` here — that function writes into the real `~/.claude` config
+`register_all` here - that function writes into the real `~/.claude` config
 dirs and is out of scope for a unit test.
 """
 

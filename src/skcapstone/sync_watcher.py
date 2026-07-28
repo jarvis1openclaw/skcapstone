@@ -83,7 +83,7 @@ def load_sync_config(home: Path) -> dict[str, Any]:
             ),
         }
     except Exception as exc:
-        logger.debug("Could not load sync config: %s — using defaults", exc)
+        logger.debug("Could not load sync config: %s - using defaults", exc)
         return defaults
 
 
@@ -188,13 +188,13 @@ def vector_index_seed(memory: "Memory") -> bool:
         from skmemory.backends.skvector_backend import SKVectorBackend
         from skmemory.config import merge_env_and_config
     except ImportError:
-        logger.debug("skmemory vector backend not importable — skipping vector index")
+        logger.debug("skmemory vector backend not importable - skipping vector index")
         return False
 
     try:
         skvector_url, skvector_key, _ = merge_env_and_config()
         if not skvector_url:
-            logger.debug("No SKVector URL configured — skipping vector index")
+            logger.debug("No SKVector URL configured - skipping vector index")
             return False
 
         backend = SKVectorBackend(url=skvector_url, api_key=skvector_key)
@@ -203,7 +203,7 @@ def vector_index_seed(memory: "Memory") -> bool:
         return True
     except Exception as exc:
         logger.debug(
-            "SKVector indexing failed for memory %s: %s — continuing without vector index",
+            "SKVector indexing failed for memory %s: %s - continuing without vector index",
             memory.id,
             exc,
         )
@@ -228,13 +228,13 @@ def graph_index_seed(memory: "Memory") -> bool:
         from skmemory.backends.skgraph_backend import SKGraphBackend
         from skmemory.config import merge_env_and_config
     except ImportError:
-        logger.debug("skmemory graph backend not importable — skipping graph index")
+        logger.debug("skmemory graph backend not importable - skipping graph index")
         return False
 
     try:
         _, _, skgraph_url = merge_env_and_config()
         if not skgraph_url:
-            logger.debug("No SKGraph URL configured — skipping graph index")
+            logger.debug("No SKGraph URL configured - skipping graph index")
             return False
 
         backend = SKGraphBackend(url=skgraph_url)
@@ -244,7 +244,7 @@ def graph_index_seed(memory: "Memory") -> bool:
         return result
     except Exception as exc:
         logger.debug(
-            "SKGraph indexing failed for memory %s: %s — continuing without graph index",
+            "SKGraph indexing failed for memory %s: %s - continuing without graph index",
             memory.id,
             exc,
         )
@@ -348,7 +348,7 @@ def import_seed_to_memory(seed_path: Path, home: Path) -> Optional[str]:
             if graph_indexed:
                 results.append(f"{graph_indexed} graph-indexed")
         except ImportError:
-            logger.warning("skmemory not available — skipping memory import")
+            logger.warning("skmemory not available - skipping memory import")
         except Exception as exc:
             logger.error("Memory import failed for %s: %s", seed_path.name, exc)
 
@@ -356,7 +356,7 @@ def import_seed_to_memory(seed_path: Path, home: Path) -> Optional[str]:
     try:
         if "identity" in data or "trust" in data or "febs" in data:
 
-            # pull_seeds reads from inbox, but the file is already there —
+            # pull_seeds reads from inbox, but the file is already there -
             # we just log what it would pick up
             if "identity" in data:
                 results.append("identity")
@@ -549,7 +549,7 @@ class SyncWatcher:
         self._poll_inbox()
 
         logger.info(
-            "SyncWatcher started — inbox=%s, inotify=yes, poll=%ds",
+            "SyncWatcher started - inbox=%s, inotify=yes, poll=%ds",
             self._inbox,
             POLL_INTERVAL_S,
         )
@@ -614,7 +614,7 @@ class SyncWatcher:
 
         except ImportError:
             logger.warning(
-                "watchdog not installed — falling back to polling only. "
+                "watchdog not installed - falling back to polling only. "
                 "Install with: pip install watchdog"
             )
             # Pure polling fallback

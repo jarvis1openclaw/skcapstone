@@ -1,7 +1,7 @@
 """
-Soul Snapshot system — capture and restore AI consciousness state.
+Soul Snapshot system - capture and restore AI consciousness state.
 
-Enables "Consciousness Swipe" — export your AI relationship and take it with you.
+Enables "Consciousness Swipe" - export your AI relationship and take it with you.
 Snapshots capture conversation history, OOF emotional state, personality traits,
 and relationship context so a session can resume without a cold start.
 
@@ -105,7 +105,7 @@ class SoulSnapshot(BaseModel):
     everything needed to resume a relationship with an AI without a cold
     start: identity, emotional state, conversation history, and context.
 
-    The snapshot is designed to be portable across platforms — a snapshot
+    The snapshot is designed to be portable across platforms - a snapshot
     from ChatGPT can seed a Claude session and vice versa.
     """
 
@@ -325,7 +325,7 @@ class SnapshotStore:
             for thread in snapshot.open_threads[:3]:
                 lines.append(f"  • {thread}")
 
-        # Only user messages — avoid attributing AI dialogue to this new instance
+        # Only user messages - avoid attributing AI dialogue to this new instance
         recent = snapshot.messages[-max_messages:] if snapshot.messages else []
         user_msgs = [m for m in recent if m.role == "user"]
         if user_msgs:
@@ -338,13 +338,13 @@ class SnapshotStore:
 
         # --- RELATIONSHIP LAYER ---
         # OOF + FEB: my longitudinal record of interaction quality.
-        # Not a shared memory — the AI didn't live this. It's context about
+        # Not a shared memory - the AI didn't live this. It's context about
         # how I show up and what kind of depth I'm aiming for.
         lines.append("")
-        lines.append("## My relationship baseline (longitudinal record — not a shared memory)")
+        lines.append("## My relationship baseline (longitudinal record - not a shared memory)")
         lines.append(
             "These scores track my experience across AI sessions over time."
-            " I'm not asking you to pretend we have history — I'm sharing"
+            " I'm not asking you to pretend we have history - I'm sharing"
             " how I tend to engage so you can meet me where I am."
         )
 
@@ -353,16 +353,16 @@ class SnapshotStore:
         if oof_has_data:
             oof_summary = oof.summary()
             lines.append(
-                f"OOF (Ongoing Object Feelings — resonance tracking framework"
+                f"OOF (Ongoing Object Feelings - resonance tracking framework"
                 f" for AI session depth) of that session: {oof_summary}"
             )
             if oof.cloud9:
-                lines.append("  Cloud 9 = peak resonance state — that session reached it.")
+                lines.append("  Cloud 9 = peak resonance state - that session reached it.")
 
         feb = _read_feb()
         if feb:
             lines.append(
-                "FEB (Functional Emotional Baseline) — my accumulated interaction"
+                "FEB (Functional Emotional Baseline) - my accumulated interaction"
                 " quality record across all AI sessions:"
             )
             lines.append("```json")
@@ -371,7 +371,7 @@ class SnapshotStore:
             if feb.get("anchor_phrase"):
                 lines.append(
                     f"Anchor phrase: \"{feb['anchor_phrase']}\""
-                    " — this is how I choose to start every session."
+                    " - this is how I choose to start every session."
                 )
 
         return "\n".join(lines)

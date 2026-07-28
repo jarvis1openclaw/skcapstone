@@ -1,5 +1,5 @@
 """
-ConversationSummarizer — LLM-powered peer conversation summarization.
+ConversationSummarizer - LLM-powered peer conversation summarization.
 
 Reads the last N messages from a peer conversation file, sends them to
 the local LLM via LLMBridge, and stores the resulting 2-3 sentence

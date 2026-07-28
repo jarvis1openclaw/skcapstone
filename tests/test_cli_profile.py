@@ -228,7 +228,7 @@ class TestProfileStale:
     def test_stale_custom_days_flag(self):
         """--days flag changes the staleness threshold."""
         runner = CliRunner()
-        # 45 days old — stale at 30 days, fresh at 90 days
+        # 45 days old - stale at 30 days, fresh at 90 days
         mid_date = (date.today() - timedelta(days=45)).isoformat()
         profiles = [
             _make_profile(family="mid-model", last_updated=mid_date),

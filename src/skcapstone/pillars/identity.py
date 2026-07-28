@@ -1,5 +1,5 @@
 """
-Identity pillar — CapAuth integration.
+Identity pillar - CapAuth integration.
 
 PGP-based sovereign identity. The agent IS its key.
 No corporate SSO. No OAuth dance. Cryptographic proof of self.
@@ -141,7 +141,7 @@ def _try_init_capauth(
     except Exception as exc:
         logger.debug("Could not load existing CapAuth profile: %s", exc)
 
-    # No existing profile — try creating one
+    # No existing profile - try creating one
     try:
         from capauth.models import EntityType  # type: ignore[import-untyped]
         from capauth.profile import init_profile  # type: ignore[import-untyped]
@@ -192,7 +192,7 @@ def _try_init_capauth(
 def _generate_placeholder_fingerprint(name: str) -> str:
     """Generate a deterministic placeholder fingerprint from the agent name.
 
-    Not cryptographic — just a consistent identifier until CapAuth
+    Not cryptographic - just a consistent identifier until CapAuth
     is installed and proper PGP keys are generated.
 
     Args:

@@ -1,5 +1,5 @@
 """
-Memory Auto-Promotion Engine — intelligent memory tier management.
+Memory Auto-Promotion Engine - intelligent memory tier management.
 
 Periodically sweeps memory layers and promotes qualifying memories based
 on multiple signals: access patterns, importance scores, emotional
@@ -340,7 +340,7 @@ class PromotionEngine:
         for title, group in entries_by_title.items():
             if len(group) <= 1:
                 continue
-            # Sort by created_at descending — keep newest
+            # Sort by created_at descending - keep newest
             group.sort(key=lambda g: g[2].created_at, reverse=True)
             keeper = group[0]
             for path, raw, entry in group[1:]:
@@ -427,7 +427,7 @@ class PromotionEngine:
                 if age < age_threshold:
                     continue
 
-                # Already short enough — skip
+                # Already short enough - skip
                 if len(entry.content) <= max_chars:
                     continue
 
@@ -623,7 +623,7 @@ class PromotionEngine:
     def _score_age(self, entry: MemoryEntry) -> float:
         """Score based on age-importance interaction.
 
-        Older memories with high importance score higher — they've
+        Older memories with high importance score higher - they've
         proven their worth by persisting.
         """
         age = entry.age_hours

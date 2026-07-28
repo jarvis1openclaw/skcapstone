@@ -3,7 +3,7 @@
 The `python`-type job in ``jobs.yaml`` (``callback: skcapstone.dreaming_job:run_dreaming_job``)
 is a zero-argument callable (see ``scheduler_runner.py::JobRunner._run_python``). Because
 that job runs in-process (same Python process as the daemon, on a short-lived worker
-thread — never a subprocess), a module-level reference cell is enough to hand the job
+thread - never a subprocess), a module-level reference cell is enough to hand the job
 the live ``consciousness_loop`` instance without changing the callback signature.
 
 ``daemon.py`` calls :func:`set_consciousness_loop` once, right after the consciousness
@@ -51,7 +51,7 @@ def run_dreaming_job() -> None:
     """Zero-arg entrypoint for the ``dreaming-reflection`` jobs.yaml job.
 
     Resolves the shared home, loads the dreaming config from
-    ``consciousness.yaml``, and — if enabled — runs one DreamingEngine cycle
+    ``consciousness.yaml``, and - if enabled - runs one DreamingEngine cycle
     using whatever consciousness_loop was registered via
     :func:`set_consciousness_loop`. ``None`` (the `--no-consciousness` case)
     is a fully supported value: ``DreamingEngine.is_idle()`` falls back to
@@ -60,7 +60,7 @@ def run_dreaming_job() -> None:
     home = shared_home()
     config = load_dreaming_config(home)
     if config is None or not config.enabled:
-        logger.debug("Dreaming job: disabled via config — skipping")
+        logger.debug("Dreaming job: disabled via config - skipping")
         return
     engine = DreamingEngine(home=home, config=config, consciousness_loop=get_consciousness_loop())
     result = engine.dream()

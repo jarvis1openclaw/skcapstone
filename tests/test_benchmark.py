@@ -1,4 +1,4 @@
-"""Tests for ``skcapstone benchmark`` — LLM backend latency benchmarking.
+"""Tests for ``skcapstone benchmark`` - LLM backend latency benchmarking.
 
 Covers:
 - BenchmarkRunner.detect_backends() availability detection
@@ -76,7 +76,7 @@ class TestDetectBackends:
             "nvidia": "NVIDIA_API_KEY",
         }
         with patch.object(runner, "_probe_ollama", return_value=False):
-            # No keys set — all cloud backends False
+            # No keys set - all cloud backends False
             clean_env = {k: "" for k in env_cases.values()}
             with patch.dict(os.environ, clean_env, clear=False):
                 # Temporarily remove the keys
@@ -108,12 +108,12 @@ class TestDetectBackends:
 
 
 # ---------------------------------------------------------------------------
-# run_backend — passthrough
+# run_backend - passthrough
 # ---------------------------------------------------------------------------
 
 
 class TestRunBackendPassthrough:
-    """Passthrough backend — always ok, no external calls."""
+    """Passthrough backend - always ok, no external calls."""
 
     def test_passthrough_returns_ok(self):
         """_bench_passthrough returns status=ok with a float ms value."""
@@ -139,7 +139,7 @@ class TestRunBackendPassthrough:
 
 
 # ---------------------------------------------------------------------------
-# run_backend — error handling
+# run_backend - error handling
 # ---------------------------------------------------------------------------
 
 
@@ -172,7 +172,7 @@ class TestRunBackendErrors:
 
 
 # ---------------------------------------------------------------------------
-# run_all — aggregation
+# run_all - aggregation
 # ---------------------------------------------------------------------------
 
 
@@ -204,7 +204,7 @@ class TestRunAll:
 
         runner = _make_runner()
         with patch.object(runner, "detect_backends", return_value={n: False for n in BACKENDS}):
-            # passthrough would still be run — override detect_backends to all-False
+            # passthrough would still be run - override detect_backends to all-False
             # except passthrough
             avail = {n: False for n in BACKENDS}
             avail["passthrough"] = True

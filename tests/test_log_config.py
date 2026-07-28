@@ -1,4 +1,4 @@
-"""Tests for skcapstone.log_config — structured JSON logging."""
+"""Tests for skcapstone.log_config - structured JSON logging."""
 
 from __future__ import annotations
 

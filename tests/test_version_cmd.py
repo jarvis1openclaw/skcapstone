@@ -225,7 +225,7 @@ class TestGatherVersionInfo:
 
 
 # ---------------------------------------------------------------------------
-# CLI integration tests — version command
+# CLI integration tests - version command
 # ---------------------------------------------------------------------------
 
 
@@ -316,7 +316,7 @@ class TestVersionCommand:
 
 
 # ---------------------------------------------------------------------------
-# CLI integration tests — doctor --verbose
+# CLI integration tests - doctor --verbose
 # ---------------------------------------------------------------------------
 
 

@@ -1,10 +1,10 @@
 """Tests for the conversation API endpoints in the daemon HTTP server.
 
 Covers:
-  GET  /api/v1/conversations          — list all peers
-  GET  /api/v1/conversations/{peer}   — full history for a peer
-  POST /api/v1/conversations/{peer}/send — send message, write to outbox
-  DELETE /api/v1/conversations/{peer} — clear history
+  GET  /api/v1/conversations          - list all peers
+  GET  /api/v1/conversations/{peer}   - full history for a peer
+  POST /api/v1/conversations/{peer}/send - send message, write to outbox
+  DELETE /api/v1/conversations/{peer} - clear history
   Path-traversal sanitization
 """
 
@@ -263,7 +263,7 @@ class TestSendMessage:
         body = json.dumps({"content": "hi"}).encode()
         # URL path traversal: peer sanitizes to empty or benign string
         status, _ = _api(port, "/api/v1/conversations/../../evil/send", method="POST", body=body)
-        # Either 400 (invalid peer) or 200 (sanitized to "evil" which is fine) — not a server error
+        # Either 400 (invalid peer) or 200 (sanitized to "evil" which is fine) - not a server error
         assert status in (200, 400)
 
     def test_send_unique_message_ids(self, live_server):

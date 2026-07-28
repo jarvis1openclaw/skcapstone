@@ -161,7 +161,7 @@ class TestGetDaemonInfo:
         assert result["uptime"] == "45s"
 
     def test_uptime_formatting_minutes(self, agent_home: Path):
-        """Uptime 60–3599s shown as Xm Ys."""
+        """Uptime 60-3599s shown as Xm Ys."""
         from skcapstone.cli.status import _get_daemon_info
 
         with (

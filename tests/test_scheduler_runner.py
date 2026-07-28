@@ -1,4 +1,4 @@
-"""Tests for skcapstone.scheduler_runner — JobRunner execution, overlap lock,
+"""Tests for skcapstone.scheduler_runner - JobRunner execution, overlap lock,
 result shapes, and error containment.
 
 Each test targets a specific contract:

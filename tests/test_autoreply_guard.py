@@ -1,4 +1,4 @@
-"""Tests for the auto-reply loop guards — self-send guard + circuit breaker.
+"""Tests for the auto-reply loop guards - self-send guard + circuit breaker.
 
 These cover the runaway agent<->agent reply storm that flooded the desktop
 with thousands of notifications (opus and lumina daemons auto-replying to a

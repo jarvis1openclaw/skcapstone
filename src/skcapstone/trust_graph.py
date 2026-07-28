@@ -1,5 +1,5 @@
 """
-Trust web visualization — the sovereignty network.
+Trust web visualization - the sovereignty network.
 
 Builds a graph of trust relationships from PGP key signatures,
 capability token chains, and FEB entanglement records. Outputs

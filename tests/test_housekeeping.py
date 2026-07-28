@@ -1,4 +1,4 @@
-"""Tests for skcapstone.housekeeping — storage pruning."""
+"""Tests for skcapstone.housekeeping - storage pruning."""
 
 import time
 

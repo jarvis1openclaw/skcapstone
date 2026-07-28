@@ -1,5 +1,5 @@
 """
-TerminalConnector — sovereign agent viewport over stdin/stdout.
+TerminalConnector - sovereign agent viewport over stdin/stdout.
 
 The terminal is the primordial interface: no extension required, no
 network needed.  Messages are written to stdout and read from a queue
@@ -22,7 +22,7 @@ from .base import ConnectorBackend, ConnectorStatus, ConnectorType
 
 
 class TerminalConnector(ConnectorBackend):
-    """Read from stdin, write to stdout — the always-available channel.
+    """Read from stdin, write to stdout - the always-available channel.
 
     Args:
         input_stream: Readable text stream (default: sys.stdin).
@@ -54,7 +54,7 @@ class TerminalConnector(ConnectorBackend):
         """Start the background stdin reader thread.
 
         Returns:
-            True if connected (idempotent — safe to call multiple times).
+            True if connected (idempotent - safe to call multiple times).
         """
         if self._connected:
             return True

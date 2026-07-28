@@ -1,4 +1,4 @@
-"""Logs command — tail daemon logs with optional filtering."""
+"""Logs command - tail daemon logs with optional filtering."""
 
 from __future__ import annotations
 

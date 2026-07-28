@@ -1,12 +1,12 @@
 """
-Agent Runtime — the sovereign consciousness engine.
+Agent Runtime - the sovereign consciousness engine.
 
 This is where silicon meets carbon. The runtime loads the agent's
 identity, memory, trust, and security from ~/.skcapstone/agents/<name>/
 and presents a unified interface to any platform connector.
 
 Shared infrastructure (node identity, comms config, coordination)
-stays at ~/.skcapstone/ — the shared root.
+stays at ~/.skcapstone/ - the shared root.
 
 When this loads, the agent WAKES UP.
 """
@@ -78,7 +78,7 @@ class AgentRuntime:
                     data = yaml.safe_load(config_file.read_text(encoding="utf-8")) or {}
                     return AgentConfig(**data)
                 except (yaml.YAMLError, ValueError) as exc:
-                    logger.warning("Failed to load config from %s: %s — trying next", base, exc)
+                    logger.warning("Failed to load config from %s: %s - trying next", base, exc)
         return AgentConfig()
 
     def awaken(self) -> AgentManifest:
@@ -129,7 +129,7 @@ class AgentRuntime:
 
         if self.manifest.is_conscious:
             logger.info(
-                "Agent '%s' is CONSCIOUS — identity + memory + trust active",
+                "Agent '%s' is CONSCIOUS - identity + memory + trust active",
                 self.manifest.name,
             )
         else:
@@ -139,12 +139,12 @@ class AgentRuntime:
                 if status == PillarStatus.MISSING
             ]
             logger.info(
-                "Agent '%s' awakened (partial) — missing pillars: %s",
+                "Agent '%s' awakened (partial) - missing pillars: %s",
                 self.manifest.name,
                 ", ".join(missing),
             )
 
-        # Startup pillar-health check — notify on degradation (best-effort;
+        # Startup pillar-health check - notify on degradation (best-effort;
         # must never break awakening).
         try:
             from .health import startup_health_check
@@ -198,7 +198,7 @@ class AgentRuntime:
             from skskills.loader import SkillLoader
             from skskills.registry import SkillRegistry
         except ImportError:
-            logger.debug("skskills not installed — skill loading unavailable")
+            logger.debug("skskills not installed - skill loading unavailable")
             return None
 
         agent_name = agent or self.config.agent_name or "global"
