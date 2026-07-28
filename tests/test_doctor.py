@@ -804,5 +804,10 @@ class TestTransportCheckNoThreadLeak:
         before = self._retry_thread_count()
         for _ in range(3):
             _check_transport()
-        time.sleep(0.3)  # allow stopped workers to join
+        # The outbox-retry workers stop asynchronously; poll for them to join
+        # rather than assuming a fixed window (CI runners are slower than dev
+        # boxes, where a real leak still fails this because the count never drops).
+        deadline = time.monotonic() + 5.0
+        while self._retry_thread_count() > before and time.monotonic() < deadline:
+            time.sleep(0.1)
         assert self._retry_thread_count() == before

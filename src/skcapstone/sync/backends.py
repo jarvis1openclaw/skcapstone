@@ -131,12 +131,7 @@ class SyncthingBackend(SyncBackend):
         return dest
 
     def available(self) -> bool:
-        # The push is a filesystem drop into the Syncthing-watched outbox; it does
-        # not invoke the `syncthing` binary (a separately-running daemon, possibly
-        # on another node, syncs the folder). Availability therefore depends on the
-        # outbox being usable, not on a local binary being installed - otherwise a
-        # perfectly good drop is skipped on hosts without syncthing on PATH (e.g. CI).
-        return self.outbox.is_dir()
+        return shutil.which("syncthing") is not None
 
 
 class GitBackend(SyncBackend):

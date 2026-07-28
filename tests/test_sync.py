@@ -419,6 +419,8 @@ class TestSyncEngine:
 
     def test_push_with_syncthing_backend(self, agent_home: Path):
         """Push with syncthing backend should pack and deliver vault."""
+        from unittest.mock import patch
+
         from skcapstone.sync.engine import SyncEngine
         from skcapstone.sync.models import SyncBackendConfig, SyncBackendType
 
@@ -426,7 +428,11 @@ class TestSyncEngine:
         engine.config.encrypt = False
         engine.add_backend(SyncBackendConfig(backend_type=SyncBackendType.SYNCTHING))
 
-        results = engine.push(passphrase=None)
+        # SyncthingBackend.available() gates on the `syncthing` binary being on
+        # PATH; mock it present so this test exercises the actual push regardless
+        # of whether the host (e.g. CI) has syncthing installed.
+        with patch("shutil.which", return_value="/usr/bin/syncthing"):
+            results = engine.push(passphrase=None)
         assert "syncthing" in results
         assert results["syncthing"] is True
         assert engine.state.push_count == 1
@@ -512,13 +518,18 @@ class TestSyncEngine:
 
     def test_state_persists_across_operations(self, agent_home: Path):
         """Push count and timestamps should persist to disk after push."""
+        from unittest.mock import patch
+
         from skcapstone.sync.engine import SyncEngine
         from skcapstone.sync.models import SyncBackendConfig, SyncBackendType
 
         engine = SyncEngine(agent_home)
         engine.config.encrypt = False
         engine.add_backend(SyncBackendConfig(backend_type=SyncBackendType.SYNCTHING))
-        engine.push(passphrase=None)
+        # Mock the syncthing binary present so the push runs on any host (see
+        # SyncthingBackend.available / test_push_with_syncthing_backend).
+        with patch("shutil.which", return_value="/usr/bin/syncthing"):
+            engine.push(passphrase=None)
         assert engine.state.push_count == 1
         assert engine.state.last_push is not None
         assert engine.state.last_push_backend == "syncthing"
