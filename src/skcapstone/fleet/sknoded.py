@@ -87,10 +87,25 @@ def main_loop(
     *,
     interval: int = HEARTBEAT_INTERVAL_S,
     once: bool = False,
+    actuation_interval: int | None = None,
 ) -> None:
-    """The daemon loop behind sknoded.service."""
+    """The daemon loop behind sknoded.service.
+
+    Self-report runs every `interval` seconds; the Phase 3 converge pass
+    runs every `actuation_interval` seconds (default 30, spec 3.3). The
+    converge pass re-reads the freeze flag and the node's actuate opt-in
+    every time, so both are live level-triggered gates.
+    """
+    from .converge import ACTUATION_INTERVAL_S, converge_once
+
+    act_every = ACTUATION_INTERVAL_S if actuation_interval is None else actuation_interval
+    last_report = 0.0
     while True:
-        run_once(paths, node)
+        now = time.time()
+        if now - last_report >= interval or last_report == 0.0:
+            run_once(paths, node)
+            last_report = now
+        converge_once(paths, node)
         if once:
             return
-        time.sleep(interval)
+        time.sleep(act_every)

@@ -58,7 +58,7 @@ def test_main_loop_once_runs_a_single_pass_without_sleeping(paths, monkeypatch) 
     assert calls == ["node-41"]
 
 
-def test_main_loop_repeats_and_sleeps_the_given_interval(paths, monkeypatch) -> None:
+def test_main_loop_repeats_and_sleeps_the_actuation_interval(paths, monkeypatch) -> None:
     calls = []
     sleeps = []
 
@@ -69,6 +69,20 @@ def test_main_loop_repeats_and_sleeps_the_given_interval(paths, monkeypatch) -> 
     monkeypatch.setattr(sknoded, "run_once", lambda p, n: calls.append(n))
     monkeypatch.setattr(sknoded.time, "sleep", fake_sleep)
     with pytest.raises(RuntimeError, match="stop after first cycle"):
-        sknoded.main_loop(paths, "node-41", interval=5)
+        sknoded.main_loop(paths, "node-41", interval=5, actuation_interval=5)
     assert calls == ["node-41"]
     assert sleeps == [5]
+
+
+def test_main_loop_default_sleep_is_the_30s_converge_interval(paths, monkeypatch) -> None:
+    sleeps = []
+
+    def fake_sleep(seconds):
+        sleeps.append(seconds)
+        raise RuntimeError("stop after first cycle")
+
+    monkeypatch.setattr(sknoded, "run_once", lambda p, n: None)
+    monkeypatch.setattr(sknoded.time, "sleep", fake_sleep)
+    with pytest.raises(RuntimeError, match="stop after first cycle"):
+        sknoded.main_loop(paths, "node-41")
+    assert sleeps == [30]
