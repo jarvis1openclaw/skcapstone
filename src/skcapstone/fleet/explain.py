@@ -76,6 +76,28 @@ KINDS: dict[str, dict] = {
             "skfleet drain <node>",
         ],
     },
+    "agent": {
+        "kind": "Agent",
+        "description": "A sovereign agent identity, routed model, and daemon placement.",
+        "spec": {
+            "name": "agent name",
+            "soul": "optional active soul overlay",
+            "model": "optional routed model profile",
+            "daemon": "optional {node} selector for daemon placement",
+        },
+        "status": {
+            "conditions": "list of {type, status, reason, message, lastTransition}",
+        },
+        "conditions": {
+            "SoulLoaded": "observed active_soul matches spec.soul when set",
+            "ModelRoutable": "observed model matches spec.model when set",
+            "DaemonReady": "the agent's daemon self-reports ready",
+        },
+        "actions": [
+            "skfleet get agents",
+            "skfleet describe agent <name>",
+        ],
+    },
 }
 
 
