@@ -98,6 +98,27 @@ KINDS: dict[str, dict] = {
             "skfleet describe agent <name>",
         ],
     },
+    "cronjob": {
+        "kind": "CronJob",
+        "description": "Recurring scheduled work run on a fleet node.",
+        "spec": {
+            "schedule": "@hourly, @daily, @weekly, or an interval like 30m/2h",
+            "command": "shell command to run",
+            "nodeSelector": "label map used by selectors (exact match, AND)",
+        },
+        "status": {
+            "lastRun": "ISO8601 UTC timestamp of the most recent run",
+            "nextRun": "ISO8601 UTC timestamp of the next scheduled run",
+            "conditions": "list of {type, status, reason, message, lastTransition}",
+        },
+        "conditions": {
+            "MissedRun": "the schedule's period plus grace elapsed with no observed run",
+        },
+        "actions": [
+            "skfleet get cronjobs",
+            "skfleet describe cronjob <name>",
+        ],
+    },
 }
 
 
