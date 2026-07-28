@@ -50,6 +50,44 @@ def node_conditions(capacity: dict, fleet_root: Path, now_iso: str) -> list[dict
     return conds
 
 
+def tcp_open(port: int, host: str = "127.0.0.1", timeout: float = 1.0) -> bool:
+    """True when a TCP connect to host:port succeeds (health probe)."""
+    import socket
+
+    try:
+        with socket.create_connection((host, int(port)), timeout=timeout):
+            return True
+    except Exception:
+        return False
+
+
+def probe_conditions(probes: list[dict], now_iso: str) -> list[dict]:
+    """Operator-declared TCP probes as node conditions (spec 5.2 skmem-pg rule).
+
+    This is the health-condition-only surface for workloads that stay OUT
+    of fleet management (skmem-pg is local-per-node by incident decision):
+    visibility, never actuation.
+    """
+    out: list[dict] = []
+    for probe in probes:
+        try:
+            port = int(probe["port"])
+            cond_type = str(probe["condition"])
+        except (KeyError, TypeError, ValueError):
+            continue
+        ok = tcp_open(port)
+        out.append(
+            _cond(
+                cond_type,
+                ok,
+                "TcpProbe",
+                f"{probe.get('name', cond_type)} port {port} " f"{'open' if ok else 'closed'}",
+                now_iso,
+            )
+        )
+    return out
+
+
 def merge_transitions(new: list[dict], old: list[dict]) -> list[dict]:
     """Keep old lastTransition when a condition's status is unchanged.
 

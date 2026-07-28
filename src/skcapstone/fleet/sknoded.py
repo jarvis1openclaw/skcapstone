@@ -14,7 +14,7 @@ from datetime import datetime, timezone
 from .. import __version__ as skcapstone_version
 from . import store
 from .capacity import allocatable, node_capacity
-from .conditions import merge_transitions, node_conditions
+from .conditions import merge_transitions, node_conditions, probe_conditions
 from .paths import FleetPaths
 
 HEARTBEAT_INTERVAL_S = 60
@@ -32,10 +32,12 @@ def build_heartbeat(node: str, now_iso: str) -> dict:
 def build_node_report(paths: FleetPaths, node: str, now_iso: str) -> dict:
     """Capacity + conditions + versions, with stable lastTransition."""
     cap = node_capacity()
+    spec = store.read_spec(paths, "node", node)
     conds = node_conditions(cap, paths.root, now_iso)
+    probes = (spec or {}).get("spec", {}).get("healthProbes", [])
+    conds.extend(probe_conditions(probes, now_iso))
     previous = store.read_node_file(paths, node, "node.json") or {}
     conds = merge_transitions(conds, previous.get("conditions", []))
-    spec = store.read_spec(paths, "node", node)
     return {
         "kind": "Node",
         "name": node,
