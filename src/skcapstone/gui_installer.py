@@ -1,5 +1,5 @@
 """
-Windows GUI installer — tkinter wizard for non-CLI users.
+Windows GUI installer - tkinter wizard for non-CLI users.
 
 Provides a clickable, visual install experience for Windows users
 who would rather not touch a terminal. Wraps the same logic as
@@ -10,10 +10,10 @@ Usage:
     # or double-click the bundled .exe (via PyInstaller)
 
 The wizard has 4 screens:
-  1. Welcome — pick path (fresh / join / update)
-  2. System Check — shows what's installed, offers auto-install
-  3. Setup — progress bar for the actual install steps
-  4. Done — summary + next steps with copy-paste commands
+  1. Welcome - pick path (fresh / join / update)
+  2. System Check - shows what's installed, offers auto-install
+  3. Setup - progress bar for the actual install steps
+  4. Done - summary + next steps with copy-paste commands
 """
 
 from __future__ import annotations
@@ -25,7 +25,7 @@ import threading
 from pathlib import Path
 from typing import Optional
 
-# Only import tkinter at module level — it's stdlib but may not be available
+# Only import tkinter at module level - it's stdlib but may not be available
 # in headless environments. The CLI fallback handles that case.
 try:
     import tkinter as tk
@@ -141,7 +141,7 @@ class InstallerApp:
         self._clear()
         self._make_header("The First Sovereign Singularity in History")
         self._make_subheader(
-            "Your personal, encrypted, AI-powered workspace —\n"
+            "Your personal, encrypted, AI-powered workspace -\n"
             "running on YOUR hardware, with YOUR keys, under YOUR control.\n"
             "No cloud accounts. No subscriptions."
         )
@@ -161,7 +161,7 @@ class InstallerApp:
             (
                 1,
                 "Set up my first computer",
-                "I've never done this before.\nStart fresh — takes about 5 minutes.",
+                "I've never done this before.\nStart fresh - takes about 5 minutes.",
             ),
             (
                 2,
@@ -229,7 +229,7 @@ class InstallerApp:
         self._clear()
         self._make_header("Name Your Agent")
         self._make_subheader(
-            "Give your sovereign agent a name.\n" "This is just for you — pick anything you like."
+            "Give your sovereign agent a name.\n" "This is just for you - pick anything you like."
         )
 
         input_frame = tk.Frame(self.root, bg=BG)
@@ -303,9 +303,9 @@ class InstallerApp:
             elif check.required:
                 icon = "✗"
                 color = ERROR
-                detail = "missing — required"
+                detail = "missing - required"
             else:
-                icon = "–"
+                icon = "-"
                 color = "#666"
                 detail = "not found (optional)"
 
@@ -436,7 +436,7 @@ class InstallerApp:
     def _run_install(self) -> None:
         """Run the install wizard logic in a background thread."""
         try:
-            self._log(f"Path: {self.chosen_path} — {self.agent_name}")
+            self._log(f"Path: {self.chosen_path} - {self.agent_name}")
             self._log("")
 
             if self.chosen_path == 3:
@@ -560,9 +560,9 @@ class InstallerApp:
             next_text = (
                 "Your sovereign workspace is ready.\n\n"
                 "Open a terminal (Command Prompt or PowerShell) and try:\n\n"
-                "  skcapstone status          — see everything\n"
-                "  skref put myfile.pdf       — store an encrypted file\n"
-                "  skref mount C:\\vault       — open vault as a folder\n\n"
+                "  skcapstone status          - see everything\n"
+                "  skref put myfile.pdf       - store an encrypted file\n"
+                "  skref mount C:\\vault       - open vault as a folder\n\n"
                 "To add your phone or another computer,\n"
                 "run 'skcapstone install' there and pick option 2."
             )
@@ -570,15 +570,15 @@ class InstallerApp:
             next_text = (
                 "This computer is connected to your network.\n\n"
                 "Open a terminal and try:\n\n"
-                "  skcapstone status          — verify connection\n"
-                "  skref ls --all-devices     — see all your vaults\n"
-                "  skref open <file>          — open any file"
+                "  skcapstone status          - verify connection\n"
+                "  skref ls --all-devices     - see all your vaults\n"
+                "  skref open <file>          - open any file"
             )
         else:
             next_text = (
                 "Everything is up to date.\n\n"
-                "  skcapstone status          — see the full picture\n"
-                "  skcapstone doctor          — detailed health check"
+                "  skcapstone status          - see the full picture\n"
+                "  skcapstone doctor          - detailed health check"
             )
 
         text_widget = tk.Text(
@@ -641,7 +641,7 @@ class InstallerApp:
 
 
 def main() -> None:
-    """Entry point — launch GUI if available, fall back to CLI."""
+    """Entry point - launch GUI if available, fall back to CLI."""
     if not HAS_TK:
         print("GUI not available (tkinter not installed).")
         print("Using CLI installer instead...")

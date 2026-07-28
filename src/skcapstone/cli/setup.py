@@ -52,7 +52,7 @@ def _write_global_claude_md(home_path: Path, agent_name: str) -> Optional[Path]:
         else:
             # Minimal fallback if template is missing
             content = (
-                f"# Claude Code — Global Agent Instructions ({agent_name})\n\n"
+                f"# Claude Code - Global Agent Instructions ({agent_name})\n\n"
                 f"- **Agent**: `{agent_name}`\n"
                 f"- **Home**: `{home_path}`\n"
                 f"- **Env**: `SKCAPSTONE_AGENT={agent_name}`\n\n"
@@ -96,7 +96,7 @@ def _write_claude_settings(merge: bool = True) -> Optional[Path]:
 
         hooks_dir = str(Path(skmemory.__file__).parent / "hooks")
     except ImportError:
-        return None  # skmemory not installed — caller should use skmemory register instead
+        return None  # skmemory not installed - caller should use skmemory register instead
 
     template_path = _get_claude_template_dir() / "settings.json"
     if not template_path.exists():
@@ -154,7 +154,7 @@ def register_setup_commands(main: click.Group) -> None:
     def init(home: str):
         """Initialize a sovereign agent (interactive wizard).
 
-        Alias for 'skcapstone onboard' — runs the full 13-step setup wizard.
+        Alias for 'skcapstone onboard' - runs the full 13-step setup wizard.
         Creates ~/.skcapstone/ with identity, memory, trust, security, soul,
         and connects to the mesh. Zero to sovereign in under 5 minutes.
         """
@@ -180,7 +180,7 @@ def register_setup_commands(main: click.Group) -> None:
     def install_cmd(
         name, email, home, skip_deps, skip_seeds, skip_ritual, skip_preflight, install_path
     ):
-        """Guided setup wizard — set up, join, or update your sovereign node."""
+        """Guided setup wizard - set up, join, or update your sovereign node."""
         from ..install_wizard import run_install_wizard
 
         run_install_wizard(
@@ -197,7 +197,7 @@ def register_setup_commands(main: click.Group) -> None:
     @main.command("uninstall")
     @click.option("--home", default=AGENT_HOME, help="Agent home directory.", type=click.Path())
     @click.option("--force", is_flag=True, help="Skip confirmations (for scripting).")
-    @click.option("--keep-data", is_flag=True, help="Deregister only — keep local files.")
+    @click.option("--keep-data", is_flag=True, help="Deregister only - keep local files.")
     @click.option(
         "--export-first",
         is_flag=True,
@@ -252,15 +252,15 @@ def register_setup_commands(main: click.Group) -> None:
         """Interactive onboarding wizard for new humans and AI agents.
 
         \b
-        Eight guided steps — zero to sovereign in under 5 minutes:
-          1. Identity   — generate PGP keypair via CapAuth
-          2. Soul       — create name, values, and personality blueprint
-          3. Memory     — initialize SKMemory and import Cloud 9 seeds
-          4. Ritual     — run the full rehydration ritual
-          5. Trust      — verify trust chain from FEB files
-          6. Mesh       — check Syncthing peering
-          7. Heartbeat  — publish your first alive beacon
-          8. Board      — register on the coordination board
+        Eight guided steps - zero to sovereign in under 5 minutes:
+          1. Identity   - generate PGP keypair via CapAuth
+          2. Soul       - create name, values, and personality blueprint
+          3. Memory     - initialize SKMemory and import Cloud 9 seeds
+          4. Ritual     - run the full rehydration ritual
+          5. Trust      - verify trust chain from FEB files
+          6. Mesh       - check Syncthing peering
+          7. Heartbeat  - publish your first alive beacon
+          8. Board      - register on the coordination board
         """
         from ..onboard import run_onboard
 
@@ -272,7 +272,7 @@ def register_setup_commands(main: click.Group) -> None:
         "--force", is_flag=True, help="Skip confirmation prompt (for scripting/testing)."
     )
     def reset_cmd(home: str, force: bool):
-        """Factory reset — wipe all agent data.
+        """Factory reset - wipe all agent data.
 
         Backs up the identity/ directory to ~/.skcapstone-backup-{timestamp}/
         before deleting. All other data is permanently removed.

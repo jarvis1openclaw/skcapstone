@@ -49,7 +49,7 @@ def _setup_agent_home(tmp_path: Path) -> Path:
     (home / "conversations").mkdir()
     (home / "conversations" / "conv1.json").write_text('{"id": "conv1", "messages": []}')
 
-    # Ephemeral dirs — must NOT be backed up
+    # Ephemeral dirs - must NOT be backed up
     (home / "sync").mkdir()
     (home / "sync" / "seed.json").write_text('{"ephemeral": true}')
 

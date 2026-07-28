@@ -25,7 +25,7 @@ def register_memory_commands(main: click.Group) -> None:
 
     @main.group()
     def memory():
-        """Sovereign memory — your agent never forgets.
+        """Sovereign memory - your agent never forgets.
 
         Store, search, recall, and manage memories across
         sessions and platforms.
@@ -213,7 +213,7 @@ def register_memory_commands(main: click.Group) -> None:
         console.print(
             Panel(
                 entry.content,
-                title=f"[cyan]{entry.memory_id}[/] — {entry.layer.value}",
+                title=f"[cyan]{entry.memory_id}[/] - {entry.layer.value}",
                 subtitle=f"importance={entry.importance} accessed={entry.access_count} source={entry.source}",  # noqa: E501
                 border_style="bright_blue",
             )
@@ -339,7 +339,7 @@ def register_memory_commands(main: click.Group) -> None:
         if result.deduped:
             console.print(f"  [yellow]Deduped:[/] {len(result.deduped)} duplicate(s) removed")
         if not result.tagged and not result.promoted and not result.deduped:
-            console.print("  [dim]Nothing to curate — memories are clean.[/]")
+            console.print("  [dim]Nothing to curate - memories are clean.[/]")
         console.print()
 
     @memory.command("migrate")
@@ -480,7 +480,7 @@ def register_memory_commands(main: click.Group) -> None:
 
         Ingests flat-file JSON memories into SQLite (and optionally SKVector/SKGraph),
         then rehydrates trust state from FEB files. This is the agent's "wake up"
-        command — restoring who it IS across sessions.
+        command - restoring who it IS across sessions.
 
         Without flags, does both memory ingestion and FEB rehydration.
         """

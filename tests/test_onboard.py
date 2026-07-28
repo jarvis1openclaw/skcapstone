@@ -1,4 +1,4 @@
-"""Tests for the skcapstone onboard wizard — new system-setup steps.
+"""Tests for the skcapstone onboard wizard - new system-setup steps.
 
 Covers:
 - _step_prereqs(): Python/pip/Ollama detection

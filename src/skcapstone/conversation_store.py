@@ -1,10 +1,10 @@
 """
-ConversationStore — focused, stateless per-peer conversation history.
+ConversationStore - focused, stateless per-peer conversation history.
 
 Stores conversations as JSON arrays in {home}/conversations/{peer}.json.
 Each entry: {"role": str, "content": str, "timestamp": ISO-8601}.
 
-Unlike ConversationManager this module is stateless — every call reads
+Unlike ConversationManager this module is stateless - every call reads
 from / writes to disk directly, making it suitable for CLI tools and
 processes that need to see the latest on-disk state rather than a
 snapshot loaded at init time.
@@ -53,7 +53,7 @@ class ConversationStore:
     """Lightweight, stateless per-peer conversation history store.
 
     Reads and writes ``{home}/conversations/{peer}.json`` files directly
-    with atomic rename-based updates.  No in-memory caching — every call
+    with atomic rename-based updates.  No in-memory caching - every call
     reflects the current on-disk state.
 
     Compatible with :class:`~skcapstone.conversation_manager.ConversationManager`:

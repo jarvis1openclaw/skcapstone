@@ -1,5 +1,5 @@
 """
-SKCapstone Daemon — the always-on sovereign agent.
+SKCapstone Daemon - the always-on sovereign agent.
 
 Runs as a background process, continuously polling for
 incoming messages, scheduling vault sync, monitoring
@@ -131,11 +131,11 @@ def build_prometheus_metrics(config, consciousness=None) -> str:
     guarded independently so one failing collector never blanks the whole
     scrape.  Exposes:
 
-      * ``consciousness_messages_total`` — consciousness metrics collector.
-      * ``memory_count{layer=...}`` — ``memory_engine.get_stats``.
-      * ``coord_tasks_total{status=...}`` — coordination ``Board`` task views.
-      * ``heartbeat_peers_alive`` — fresh heartbeats in the shared household.
-      * ``llm_errors_total`` — consciousness loop response/LLM error counter.
+      * ``consciousness_messages_total`` - consciousness metrics collector.
+      * ``memory_count{layer=...}`` - ``memory_engine.get_stats``.
+      * ``coord_tasks_total{status=...}`` - coordination ``Board`` task views.
+      * ``heartbeat_peers_alive`` - fresh heartbeats in the shared household.
+      * ``llm_errors_total`` - consciousness loop response/LLM error counter.
 
     Args:
         config: ``DaemonConfig`` (provides ``home`` and ``shared_root``).
@@ -146,7 +146,7 @@ def build_prometheus_metrics(config, consciousness=None) -> str:
     """
     lines: list = []
 
-    # ── consciousness_messages_total (counter) — REAL ─────────────────────────
+    # ── consciousness_messages_total (counter) - REAL ─────────────────────────
     messages_total = 0
     llm_errors_total = 0
     if consciousness is not None:
@@ -165,7 +165,7 @@ def build_prometheus_metrics(config, consciousness=None) -> str:
     lines.append("# TYPE consciousness_messages_total counter")
     lines.append(_prom_line("consciousness_messages_total", messages_total))
 
-    # ── memory_count{layer=...} (gauge) — REAL ────────────────────────────────
+    # ── memory_count{layer=...} (gauge) - REAL ────────────────────────────────
     lines.append("# HELP memory_count Number of memory entries by layer.")
     lines.append("# TYPE memory_count gauge")
     layer_counts = {"short_term": 0, "mid_term": 0, "long_term": 0}
@@ -183,7 +183,7 @@ def build_prometheus_metrics(config, consciousness=None) -> str:
     for layer, count in layer_counts.items():
         lines.append(_prom_line("memory_count", count, {"layer": layer}))
 
-    # ── coord_tasks_total{status=...} (gauge) — REAL ──────────────────────────
+    # ── coord_tasks_total{status=...} (gauge) - REAL ──────────────────────────
     lines.append("# HELP coord_tasks_total Coordination board tasks by status.")
     lines.append("# TYPE coord_tasks_total gauge")
     status_counts = {"open": 0, "claimed": 0, "in_progress": 0, "done": 0}
@@ -198,7 +198,7 @@ def build_prometheus_metrics(config, consciousness=None) -> str:
     for st, count in status_counts.items():
         lines.append(_prom_line("coord_tasks_total", count, {"status": st}))
 
-    # ── heartbeat_peers_alive (gauge) — REAL ──────────────────────────────────
+    # ── heartbeat_peers_alive (gauge) - REAL ──────────────────────────────────
     lines.append("# HELP heartbeat_peers_alive Household agents with a fresh heartbeat.")
     lines.append("# TYPE heartbeat_peers_alive gauge")
     peers_alive = 0
@@ -216,7 +216,7 @@ def build_prometheus_metrics(config, consciousness=None) -> str:
         logger.warning("Prometheus: failed to count alive heartbeats: %s", exc)
     lines.append(_prom_line("heartbeat_peers_alive", peers_alive))
 
-    # ── llm_errors_total (counter) — REAL (consciousness response error path) ──
+    # ── llm_errors_total (counter) - REAL (consciousness response error path) ──
     lines.append("# HELP llm_errors_total Errors in the consciousness LLM response path.")
     lines.append("# TYPE llm_errors_total counter")
     lines.append(_prom_line("llm_errors_total", llm_errors_total))
@@ -232,9 +232,9 @@ def _sd_notify(state: str) -> bool:
     was sent, False if NOTIFY_SOCKET is not set (i.e. not running under systemd).
 
     Common states:
-        "READY=1"       — service startup complete
-        "WATCHDOG=1"    — watchdog keep-alive ping
-        "STOPPING=1"    — graceful shutdown in progress
+        "READY=1"       - service startup complete
+        "WATCHDOG=1"    - watchdog keep-alive ping
+        "STOPPING=1"    - graceful shutdown in progress
     """
     addr = os.environ.get("NOTIFY_SOCKET")
     if not addr:
@@ -377,7 +377,7 @@ class ComponentHealth:
             self.last_heartbeat = now
 
     def pulse(self) -> None:
-        """Record a heartbeat — component is alive and working."""
+        """Record a heartbeat - component is alive and working."""
         with self._lock:
             self.last_heartbeat = datetime.now(timezone.utc)
             if self.status != "alive":
@@ -421,7 +421,7 @@ class ComponentHealth:
             return len(self.restart_times)
 
     def mark_failed(self, error: str = "") -> None:
-        """Mark component as failed — restart budget exhausted, giving up."""
+        """Mark component as failed - restart budget exhausted, giving up."""
         with self._lock:
             self.status = "failed"
             self.gave_up = True
@@ -478,12 +478,12 @@ class ComponentManager:
     has exited or whose heartbeat has timed out.
 
     Args:
-        stop_event: Shared stop event — when set the watchdog exits cleanly.
+        stop_event: Shared stop event - when set the watchdog exits cleanly.
     """
 
     WATCHDOG_INTERVAL = 30  # seconds between watchdog checks
     MAX_RESTARTS = 5  # max auto-restart attempts per RESTART_WINDOW (a rate, not a total)
-    RESTART_WINDOW = 3600  # seconds — sliding window the restart budget applies to
+    RESTART_WINDOW = 3600  # seconds - sliding window the restart budget applies to
     RESTART_BACKOFF = 5  # seconds to wait between consecutive restart attempts
 
     def __init__(self, stop_event: threading.Event):
@@ -695,7 +695,7 @@ class ComponentManager:
             if recent >= self.MAX_RESTARTS:
                 if not comp.gave_up:
                     logger.error(
-                        "Component '%s' exceeded restart budget (%d in %ds) — giving up",
+                        "Component '%s' exceeded restart budget (%d in %ds) - giving up",
                         name,
                         recent,
                         self.RESTART_WINDOW,
@@ -706,7 +706,7 @@ class ComponentManager:
                 continue
 
             if comp.gave_up:
-                logger.info("Component '%s' restart budget recovered — re-arming watchdog", name)
+                logger.info("Component '%s' restart budget recovered - re-arming watchdog", name)
                 comp.gave_up = False
 
             if comp.last_restart_at:
@@ -829,7 +829,7 @@ class DaemonState:
         self.sync_pipeline_status: dict = {}
         # Status-API server health. "pending" until the bind is attempted, then
         # "ok" (bound on the intended port), "rebound" (had to move to a free
-        # port after a collision — degraded), or "down" (no API at all).
+        # port after a collision - degraded), or "down" (no API at all).
         self.api_server: dict = {"status": "pending", "port": None, "detail": ""}
 
     def snapshot(self) -> dict:
@@ -902,7 +902,7 @@ class DaemonState:
         """Record the status-API server health.
 
         Args:
-            status: One of "ok", "rebound" (degraded — bound on a fallback
+            status: One of "ok", "rebound" (degraded - bound on a fallback
                 port after a collision), or "down" (no API server running).
             port: The port the server actually bound to, if any.
             detail: Human-readable context (e.g. the bind error).
@@ -987,7 +987,7 @@ class DaemonService:
         # WebSocket clients: set of raw sockets for connected /ws clients
         self._ws_clients: set = set()
         self._ws_lock = threading.Lock()
-        # Component health manager — populated in start()
+        # Component health manager - populated in start()
         self._component_mgr = ComponentManager(self._stop_event)
 
     def start(self) -> None:
@@ -1004,7 +1004,7 @@ class DaemonService:
         self.state.started_at = datetime.now(timezone.utc)
 
         logger.info(
-            "Daemon starting — home=%s port=%d poll=%ds sync=%ds",
+            "Daemon starting - home=%s port=%d poll=%ds sync=%ds",
             self.config.home,
             self.config.port,
             self.config.poll_interval,
@@ -1064,7 +1064,7 @@ class DaemonService:
         self._start_api_server()
 
         _sd_notify("READY=1")
-        logger.info("Daemon started — PID %d", os.getpid())
+        logger.info("Daemon started - PID %d", os.getpid())
 
     def stop(self) -> None:
         """Gracefully stop the daemon and all workers.
@@ -1089,7 +1089,7 @@ class DaemonService:
         # ── Idempotency guard ────────────────────────────────────────────────
         with self._shutdown_lock:
             if self._shutdown_done:
-                logger.debug("stop() already ran — ignoring duplicate call")
+                logger.debug("stop() already ran - ignoring duplicate call")
                 return
             self._shutdown_done = True
 
@@ -1101,7 +1101,7 @@ class DaemonService:
 
         _sd_notify("STOPPING=1")
         logger.info(
-            "Daemon stopping — graceful shutdown (budget %.0fs)...",
+            "Daemon stopping - graceful shutdown (budget %.0fs)...",
             self.config.shutdown_timeout,
         )
         try:
@@ -1181,7 +1181,7 @@ class DaemonService:
             entry = JournalEntry(
                 title="Daemon shutdown",
                 emotional_summary="peaceful",
-                moments=["Graceful shutdown — drained, flushed, and signed off."],
+                moments=["Graceful shutdown - drained, flushed, and signed off."],
             )
             Journal().write_entry(entry)
             logger.info("Shutdown: journal entry written")
@@ -1210,7 +1210,7 @@ class DaemonService:
         try:
             from .preflight import PreflightChecker
         except ImportError:
-            logger.warning("PreflightChecker not available — skipping preflight")
+            logger.warning("PreflightChecker not available - skipping preflight")
             return
 
         checker = PreflightChecker(home=self.config.home)
@@ -1221,26 +1221,26 @@ class DaemonService:
             status = check["status"]
             msg = check["message"]
             if status == "ok":
-                logger.info("preflight [%s] OK — %s", name, msg)
+                logger.info("preflight [%s] OK - %s", name, msg)
             elif status == "warn":
-                logger.warning("preflight [%s] WARN — %s", name, msg)
+                logger.warning("preflight [%s] WARN - %s", name, msg)
             else:
-                logger.error("preflight [%s] FAIL — %s", name, msg)
+                logger.error("preflight [%s] FAIL - %s", name, msg)
 
         if not summary["ok"]:
             failed = [c for c in summary["checks"] if c["status"] == "fail" and c["critical"]]
             msgs = "; ".join(c["message"] for c in failed)
-            logger.error("Preflight FAILED — aborting daemon startup: %s", msgs)
+            logger.error("Preflight FAILED - aborting daemon startup: %s", msgs)
             raise SystemExit(f"Daemon preflight failed: {msgs}")
 
         if summary["warnings"] or summary["failures"]:
             logger.warning(
-                "Preflight complete — %d warning(s), %d non-critical failure(s)",
+                "Preflight complete - %d warning(s), %d non-critical failure(s)",
                 summary["warnings"],
                 summary["failures"],
             )
         else:
-            logger.info("Preflight complete — all checks passed")
+            logger.info("Preflight complete - all checks passed")
 
     def _load_components(self) -> None:
         """Attempt to load SKComms, AgentRuntime, and ConsciousnessLoop."""
@@ -1257,9 +1257,9 @@ class DaemonService:
                     transport, "configure"
                 ):
                     transport.configure({"comms_root": str(expected_comms_root)})
-            logger.info("SKComms loaded — %d transports", len(self._skcomms.router.transports))
+            logger.info("SKComms loaded - %d transports", len(self._skcomms.router.transports))
         except ImportError:
-            logger.warning("SKComms not installed — inbox polling disabled")
+            logger.warning("SKComms not installed - inbox polling disabled")
         except Exception as exc:
             logger.warning("SKComms failed to load: %s", exc)
             self.state.record_error(f"SKComms load: {exc}")
@@ -1268,7 +1268,7 @@ class DaemonService:
             from .runtime import get_runtime
 
             self._runtime = get_runtime(self.config.home)
-            logger.info("Runtime loaded — agent '%s'", self._runtime.manifest.name)
+            logger.info("Runtime loaded - agent '%s'", self._runtime.manifest.name)
         except Exception as exc:
             logger.warning("Runtime failed to load: %s", exc)
             self.state.record_error(f"Runtime load: {exc}")
@@ -1313,7 +1313,7 @@ class DaemonService:
 
                             cb = ollama_callback(model="llama3.2")
                             cb("warmup")
-                            logger.info("Ollama warmup complete — llama3.2 loaded")
+                            logger.info("Ollama warmup complete - llama3.2 loaded")
                         except Exception as exc:
                             logger.debug("Ollama warmup skipped: %s", exc)
 
@@ -1343,7 +1343,7 @@ class DaemonService:
 
         # Register the consciousness-loop reference for the in-process
         # dreaming-reflection jobs.yaml job. This is a hard constraint that must
-        # hold regardless of whether the task scheduler builds successfully —
+        # hold regardless of whether the task scheduler builds successfully -
         # None under --no-consciousness, an active loop otherwise. Keeping it
         # out of the scheduler try-block means a scheduler-build failure can no
         # longer leave a stale loop reference registered.
@@ -1367,7 +1367,7 @@ class DaemonService:
                 beacon=self._beacon,
                 sync_watcher=_sync_watcher,
             )
-            logger.info("Task scheduler built — %d task(s)", len(self._scheduler._tasks))
+            logger.info("Task scheduler built - %d task(s)", len(self._scheduler._tasks))
         except Exception as exc:
             logger.warning("Task scheduler failed to build: %s", exc)
             self.state.record_error(f"Scheduler build: {exc}")
@@ -1436,7 +1436,7 @@ class DaemonService:
                 except Exception as exc:
                     logger.warning("Heartbeat pulse failed: %s", exc)
 
-            # Sync pipeline status — inbox/outbox file counts and path alignment
+            # Sync pipeline status - inbox/outbox file counts and path alignment
             try:
                 from .sync_engine import get_sync_pipeline_status
 
@@ -1500,7 +1500,7 @@ class DaemonService:
                 self.state.record_error(f"Housekeeping: {exc}")
 
     def _process_messages(self, envelopes: list) -> None:
-        """Handle received messages — delegates to consciousness loop.
+        """Handle received messages - delegates to consciousness loop.
 
         Args:
             envelopes: List of received MessageEnvelope objects.
@@ -1751,7 +1751,7 @@ class DaemonService:
                 """Assemble all dashboard data into a single dict."""
                 snap = state.snapshot()
 
-                # Agent identity — try runtime first, then identity.json
+                # Agent identity - try runtime first, then identity.json
                 agent_name = "unknown"
                 agent_fingerprint = ""
                 if runtime and hasattr(runtime, "manifest"):
@@ -1959,7 +1959,7 @@ class DaemonService:
                 else:
                     uptime_str = f"{int(secs // 3600)}h {int((secs % 3600) // 60)}m"
 
-                # Fingerprint — shorten for display
+                # Fingerprint - shorten for display
                 fp = agent.get("fingerprint", "")
                 fp_short = f"{fp[:8]}\u2026{fp[-8:]}" if len(fp) > 20 else fp
 
@@ -2315,7 +2315,7 @@ class DaemonService:
 
                         fingerprint = CapAuthValidator(require_auth=True).validate(token_str)
                     except ImportError:
-                        # skcomms not installed — fall back to skcapstone signed tokens
+                        # skcomms not installed - fall back to skcapstone signed tokens
                         if token_str:
                             try:
                                 from .tokens import import_token, verify_token
@@ -2436,7 +2436,7 @@ class DaemonService:
                                     pass
                                 break
                     finally:
-                        pass  # tail thread is daemon — exits when socket closes
+                        pass  # tail thread is daemon - exits when socket closes
 
                 # ── Household: list all agents ───────────────────────────
                 elif self.path == "/api/v1/household/agents":
@@ -2660,7 +2660,7 @@ class DaemonService:
                     )
 
             def do_POST(self):
-                """Handle POST requests — conversation send endpoint."""
+                """Handle POST requests - conversation send endpoint."""
                 if not self._check_rate_limit():
                     return
                 # ── POST /api/v1/conversations/{peer}/send ────────────────
@@ -2735,7 +2735,7 @@ class DaemonService:
                 self._json_response({"error": "not found"}, status=404)
 
             def do_DELETE(self):
-                """Handle DELETE requests — clear conversation history."""
+                """Handle DELETE requests - clear conversation history."""
                 if not self._check_rate_limit():
                     return
                 # ── DELETE /api/v1/conversations/{peer} ──────────────────
@@ -2822,7 +2822,7 @@ class DaemonService:
                 self._server.socket = ssl_ctx.wrap_socket(self._server.socket, server_side=True)
                 fingerprint = cert_fingerprint_sha256(cert_path)
                 logger.info(
-                    "TLS enabled — certificate: %s  fingerprint(SHA-256): %s",
+                    "TLS enabled - certificate: %s  fingerprint(SHA-256): %s",
                     cert_path,
                     fingerprint,
                 )
@@ -2841,14 +2841,14 @@ class DaemonService:
             if bound_port == config.port:
                 self.state.record_api_server("ok", port=bound_port)
             else:
-                # Bound, but not on the intended port — degraded. Loud, not silent.
+                # Bound, but not on the intended port - degraded. Loud, not silent.
                 detail = f"intended port {config.port} was in use; " f"rebound on {bound_port}"
                 self.state.record_api_server("rebound", port=bound_port, detail=detail)
                 self.state.record_error(f"ALERT: API server {detail}")
                 logger.warning("ALERT: API server %s", detail)
                 self._emit_api_alert("rebound", config.port, detail, bound_port=bound_port)
         except OSError as exc:
-            # No API server at all — the daemon is running blind (no status /
+            # No API server at all - the daemon is running blind (no status /
             # health monitoring). This must be loud: alert event + degraded
             # health, never a lone log line.
             detail = f"could not bind status API on port {config.port}: {exc}"
@@ -2881,7 +2881,7 @@ class DaemonService:
             if exc.errno != errno.EADDRINUSE:
                 raise
 
-        # Preferred port taken — scan the dynamic range for a free, non-fleet port.
+        # Preferred port taken - scan the dynamic range for a free, non-fleet port.
         last_exc: Optional[OSError] = None
         for offset in range(DYNAMIC_PORT_SPAN):
             candidate = DYNAMIC_PORT_BASE + offset
@@ -2940,7 +2940,7 @@ class DaemonService:
 
     def _handle_signal(self, signum, frame):
         """Handle shutdown signals."""
-        logger.info("Received signal %s — stopping", signal.Signals(signum).name)
+        logger.info("Received signal %s - stopping", signal.Signals(signum).name)
         self._stop_event.set()
 
     def _save_shutdown_state(self) -> None:
@@ -2964,7 +2964,7 @@ class DaemonService:
             self.config.home.mkdir(parents=True, exist_ok=True)
             state_path.write_text(json.dumps(data, indent=2), encoding="utf-8")
             logger.info(
-                "Shutdown state saved — %d in-flight message(s) persisted",
+                "Shutdown state saved - %d in-flight message(s) persisted",
                 len(inflight),
             )
         except Exception as exc:
@@ -3002,7 +3002,7 @@ class DaemonService:
             )
             self._resume_inflight_messages(inflight)
         else:
-            logger.info("Startup state loaded — no in-flight messages to resume")
+            logger.info("Startup state loaded - no in-flight messages to resume")
 
         try:
             state_path.unlink()
@@ -3021,7 +3021,7 @@ class DaemonService:
         """
         if not (self._consciousness and self._consciousness._config.enabled):
             logger.warning(
-                "Consciousness not available — dropping %d in-flight message(s)",
+                "Consciousness not available - dropping %d in-flight message(s)",
                 len(inflight),
             )
             for msg in inflight:

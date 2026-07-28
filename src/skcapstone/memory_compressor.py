@@ -1,5 +1,5 @@
 """
-MemoryCompressor — LLM-powered compression of aged long-term memories.
+MemoryCompressor - LLM-powered compression of aged long-term memories.
 
 Scans the long-term layer for memories older than 90 days, groups those
 sharing common tags into sets of 5+, sends each group to the local LLM
@@ -35,7 +35,7 @@ _SYSTEM_PROMPT = (
     "You will receive a set of related memories grouped by topic. "
     "Your task: produce a single comprehensive memory entry that preserves "
     "all key facts, decisions, and insights from the originals. "
-    "Write as dense, continuous prose — no bullet points, no headers. "
+    "Write as dense, continuous prose - no bullet points, no headers. "
     "Maximum 400 words."
 )
 
@@ -359,7 +359,7 @@ class MemoryCompressor:
             )
             return bridge.generate(_SYSTEM_PROMPT, prompt, signal)
         except ImportError:
-            # model_router not available — call bridge without signal.
+            # model_router not available - call bridge without signal.
             return bridge.generate(_SYSTEM_PROMPT, prompt)
 
     def _make_bridge(self):

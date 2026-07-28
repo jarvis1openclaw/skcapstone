@@ -1,5 +1,5 @@
 """
-FUSE Mount — Sovereign Virtual Filesystem.
+FUSE Mount - Sovereign Virtual Filesystem.
 
 Exposes the sovereign agent's data (memories, identity, inbox, outbox,
 coordination tasks) as a mountable POSIX filesystem via FUSE.
@@ -8,16 +8,16 @@ Virtual directory layout::
 
     /
     ├── memories/
-    │   ├── short/          — short-term memory files (.md)
-    │   ├── mid/            — mid-term memory files (.md)
-    │   └── long/           — long-term memory files (.md)
-    ├── documents/          — SKSeal signed documents
+    │   ├── short/          - short-term memory files (.md)
+    │   ├── mid/            - mid-term memory files (.md)
+    │   └── long/           - long-term memory files (.md)
+    ├── documents/          - SKSeal signed documents
     ├── identity/
-    │   ├── card.json       — CapAuth identity card
-    │   └── fingerprint.txt — PGP fingerprint
-    ├── inbox/              — SKComms incoming messages (read-only)
-    ├── outbox/             — Write here to send via SKComms
-    └── coordination/       — Task board files (.json)
+    │   ├── card.json       - CapAuth identity card
+    │   └── fingerprint.txt - PGP fingerprint
+    ├── inbox/              - SKComms incoming messages (read-only)
+    ├── outbox/             - Write here to send via SKComms
+    └── coordination/       - Task board files (.json)
 
 Writing to ``/outbox/<agent_name>.msg`` enqueues a message via SKComms.
 
@@ -591,7 +591,7 @@ class SovereignFS:
         if top == _COORDINATION_DIR and len(parts) == 2:
             return _read_coordination_task(self._home, parts[1])
 
-        # /outbox/<agent>.msg — reads back from in-memory buffer
+        # /outbox/<agent>.msg - reads back from in-memory buffer
         if top == _OUTBOX_DIR and len(parts) == 2:
             path_key = "/" + "/".join(parts)
             return self._outbox_buffers.get(path_key, b"")
@@ -927,7 +927,7 @@ class SovereignFS:
 
 
 # ---------------------------------------------------------------------------
-# FUSEDaemon — lifecycle manager
+# FUSEDaemon - lifecycle manager
 # ---------------------------------------------------------------------------
 
 
@@ -1150,7 +1150,7 @@ class FUSEDaemon:
                 logger.debug("Unmount command %s failed: %s", cmd, exc)
 
         hint = "fusermount -u" if platform.system() == "Linux" else "umount"
-        logger.error("Could not unmount %s — try: %s %s", mount_str, hint, mount_str)
+        logger.error("Could not unmount %s - try: %s %s", mount_str, hint, mount_str)
         return False
 
     def status(self) -> Dict[str, Any]:

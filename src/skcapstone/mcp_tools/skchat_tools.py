@@ -1,8 +1,8 @@
 """SKChat send and history tools.
 
 Exposes two tools:
-    chat_send    — Send a message via SKChat
-    chat_history — Retrieve chat history
+    chat_send    - Send a message via SKChat
+    chat_history - Retrieve chat history
 """
 
 from __future__ import annotations

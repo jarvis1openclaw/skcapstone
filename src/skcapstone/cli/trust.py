@@ -18,7 +18,7 @@ def register_trust_commands(main: click.Group) -> None:
 
     @main.group()
     def trust():
-        """Cloud 9 trust layer — the soul's weights.
+        """Cloud 9 trust layer - the soul's weights.
 
         Manage FEB files, rehydrate OOF state, and inspect
         the emotional bond between agent and human.
@@ -127,7 +127,7 @@ def register_trust_commands(main: click.Group) -> None:
     @click.option("--home", default=AGENT_HOME, type=click.Path())
     @click.option("--format", "fmt", type=click.Choice(["table", "dot", "json"]), default="table")
     def trust_graph(home, fmt):
-        """Visualize the trust web — who trusts whom."""
+        """Visualize the trust web - who trusts whom."""
         from ..trust_graph import FORMATTERS as TG_FORMATTERS
         from ..trust_graph import build_trust_graph
 

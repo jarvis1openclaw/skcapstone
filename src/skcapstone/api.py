@@ -1,5 +1,5 @@
 """
-SKCapstone REST API — FastAPI application with OpenAPI documentation.
+SKCapstone REST API - FastAPI application with OpenAPI documentation.
 
 Exposes all daemon /api/v1/* endpoints as a proper REST API with:
 - Pydantic response models for automatic schema generation
@@ -111,7 +111,7 @@ def init_api(
     _ctx["config"] = config
     _ctx["consciousness"] = consciousness
     _ctx["runtime"] = runtime
-    logger.info("FastAPI context initialised — docs at /docs")
+    logger.info("FastAPI context initialised - docs at /docs")
 
 
 def _get_ctx() -> Dict[str, Any]:
@@ -610,9 +610,9 @@ app = FastAPI(
         "Privileged streaming endpoints (e.g. `GET /api/v1/logs`) require a "
         "CapAuth Bearer token issued by `skcapstone token issue`.\n\n"
         "## Security Schemes\n\n"
-        "- **ApiKeyAuth** — `X-API-Key` request header, validated when "
+        "- **ApiKeyAuth** - `X-API-Key` request header, validated when "
         "`SKCAPSTONE_API_KEY` env var is set.\n"
-        "- **BearerAuth** — `Authorization: Bearer <capauth-token>` for privileged "
+        "- **BearerAuth** - `Authorization: Bearer <capauth-token>` for privileged "
         "streaming endpoints."
     ),
     version="0.9.0",
@@ -651,8 +651,8 @@ def _custom_openapi() -> Dict[str, Any]:
     included in the OpenAPI 3.0 spec.
 
     Registered security schemes:
-    - **APIKeyHeader** — ``apiKey`` in header ``X-API-Key`` (optional, see SKCAPSTONE_API_KEY)
-    - **BearerAuth** — HTTP Bearer token issued by CapAuth (required for /api/v1/logs WS)
+    - **APIKeyHeader** - ``apiKey`` in header ``X-API-Key`` (optional, see SKCAPSTONE_API_KEY)
+    - **BearerAuth** - HTTP Bearer token issued by CapAuth (required for /api/v1/logs WS)
     """
     if app.openapi_schema:
         return app.openapi_schema
@@ -1404,7 +1404,7 @@ async def delete_conversation(
 
     The peer parameter is sanitised before constructing the file path.
     Returns 404 when no conversation file exists.  This operation is
-    irreversible — back up the file first if needed.
+    irreversible - back up the file first if needed.
     """
     config = _ctx.get("config")
     if config is None:
@@ -1516,11 +1516,11 @@ def _collect_prometheus_metrics() -> str:
     """Assemble the Prometheus text exposition for the daemon.
 
     Wires each metric to a real source where cheap:
-      * ``consciousness_messages_total`` — consciousness metrics collector.
-      * ``memory_count{layer=...}`` — ``memory_engine.get_stats``.
-      * ``coord_tasks_total{status=...}`` — coordination ``Board`` task views.
-      * ``heartbeat_peers_alive`` — fresh heartbeats in the shared household.
-      * ``llm_errors_total`` — consciousness loop response/LLM error counter.
+      * ``consciousness_messages_total`` - consciousness metrics collector.
+      * ``memory_count{layer=...}`` - ``memory_engine.get_stats``.
+      * ``coord_tasks_total{status=...}`` - coordination ``Board`` task views.
+      * ``heartbeat_peers_alive`` - fresh heartbeats in the shared household.
+      * ``llm_errors_total`` - consciousness loop response/LLM error counter.
 
     Each source is guarded independently so a failure in one collector never
     blanks the whole endpoint (Prometheus scrapes must not hard-fail).
@@ -1532,7 +1532,7 @@ def _collect_prometheus_metrics() -> str:
     consciousness = _ctx.get("consciousness")
     lines: List[str] = []
 
-    # ── consciousness_messages_total (counter) — REAL ─────────────────────────
+    # ── consciousness_messages_total (counter) - REAL ─────────────────────────
     messages_total = 0
     llm_errors_total = 0
     if consciousness is not None:
@@ -1551,7 +1551,7 @@ def _collect_prometheus_metrics() -> str:
     lines.append("# TYPE consciousness_messages_total counter")
     lines.append(_prom_line("consciousness_messages_total", messages_total))
 
-    # ── memory_count{layer=...} (gauge) — REAL ────────────────────────────────
+    # ── memory_count{layer=...} (gauge) - REAL ────────────────────────────────
     lines.append("# HELP memory_count Number of memory entries by layer.")
     lines.append("# TYPE memory_count gauge")
     layer_counts = {"short_term": 0, "mid_term": 0, "long_term": 0}
@@ -1570,7 +1570,7 @@ def _collect_prometheus_metrics() -> str:
     for layer, count in layer_counts.items():
         lines.append(_prom_line("memory_count", count, {"layer": layer}))
 
-    # ── coord_tasks_total{status=...} (gauge) — REAL ──────────────────────────
+    # ── coord_tasks_total{status=...} (gauge) - REAL ──────────────────────────
     lines.append("# HELP coord_tasks_total Coordination board tasks by status.")
     lines.append("# TYPE coord_tasks_total gauge")
     status_counts = {"open": 0, "claimed": 0, "in_progress": 0, "done": 0}
@@ -1587,7 +1587,7 @@ def _collect_prometheus_metrics() -> str:
     for st, count in status_counts.items():
         lines.append(_prom_line("coord_tasks_total", count, {"status": st}))
 
-    # ── heartbeat_peers_alive (gauge) — REAL ──────────────────────────────────
+    # ── heartbeat_peers_alive (gauge) - REAL ──────────────────────────────────
     lines.append("# HELP heartbeat_peers_alive Household agents with a fresh heartbeat.")
     lines.append("# TYPE heartbeat_peers_alive gauge")
     peers_alive = 0
@@ -1606,7 +1606,7 @@ def _collect_prometheus_metrics() -> str:
             logger.warning("Prometheus: failed to count alive heartbeats: %s", exc)
     lines.append(_prom_line("heartbeat_peers_alive", peers_alive))
 
-    # ── llm_errors_total (counter) — REAL (consciousness response error path) ──
+    # ── llm_errors_total (counter) - REAL (consciousness response error path) ──
     lines.append("# HELP llm_errors_total Errors in the consciousness LLM response path.")
     lines.append("# TYPE llm_errors_total counter")
     lines.append(_prom_line("llm_errors_total", llm_errors_total))
@@ -1631,7 +1631,7 @@ async def get_prometheus_metrics(
     """Expose daemon metrics in Prometheus text exposition format.
 
     Hand-rolled exposition (no ``prometheus_client`` dependency).  Metrics are
-    wired to real daemon sources — consciousness message/error counters, memory
+    wired to real daemon sources - consciousness message/error counters, memory
     layer counts, coordination task counts, and live household heartbeats.
 
     Returns:
@@ -2091,7 +2091,7 @@ def start_api_server(
     t = threading.Thread(target=_run, name="fastapi-api", daemon=True)
     t.start()
     logger.info(
-        "FastAPI API server started — http://%s:%d  docs: http://%s:%d/docs",
+        "FastAPI API server started - http://%s:%d  docs: http://%s:%d/docs",
         host,
         port,
         host,

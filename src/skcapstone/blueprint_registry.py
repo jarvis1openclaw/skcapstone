@@ -1,5 +1,5 @@
 """
-Blueprint Registry Client — interact with the souls.skworld.io API.
+Blueprint Registry Client - interact with the souls.skworld.io API.
 
 This is a client library for the remote soul blueprint registry hosted at
 souls.skworld.io. The actual server is a separate service; this module
@@ -10,7 +10,7 @@ Authentication uses DID-based bearer tokens: the agent's DID key is
 sent as ``Authorization: Bearer did:key:<fingerprint>`` so the registry
 can attribute published blueprints to a sovereign identity.
 
-No external dependencies — uses only ``urllib`` from the standard library.
+No external dependencies - uses only ``urllib`` from the standard library.
 
 Usage::
 
@@ -352,7 +352,7 @@ class BlueprintRegistryClient:
 
 
 # --------------------------------------------------------------------------
-# GitHub-based fallback — reads blueprints directly from the repo
+# GitHub-based fallback - reads blueprints directly from the repo
 # --------------------------------------------------------------------------
 
 _GITHUB_API_URL = "https://api.github.com/repos/smilinTux/soul-blueprints/contents/blueprints"

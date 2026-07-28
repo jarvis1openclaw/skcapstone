@@ -1,5 +1,5 @@
 """
-Memory Curator — analyze, score, tag, promote, and deduplicate memories.
+Memory Curator - analyze, score, tag, promote, and deduplicate memories.
 
 Runs a curation pass over the agent's memory store, identifying:
 - Promotion candidates (short->mid, mid->long based on access/importance)

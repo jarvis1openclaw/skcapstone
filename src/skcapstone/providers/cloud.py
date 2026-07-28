@@ -1,5 +1,5 @@
 """
-Cloud Provider — deploy agents on Hetzner, AWS, GCP, or any cloud.
+Cloud Provider - deploy agents on Hetzner, AWS, GCP, or any cloud.
 
 This is the abstraction layer that makes blueprints truly portable.
 Each cloud gets a thin adapter; the provider interface stays the same.

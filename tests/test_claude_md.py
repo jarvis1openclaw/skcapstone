@@ -1,4 +1,4 @@
-"""Tests for skcapstone.claude_md — CLAUDE.md auto-regeneration.
+"""Tests for skcapstone.claude_md - CLAUDE.md auto-regeneration.
 
 Covers:
   - generate_claude_md() produces correct markdown structure
@@ -141,7 +141,7 @@ class TestGenerateClaudeMd:
             side_effect=urllib.error.URLError("connection refused"),
         ):
             result = generate_claude_md(tmp_agent_home)
-        # Section may be omitted or show INACTIVE — either is fine
+        # Section may be omitted or show INACTIVE - either is fine
         if "## Consciousness" in result:
             assert "INACTIVE" in result
 

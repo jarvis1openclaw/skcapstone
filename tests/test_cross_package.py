@@ -1,4 +1,4 @@
-"""Cross-package integration tests — end-to-end sovereign agent flow.
+"""Cross-package integration tests - end-to-end sovereign agent flow.
 
 Exercises the real interfaces between packages:
     capauth   -> skcapstone   (identity discovery)
@@ -116,7 +116,7 @@ class TestCapAuthToSKCapstone:
 
 
 # ═══════════════════════════════════════════════════════════════════════════
-# 2. SKComms file transport — cross-process message delivery
+# 2. SKComms file transport - cross-process message delivery
 # ═══════════════════════════════════════════════════════════════════════════
 
 

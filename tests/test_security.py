@@ -164,7 +164,7 @@ class TestLargeMessageRejected:
         loop = self._make_loop(tmp_path)
 
         inbox_file = tmp_path / "big.skc.json"
-        # Write 1.1 MB of data — exceeds the 1_000_000 byte cap
+        # Write 1.1 MB of data - exceeds the 1_000_000 byte cap
         inbox_file.write_bytes(b"x" * 1_100_000)
 
         submitted = []
@@ -175,7 +175,7 @@ class TestLargeMessageRejected:
         assert submitted == [], "Oversized file should have been dropped without submitting"
 
     def test_1mb_minus_one_byte_is_processed(self, tmp_path):
-        """A file just below the cap should be attempted (may fail on parse — that's fine)."""
+        """A file just below the cap should be attempted (may fail on parse - that's fine)."""
         loop = self._make_loop(tmp_path)
 
         inbox_file = tmp_path / "ok.skc.json"

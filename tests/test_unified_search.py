@@ -292,7 +292,7 @@ class TestSearchMessages:
             "env001",
             "jarvis",
             "lumina",
-            "Queen Lumina — welcome to the coordination board!",
+            "Queen Lumina - welcome to the coordination board!",
         )
         results = search(agent_home, "coordination", sources=frozenset({"message"}))
         assert len(results) == 1

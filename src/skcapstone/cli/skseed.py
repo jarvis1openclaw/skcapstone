@@ -548,7 +548,7 @@ def register_skseed_commands(main: click.Group) -> None:
 
     @main.group()
     def skseed():
-        """SKSeed — document ingestion and seed management.
+        """SKSeed - document ingestion and seed management.
 
         Turn documents into memories. Validate seed files.
         """

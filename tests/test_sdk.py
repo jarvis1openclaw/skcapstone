@@ -15,7 +15,7 @@ def home(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
     """Point skcapstone at an isolated temp home for the duration of a test."""
     monkeypatch.setenv("SKCAPSTONE_HOME", str(tmp_path))
     # the facade resolves home via skcapstone.shared_home(), which reads the
-    # module-level AGENT_HOME captured at import — patch it directly too.
+    # module-level AGENT_HOME captured at import - patch it directly too.
     import skcapstone as pkg
 
     monkeypatch.setattr(pkg, "AGENT_HOME", str(tmp_path))

@@ -1,5 +1,5 @@
 """
-Team Communications — SKComms/SKChat wiring for deployed agent teams.
+Team Communications - SKComms/SKChat wiring for deployed agent teams.
 
 Bootstraps a local file-based SKComms channel for each deployed team so that
 agents can message each other without external infrastructure. Each agent gets
@@ -464,7 +464,7 @@ def _log_to_board(board: object, agent_name: str, note: str) -> None:
         agent_file = board.load_agent(agent_name) or AgentFile(agent=agent_name)  # type: ignore[attr-defined]
         timestamp = datetime.now(timezone.utc).strftime("%H:%M:%S")
         existing = agent_file.notes or ""
-        # Reason: keep notes bounded — prepend newest, cap at 1200 chars
+        # Reason: keep notes bounded - prepend newest, cap at 1200 chars
         new_entry = f"[{timestamp}] {note}"
         combined = f"{new_entry}\n{existing}" if existing else new_entry
         agent_file.notes = combined[:1200]

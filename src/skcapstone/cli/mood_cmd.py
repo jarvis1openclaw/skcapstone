@@ -31,9 +31,9 @@ def register_mood_commands(main: click.Group) -> None:
         Mood is derived from three interaction pattern factors:
 
         \b
-          Success   — response success rate (happy / frustrated)
-          Social    — message frequency     (social / isolated)
-          Stress    — error rate            (calm / stressed)
+          Success   - response success rate (happy / frustrated)
+          Social    - message frequency     (social / isolated)
+          Stress    - error rate            (calm / stressed)
         """
         from ..mood import MoodTracker
 

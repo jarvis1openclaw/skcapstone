@@ -1,4 +1,4 @@
-"""Tests for LocalProvider — local process-backed agent deployment.
+"""Tests for LocalProvider - local process-backed agent deployment.
 
 All subprocess and filesystem side effects are controlled via tmp_path
 and unittest.mock so no real crush/claude binary is required.
@@ -264,7 +264,7 @@ class TestSessionStateHelpers:
 
 class TestPidIsAlive:
     def test_alive_process(self):
-        # Use os.getpid() — current process is always alive.
+        # Use os.getpid() - current process is always alive.
         assert _pid_is_alive(os.getpid()) is True
 
     def test_dead_process(self):
@@ -379,7 +379,7 @@ class TestLocalProviderConfigure:
 
 
 # ---------------------------------------------------------------------------
-# LocalProvider.start — stub path (no crush binary)
+# LocalProvider.start - stub path (no crush binary)
 # ---------------------------------------------------------------------------
 
 

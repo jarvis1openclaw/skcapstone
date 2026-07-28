@@ -1,5 +1,5 @@
 """
-Tests for skcapstone.team_comms — agent-to-agent communication layer.
+Tests for skcapstone.team_comms - agent-to-agent communication layer.
 
 Covers:
 - Channel bootstrapping (directory creation)

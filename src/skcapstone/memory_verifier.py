@@ -1,5 +1,5 @@
 """
-Two-factor memory verification — truth-check gate for short-term → mid-term promotion.
+Two-factor memory verification - truth-check gate for short-term → mid-term promotion.
 
 Before any SHORT_TERM → MID_TERM promotion this module:
   1. Calls skseed.skill.truth_check() on the candidate memory content.
@@ -10,7 +10,7 @@ Before any SHORT_TERM → MID_TERM promotion this module:
      d. Returns VerificationResult(should_promote=False).
   3. If truth-aligned, returns VerificationResult(should_promote=True).
 
-Promotion is skipped until the conflict is resolved — i.e., the ``conflicting`` tag
+Promotion is skipped until the conflict is resolved - i.e., the ``conflicting`` tag
 is manually cleared (or via skseed_audit resolution).
 
 Fail-open design: if skseed is not installed, or truth_check raises unexpectedly,
@@ -39,7 +39,7 @@ class VerificationResult:
     Attributes:
         should_promote: Whether the memory may advance to mid-term.
         is_conflicting: True when a contradiction was detected.
-        coherence_score: Collider coherence score (0.0–1.0).
+        coherence_score: Collider coherence score (0.0-1.0).
         collision_fragments: Contradiction strings found by the collider.
         truth_grade: TruthGrade value string from the collider.
         conflict_report_id: memory_id of the stored conflict-report entry,
@@ -67,7 +67,7 @@ def verify_before_promotion(home: Path, entry) -> VerificationResult:
         entry: MemoryEntry candidate (expected to be in SHORT_TERM layer).
 
     Returns:
-        VerificationResult — consult .should_promote before proceeding.
+        VerificationResult - consult .should_promote before proceeding.
     """
     # Only gate SHORT_TERM → MID_TERM transitions
     from .models import MemoryLayer
@@ -86,7 +86,7 @@ def verify_before_promotion(home: Path, entry) -> VerificationResult:
         from skseed.skill import truth_check
     except ImportError:
         logger.debug(
-            "skseed not installed — skipping truth-check gate (fail-open) for %s",
+            "skseed not installed - skipping truth-check gate (fail-open) for %s",
             entry.memory_id,
         )
         return VerificationResult(should_promote=True)
@@ -133,7 +133,7 @@ def verify_before_promotion(home: Path, entry) -> VerificationResult:
 
     if not contradiction_found:
         logger.debug(
-            "Memory %s passed truth-check (coherence=%.2f grade=%s) — promotion allowed",
+            "Memory %s passed truth-check (coherence=%.2f grade=%s) - promotion allowed",
             entry.memory_id,
             coherence,
             grade,
@@ -218,7 +218,7 @@ def _store_conflict_report(
         preview += "…"
 
     report_content = (
-        f"[CONFLICT REPORT] Memory {entry.memory_id!r} failed truth-check — "
+        f"[CONFLICT REPORT] Memory {entry.memory_id!r} failed truth-check - "
         f"SHORT_TERM→MID_TERM promotion BLOCKED. "
         f"Coherence: {coherence:.2f}, Grade: {grade}. "
         f"Contradictions: {fragment_summary}. "
@@ -255,7 +255,7 @@ def _fire_conflict_notification(entry, fragments: list[str], coherence: float) -
         preview += "…"
 
     if fragments:
-        hint = f" — {fragments[0][:50]}"
+        hint = f" - {fragments[0][:50]}"
     else:
         hint = f" (coherence {coherence:.2f})"
 

@@ -3,7 +3,7 @@ Pydantic models for Agent Team Blueprint definitions.
 
 A BlueprintManifest defines a complete deployable team of AI agents,
 including their roles, models, resource requirements, networking,
-memory, and coordination settings. Provider-agnostic by design —
+memory, and coordination settings. Provider-agnostic by design -
 the same blueprint deploys to local processes, Proxmox LXCs,
 Hetzner, AWS, GCP, or any future provider.
 
@@ -140,7 +140,7 @@ class StorageConfig(BaseModel):
         description="Shared vault name for the team",
     )
     # Supported backends: "filesystem" (default, no deps) and "skvector" (via skmemory).
-    # "mem0" and "zep" are not yet implemented — no adapter classes exist.
+    # "mem0" and "zep" are not yet implemented - no adapter classes exist.
     memory_backend: str = Field(
         default="filesystem",
         description="Memory backend: filesystem, skvector",

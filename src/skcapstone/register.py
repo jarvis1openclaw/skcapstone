@@ -201,7 +201,7 @@ def find_skill_md(pkg_name: str, workspace: Optional[Path] = None) -> Optional[P
     if workspace is None:
         workspace = Path.home() / "clawd"
 
-    # 1. Check skills directory (may be a symlink — that's fine)
+    # 1. Check skills directory (may be a symlink - that's fine)
     skill_path = workspace / "skills" / pkg_name / "SKILL.md"
     if skill_path.exists():
         return skill_path.resolve()
@@ -328,7 +328,7 @@ def register_all(
         if name == "skgit" and mcp_env is None:
             mcp_cmd = None
 
-        # Resolve OpenClaw plugin path — skip if not on disk
+        # Resolve OpenClaw plugin path - skip if not on disk
         plugin_path = pkg.get("openclaw_plugin_path")
         if plugin_path and not Path(plugin_path).exists():
             plugin_path = None
@@ -359,10 +359,10 @@ def register_all(
                     environments=environments,
                 )
         else:
-            # url/http/sse: register_mcp has no url path yet — surface, don't mis-write.
+            # url/http/sse: register_mcp has no url path yet - surface, don't mis-write.
             results["plugins"][key] = {
                 "action": "skip",
-                "reason": "remote (url) MCP server — register manually or via `claude mcp add`",
+                "reason": "remote (url) MCP server - register manually or via `claude mcp add`",
             }
 
     return results

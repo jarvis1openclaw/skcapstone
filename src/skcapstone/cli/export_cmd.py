@@ -102,7 +102,7 @@ def register_export_commands(main: click.Group) -> None:
 
         Memories are always merged (existing memories with the same ID are
         kept). Conversations are merged per peer. Identity, config, and soul
-        are only written when their target file is absent — unless the
+        are only written when their target file is absent - unless the
         corresponding ``--overwrite-*`` flag is passed.
 
         Examples:

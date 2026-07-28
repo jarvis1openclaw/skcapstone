@@ -1,10 +1,10 @@
-"""Emotion tracker — classifies sentiment after each consciousness loop response.
+"""Emotion tracker - classifies sentiment after each consciousness loop response.
 
 After each LLM response, classifies the sentiment into one of:
     positive, neutral, concerned, excited
 
 Stores each classification as a memory entry with ``tag=emotion`` and a
-valence score 0–1.  Updates the warmth anchor's ``warmth`` field using a
+valence score 0-1.  Updates the warmth anchor's ``warmth`` field using a
 7-day rolling average, triggering a re-calibration every
 ``_WARMTH_UPDATE_EVERY`` records.
 
@@ -140,7 +140,7 @@ _LABEL_SCORES: dict[str, float] = {
 
 
 def _score_from_label(label: str) -> float:
-    """Map an emotion label to a valence score 0–1."""
+    """Map an emotion label to a valence score 0-1."""
     return _LABEL_SCORES.get(label, 0.50)
 
 
@@ -150,14 +150,14 @@ def _score_from_label(label: str) -> float:
 
 
 def _keyword_classify(text: str) -> tuple[str, float]:
-    """Fast keyword-based sentiment classifier — no LLM required.
+    """Fast keyword-based sentiment classifier - no LLM required.
 
     Args:
         text: Text to classify.
 
     Returns:
         Tuple of (label, score) where label is one of EMOTION_LABELS
-        and score is the corresponding valence 0–1.
+        and score is the corresponding valence 0-1.
     """
     if not text:
         return "neutral", 0.50
@@ -193,7 +193,7 @@ class EmotionEntry(BaseModel):
 
     Attributes:
         label: Classified emotion label.
-        score: Valence score 0.0–1.0 (higher = more positive).
+        score: Valence score 0.0-1.0 (higher = more positive).
         sender: Peer who triggered the response being classified.
         timestamp: ISO-8601 UTC timestamp.
     """
@@ -294,11 +294,11 @@ class EmotionTracker:
             Dict with keys:
                 - ``window_days``: lookback period
                 - ``total_records``: number of entries found
-                - ``avg_score``: mean valence score 0–1
+                - ``avg_score``: mean valence score 0-1
                 - ``label_counts``: dict of label → count
                 - ``dominant_label``: most-frequent label
                 - ``trend``: "improving" | "stable" | "declining"
-                - ``warmth_recommendation``: avg_score × 10 (anchor scale 0–10)
+                - ``warmth_recommendation``: avg_score × 10 (anchor scale 0-10)
                 - ``entries``: list of raw entry dicts (most-recent first)
         """
         entries = self._load_recent(days)
@@ -499,7 +499,7 @@ class EmotionTracker:
     def _update_warmth_anchor(self) -> None:
         """Recompute 7-day rolling average and nudge the warmth anchor.
 
-        Converts the average valence score (0–1) to the anchor's 0–10 warmth
+        Converts the average valence score (0-1) to the anchor's 0-10 warmth
         scale and calls :func:`~skcapstone.warmth_anchor.update_anchor` which
         applies exponential smoothing (30% new, 70% history).
         """

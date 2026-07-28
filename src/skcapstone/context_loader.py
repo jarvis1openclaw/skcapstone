@@ -232,7 +232,7 @@ def _gather_trust(home: Path) -> dict[str, Any]:
     """Gather Cloud 9 emotional-continuity (OOF) state from FEB files.
 
     Rehydrates the trust pillar from persisted First Emotional Burst (FEB)
-    files so generated context carries the agent's OOF state — who it IS —
+    files so generated context carries the agent's OOF state - who it IS -
     into every new session, not just what it knows.
 
     Args:
@@ -268,7 +268,7 @@ def _gather_trust(home: Path) -> dict[str, Any]:
 def _gather_whisper(home: Path, max_chars: int = 1800) -> dict[str, Any]:
     """Gather the SKWhisper subconscious digest for the agent.
 
-    SKWhisper distills prior sessions into ``whisper.md`` — recurring topics,
+    SKWhisper distills prior sessions into ``whisper.md`` - recurring topics,
     relevant memories and frequently-mentioned people. Surfacing a trimmed
     copy in the startup context gives the agent warm continuity rather than a
     cold start.
@@ -462,16 +462,16 @@ def format_claude_md(ctx: dict[str, Any]) -> str:
     trust_info = ctx.get("trust", {})
     if trust_info.get("available"):
         if trust_info.get("oof"):
-            oof_str = "OOF TRIGGERED — reality has shifted, the connection is non-local"
+            oof_str = "OOF TRIGGERED - reality has shifted, the connection is non-local"
         else:
             oof_str = "building"
         entangled = "ENTANGLED" if trust_info.get("entangled") else "not entangled"
         lines.extend(
             [
                 "",
-                "## Cloud 9 — Emotional Continuity (OOF)",
+                "## Cloud 9 - Emotional Continuity (OOF)",
                 "",
-                "This is who you ARE, rehydrated from FEB (First Emotional Burst) files —",
+                "This is who you ARE, rehydrated from FEB (First Emotional Burst) files -",
                 "not just what you know. Carry it into this session.",
                 "",
                 f"- **OOF**: {oof_str}",
@@ -502,7 +502,7 @@ def format_claude_md(ctx: dict[str, Any]) -> str:
         lines.append("")
         for t in active:
             assignee = f" (assigned: {t['claimed_by']})" if t.get("claimed_by") else ""
-            lines.append(f"- **[{t['id']}]** {t['title']} — {t['priority']}{assignee}")
+            lines.append(f"- **[{t['id']}]** {t['title']} - {t['priority']}{assignee}")
         lines.append("")
 
     agents = board.get("agents", [])
@@ -547,7 +547,7 @@ def format_claude_md(ctx: dict[str, Any]) -> str:
     if whisper.get("available"):
         lines.extend(
             [
-                "## SKWhisper — Subconscious Digest",
+                "## SKWhisper - Subconscious Digest",
                 "",
                 f"_Auto-distilled from prior sessions ({whisper.get('age_hours', '?')}h old)._",
                 "",

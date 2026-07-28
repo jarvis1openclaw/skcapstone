@@ -1,13 +1,13 @@
 """
-Memory Adapter — bridge between skcapstone's MemoryEntry and skmemory's Memory.
+Memory Adapter - bridge between skcapstone's MemoryEntry and skmemory's Memory.
 
 Provides a unified memory backend that routes through skmemory's three-tier
 architecture (SQLite + SKVector + SKGraph) while keeping the existing JSON
 engine as a fallback for offline/minimal deployments.
 
 Environment variables:
-    SKMEMORY_SKVECTOR_URL  — SKVector server URL (enables semantic search)
-    SKMEMORY_SKGRAPH_URL — SKGraph/Redis URL (enables graph traversal)
+    SKMEMORY_SKVECTOR_URL  - SKVector server URL (enables semantic search)
+    SKMEMORY_SKGRAPH_URL - SKGraph/Redis URL (enables graph traversal)
 """
 
 from __future__ import annotations

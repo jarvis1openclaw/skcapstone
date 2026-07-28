@@ -218,7 +218,7 @@ class TestRunFixesSkipsUnfixable:
         report = _make_report(_failing("pkg:skcapstone", "packages"))
         results = run_fixes(report, home)
 
-        # No fix attempted — empty results
+        # No fix attempted - empty results
         assert results == []
 
     def test_skips_identity_key_check(self, tmp_path):

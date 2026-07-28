@@ -1,4 +1,4 @@
-"""`skcapstone scheduler` — manage the unified job scheduler."""
+"""`skcapstone scheduler` - manage the unified job scheduler."""
 
 from __future__ import annotations
 
@@ -45,12 +45,12 @@ def register_scheduler_commands(main: click.Group) -> None:
 
     Adds the following sub-commands:
 
-    - ``scheduler list``   — list all configured jobs with run status.
-    - ``scheduler status`` — show last-run state for this node.
-    - ``scheduler run``    — execute a job immediately.
-    - ``scheduler logs``   — tail the most recent log for a job.
-    - ``scheduler enable`` — enable a job in ``jobs.yaml``.
-    - ``scheduler disable`` — disable a job in ``jobs.yaml``.
+    - ``scheduler list``   - list all configured jobs with run status.
+    - ``scheduler status`` - show last-run state for this node.
+    - ``scheduler run``    - execute a job immediately.
+    - ``scheduler logs``   - tail the most recent log for a job.
+    - ``scheduler enable`` - enable a job in ``jobs.yaml``.
+    - ``scheduler disable`` - disable a job in ``jobs.yaml``.
 
     Args:
         main: The top-level :class:`click.Group` to attach commands to.

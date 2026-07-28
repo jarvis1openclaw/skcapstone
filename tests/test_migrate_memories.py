@@ -1,4 +1,4 @@
-"""Tests for Memory Migration — JSON memories to unified backend."""
+"""Tests for Memory Migration - JSON memories to unified backend."""
 
 from __future__ import annotations
 

@@ -164,7 +164,7 @@ class TestReloadConfigLogsChanges:
         loop = _make_loop(tmp_path)
         home = loop._home
 
-        # Write exact current config — nothing changes
+        # Write exact current config - nothing changes
         _write_config(home, loop._config.model_dump())
 
         with caplog.at_level(logging.INFO, logger="skcapstone.consciousness"):
@@ -349,7 +349,7 @@ class TestRunConfigWatcher:
         loop._reload_config = fake_reload  # type: ignore[method-assign]
 
         try:
-            from watchdog.observers import Observer  # noqa: F401 — skip if not installed
+            from watchdog.observers import Observer  # noqa: F401 - skip if not installed
         except ImportError:
             pytest.skip("watchdog not installed")
 

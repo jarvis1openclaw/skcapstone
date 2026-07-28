@@ -1,5 +1,5 @@
 """
-Brain-First Protocol — think before you act.
+Brain-First Protocol - think before you act.
 
 Before an agent acts on any task, it consults its memory to see if it
 already knows something relevant.  This avoids redundant work, surfaces

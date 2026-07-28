@@ -14,7 +14,7 @@ def register_itil_commands(main: click.Group) -> None:
 
     @main.group()
     def itil():
-        """ITIL service management — incidents, problems, changes."""
+        """ITIL service management - incidents, problems, changes."""
 
     # ── itil status ───────────────────────────────────────────────────
 
@@ -96,7 +96,7 @@ def register_itil_commands(main: click.Group) -> None:
             tags=list(tag),
         )
         console.print(
-            f"\n  [green]Created:[/green] {inc.id} — {inc.title} "
+            f"\n  [green]Created:[/green] {inc.id} - {inc.title} "
             f"({inc.severity.value}, {inc.status.value})"
         )
         if inc.gtd_item_ids:
@@ -188,7 +188,7 @@ def register_itil_commands(main: click.Group) -> None:
                 allowed = sorted(_INCIDENT_TRANSITIONS.get(inc.status.value, set()))
                 console.print(
                     f"\n  [yellow]No change:[/yellow] {inc.id} is still "
-                    f"[bold]{inc.status.value}[/bold] — "
+                    f"[bold]{inc.status.value}[/bold] - "
                     f"{inc.status.value} -> {new_status} is not a legal transition.\n"
                     f"  Allowed from {inc.status.value}: "
                     f"{', '.join(allowed) if allowed else '(terminal state)'}\n"
@@ -226,7 +226,7 @@ def register_itil_commands(main: click.Group) -> None:
             workaround=workaround,
             tags=list(tag),
         )
-        console.print(f"\n  [green]Created:[/green] {prb.id} — {prb.title} ({prb.status.value})\n")
+        console.print(f"\n  [green]Created:[/green] {prb.id} - {prb.title} ({prb.status.value})\n")
 
     @problem.command("list")
     @click.option(
@@ -339,7 +339,7 @@ def register_itil_commands(main: click.Group) -> None:
             tags=list(tag),
         )
         console.print(
-            f"\n  [green]Proposed:[/green] {chg.id} — {chg.title} "
+            f"\n  [green]Proposed:[/green] {chg.id} - {chg.title} "
             f"({chg.change_type.value}, {chg.status.value})\n"
         )
 

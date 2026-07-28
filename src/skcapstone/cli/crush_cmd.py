@@ -1,9 +1,9 @@
 """Crush (charmbracelet/crush) integration commands.
 
 Subcommands:
-    skcapstone crush setup   — install config + soul instructions
-    skcapstone crush config  — print the generated crush.json
-    skcapstone crush status  — show installation status
+    skcapstone crush setup   - install config + soul instructions
+    skcapstone crush config  - print the generated crush.json
+    skcapstone crush status  - show installation status
 """
 
 from __future__ import annotations
@@ -42,8 +42,8 @@ def register_crush_commands(main: click.Group) -> None:
         """Set up Crush: write crush.json + instructions.md.
 
         Writes:
-          ~/.config/crush/crush.json     — MCP wiring + permissions
-          ~/.config/crush/instructions.md — soul blueprint as system prompt
+          ~/.config/crush/crush.json     - MCP wiring + permissions
+          ~/.config/crush/instructions.md - soul blueprint as system prompt
         """
         from ..crush_integration import setup_crush
 
@@ -148,7 +148,7 @@ def register_crush_commands(main: click.Group) -> None:
                 t.add_row(
                     "crush.json",
                     "[green]OK[/]",
-                    f"{mcp_count} MCP server(s) — {str(crush_json)}",
+                    f"{mcp_count} MCP server(s) - {str(crush_json)}",
                 )
             except Exception:
                 t.add_row("crush.json", "[red]CORRUPT[/]", str(crush_json))
@@ -158,7 +158,7 @@ def register_crush_commands(main: click.Group) -> None:
         # instructions.md
         if instructions_md.exists():
             size = instructions_md.stat().st_size
-            t.add_row("instructions.md", "[green]OK[/]", f"{size} bytes — {str(instructions_md)}")
+            t.add_row("instructions.md", "[green]OK[/]", f"{size} bytes - {str(instructions_md)}")
         else:
             t.add_row(
                 "instructions.md",

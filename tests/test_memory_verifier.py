@@ -103,7 +103,7 @@ def home(tmp_path: Path) -> Path:
 
 
 # ---------------------------------------------------------------------------
-# verify_before_promotion — unit tests
+# verify_before_promotion - unit tests
 # ---------------------------------------------------------------------------
 
 

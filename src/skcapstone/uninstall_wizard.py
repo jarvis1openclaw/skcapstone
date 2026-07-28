@@ -1,5 +1,5 @@
 """
-Uninstall wizard — clean, complete removal of a sovereign node.
+Uninstall wizard - clean, complete removal of a sovereign node.
 
 Steps:
   1. Confirm the user actually wants to do this (multiple confirmations)
@@ -41,7 +41,7 @@ console = Console()
 
 
 # ---------------------------------------------------------------------------
-# Inventory — what will be deleted
+# Inventory - what will be deleted
 # ---------------------------------------------------------------------------
 
 
@@ -130,7 +130,7 @@ def _offer_data_transfer(home_path: Path, inventory: dict) -> None:
     """
     vault_names = inventory["vault_names"]
     if not vault_names:
-        console.print("  [dim]No vault data found — nothing to transfer.[/]")
+        console.print("  [dim]No vault data found - nothing to transfer.[/]")
         return
 
     vaults_dir = home_path / "vaults"
@@ -160,7 +160,7 @@ def _offer_data_transfer(home_path: Path, inventory: dict) -> None:
     console.print("    [cyan]2[/]  Copy vault data to another device on your network")
     console.print("       (copies to that device's sync folder)")
     console.print()
-    console.print("    [cyan]3[/]  Skip — just delete everything")
+    console.print("    [cyan]3[/]  Skip - just delete everything")
     console.print("       [dim](data is gone forever)[/]")
     console.print()
 
@@ -265,7 +265,7 @@ def _transfer_to_device(
     target_host = target["hostname"]
 
     if not target_ip:
-        console.print(f"  [yellow]No IP for {target_host} — try option 1 instead.[/]")
+        console.print(f"  [yellow]No IP for {target_host} - try option 1 instead.[/]")
         return
 
     console.print(f"  Transferring to [cyan]{target_host}[/] ({target_ip})...")
@@ -286,9 +286,9 @@ def _transfer_to_device(
                 if result.returncode == 0:
                     console.print("[green]done[/]")
                 else:
-                    console.print("[yellow]rsync failed — try scp or manual copy[/]")
+                    console.print("[yellow]rsync failed - try scp or manual copy[/]")
             except FileNotFoundError:
-                console.print("[yellow]rsync not found — install or use option 1[/]")
+                console.print("[yellow]rsync not found - install or use option 1[/]")
                 return
             except subprocess.TimeoutExpired:
                 console.print("[yellow]timed out[/]")
@@ -316,7 +316,7 @@ def _deregister_from_vault_registry(home_path: Path) -> None:
         console.print(f"[green]done[/] ({vaults_removed} vault(s) removed)")
         console.print("  [dim]Other devices will see this update via Syncthing.[/]")
     except ImportError:
-        console.print("[dim]skref not installed — skipping[/]")
+        console.print("[dim]skref not installed - skipping[/]")
     except Exception as exc:
         logger.warning("uninstall_wizard.py: %s", exc)
         console.print(f"[yellow]{exc}[/]")
@@ -337,9 +337,9 @@ def _teardown_tailscale() -> None:
                 f"  {tailscale.get_admin_console_url().replace('/keys', '/machines')}[/]"
             )
         else:
-            console.print("[dim]not installed — skipping[/]")
+            console.print("[dim]not installed - skipping[/]")
     except ImportError:
-        console.print("[dim]skref not installed — skipping[/]")
+        console.print("[dim]skref not installed - skipping[/]")
     except Exception as exc:
         logger.warning("uninstall_wizard.py: %s", exc)
         console.print(f"[yellow]{exc}[/]")
@@ -355,7 +355,7 @@ def _remove_syncthing_folder(home_path: Path) -> None:
     console.print("  Removing Syncthing sync folder...", end=" ")
 
     if not shutil.which("syncthing"):
-        console.print("[dim]syncthing not installed — skipping[/]")
+        console.print("[dim]syncthing not installed - skipping[/]")
         return
 
     # Syncthing REST API to remove a folder

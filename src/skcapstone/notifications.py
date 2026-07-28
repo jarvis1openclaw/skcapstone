@@ -462,7 +462,7 @@ class NotificationManager:
             logger.debug("notify-send dispatched: %r / %r", title, body)
             return True
         except FileNotFoundError:
-            logger.debug("notify-send not found — desktop notifications unavailable")
+            logger.debug("notify-send not found - desktop notifications unavailable")
             return False
         except subprocess.CalledProcessError as exc:
             logger.debug("notify-send failed (rc=%d): %s", exc.returncode, exc.stderr)
@@ -490,7 +490,7 @@ class NotificationManager:
             logger.debug("osascript dispatched: %r / %r", title, body)
             return True
         except FileNotFoundError:
-            logger.debug("osascript not found — desktop notifications unavailable")
+            logger.debug("osascript not found - desktop notifications unavailable")
             return False
         except subprocess.CalledProcessError as exc:
             logger.debug("osascript failed (rc=%d): %s", exc.returncode, exc.stderr)

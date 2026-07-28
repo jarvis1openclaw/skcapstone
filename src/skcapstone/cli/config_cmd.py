@@ -16,7 +16,7 @@ def register_config_commands(main: click.Group) -> None:
 
     @main.group()
     def config():
-        """Config management — validate and inspect agent configuration."""
+        """Config management - validate and inspect agent configuration."""
 
     @config.command("show")
     @click.option(
@@ -205,7 +205,7 @@ def _rich_output(report: object, strict: bool) -> None:  # type: ignore[type-arg
         err_detail = f"{errors} error{'s' if errors != 1 else ''}"
         warn_detail = f", {warnings} warning{'s' if warnings != 1 else ''}" if warnings else ""
         console.print(
-            f"  [bold red]✗ {err_detail}{warn_detail}[/]  — fix before running the agent."
+            f"  [bold red]✗ {err_detail}{warn_detail}[/]  - fix before running the agent."
         )
 
     console.print()

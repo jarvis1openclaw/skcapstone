@@ -1,5 +1,5 @@
 """
-Docker Provider — deploy agent teams as Docker containers.
+Docker Provider - deploy agent teams as Docker containers.
 
 Each agent runs in its own container with resource limits derived from
 the blueprint ResourceSpec. Supports both individual container management
@@ -8,11 +8,11 @@ and docker-compose generation for full team orchestration.
 The provider wires three sovereign infrastructure components into every
 agent container:
 
-1. **Soul Blueprint** — injected via SOUL_BLUEPRINT env and config.json
-2. **MCP Server** — host-side skcapstone MCP reachable via env
+1. **Soul Blueprint** - injected via SOUL_BLUEPRINT env and config.json
+2. **MCP Server** - host-side skcapstone MCP reachable via env
    (SKCAPSTONE_MCP_HOST / SKCAPSTONE_MCP_SOCKET).  Set one of these so
    containers can call memory_store, coord_claim, etc.
-3. **SKComms Transport** — comms directory bind-mounted at /skcomms so
+3. **SKComms Transport** - comms directory bind-mounted at /skcomms so
    containers share the same file-channel inboxes as local agents.
 
 Prerequisites:

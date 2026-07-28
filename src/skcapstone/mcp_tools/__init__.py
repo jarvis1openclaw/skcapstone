@@ -1,8 +1,8 @@
-"""MCP tool group modules — split from mcp_server.py for maintainability.
+"""MCP tool group modules - split from mcp_server.py for maintainability.
 
 Each module exposes:
-    TOOLS:    list[Tool]   — MCP tool definitions
-    HANDLERS: dict         — {tool_name: async_handler_fn}
+    TOOLS:    list[Tool]   - MCP tool definitions
+    HANDLERS: dict         - {tool_name: async_handler_fn}
 
 The ``collect_all_tools`` and ``collect_all_handlers`` functions aggregate
 across every module so mcp_server.py can register them in one shot.

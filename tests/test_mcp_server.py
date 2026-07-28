@@ -1587,7 +1587,7 @@ class TestModelTools:
         """model_route with empty description still returns a valid decision."""
         result = await call_tool("model_route", {})
         parsed = _extract_json(result)
-        # Either a valid route or an error — either way, must be parseable JSON
+        # Either a valid route or an error - either way, must be parseable JSON
         assert isinstance(parsed, dict)
 
 
@@ -1605,7 +1605,7 @@ class TestConsciousnessTools:
         with patch("skcapstone.mcp_tools._helpers.AGENT_HOME", str(initialized_agent_home)):
             result = await call_tool("consciousness_status", {})
         parsed = _extract_json(result)
-        # Either a live status dict or an error — must be a dict
+        # Either a live status dict or an error - must be a dict
         assert isinstance(parsed, dict)
 
     @pytest.mark.asyncio
@@ -1817,7 +1817,7 @@ class TestSkSkillsTools:
             with patch.dict("sys.modules", {"skskills": None, "skskills.aggregator": None}):
                 result = await call_tool("skskills_list_tools", {})
         parsed = _extract_json(result)
-        # Either error (not installed) or success dict — no crash
+        # Either error (not installed) or success dict - no crash
         assert isinstance(parsed, dict)
 
     @pytest.mark.asyncio
@@ -1937,7 +1937,7 @@ class TestSoulTools:
         with patch("skcapstone.mcp_tools._helpers.AGENT_HOME", str(initialized_agent_home)):
             result = await call_tool("soul_show", {})
         parsed = _extract_json(result)
-        # Either "loaded: false" (no blueprint) or error (no skmemory) — must be dict
+        # Either "loaded: false" (no blueprint) or error (no skmemory) - must be dict
         assert isinstance(parsed, dict)
         assert "error" in parsed or "loaded" in parsed
 

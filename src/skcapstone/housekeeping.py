@@ -1,12 +1,12 @@
 """
-Housekeeping — storage pruning for the sovereign agent.
+Housekeeping - storage pruning for the sovereign agent.
 
 Prunes stale files that accumulate in the agent profile:
-- ACK files in ~/.skcapstone/skcomms/acks/ (age-based, 24h default) — the
+- ACK files in ~/.skcapstone/skcomms/acks/ (age-based, 24h default) - the
   canonical skcomms home (SKCOMMS_HOME default), NOT the dead ~/.skcomms path
 - Delivered envelopes in ~/.skcapstone/sync/comms/outbox/ (age-based, 48h)
 - Seed snapshots in ~/.skcapstone/sync/outbox/ (count-based, keep 10)
-- Legacy v1 comms outboxes (age-based, 7d) — both the root path
+- Legacy v1 comms outboxes (age-based, 7d) - both the root path
   ~/.skcapstone/comms/outbox/<recipient>/ and every per-agent path
   ~/.skcapstone/agents/<agent>/comms/outbox/<recipient>/, plus any v1
   broadcast subdir literally named ``*`` (removed wholesale)
@@ -41,22 +41,22 @@ logger = logging.getLogger("skcapstone.housekeeping")
 DEFAULT_ACK_MAX_AGE_HOURS = 24
 DEFAULT_COMMS_MAX_AGE_HOURS = 48
 DEFAULT_SEEDS_KEEP_PER_AGENT = 10
-DEFAULT_LEGACY_COMMS_MAX_AGE_HOURS = 168  # 7 days — legacy v1 data is long-dead
+DEFAULT_LEGACY_COMMS_MAX_AGE_HOURS = 168  # 7 days - legacy v1 data is long-dead
 # Inbox TTL is a BACKSTOP only: delete-on-consume in the consciousness loop
 # (consciousness_loop._consume_inbox_file) is the primary GC guarantee. This TTL
 # reclaims envelopes on nodes with no live consumer. It must comfortably exceed
-# consume latency — never set it below the daemon poll interval.
+# consume latency - never set it below the daemon poll interval.
 DEFAULT_INBOX_MAX_AGE_HOURS = 168  # 7 days
 # Deadletter TTL: quarantined envelopes are kept for inspection but must not
 # grow unbounded (they replicate to every peer). Backstop only.
 DEFAULT_DEADLETTER_MAX_AGE_HOURS = 168  # 7 days
 # skcomms mailbox/federation inbox ({home}/skcomms/inbox) is largely STATIC but
-# accumulates (266k observed). Conservative TTL — these are delivered/consumed
+# accumulates (266k observed). Conservative TTL - these are delivered/consumed
 # mailbox envelopes; comfortably past any consume latency at 72h.
 DEFAULT_SKCOMMS_INBOX_MAX_AGE_HOURS = 72  # 3 days
 # Consumed messages archived by FileTransport.receive into comms/archive
 # (agents/<agent>/comms/archive + {home}/comms/archive, ~170k observed). These
-# are ALREADY delivered — safe to reclaim at a short TTL.
+# are ALREADY delivered - safe to reclaim at a short TTL.
 DEFAULT_COMMS_ARCHIVE_MAX_AGE_HOURS = 48  # 2 days
 # Live v2 per-agent comms outbox flat envelopes (agents/<agent>/comms/outbox,
 # ~54k observed). A shared-filesystem write is a delivered queue hand-off; by
@@ -71,7 +71,7 @@ def _pid_is_alive(pidfile: Path) -> bool:
     A pidfile is considered NOT alive (safe to delete) if it is unreadable,
     empty, non-integer, names a non-positive PID, or names a PID that no longer
     exists (``ProcessLookupError`` from ``os.kill(pid, 0)``). A PID that exists
-    but is owned by another user raises ``PermissionError`` — that still proves
+    but is owned by another user raises ``PermissionError`` - that still proves
     the process is alive, so it is preserved.
 
     Args:
@@ -95,7 +95,7 @@ def _pid_is_alive(pidfile: Path) -> bool:
     try:
         os.kill(pid, 0)
     except ProcessLookupError:
-        return False  # no such process — stale pidfile
+        return False  # no such process - stale pidfile
     except PermissionError:
         return True  # exists, owned by another user
     except OSError:
@@ -238,8 +238,8 @@ def _legacy_outbox_dirs(skcapstone_home: Path) -> list[Path]:
     """Return all legacy v1 comms-outbox roots that exist under *skcapstone_home*.
 
     Two legacy layouts are swept:
-    - ``<home>/comms/outbox`` — the v1 root path.
-    - ``<home>/agents/<agent>/comms/outbox`` — the v1 per-agent path.
+    - ``<home>/comms/outbox`` - the v1 root path.
+    - ``<home>/agents/<agent>/comms/outbox`` - the v1 per-agent path.
 
     Args:
         skcapstone_home: Path to ~/.skcapstone.
@@ -305,7 +305,7 @@ def prune_legacy_comms(
             continue
 
         for recipient in recipient_dirs:
-            # Never follow symlinks — stay inside skcapstone_home.
+            # Never follow symlinks - stay inside skcapstone_home.
             if recipient.is_symlink():
                 continue
 
@@ -405,7 +405,7 @@ def prune_inbox(
 
     This is the safety net for nodes whose consumer never ran: the primary GC
     is delete-on-consume in the consciousness loop. It targets the exact tree
-    the consciousness loop consumes — ``{shared_root}/sync/comms/inbox`` — and
+    the consciousness loop consumes - ``{shared_root}/sync/comms/inbox`` - and
     sweeps it RECURSIVELY (per-peer ``inbox/<peer>/*.skc.json`` subdirs).
 
     It deliberately does NOT touch ``agents/<agent>/comms/inbox``: that is
@@ -452,9 +452,9 @@ def prune_derived_junk(skcapstone_home: Path) -> int:
     """Remove derived/runtime junk that must never sync or linger (F6/F7).
 
     Sweeps the whole profile tree for:
-    - ``**/chroma.bak*`` — stale ChromaDB backup dumps (dirs removed wholesale
+    - ``**/chroma.bak*`` - stale ChromaDB backup dumps (dirs removed wholesale
       via :func:`shutil.rmtree`, files unlinked). Live ``chroma`` is untouched.
-    - ``**/*.pid`` — pidfiles whose process is NOT alive. A pidfile naming a
+    - ``**/*.pid`` - pidfiles whose process is NOT alive. A pidfile naming a
       live PID (e.g. the running daemon's own ``daemon.pid``) is preserved;
       only dead / empty / garbage pidfiles are removed.
 
@@ -489,7 +489,7 @@ def prune_derived_junk(skcapstone_home: Path) -> int:
     for path in skcapstone_home.rglob("*.pid"):
         if path.is_symlink() or not path.is_file():
             continue
-        # NEVER delete a live daemon's pidfile — only stale/garbage ones.
+        # NEVER delete a live daemon's pidfile - only stale/garbage ones.
         if _pid_is_alive(path):
             continue
         try:
@@ -509,7 +509,7 @@ def prune_skcomms_inbox(
 ) -> int:
     """TTL-prune the skcomms mailbox/federation inbox tree.
 
-    Targets ``{skcapstone_home}/skcomms/inbox`` — the canonical skcomms home
+    Targets ``{skcapstone_home}/skcomms/inbox`` - the canonical skcomms home
     (``skcomms.home.skcomms_home()`` defaults to ``~/.skcapstone/skcomms``).
     The tree is swept RECURSIVELY: per-peer mailbox subdirs
     (``inbox/<peer>/*.skc.json``) and the bulk ``inbox/archive`` subtree.
@@ -538,7 +538,7 @@ def prune_comms_archive(
 
     ``FileTransport.receive`` archives every consumed inbox file into
     ``comms/archive``. Nothing ever deletes them, so they grow unbounded
-    (~170k observed). They are ALREADY-CONSUMED messages — safe to reclaim.
+    (~170k observed). They are ALREADY-CONSUMED messages - safe to reclaim.
 
     Sweeps BOTH:
     - ``{home}/comms/archive`` (root path)
@@ -584,7 +584,7 @@ def prune_comms_outbox_flat(
 
     It reuses :func:`_legacy_outbox_dirs` to enumerate the outbox roots
     (``{home}/comms/outbox`` + every ``agents/<agent>/comms/outbox``) and
-    deletes only FLAT ``*.skc.json`` files directly in each root — it does NOT
+    deletes only FLAT ``*.skc.json`` files directly in each root - it does NOT
     descend into per-recipient subdirs (those stay owned by
     :func:`prune_legacy_comms`), so the two never double-handle a file.
 
@@ -637,7 +637,7 @@ def run_housekeeping(
     """Run all housekeeping tasks.
 
     The ``legacy_comms`` target's reported size/path is the v1 root outbox
-    (``<home>/comms/outbox``) for display only — :func:`prune_legacy_comms`
+    (``<home>/comms/outbox``) for display only - :func:`prune_legacy_comms`
     additionally sweeps every ``<home>/agents/<agent>/comms/outbox`` and
     removes any v1 broadcast subdir literally named ``*``.
 
@@ -655,7 +655,7 @@ def run_housekeeping(
         skcapstone_home = Path(AGENT_HOME).expanduser()
     if skcomms_home is None:
         # The canonical skcomms home is ~/.skcapstone/skcomms (skcomms.home
-        # .skcomms_home() default, honoring SKCOMMS_HOME) — NOT ~/.skcomms.
+        # .skcomms_home() default, honoring SKCOMMS_HOME) - NOT ~/.skcomms.
         # The old ~/.skcomms default meant prune_acks swept a dead path while
         # the real acks piled up at {home}/skcomms/acks (179k observed). Derive
         # from skcapstone_home so a custom shared_root stays consistent.
@@ -678,7 +678,7 @@ def run_housekeeping(
         "deadletter": skcapstone_home / "sync" / "comms" / "deadletter",
         # Runtime comms junk (F: comms-runtime-junk). The skcomms mailbox inbox
         # is a single tree; comms_archive/comms_outbox_flat report the ROOT path
-        # for display only — their sweeps also cover every agents/<agent>/comms/*
+        # for display only - their sweeps also cover every agents/<agent>/comms/*
         # (see the respective prune functions).
         "skcomms_inbox": skcapstone_home / "skcomms" / "inbox",
         "comms_archive": skcapstone_home / "comms" / "archive",
@@ -1001,7 +1001,7 @@ def _derived_junk_size(skcapstone_home: Path) -> int:
         if path.is_symlink() or not path.is_file():
             continue
         if _pid_is_alive(path):
-            continue  # live pidfile is not junk — do not count its bytes as freeable
+            continue  # live pidfile is not junk - do not count its bytes as freeable
         try:
             total += path.stat().st_size
         except OSError:

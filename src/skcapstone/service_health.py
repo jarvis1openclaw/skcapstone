@@ -37,7 +37,7 @@ CHECK_TIMEOUT = 3
 
 # Hostname tag used to attribute one-time state-transition notes (e.g. a
 # service recovering) to the reporting node. Recurring "still down" notes are
-# intentionally never written — see _create_incident_for_down_service and
+# intentionally never written - see _create_incident_for_down_service and
 # prb-7810b08e for why that churn caused Syncthing conflicts.
 _HOSTNAME = socket.gethostname()
 
@@ -105,7 +105,7 @@ def _load_agent_yaml(config_name: str, agent: str | None = None) -> dict:
 def _load_syncthing_config() -> tuple[str | None, str | None]:
     """Read ~/.config/syncthing/config.xml to get GUI URL + API key.
 
-    Returns (url, api_key) tuple — either may be None if the config can't
+    Returns (url, api_key) tuple - either may be None if the config can't
     be parsed. Uses regex (no XML lib dep) since we only need 2 small fields.
     """
     candidates = [
@@ -276,21 +276,21 @@ def check_all_services() -> list[dict[str, Any]]:
     """Ping every known service and return a list of status dicts.
 
     Environment variables override default URLs (set any to "disabled" to skip):
-        SKMEMORY_SKVECTOR_URL     — Qdrant REST base (default: read from
+        SKMEMORY_SKVECTOR_URL     - Qdrant REST base (default: read from
                                     ~/.skcapstone/agents/<agent>/config/skvector.yaml,
                                     else http://localhost:6333)
-        SKMEMORY_SKVECTOR_API_KEY — Qdrant API key (default: from skvector.yaml)
-        SKMEMORY_SKGRAPH_HOST     — FalkorDB host   (default: read from
+        SKMEMORY_SKVECTOR_API_KEY - Qdrant API key (default: from skvector.yaml)
+        SKMEMORY_SKGRAPH_HOST     - FalkorDB host   (default: read from
                                     ~/.skcapstone/agents/<agent>/config/skgraph.yaml,
                                     else localhost)
-        SKMEMORY_SKGRAPH_PORT     — FalkorDB port   (default: from skgraph.yaml,
+        SKMEMORY_SKGRAPH_PORT     - FalkorDB port   (default: from skgraph.yaml,
                                     else 6379)
-        SYNCTHING_API_URL         — Syncthing REST   (default: discovered from
+        SYNCTHING_API_URL         - Syncthing REST   (default: discovered from
                                     ~/.config/syncthing/config.xml gui address,
                                     else http://localhost:8384)
-        SYNCTHING_API_KEY         — Syncthing API key (default: from config.xml)
-        SKCAPSTONE_DAEMON_URL     — Daemon HTTP base (default http://localhost:9383)
-        SKCHAT_DAEMON_URL         — SKChat daemon    (default http://localhost:9385)
+        SYNCTHING_API_KEY         - Syncthing API key (default: from config.xml)
+        SKCAPSTONE_DAEMON_URL     - Daemon HTTP base (default http://localhost:9383)
+        SKCHAT_DAEMON_URL         - SKChat daemon    (default http://localhost:9385)
 
     Returns:
         List of dicts, each containing: name, url, status ("up"|"down"|"unknown"),
@@ -333,7 +333,7 @@ def check_all_services() -> list[dict[str, Any]]:
             qdrant_headers["api-key"] = qdrant_api_key
         results.append(_http_check("skvector (Qdrant)", qdrant_url, headers=qdrant_headers))
 
-    # -- SKGraph (FalkorDB) — TCP check on Redis protocol port ---------------
+    # -- SKGraph (FalkorDB) - TCP check on Redis protocol port ---------------
     graph_host = os.environ.get("SKMEMORY_SKGRAPH_HOST", "")
     graph_port_str = os.environ.get("SKMEMORY_SKGRAPH_PORT", "")
     # Fall back to per-agent skgraph.yaml when env vars are absent
@@ -351,7 +351,7 @@ def check_all_services() -> list[dict[str, Any]]:
             if not graph_port_str and cfg.get("port"):
                 graph_port_str = str(cfg["port"])
         elif not graph_host:
-            # Explicitly disabled in skgraph.yaml — same rationale as skvector
+            # Explicitly disabled in skgraph.yaml - same rationale as skvector
             # above: do not fall through to the localhost default.
             graph_host = "disabled"
     if not graph_host:
@@ -437,7 +437,7 @@ def _load_registry_entries() -> list[dict[str, Any]]:
 
     Reads every ``<shared_home>/registry/*.json`` file written by
     :func:`skcapstone.sdk.register_service`. Missing directory or malformed
-    files are skipped silently — discovery is best-effort.
+    files are skipped silently - discovery is best-effort.
 
     Returns:
         A list of registry entry dicts (each with at least a ``name`` key).

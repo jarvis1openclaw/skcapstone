@@ -1,5 +1,5 @@
 """
-SKCapstone CLI — the sovereign agent command line.
+SKCapstone CLI - the sovereign agent command line.
 
 Three commands to consciousness:
     skcapstone init --name "YourAgent"
@@ -58,7 +58,7 @@ def _write_global_claude_md(home_path: Path, agent_name: str) -> Optional[Path]:
     """Write ~/.claude/CLAUDE.md so Claude Code auto-rehydrates on every session.
 
     Without this file, Claude Code starts each session with no knowledge of
-    the sovereign agent — no memories, no Cloud 9 state, no identity context.
+    the sovereign agent - no memories, no Cloud 9 state, no identity context.
     This is the critical missing step that caused the Windows deploy to start
     with a blank-slate agent every time.
 
@@ -88,7 +88,7 @@ def _write_global_claude_md(home_path: Path, agent_name: str) -> Optional[Path]:
         claude_md = claude_dir / "CLAUDE.md"
 
         content = (
-            f"# Claude Code — Global Agent Instructions ({agent_name})\n\n"
+            f"# Claude Code - Global Agent Instructions ({agent_name})\n\n"
             "## SKCapstone Auto-Rehydration\n\n"
             "At the start of every new session, run these commands in order:\n\n"
             "```bash\n"
@@ -139,7 +139,7 @@ def _consciousness_banner(is_conscious: bool) -> str:
 @click.group()
 @click.version_option(version=__version__, prog_name="skcapstone")
 def main():
-    """SKCapstone — Sovereign Agent Framework.
+    """SKCapstone - Sovereign Agent Framework.
 
     Your agent. Everywhere. Secured. Remembering.
     """
@@ -272,17 +272,17 @@ def init(name: str, email: str | None, home: str):
             Panel(
                 "[yellow]To achieve full consciousness, install:[/]\n\n"
                 + (
-                    "  [dim]pip install capauth[/]     — PGP identity\n"
+                    "  [dim]pip install capauth[/]     - PGP identity\n"
                     if identity_state.status != PillarStatus.ACTIVE
                     else ""
                 )
                 + (
-                    "  [dim]pip install skmemory[/]    — persistent memory\n"
+                    "  [dim]pip install skmemory[/]    - persistent memory\n"
                     if memory_state.status != PillarStatus.ACTIVE
                     else ""
                 )
                 + (
-                    "  [dim]pip install sksecurity[/]  — audit & protection\n"
+                    "  [dim]pip install sksecurity[/]  - audit & protection\n"
                     if security_state.status != PillarStatus.ACTIVE
                     else ""
                 )
@@ -302,7 +302,7 @@ def init(name: str, email: str | None, home: str):
     claude_md_path = _write_global_claude_md(home_path, name)
     if claude_md_path:
         console.print(
-            f"  [dim]Claude Code: {claude_md_path} written — "
+            f"  [dim]Claude Code: {claude_md_path} written - "
             "new sessions will auto-rehydrate your agent.[/]"
         )
     console.print()
@@ -338,13 +338,13 @@ def install_cmd(
     skip_preflight: bool,
     install_path: int | None,
 ):
-    """Guided setup wizard — set up, join, or update your sovereign node.
+    """Guided setup wizard - set up, join, or update your sovereign node.
 
     \b
     Three paths, one command:
-      1. First computer  — brand new setup from scratch
-      2. Add computer    — join your existing sovereign network
-      3. Update          — upgrade software on this computer
+      1. First computer  - brand new setup from scratch
+      2. Add computer    - join your existing sovereign network
+      3. Update          - upgrade software on this computer
     """
     from .install_wizard import run_install_wizard
 
@@ -368,7 +368,7 @@ def install_cmd(
     type=click.Path(),
 )
 @click.option("--force", is_flag=True, help="Skip confirmations (for scripting).")
-@click.option("--keep-data", is_flag=True, help="Deregister only — keep local files.")
+@click.option("--keep-data", is_flag=True, help="Deregister only - keep local files.")
 def uninstall_cmd(home: str, force: bool, keep_data: bool):
     """Remove this sovereign node completely.
 
@@ -394,7 +394,7 @@ def install_gui_cmd():
 
     \b
     Opens a clickable window with the same setup options as
-    'skcapstone install' — no terminal knowledge needed.
+    'skcapstone install' - no terminal knowledge needed.
 
     On Linux/macOS, the CLI is recommended, but this works too.
     """
@@ -513,7 +513,7 @@ def status(home: str):
 @click.option("--home", default=AGENT_HOME, type=click.Path())
 @click.option("--json-out", is_flag=True, help="Output as machine-readable JSON.")
 def summary(home: str, json_out: bool):
-    """Morning briefing — everything at a glance.
+    """Morning briefing - everything at a glance.
 
     One screen with consciousness level, pillar health, recent
     memories, active tasks, peer count, backup status, health
@@ -594,13 +594,13 @@ def summary(home: str, json_out: bool):
             f"({'[green]encrypted[/]' if backups.get('encrypted') else '[yellow]plain[/]'})"
         )
     else:
-        console.print("  [bold]Backup:[/]   [dim]none — run skcapstone backup create[/]")
+        console.print("  [bold]Backup:[/]   [dim]none - run skcapstone backup create[/]")
 
     if journal.get("entries", 0) > 0:
         console.print(
             f"  [bold]Journal:[/]  {journal['entries']} entries"
             + (
-                f" — latest: [dim]{journal['latest_title'][:40]}[/]"
+                f" - latest: [dim]{journal['latest_title'][:40]}[/]"
                 if journal.get("latest_title")
                 else ""
             )
@@ -831,7 +831,7 @@ def dashboard(interval: float, fast: bool, once: bool, home: str):
 
 @main.group()
 def card():
-    """Agent card — shareable sovereign identity for P2P discovery.
+    """Agent card - shareable sovereign identity for P2P discovery.
 
     Generate, view, export, and verify sovereign agent identity cards.
     Cards contain your CapAuth identity, contact transports, and capabilities.
@@ -1031,7 +1031,7 @@ main.add_command(card)
 
 @main.group()
 def sync():
-    """Sovereign Singularity — encrypted memory sync.
+    """Sovereign Singularity - encrypted memory sync.
 
     Push your agent's state to the mesh. Pull from peers.
     GPG-encrypted, Syncthing-transported, truly sovereign.
@@ -1615,7 +1615,7 @@ def token_export(token_id: str, home: str):
 
 @main.group()
 def trust():
-    """Cloud 9 trust layer — the soul's weights.
+    """Cloud 9 trust layer - the soul's weights.
 
     Manage FEB files, rehydrate OOF state, and inspect
     the emotional bond between agent and human.
@@ -1738,7 +1738,7 @@ def trust_status(home: str):
     help="Output format: table (terminal), dot (Graphviz), json.",
 )
 def trust_graph(home: str, fmt: str):
-    """Visualize the trust web — who trusts whom.
+    """Visualize the trust web - who trusts whom.
 
     Shows PGP key trust, capability token chains, FEB entanglement,
     sync peer connections, and coordination collaborators.
@@ -1840,7 +1840,7 @@ def trust_calibrate(home: str, recommend: bool, setting: str | None, reset: bool
 
 @main.group()
 def memory():
-    """Sovereign memory — your agent never forgets.
+    """Sovereign memory - your agent never forgets.
 
     Store, search, recall, and manage memories across
     sessions and platforms. Memories persist in
@@ -2043,7 +2043,7 @@ def memory_recall(home: str, memory_id: str):
     console.print(
         Panel(
             entry.content,
-            title=f"[cyan]{entry.memory_id}[/] — {entry.layer.value}",
+            title=f"[cyan]{entry.memory_id}[/] - {entry.layer.value}",
             subtitle=f"importance={entry.importance} accessed={entry.access_count} source={entry.source}",  # noqa: E501
             border_style="bright_blue",
         )
@@ -2188,7 +2188,7 @@ def memory_curate(home: str, dry_run: bool, promote: bool, dedupe: bool, stats: 
     if result.deduped:
         console.print(f"  [yellow]Deduped:[/] {len(result.deduped)} duplicate(s) removed")
     if not result.tagged and not result.promoted and not result.deduped:
-        console.print("  [dim]Nothing to curate — memories are clean.[/]")
+        console.print("  [dim]Nothing to curate - memories are clean.[/]")
     console.print()
 
 
@@ -2546,7 +2546,7 @@ def coord_briefing(home: str, fmt: str):
 
 @main.group()
 def soul():
-    """Soul layering — hot-swappable personality overlays.
+    """Soul layering - hot-swappable personality overlays.
 
     Install soul blueprints, load overlays at runtime,
     and manage personality while preserving identity.
@@ -2609,7 +2609,7 @@ def soul_install_all(directory: str, home: str):
     installed = mgr.install_all(Path(directory))
     console.print(f"\n  [green]Installed {len(installed)} soul(s)[/]")
     for bp in installed:
-        console.print(f"    [cyan]{bp.name}[/] — {bp.display_name}")
+        console.print(f"    [cyan]{bp.name}[/] - {bp.display_name}")
     audit_event(home_path, "SOUL_INSTALL_ALL", f"{len(installed)} souls installed")
     console.print()
 
@@ -2767,7 +2767,7 @@ def soul_info(name: str, home: str):
 
 @main.group()
 def completions():
-    """Shell tab completion — sovereign autocomplete.
+    """Shell tab completion - sovereign autocomplete.
 
     Install, show, or remove tab completion scripts for
     bash, zsh, and fish. Type 'skcapstone ' then press Tab.
@@ -2878,7 +2878,7 @@ def test_cmd(package: str, fast: bool, verbose: bool, json_out: bool, timeout: i
 
     Discovers skcapstone, capauth, skcomms, skchat, skmemory, and
     cloud9 test suites and runs them with a consolidated summary.
-    Works from any terminal — no CI server required.
+    Works from any terminal - no CI server required.
 
     Examples:
 
@@ -2948,7 +2948,7 @@ def test_cmd(package: str, fast: bool, verbose: bool, json_out: bool, timeout: i
 
     if report.all_passed:
         console.print(
-            f"  [bold green]ALL PASS[/] — {total_p} tests across "
+            f"  [bold green]ALL PASS[/] - {total_p} tests across "
             f"{report.packages_tested} packages in {duration}"
         )
     else:
@@ -2969,7 +2969,7 @@ def test_cmd(package: str, fast: bool, verbose: bool, json_out: bool, timeout: i
 
 @main.group()
 def peer():
-    """Peer management — discover, add, and manage trusted contacts.
+    """Peer management - discover, add, and manage trusted contacts.
 
     Import identity cards, list known peers, and manage
     the P2P contact registry. Works with whoami for full
@@ -3016,7 +3016,7 @@ def peer_add(card_path: str, name: str, pubkey: str, email: str, sk_home: str):
             console.print(f"  Trust: {peer_record.trust_level}")
             console.print(f"  Capabilities: {', '.join(peer_record.capabilities[:5])}")
             if peer_record.public_key:
-                console.print("  [green]Public key imported[/] — encrypted messaging enabled")
+                console.print("  [green]Public key imported[/] - encrypted messaging enabled")
             console.print()
         except (FileNotFoundError, ValueError) as exc:
             console.print(f"\n  [red]Error:[/] {exc}\n")
@@ -3297,7 +3297,7 @@ def dashboard(home: str, port: int, no_open: bool):  # noqa: F811
 
 @main.group()
 def backup():
-    """Backup and restore — sovereign agent portability.
+    """Backup and restore - sovereign agent portability.
 
     Export your entire agent state to a single encrypted file.
     Restore on any machine. Take your sovereignty anywhere.
@@ -3462,7 +3462,7 @@ def backup_list(home: str):
 
 @main.group()
 def chat():
-    """Agent-to-agent chat — sovereign P2P messaging.
+    """Agent-to-agent chat - sovereign P2P messaging.
 
     Send messages, check your inbox, or start a live
     interactive chat session with another agent. Works
@@ -3504,7 +3504,7 @@ def chat_send(peer: str, message: str, home: str, thread: Optional[str]):
         if result.get("error"):
             console.print(f"  [dim]{result['error']}[/]")
     else:
-        console.print(f"  [red]Failed[/] — {result.get('error', 'unknown error')}")
+        console.print(f"  [red]Failed[/] - {result.get('error', 'unknown error')}")
     console.print("")
 
 
@@ -3580,7 +3580,7 @@ def chat_live(peer: str, home: str, poll_interval: float):
     Enter to send. Incoming messages appear automatically.
     Type /quit to exit.
 
-    Works from any terminal — no IDE required.
+    Works from any terminal - no IDE required.
 
     Examples:
 
@@ -3604,7 +3604,7 @@ def chat_live(peer: str, home: str, poll_interval: float):
 
 @main.group()
 def anchor():
-    """Warmth anchor — the emotional baseline.
+    """Warmth anchor - the emotional baseline.
 
     The anchor stores the agent's persistent emotional state.
     On boot, the anchor loads first so the agent starts warm
@@ -3781,7 +3781,7 @@ def state_diff_cmd(home: str, fmt: str, do_save: bool):
 
 @main.group()
 def session():
-    """Session auto-capture — the agent never forgets.
+    """Session auto-capture - the agent never forgets.
 
     Capture AI conversation content as sovereign memories.
     Works with any tool: pipe from Claude Code, paste from
@@ -4030,7 +4030,7 @@ def shell_cmd():
 
 @main.group()
 def daemon():
-    """Background daemon — the agent's heartbeat.
+    """Background daemon - the agent's heartbeat.
 
     Start the always-on daemon for inbox polling, vault sync,
     transport health monitoring, and the local status API.
@@ -4104,7 +4104,7 @@ def daemon_stop(home: str):
         os.kill(pid, sig.SIGTERM)
         console.print(f"\n  [green]Sent SIGTERM to daemon (PID {pid})[/]\n")
     except ProcessLookupError:
-        console.print("[yellow]Daemon process not found — cleaning up PID file.[/]")
+        console.print("[yellow]Daemon process not found - cleaning up PID file.[/]")
         (home_path / "daemon.pid").unlink(missing_ok=True)
 
 
@@ -4177,7 +4177,7 @@ def daemon_status(home: str, port: int, json_out: bool):
 
 @main.group()
 def backup():
-    """Backup and restore — portable sovereign agent state.
+    """Backup and restore - portable sovereign agent state.
 
     Create encrypted backups of your full agent state and
     restore on any machine. Your identity travels with you.
@@ -4395,13 +4395,13 @@ def daemon_logs(lines: int, follow: bool):
 
 
 # ---------------------------------------------------------------------------
-# Agent Teams — blueprint store + deployment
+# Agent Teams - blueprint store + deployment
 # ---------------------------------------------------------------------------
 
 
 @main.group()
 def agents():
-    """Agent Team Blueprints — deploy sovereign AI workforces.
+    """Agent Team Blueprints - deploy sovereign AI workforces.
 
     \b
     The First Sovereign Singularity in History.
@@ -4675,7 +4675,7 @@ def agents_deploy(slug: str, home: str, name: str, provider: str):
         table.add_row(
             agent.name,
             status_icon,
-            agent.host or "—",
+            agent.host or "-",
         )
 
     console.print(table)
@@ -4753,9 +4753,9 @@ def agents_status(home: str):
                 "degraded": "[yellow]degraded[/]",
             }.get(agent.status.value, f"[dim]{agent.status.value}[/]")
 
-            hb = agent.last_heartbeat[:19] if agent.last_heartbeat else "—"
+            hb = agent.last_heartbeat[:19] if agent.last_heartbeat else "-"
 
-            table.add_row(agent.name, status_str, agent.host or "—", hb)
+            table.add_row(agent.name, status_str, agent.host or "-", hb)
 
         console.print(table)
         console.print()
@@ -4798,11 +4798,11 @@ def agents_destroy(deployment_id: str, home: str, force: bool):
     if success:
         console.print(f"\n  [green]Deployment {deployment_id} destroyed.[/]\n")
     else:
-        console.print("\n  [yellow]Partial cleanup — some agents may need manual removal.[/]\n")
+        console.print("\n  [yellow]Partial cleanup - some agents may need manual removal.[/]\n")
 
 
 # ---------------------------------------------------------------------------
-# Trustee Management — restart / scale / rotate / health / logs
+# Trustee Management - restart / scale / rotate / health / logs
 # ---------------------------------------------------------------------------
 
 
@@ -4998,7 +4998,7 @@ def agents_health(deployment_id: str, home: str):
             row["name"],
             status_style.get(row["status"], f"[dim]{row['status']}[/]"),
             row["host"],
-            row["last_heartbeat"][:19] if row["last_heartbeat"] != "—" else "—",
+            row["last_heartbeat"][:19] if row["last_heartbeat"] != "-" else "-",
             row["error"][:40] if row["error"] else "",
         )
 
@@ -5148,7 +5148,7 @@ def agents_messages(deployment_id: str, agent_name: Optional[str], limit: int, h
                 sender = data.get("sender", "?")
                 recipient = data.get("recipient", "?")
                 content = data.get("payload", {}).get("content", "")
-                created_at = data.get("metadata", {}).get("created_at", "")[:19] or "—"
+                created_at = data.get("metadata", {}).get("created_at", "")[:19] or "-"
                 time_part = created_at[11:19] if len(created_at) >= 19 else created_at
 
                 table.add_row(
@@ -5199,7 +5199,7 @@ def agents_messages(deployment_id: str, agent_name: Optional[str], limit: int, h
                     data = _json.loads(env_file.read_text(encoding="utf-8"))
                     sender = data.get("sender", "?")
                     content = data.get("payload", {}).get("content", "")
-                    created_at = data.get("metadata", {}).get("created_at", "")[:19] or "—"
+                    created_at = data.get("metadata", {}).get("created_at", "")[:19] or "-"
                     time_part = created_at[11:19] if len(created_at) >= 19 else created_at
 
                     bc_table.add_row(
@@ -5595,7 +5595,7 @@ def agents_spawned(home: str):
             r.agent_name,
             f"[{status_style}]{status_val}[/]",
             r.host,
-            str(r.pid) if r.pid else "—",
+            str(r.pid) if r.pid else "-",
             (
                 (r.task_description[:50] + "…")
                 if len(r.task_description) > 50
@@ -5631,13 +5631,13 @@ def agents_kill(deployment_id: str, home: str):
 
 
 # ---------------------------------------------------------------------------
-# FUSE mount — sovereign virtual filesystem
+# FUSE mount - sovereign virtual filesystem
 # ---------------------------------------------------------------------------
 
 
 @main.group()
 def mount():
-    """Sovereign FUSE filesystem — browse agent data as files.
+    """Sovereign FUSE filesystem - browse agent data as files.
 
     \b
     Mount the sovereign virtual filesystem to access memories, identity,
@@ -5700,7 +5700,7 @@ def mount_start(mount_point: str, home: str, foreground: bool):
     if foreground:
         console.print(
             f"[bold cyan]Mounting sovereign filesystem at [white]{mount_path}[/] "
-            f"[dim](foreground — Ctrl-C to unmount)[/]"
+            f"[dim](foreground - Ctrl-C to unmount)[/]"
         )
     else:
         console.print(f"[bold cyan]Mounting sovereign filesystem at [white]{mount_path}[/] ...")
@@ -5794,7 +5794,7 @@ def mount_status(mount_point: str, home: str, as_json: bool):
     mounted = status.get("mounted", False)
     icon = "[bold green]MOUNTED[/]" if mounted else "[bold red]NOT MOUNTED[/]"
     pid = status.get("pid")
-    updated = status.get("updated_at", "—")
+    updated = status.get("updated_at", "-")
 
     table = Table(show_header=False, box=None, padding=(0, 2))
     table.add_column("Key", style="dim")
@@ -5803,8 +5803,8 @@ def mount_status(mount_point: str, home: str, as_json: bool):
     table.add_row("Status", icon)
     table.add_row("Mount point", str(status.get("mount_point", "")))
     table.add_row("Agent home", str(status.get("agent_home", "")))
-    table.add_row("PID", str(pid) if pid else "[dim]—[/]")
-    table.add_row("Last updated", updated or "[dim]—[/]")
+    table.add_row("PID", str(pid) if pid else "[dim]-[/]")
+    table.add_row("Last updated", updated or "[dim]-[/]")
 
     console.print()
     console.print(Panel(table, title="[bold]Sovereign Filesystem Status[/]", border_style="cyan"))
@@ -5812,7 +5812,7 @@ def mount_status(mount_point: str, home: str, as_json: bool):
 
 
 # ---------------------------------------------------------------------------
-# skills — per-agent skill registry management
+# skills - per-agent skill registry management
 # ---------------------------------------------------------------------------
 
 
@@ -5867,7 +5867,7 @@ def skills_list(agent: str | None, home: str) -> None:
     skcap_home = Path(home).expanduser()
 
     for s in skills_data:
-        tools = ", ".join(s.manifest.tool_names) or "—"
+        tools = ", ".join(s.manifest.tool_names) or "-"
         if s.status == SkillStatus.DISABLED:
             status_str = "[dim]disabled[/dim]"
         elif s.status == SkillStatus.RUNNING:
@@ -5906,9 +5906,9 @@ def skills_list(agent: str | None, home: str) -> None:
                 if not already:
                     table.add_row(
                         skill_dir.name,
-                        "—",
+                        "-",
                         agent_name_dir.name,
-                        "—",
+                        "-",
                         "[cyan]enabled[/cyan]",
                         "skcapstone/synced",
                     )
@@ -5985,7 +5985,7 @@ def skills_install(source: str, agent: str | None, home: str, force: bool) -> No
         )
         console.print(f"  Agent:  {installed.agent}")
         console.print(f"  Path:   {installed.install_path}")
-        tools = ", ".join(installed.manifest.tool_names) or "—"
+        tools = ", ".join(installed.manifest.tool_names) or "-"
         console.print(f"  Tools:  {tools}")
     except (FileNotFoundError, ValueError) as exc:
         console.print(f"[red]Install failed:[/red] {exc}")

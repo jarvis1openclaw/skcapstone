@@ -6,7 +6,7 @@ state of every pillar. This module evaluates those pillar statuses and, when
 any pillar is *degraded*, emits a single desktop notification so the operator
 is alerted immediately.
 
-It reuses the existing notification system (:mod:`skcapstone.notifications`) —
+It reuses the existing notification system (:mod:`skcapstone.notifications`) -
 it does NOT invent a new transport. The check is best-effort: a notification
 failure must never break agent startup.
 """
@@ -74,7 +74,7 @@ def startup_health_check(
 
     detail = ", ".join(f"{name} ({status.value})" for name, status in sorted(degraded.items()))
     logger.warning(
-        "Startup health check: %d degraded pillar(s) for '%s' — %s",
+        "Startup health check: %d degraded pillar(s) for '%s' - %s",
         len(degraded),
         manifest.name,
         detail,

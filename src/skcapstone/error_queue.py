@@ -272,7 +272,7 @@ class ErrorQueue:
         entries = self._load()
         target = next((e for e in entries if e.entry_id == entry_id), None)
         if target is None:
-            logger.warning("error_queue: retry — entry %s not found", entry_id)
+            logger.warning("error_queue: retry - entry %s not found", entry_id)
             return False
 
         if target.status == ErrorStatus.EXHAUSTED:

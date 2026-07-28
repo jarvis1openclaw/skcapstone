@@ -1,6 +1,6 @@
 """LaunchD service management for the SKCapstone daemon (macOS).
 
-Installs, manages, and queries launchd user agents — the macOS
+Installs, manages, and queries launchd user agents - the macOS
 equivalent of systemd user services. No root required.
 
 Generates plist files dynamically with the correct agent name,
@@ -205,7 +205,7 @@ def _launchctl_boot(label: str, plist_path: Path, load: bool = True) -> bool:
         )
         return r.returncode == 0
 
-    # Load — try modern bootstrap first, fall back to legacy load
+    # Load - try modern bootstrap first, fall back to legacy load
     r = subprocess.run(
         ["launchctl", "bootstrap", domain, str(plist_path)],
         capture_output=True,
@@ -324,7 +324,7 @@ def install_service(
         # Skip optional services whose binary isn't installed
         req_bin = defn.get("requires_bin")
         if req_bin and not shutil.which(req_bin, path=_skenv_bin()):
-            logger.debug("Skipping %s — %s not found", suffix, req_bin)
+            logger.debug("Skipping %s - %s not found", suffix, req_bin)
             continue
 
         plist_data = _build_plist(defn, agent_name)

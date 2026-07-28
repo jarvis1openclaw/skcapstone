@@ -628,7 +628,7 @@ def register_joule_commands(main: click.Group) -> None:
         # ---- Render everything ----
         console.print()
         console.print(
-            f"[bold cyan]  Joule Dashboard — {agent_name}[/]",
+            f"[bold cyan]  Joule Dashboard - {agent_name}[/]",
         )
         console.print()
         console.print(Columns([balance_panel, income_panel], equal=True, padding=(0, 2)))

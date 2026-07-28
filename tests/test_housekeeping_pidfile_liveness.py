@@ -1,4 +1,4 @@
-"""Regression tests — prune_derived_junk MUST NOT delete a LIVE pidfile.
+"""Regression tests - prune_derived_junk MUST NOT delete a LIVE pidfile.
 
 F1 (HIGH): the ``*.pid`` sweep previously unlinked every pidfile under the
 profile tree with no liveness check, including the running daemon's own
@@ -26,7 +26,7 @@ def _dead_pid() -> int:
         except ProcessLookupError:
             return pid
         except OSError:
-            # exists (or EPERM) — try a lower one
+            # exists (or EPERM) - try a lower one
             pid -= 1
             continue
         pid -= 1

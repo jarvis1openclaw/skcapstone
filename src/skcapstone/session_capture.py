@@ -1,5 +1,5 @@
 """
-Session auto-capture — the agent never forgets a conversation.
+Session auto-capture - the agent never forgets a conversation.
 
 Extracts key moments from AI conversations, scores importance by
 topic novelty and information density, and stores each as a tagged

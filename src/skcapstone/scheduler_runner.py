@@ -1,7 +1,7 @@
 """Executes JobSpecs by type (python | shell | agent) with overlap locking.
 
 This module is the execution layer for the unified fleet job scheduler.  It
-is intentionally free of scheduling logic — callers decide *when* to run a
+is intentionally free of scheduling logic - callers decide *when* to run a
 job; this module handles the *how*.
 
 Typical usage::
@@ -141,14 +141,14 @@ class JobRunner:
 
         Dispatches to the appropriate backend based on ``job.type``:
 
-        - ``"python"`` — imports ``module`` and calls ``fn()`` from
+        - ``"python"`` - imports ``module`` and calls ``fn()`` from
           ``job.callback`` (format: ``"module.path:function_name"``).
-        - ``"shell"`` — runs ``job.command`` via :mod:`subprocess` after
+        - ``"shell"`` - runs ``job.command`` via :mod:`subprocess` after
           splitting with :func:`shlex.split`.
-        - ``"agent"`` — runs ``claude -p "<prompt>"`` optionally with
+        - ``"agent"`` - runs ``claude -p "<prompt>"`` optionally with
           ``--agent <name>``.
 
-        Jobs *never* raise — all failures are returned as a
+        Jobs *never* raise - all failures are returned as a
         :class:`JobResult` with ``ok=False``.
 
         Args:
@@ -188,13 +188,13 @@ class JobRunner:
             if not mod_name or not fn_name:
                 return JobResult(
                     ok=False,
-                    error=f"invalid callback {job.callback!r} — expected 'module:fn'",
+                    error=f"invalid callback {job.callback!r} - expected 'module:fn'",
                 )
             module = importlib.import_module(mod_name)
             fn = getattr(module, fn_name)
             fn()
             return JobResult(ok=True)
-        except Exception as exc:  # noqa: BLE001 — jobs must never crash the scheduler loop
+        except Exception as exc:  # noqa: BLE001 - jobs must never crash the scheduler loop
             logger.error("python job %r failed: %s", job.name, exc, exc_info=True)
             return JobResult(ok=False, error=str(exc))
 

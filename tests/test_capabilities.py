@@ -52,7 +52,7 @@ class TestAgentConfigCapabilities:
 
 
 # ---------------------------------------------------------------------------
-# HeartbeatBeacon — capability loading
+# HeartbeatBeacon - capability loading
 # ---------------------------------------------------------------------------
 
 
@@ -218,7 +218,7 @@ class TestCapabilitiesCLI:
         data1 = yaml.safe_load(config_path.read_text(encoding="utf-8"))
         count_before = data1["capabilities"].count("vector-search")
 
-        # Add the same capability again — should NOT duplicate
+        # Add the same capability again - should NOT duplicate
         result = runner.invoke(
             main, ["capabilities", "add", "vector-search", "--home", str(tmp_path)]
         )

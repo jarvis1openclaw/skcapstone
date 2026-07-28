@@ -1,8 +1,8 @@
-"""Watch command — live terminal dashboard for sovereign agent monitoring.
+"""Watch command - live terminal dashboard for sovereign agent monitoring.
 
 Renders a Rich.Live dashboard that auto-refreshes on a configurable
 interval. Shows consciousness status, recent memories, open coordination
-tasks, and pillar health — all on one screen.
+tasks, and pillar health - all on one screen.
 
 Usage:
     skcapstone watch                  # 5s refresh (default)

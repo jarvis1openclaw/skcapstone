@@ -1,11 +1,11 @@
 """
-Baby Agent Definitions — the 12 lightweight daemons of the SK* ecosystem.
+Baby Agent Definitions - the 12 lightweight daemons of the SK* ecosystem.
 
 Each baby agent is a pre-defined, single-purpose agent that handles a
 specific aspect of the sovereign agent framework. They can be spawned
 individually via `skcapstone agents spawn <name>` or in batches.
 
-Baby agents are intentionally lightweight — they run as local processes
+Baby agents are intentionally lightweight - they run as local processes
 with minimal resources and use the FAST model tier unless they need
 deeper reasoning (e.g., security-auditor uses REASON).
 """

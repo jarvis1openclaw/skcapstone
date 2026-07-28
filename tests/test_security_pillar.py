@@ -156,8 +156,8 @@ class TestReadAuditLog:
         security_dir = tmp_agent_home / "security"
         security_dir.mkdir(parents=True, exist_ok=True)
         (security_dir / AUDIT_LOG_NAME).write_text(
-            "[2026-01-01T00:00:00] INIT — legacy format\n"
-            "[2026-01-01T00:01:00] AUTH — old auth event\n",
+            "[2026-01-01T00:00:00] INIT - legacy format\n"
+            "[2026-01-01T00:01:00] AUTH - old auth event\n",
             encoding="utf-8",
         )
         entries = read_audit_log(tmp_agent_home)

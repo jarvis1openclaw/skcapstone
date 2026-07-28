@@ -9,14 +9,23 @@ from skcapstone.coordination import Board, Task
 def test_render_html_contains_card_and_no_dashes(tmp_path):
     board = Board(tmp_path)
     board.ensure_dirs()
-    board.create_task(Task(id="h1", title="Render me", created_by="opus", tags=["bug"]))
+    # Title carries an em dash and an en dash so _clean is actually exercised.
+    board.create_task(
+        Task(
+            id="h1",
+            title="Ren" + chr(0x2014) + "der" + chr(0x2013) + "me",
+            created_by="opus",
+            tags=["bug"],
+        )
+    )
     html_out = render_html(KanbanBoard(tmp_path), title="SKBoard")
     assert "<!doctype html" in html_out.lower()
-    assert "Render me" in html_out
+    assert "Ren-der-me" in html_out  # _clean normalized both dashes to hyphens
     assert "backlog" in html_out.lower()
-    # hard project rule: no em or en dashes in generated output
-    assert "—" not in html_out
-    assert "–" not in html_out
+    # hard project rule: no em or en dashes in generated output.
+    # Reference the characters by escape so this file itself stays dash-clean.
+    assert chr(0x2014) not in html_out  # em dash
+    assert chr(0x2013) not in html_out  # en dash
 
 
 def test_render_html_escapes_titles(tmp_path):

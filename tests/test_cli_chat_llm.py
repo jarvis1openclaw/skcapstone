@@ -197,7 +197,7 @@ class TestChatOpenLLM:
 # _run_llm_chat unit tests
 # ---------------------------------------------------------------------------
 
-# Patch targets — lazy imports inside _run_llm_chat are fetched from
+# Patch targets - lazy imports inside _run_llm_chat are fetched from
 # consciousness_loop at call time, so patch at the source module.
 _CL = "skcapstone.consciousness_loop"
 

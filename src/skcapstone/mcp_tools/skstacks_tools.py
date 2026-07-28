@@ -23,7 +23,7 @@ TOOLS: list[Tool] = [
         description=(
             "Retrieve a deployment secret from the SKStacks v2 CapAuth backend "
             "for use in Claude Code and other MCP clients. "
-            "Simpler than skstacks_secret_get: no env required — uses "
+            "Simpler than skstacks_secret_get: no env required - uses "
             "SKSTACKS_ENV (default: prod). "
             "key is the plain secret name; scope groups related keys "
             "(default: 'default'). "
@@ -238,7 +238,7 @@ async def _handle_skstacks_secret_get(args: dict) -> list[TextContent]:
             }
         )
     except Exception as exc:
-        # Re-raise as error response — includes SecretNotFoundError, auth errors, etc.
+        # Re-raise as error response - includes SecretNotFoundError, auth errors, etc.
         return _error_response(f"secret get failed: {type(exc).__name__}: {exc}")
     finally:
         backend.close()

@@ -1,4 +1,4 @@
-"""Tests for skcapstone.registry_client — bridge to skills-registry."""
+"""Tests for skcapstone.registry_client - bridge to skills-registry."""
 
 from __future__ import annotations
 

@@ -21,7 +21,7 @@ def _enable_desktop_notifications(monkeypatch):
 
     The session-wide conftest fixture disables notifications so test runs
     don't flood the live desktop.  Every test here mocks ``subprocess.run`` /
-    ``osascript``, so nothing real is dispatched — they just need the guard
+    ``osascript``, so nothing real is dispatched - they just need the guard
     on to exercise the dispatch logic.  Guard-specific tests override this.
     """
     monkeypatch.setenv("SKCAPSTONE_DESKTOP_NOTIFY", "1")
@@ -263,7 +263,7 @@ class TestDebounce:
         ):
             mgr.notify("T", "B")  # fails → _last_sent stays 0
 
-        # Now try again immediately — should not be debounced
+        # Now try again immediately - should not be debounced
         with (
             patch("skcapstone.notifications.platform.system", return_value="Linux"),
             patch("skcapstone.notifications.subprocess.run") as mock_run2,

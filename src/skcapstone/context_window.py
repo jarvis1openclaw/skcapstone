@@ -1,5 +1,5 @@
 """
-ContextWindowManager — per-sender token tracking and history compression.
+ContextWindowManager - per-sender token tracking and history compression.
 
 Tracks cumulative token usage for each sender's conversation history.
 When a sender's history reaches 80% of ``max_context_tokens``, the oldest
@@ -158,7 +158,7 @@ class ContextWindowManager:
 
         if bridge is None:
             logger.warning(
-                "Context window at %.1f%% for %s but no bridge — skipping compression",
+                "Context window at %.1f%% for %s but no bridge - skipping compression",
                 self._stats[peer]["pct_used"],
                 peer,
             )
@@ -166,7 +166,7 @@ class ContextWindowManager:
 
         if len(history) <= _KEEP_RECENT:
             logger.debug(
-                "Context window at %.1f%% for %s but only %d messages — skipping",
+                "Context window at %.1f%% for %s but only %d messages - skipping",
                 self._stats[peer]["pct_used"],
                 peer,
                 len(history),
@@ -177,7 +177,7 @@ class ContextWindowManager:
         recent = history[-_KEEP_RECENT:]
 
         logger.info(
-            "Context window %.1f%% for %s — compressing %d older messages",
+            "Context window %.1f%% for %s - compressing %d older messages",
             self._stats[peer]["pct_used"],
             peer,
             len(to_summarize),
@@ -185,14 +185,14 @@ class ContextWindowManager:
 
         summary_text = self._call_llm_summarize(peer, to_summarize, bridge)
         if not summary_text:
-            logger.warning("LLM summarization returned empty result for %s — skipping", peer)
+            logger.warning("LLM summarization returned empty result for %s - skipping", peer)
             return False
 
         now = datetime.now(timezone.utc).isoformat()
         summary_entry: dict = {
             "role": "system",
             "content": (
-                f"[Earlier context — {len(to_summarize)} messages summarized]: {summary_text}"
+                f"[Earlier context - {len(to_summarize)} messages summarized]: {summary_text}"
             ),
             "timestamp": now,
             "is_summary": True,

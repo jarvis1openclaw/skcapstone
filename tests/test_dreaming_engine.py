@@ -1,6 +1,6 @@
 """Unit tests for the dreaming engine: config defaults (BeeLlama abliterated),
 the repetition guard (keyword overlap + dedup gate), and the OpenAI-compatible
-`_call_ollama` path. These are pure/mocked — no network, no daemon."""
+`_call_ollama` path. These are pure/mocked - no network, no daemon."""
 
 import json
 
@@ -43,7 +43,7 @@ class TestKeywordHelpers:
 
 
 # --------------------------------------------------------------------------- #
-# Config defaults — the 2026-06-08 BeeLlama-abliterated repoint
+# Config defaults - the 2026-06-08 BeeLlama-abliterated repoint
 # --------------------------------------------------------------------------- #
 class TestDreamingConfigDefaults:
     def test_defaults_point_at_beellama_abliterated(self):

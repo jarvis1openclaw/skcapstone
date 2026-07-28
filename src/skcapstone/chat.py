@@ -3,7 +3,7 @@ Interactive agent-to-agent chat for the sovereign terminal.
 
 Provides a real-time terminal chat experience between agents using
 SKChat for message models and SKComms for transport. Works from any
-terminal on any platform — no IDE dependency.
+terminal on any platform - no IDE dependency.
 
 Usage:
     skcapstone chat <peer>           # interactive session (prompt_toolkit)
@@ -360,7 +360,7 @@ class AgentChat:
         - Background thread polls for incoming messages (non-blocking)
         - File attachments via /attach <path>
         - Thread management via /thread <id> and /reply
-        - Emoji support — just type unicode directly
+        - Emoji support - just type unicode directly
 
         Falls back to live_session() if prompt_toolkit is not installed.
 
@@ -378,7 +378,7 @@ class AgentChat:
             from prompt_toolkit.patch_stdout import patch_stdout
             from prompt_toolkit.styles import Style
         except ImportError:
-            logger.info("prompt_toolkit not installed — falling back to live_session")
+            logger.info("prompt_toolkit not installed - falling back to live_session")
             self.live_session(peer, poll_interval=poll_interval)
             return
 
@@ -417,7 +417,7 @@ class AgentChat:
             mouse_support=False,
         )
 
-        # Background polling thread — prints via patch_stdout
+        # Background polling thread - prints via patch_stdout
         stop_event = _threading.Event()
 
         def _poll_loop() -> None:
@@ -542,7 +542,7 @@ class AgentChat:
         """
         thread_id = f"live-{self.identity}-{peer}-{int(time.time())}"
 
-        print(f"\n  Sovereign Chat — {self.identity} <-> {peer}")
+        print(f"\n  Sovereign Chat - {self.identity} <-> {peer}")
         print(f"  Thread: {thread_id[:20]}...")
         print(f"  Transport: {'available' if self._ensure_comm() else 'local-only'}")
         print("  Type a message and press Enter. Type /quit to exit.\n")
@@ -777,7 +777,7 @@ def _print_chat_help() -> None:
         "    /whoami          Show your agent identity\n"
         "    /emoji           Emoji quick reference\n"
         "    /quit            Exit  (also /exit or /q)\n"
-        "\n  Emoji is fully supported — just type directly: 🎉 🚀 ❤️ 🤖\n"
+        "\n  Emoji is fully supported - just type directly: 🎉 🚀 ❤️ 🤖\n"
     )
 
 
@@ -799,10 +799,10 @@ def _print_recent_inbox(messages: list) -> None:
 def _print_emoji_ref() -> None:
     """Print an emoji quick-reference card."""
     print(
-        "\n  Emoji quick reference (type directly — unicode is fully supported):\n"
-        "    ❤️  💙  💚  🖤  🤍   — hearts\n"
-        "    👍  👎  🙌  🤝  ✌️   — hands\n"
-        "    🎉  🚀  🔥  ⚡  ✨   — vibes\n"
-        "    ✅  ❌  ⚠️  🔒  🔑   — status\n"
-        "    🤖  👾  🧠  🔮  💡   — tech / sovereign\n"
+        "\n  Emoji quick reference (type directly - unicode is fully supported):\n"
+        "    ❤️  💙  💚  🖤  🤍   - hearts\n"
+        "    👍  👎  🙌  🤝  ✌️   - hands\n"
+        "    🎉  🚀  🔥  ⚡  ✨   - vibes\n"
+        "    ✅  ❌  ⚠️  🔒  🔑   - status\n"
+        "    🤖  👾  🧠  🔮  💡   - tech / sovereign\n"
     )

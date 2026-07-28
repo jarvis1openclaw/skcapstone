@@ -3,7 +3,7 @@ Unified test runner for the sovereign agent ecosystem.
 
 Discovers all packages in the monorepo, runs pytest for each,
 and presents a consolidated pass/fail summary. Works from any
-terminal — no CI server, no IDE, no special tooling.
+terminal - no CI server, no IDE, no special tooling.
 
 Usage:
     skcapstone test                     # run all packages

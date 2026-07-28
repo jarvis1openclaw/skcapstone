@@ -1,5 +1,5 @@
 """
-SKChat message encryption — AES-256-GCM content encryption.
+SKChat message encryption - AES-256-GCM content encryption.
 
 Provides encrypt/decrypt for chat message content with a key derived
 from the agent's KMS service key (label: 'skchat').
@@ -88,7 +88,7 @@ def decrypt_message(token: str, key: bytes) -> str:
 
     raw = base64.b64decode(token)
     if len(raw) < 12:
-        raise ValueError("Ciphertext too short — must be at least 12 bytes (nonce)")
+        raise ValueError("Ciphertext too short - must be at least 12 bytes (nonce)")
 
     nonce, ct = raw[:12], raw[12:]
     aesgcm = AESGCM(key)

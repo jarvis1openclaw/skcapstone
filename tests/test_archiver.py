@@ -1,4 +1,4 @@
-"""Tests for ConversationArchiver — conversation archival and compression."""
+"""Tests for ConversationArchiver - conversation archival and compression."""
 
 from __future__ import annotations
 

@@ -1,4 +1,4 @@
-"""Tests for the consciousness loop — message classification, LLM bridge, system prompt."""
+"""Tests for the consciousness loop - message classification, LLM bridge, system prompt."""
 
 from __future__ import annotations
 
@@ -136,7 +136,7 @@ class TestLLMBridge:
         buggy cascade resolved each hop via ``_resolve_callback(FAST, f"{backend}-fallback")``;
         for backend=="passthrough" that string matched no provider pattern, so it
         walked the fallback_chain again, hit the *available* ollama, and never reached
-        passthrough (blocking on a real CPU-bound call — card 4b91bf41's "timed out").
+        passthrough (blocking on a real CPU-bound call - card 4b91bf41's "timed out").
         The fixed cascade maps each backend directly via ``_callback_for_backend`` and
         so degrades to passthrough, returning the user content instead of the canned
         connectivity-error string.
@@ -146,7 +146,7 @@ class TestLLMBridge:
         """
         from skcapstone.model_router import ModelRouterConfig
 
-        # ollama callback always raises — no network, no CPU-bound timeout.
+        # ollama callback always raises - no network, no CPU-bound timeout.
         mock_ollama.return_value = MagicMock(side_effect=RuntimeError("ollama broken"))
 
         # Single FAST model so there are no extra alt-model iterations and the
@@ -163,7 +163,7 @@ class TestLLMBridge:
         )
         config = ConsciousnessConfig(fallback_chain=["ollama", "passthrough"])
         bridge = LLMBridge(config, router_config=router_cfg)
-        # ollama is AVAILABLE (but broken) — this is what the old cascade walked
+        # ollama is AVAILABLE (but broken) - this is what the old cascade walked
         # into instead of reaching passthrough.
         bridge._available = {k: False for k in bridge._available}
         bridge._available["ollama"] = True
@@ -184,11 +184,11 @@ class TestLLMBridge:
 
         Verifies the fallback cascade uses direct backend mapping (not _resolve_callback)
         so passthrough is reached without infinite regression, and that the returned
-        value is the original user message — NOT the canned connectivity-error string.
+        value is the original user message - NOT the canned connectivity-error string.
         """
         from skcapstone.model_router import ModelRouterConfig
 
-        # Ollama callback always raises — covers primary + alt model calls
+        # Ollama callback always raises - covers primary + alt model calls
         mock_ollama.return_value = MagicMock(side_effect=RuntimeError("ollama unavailable"))
 
         # Single model in FAST tier so there are no alt-model iterations,
@@ -470,7 +470,7 @@ class TestProcessEnvelopeACK:
         return _SimpleEnvelope(data)
 
     def test_ack_uses_message_type_kwarg(self, tmp_path):
-        """ACK send must use message_type kwarg, not content_type — regression for TypeError."""
+        """ACK send must use message_type kwarg, not content_type - regression for TypeError."""
         loop = self._make_loop(tmp_path)
         mock_skcomms = MagicMock()
         loop.set_skcomms(mock_skcomms)
@@ -491,7 +491,7 @@ class TestProcessEnvelopeACK:
         # Must NOT have content_type kwarg (that was the bug)
         assert (
             "content_type" not in ack_call.kwargs
-        ), "ACK send used wrong kwarg 'content_type' — should be 'message_type'"
+        ), "ACK send used wrong kwarg 'content_type' - should be 'message_type'"
         # Must have message_type kwarg
         assert "message_type" in ack_call.kwargs, "ACK send must pass message_type kwarg"
         assert ack_call.kwargs["message_type"] == "ack"
@@ -512,7 +512,7 @@ class TestProcessEnvelopeACK:
         assert not ack_calls, "ACK should not be sent when auto_ack is False"
 
     def test_ack_skipped_for_ack_type_messages(self, tmp_path):
-        """Incoming ACK messages are skipped — no processing, no re-ACK."""
+        """Incoming ACK messages are skipped - no processing, no re-ACK."""
         loop = self._make_loop(tmp_path, auto_ack=True)
         mock_skcomms = MagicMock()
         loop.set_skcomms(mock_skcomms)
@@ -935,7 +935,7 @@ class TestVerifyMessageSignature:
 
 
 class TestOllamaConnectionPool:
-    """Unit tests for _OllamaPool — connection reuse, TTL eviction, invalidation."""
+    """Unit tests for _OllamaPool - connection reuse, TTL eviction, invalidation."""
 
     def test_get_returns_same_connection_within_ttl(self):
         """Two get() calls within TTL return the same connection object."""
@@ -1072,7 +1072,7 @@ class TestMessageThreading:
         assert env.in_reply_to == ""
 
     # ------------------------------------------------------------------
-    # SystemPromptBuilder — add_to_history threading
+    # SystemPromptBuilder - add_to_history threading
     # ------------------------------------------------------------------
 
     def test_add_to_history_stores_thread_id(self, tmp_path):
@@ -1125,7 +1125,7 @@ class TestMessageThreading:
         assert data[0]["in_reply_to"] == "m-10"
 
     # ------------------------------------------------------------------
-    # SystemPromptBuilder.build — thread context in prompt
+    # SystemPromptBuilder.build - thread context in prompt
     # ------------------------------------------------------------------
 
     def test_build_shows_thread_label_when_thread_id_given(self, tmp_path):
@@ -1172,7 +1172,7 @@ class TestMessageThreading:
         assert "Plain" in prompt
 
     # ------------------------------------------------------------------
-    # ConsciousnessLoop.process_envelope — threading end-to-end
+    # ConsciousnessLoop.process_envelope - threading end-to-end
     # ------------------------------------------------------------------
 
     def test_process_envelope_stores_thread_id_in_history(self, tmp_path):

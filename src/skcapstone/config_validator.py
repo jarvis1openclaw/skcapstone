@@ -69,7 +69,7 @@ class FileValidationResult:
     def is_valid(self) -> bool:
         """True when there are no errors.
 
-        A missing file is considered valid — it simply falls back to
+        A missing file is considered valid - it simply falls back to
         built-in defaults and produces a warning, not an error.
         """
         return len(self.errors) == 0
@@ -223,7 +223,7 @@ def validate_consciousness_yaml(path: Path) -> FileValidationResult:
         result.issues.append(
             ValidationIssue(
                 severity="warning",
-                message="File not found — defaults will be used",
+                message="File not found - defaults will be used",
             )
         )
         return result
@@ -249,7 +249,7 @@ def validate_consciousness_yaml(path: Path) -> FileValidationResult:
         result.issues.append(
             ValidationIssue(
                 severity="warning",
-                message="Empty file — defaults will be used",
+                message="Empty file - defaults will be used",
             )
         )
         return result
@@ -383,7 +383,7 @@ def validate_model_profiles_yaml(path: Path) -> FileValidationResult:
         result.issues.append(
             ValidationIssue(
                 severity="warning",
-                message="File not found — bundled defaults will be used",
+                message="File not found - bundled defaults will be used",
             )
         )
         return result
@@ -568,7 +568,7 @@ def validate_identity_json(path: Path) -> FileValidationResult:
         result.issues.append(
             ValidationIssue(
                 severity="warning",
-                message="File not found — run 'skcapstone init' to create identity",
+                message="File not found - run 'skcapstone init' to create identity",
             )
         )
         return result

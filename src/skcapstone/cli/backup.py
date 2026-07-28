@@ -17,7 +17,7 @@ def register_backup_commands(main: click.Group) -> None:
 
     @main.group()
     def backup():
-        """Backup and restore — portable sovereign agent state.
+        """Backup and restore - portable sovereign agent state.
 
         Create encrypted backups of your full agent state and
         restore on any machine. Your identity travels with you.
@@ -39,7 +39,7 @@ def register_backup_commands(main: click.Group) -> None:
         and agent card into a compressed tarball with integrity checksums.
 
         By default this backs up the active agent's per-agent home
-        (~/.skcapstone/agents/<name>/), NOT the shared operator root —
+        (~/.skcapstone/agents/<name>/), NOT the shared operator root -
         that is where the flat memory tiers actually live.
 
         Examples:

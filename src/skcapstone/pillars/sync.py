@@ -1,5 +1,5 @@
 """
-Sovereign Singularity — the sync layer.
+Sovereign Singularity - the sync layer.
 
 GPG-encrypted memory seeds propagate across all nodes via Syncthing
 (or git, or any file transport). CapAuth handles the encryption.
@@ -154,7 +154,7 @@ def gpg_encrypt(
     Encrypts to the agent's own key AND all known peer fingerprints so
     that every peer in the mesh can independently decrypt the seed they
     receive via Syncthing. Without peer fingerprints, only the sender
-    can decrypt — which defeats the purpose of sync.
+    can decrypt - which defeats the purpose of sync.
 
     Args:
         seed_path: Path to the plaintext seed file.
@@ -166,7 +166,7 @@ def gpg_encrypt(
         Path to the encrypted file, or None if encryption failed.
     """
     if not shutil.which("gpg"):
-        logger.error("gpg not found in PATH — cannot encrypt")
+        logger.error("gpg not found in PATH - cannot encrypt")
         return None
 
     agent_home = home or Path(SHARED_ROOT).expanduser()
@@ -175,7 +175,7 @@ def gpg_encrypt(
         recipient = _detect_gpg_key(agent_home)
 
     if recipient is None:
-        logger.warning("No GPG key found for encryption — skipping")
+        logger.warning("No GPG key found for encryption - skipping")
         return None
 
     # Build recipient list: own key + all known peers
@@ -280,7 +280,7 @@ def push_seed(home: Path, agent_name: str, encrypt: bool = True) -> Optional[Pat
         if encrypted:
             seed_path.unlink()
             return encrypted
-        logger.warning("Encryption failed — keeping plaintext seed")
+        logger.warning("Encryption failed - keeping plaintext seed")
 
     return seed_path
 
@@ -342,7 +342,7 @@ def pull_seeds(home: Path, decrypt: bool = True) -> list[dict]:
                 seed_path = decrypted
                 f.unlink()
             else:
-                logger.warning("Could not decrypt %s — skipping", f.name)
+                logger.warning("Could not decrypt %s - skipping", f.name)
                 continue
 
         if seed_path.suffix == ".json" or seed_path.name.endswith(SEED_EXTENSION):
@@ -485,7 +485,7 @@ def _detect_gpg_key_from_skcapstone() -> Optional[str]:
                 current_fpr = line.split(":")[9]
             if line.startswith("uid:") and "skcapstone" in line.lower():
                 return current_fpr
-        # No skcapstone key — return first secret key fingerprint
+        # No skcapstone key - return first secret key fingerprint
         for line in lines:
             if line.startswith("fpr:"):
                 return line.split(":")[9]

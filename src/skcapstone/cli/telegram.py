@@ -19,7 +19,7 @@ def register_telegram_commands(main: click.Group) -> None:
 
     @main.group()
     def telegram():
-        """Telegram integration — send, poll, list chats, check setup.
+        """Telegram integration - send, poll, list chats, check setup.
 
         Requires TELEGRAM_API_ID and TELEGRAM_API_HASH environment variables.
         Install Telethon with: pip install skmemory[telegram]

@@ -1,4 +1,4 @@
-"""Tests for ResponseCache — TTL, cache hit/miss, skip_cache wiring."""
+"""Tests for ResponseCache - TTL, cache hit/miss, skip_cache wiring."""
 
 from __future__ import annotations
 
@@ -68,7 +68,7 @@ class TestTtlForTier:
 
 
 # ---------------------------------------------------------------------------
-# ResponseCache — basic put/get
+# ResponseCache - basic put/get
 # ---------------------------------------------------------------------------
 
 
@@ -224,7 +224,7 @@ class TestResponseCacheStats:
 
 
 # ---------------------------------------------------------------------------
-# LLMBridge integration — cache wired into generate()
+# LLMBridge integration - cache wired into generate()
 # ---------------------------------------------------------------------------
 
 

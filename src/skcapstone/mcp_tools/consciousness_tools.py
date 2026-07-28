@@ -1,4 +1,4 @@
-"""Consciousness loop MCP tools — status and testing."""
+"""Consciousness loop MCP tools - status and testing."""
 
 from __future__ import annotations
 
@@ -132,7 +132,7 @@ async def _handle_consciousness_test(arguments: dict) -> list[TextContent]:
 
 
 async def _handle_context_stats(arguments: dict) -> list[TextContent]:
-    """Handle context_stats tool call — per-sender context-window usage."""
+    """Handle context_stats tool call - per-sender context-window usage."""
     try:
         from ..consciousness_config import load_consciousness_config
         from ..context_window import ContextWindowManager

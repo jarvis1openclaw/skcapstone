@@ -1,5 +1,5 @@
 """
-Encrypted file transfer — chunked, resumable, sovereign.
+Encrypted file transfer - chunked, resumable, sovereign.
 
 Files are split into 256 KB chunks, each independently encrypted
 using the agent's KMS-derived service key (Fernet AES-128-CBC).

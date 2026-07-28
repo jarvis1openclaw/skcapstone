@@ -1,8 +1,8 @@
 """CapAuth identity verification and status tools.
 
 Exposes two tools:
-    capauth_status — Show CapAuth profile and key status
-    capauth_verify — Verify a CapAuth identity or capability token
+    capauth_status - Show CapAuth profile and key status
+    capauth_verify - Verify a CapAuth identity or capability token
 """
 
 from __future__ import annotations

@@ -506,7 +506,7 @@ class TestCheckHarnessEnv:
         live.parent.mkdir()
         live.write_text("#live")
         # A real-world false-positive: a skmemory hook living under a
-        # skcapstone-repos/ checkout — its basename is NOT 'skcapstone'.
+        # skcapstone-repos/ checkout - its basename is NOT 'skcapstone'.
         script = tmp_path / "skcapstone-repos" / "skmemory" / "hooks" / "sk-activity-inject.sh"
         script.parent.mkdir(parents=True)
         script.write_text("#!/bin/sh\n")

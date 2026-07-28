@@ -137,10 +137,10 @@ def register_chat_commands(main: click.Group) -> None:
 
     @main.group(cls=_ChatGroup)
     def chat():
-        """Agent-to-agent chat — sovereign P2P messaging.
+        """Agent-to-agent chat - sovereign P2P messaging.
 
         Open an interactive session, send one-off messages, or browse
-        your inbox. Works from any terminal — no IDE required.
+        your inbox. Works from any terminal - no IDE required.
 
         \b
         Quick start:
@@ -150,7 +150,7 @@ def register_chat_commands(main: click.Group) -> None:
         """
 
     # ------------------------------------------------------------------
-    # open — interactive prompt_toolkit session
+    # open - interactive prompt_toolkit session
     # ------------------------------------------------------------------
 
     @chat.command("open")
@@ -177,7 +177,7 @@ def register_chat_commands(main: click.Group) -> None:
 
         \b
         Slash commands:
-          /quit  /exit  /q   — exit the session
+          /quit  /exit  /q   - exit the session
 
         \b
         Examples:
@@ -198,7 +198,7 @@ def register_chat_commands(main: click.Group) -> None:
         _run_llm_chat(peer, home_path, identity)
 
     # ------------------------------------------------------------------
-    # send — one-shot message
+    # send - one-shot message
     # ------------------------------------------------------------------
 
     @chat.command("send")
@@ -254,11 +254,11 @@ def register_chat_commands(main: click.Group) -> None:
             if result.get("error"):
                 console.print(f"  [dim]{result['error']}[/]")
         else:
-            console.print(f"  [red]Failed[/] — {result.get('error', 'unknown error')}")
+            console.print(f"  [red]Failed[/] - {result.get('error', 'unknown error')}")
         console.print("")
 
     # ------------------------------------------------------------------
-    # inbox — browse messages
+    # inbox - browse messages
     # ------------------------------------------------------------------
 
     @chat.command("inbox")
@@ -335,7 +335,7 @@ def register_chat_commands(main: click.Group) -> None:
         console.print("")
 
     # ------------------------------------------------------------------
-    # list — show peers with conversation history
+    # list - show peers with conversation history
     # ------------------------------------------------------------------
 
     @chat.command("list")
@@ -391,7 +391,7 @@ def register_chat_commands(main: click.Group) -> None:
         console.print()
 
     # ------------------------------------------------------------------
-    # history — full conversation transcript for a peer
+    # history - full conversation transcript for a peer
     # ------------------------------------------------------------------
 
     @chat.command("history")
@@ -469,7 +469,7 @@ def register_chat_commands(main: click.Group) -> None:
         console.print()
 
     # ------------------------------------------------------------------
-    # forward — re-send a message to another peer
+    # forward - re-send a message to another peer
     # ------------------------------------------------------------------
 
     @chat.command("forward")
@@ -525,11 +525,11 @@ def register_chat_commands(main: click.Group) -> None:
             if result.get("error"):
                 console.print(f"  [dim]{result['error']}[/]")
         else:
-            console.print(f"  [red]Failed[/] — {result.get('error', 'unknown error')}")
+            console.print(f"  [red]Failed[/] - {result.get('error', 'unknown error')}")
         console.print("")
 
     # ------------------------------------------------------------------
-    # summary — LLM-powered conversation summarizer
+    # summary - LLM-powered conversation summarizer
     # ------------------------------------------------------------------
 
     @chat.command("summary")
@@ -598,7 +598,7 @@ def register_chat_commands(main: click.Group) -> None:
         console.print(f"\n[dim]Saved to: {home_path}/summaries/{peer}.json[/]\n")
 
     # ------------------------------------------------------------------
-    # live — alias for open (backwards compat)
+    # live - alias for open (backwards compat)
     # ------------------------------------------------------------------
 
     @chat.command("live")

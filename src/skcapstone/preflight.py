@@ -1,10 +1,10 @@
 """
-Preflight system checks — detect and auto-install required tools.
+Preflight system checks - detect and auto-install required tools.
 
 Checks for:
   - Python (already running, but verify version)
   - GPG / GnuPG (required for encryption)
-  - Git (optional — only needed for dev/repo installs)
+  - Git (optional - only needed for dev/repo installs)
   - Syncthing (needed for device sync, Path 2)
 
 Each check returns a result with:
@@ -172,7 +172,7 @@ def check_gpg() -> ToolCheck:
             version=version,
         )
 
-    # Not installed — provide platform-specific install commands
+    # Not installed - provide platform-specific install commands
     if system == "Linux":
         mgr = _detect_linux_pkg_manager()
         cmds = {
@@ -401,7 +401,7 @@ def _git_download_url() -> str:
 
 
 # ---------------------------------------------------------------------------
-# Legacy compatibility — used by doctor.py and old code
+# Legacy compatibility - used by doctor.py and old code
 # ---------------------------------------------------------------------------
 
 GIT_DOWNLOAD_URLS = {
@@ -414,7 +414,7 @@ GIT_DOWNLOAD_DEFAULT = "https://git-scm.com/downloads"
 
 @dataclass
 class GitPreflightResult:
-    """Legacy result object — kept for backward compatibility with doctor.py."""
+    """Legacy result object - kept for backward compatibility with doctor.py."""
 
     installed: bool
     platform_label: str
@@ -508,7 +508,7 @@ class PreflightChecker:
         return CheckResult(
             "python",
             "fail",
-            f"Python {version} — 3.11+ required",
+            f"Python {version} - 3.11+ required",
             critical=True,
         )
 
@@ -542,16 +542,16 @@ class PreflightChecker:
                 return CheckResult(
                     "ollama",
                     "warn",
-                    "Ollama running but no models loaded — pull a model first",
+                    "Ollama running but no models loaded - pull a model first",
                     critical=False,
                 )
             names = ", ".join(m.get("name", "?") for m in models[:3])
-            return CheckResult("ollama", "ok", f"Ollama running — models: {names}")
+            return CheckResult("ollama", "ok", f"Ollama running - models: {names}")
         except OSError:
             return CheckResult(
                 "ollama",
                 "warn",
-                "Ollama not reachable on localhost:11434 — LLM responses will be unavailable",
+                "Ollama not reachable on localhost:11434 - LLM responses will be unavailable",
                 critical=False,
             )
         except Exception as exc:
@@ -590,13 +590,13 @@ class PreflightChecker:
             return CheckResult(
                 "identity",
                 "warn",
-                "manifest.json found but no identity/identity.json — run skcapstone init",
+                "manifest.json found but no identity/identity.json - run skcapstone init",
                 critical=False,
             )
         return CheckResult(
             "identity",
             "fail",
-            f"No identity found in {self.home}/identity/ — run skcapstone init",
+            f"No identity found in {self.home}/identity/ - run skcapstone init",
         )
 
     def check_home_dirs(self) -> CheckResult:
@@ -608,7 +608,7 @@ class PreflightChecker:
         return CheckResult(
             "home_dirs",
             "fail",
-            f"Missing directories in {self.home}: {', '.join(missing)} — run skcapstone init",
+            f"Missing directories in {self.home}: {', '.join(missing)} - run skcapstone init",
         )
 
     def check_config(self) -> CheckResult:
@@ -618,7 +618,7 @@ class PreflightChecker:
             return CheckResult(
                 "config",
                 "warn",
-                f"consciousness.yaml not found at {config_path} — using defaults",
+                f"consciousness.yaml not found at {config_path} - using defaults",
                 critical=False,
             )
         try:
@@ -629,7 +629,7 @@ class PreflightChecker:
                 return CheckResult(
                     "config",
                     "warn",
-                    "consciousness.yaml is empty — using defaults",
+                    "consciousness.yaml is empty - using defaults",
                     critical=False,
                 )
             return CheckResult("config", "ok", f"consciousness.yaml parsed OK ({config_path})")
@@ -656,7 +656,7 @@ class PreflightChecker:
             return CheckResult(
                 "disk_space",
                 "warn",
-                f"Only {free_gb:.1f} GB free — less than 5 GB recommended",
+                f"Only {free_gb:.1f} GB free - less than 5 GB recommended",
                 critical=False,
             )
         except Exception as exc:

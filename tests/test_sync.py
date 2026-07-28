@@ -813,7 +813,7 @@ class TestUnsupportedBackend:
     """Edge case: unsupported backend type."""
 
     def test_factory_rejects_gdrive(self, agent_home: Path):
-        """GDrive backend is now supported — factory returns a GDriveBackend instance."""
+        """GDrive backend is now supported - factory returns a GDriveBackend instance."""
         from skcapstone.sync.backends import GDriveBackend, create_backend
         from skcapstone.sync.models import SyncBackendConfig, SyncBackendType
 

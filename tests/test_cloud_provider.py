@@ -1,8 +1,8 @@
-"""Tests for CloudProvider — Hetzner adapter and provider_type property.
+"""Tests for CloudProvider - Hetzner adapter and provider_type property.
 
 Focuses on HetznerAdapter (full lifecycle) and CloudProvider.provider_type
 which are not covered in test_cloud_providers.py.  All Hetzner API calls
-are mocked via requests — no real cloud account required.
+are mocked via requests - no real cloud account required.
 """
 
 from __future__ import annotations
@@ -429,7 +429,7 @@ class TestCloudProviderHetznerDelegation:
 
 
 # ---------------------------------------------------------------------------
-# _build_cloud_init — Hetzner-specific tailscale authkey
+# _build_cloud_init - Hetzner-specific tailscale authkey
 # ---------------------------------------------------------------------------
 
 

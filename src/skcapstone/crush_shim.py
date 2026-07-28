@@ -1,4 +1,4 @@
-"""Crush shim — daemon entry point that bridges the crush CLI interface to claude.
+"""Crush shim - daemon entry point that bridges the crush CLI interface to claude.
 
 Registered as the ``crush`` console_scripts entry point so that
 ``LocalProvider._find_crush_binary()`` discovers it on PATH.  When invoked
@@ -50,7 +50,7 @@ def build_arg_parser() -> argparse.ArgumentParser:
     """
     parser = argparse.ArgumentParser(
         prog="crush",
-        description="Crush shim — bridges crush CLI interface to claude backend",
+        description="Crush shim - bridges crush CLI interface to claude backend",
     )
     sub = parser.add_subparsers(dest="command")
 

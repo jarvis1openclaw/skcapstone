@@ -1,5 +1,5 @@
 """
-Response Cache — TTL-based in-memory cache for LLM responses.
+Response Cache - TTL-based in-memory cache for LLM responses.
 
 Caches responses keyed by (prompt_hash, model_name) with tier-dependent TTLs:
     - FAST tier: 1 hour
@@ -125,7 +125,7 @@ class ResponseCache:
         Args:
             prompt_hash: SHA-256 hex digest from :func:`hash_prompt`.
             model: Concrete model name.
-            tier: Routing tier — determines the TTL.
+            tier: Routing tier - determines the TTL.
             response: LLM response text to cache.
         """
         if not response:

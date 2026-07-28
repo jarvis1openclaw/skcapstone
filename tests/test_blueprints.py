@@ -1,4 +1,4 @@
-"""Tests for agent team blueprints — schema, registry, and engine."""
+"""Tests for agent team blueprints - schema, registry, and engine."""
 
 from __future__ import annotations
 

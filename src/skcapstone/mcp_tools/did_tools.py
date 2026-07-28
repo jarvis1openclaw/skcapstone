@@ -1,10 +1,10 @@
 """DID (Decentralized Identity) MCP tools.
 
 Exposes four tools:
-    did_show          — Generate and display DID documents (one tier or all)
-    did_verify_peer   — Verify a peer's did:key matches their public key
-    did_publish       — Write DID files to disk
-    did_identity_card — Full sovereign identity card (local-only)
+    did_show          - Generate and display DID documents (one tier or all)
+    did_verify_peer   - Verify a peer's did:key matches their public key
+    did_publish       - Write DID files to disk
+    did_identity_card - Full sovereign identity card (local-only)
 """
 
 from __future__ import annotations
@@ -29,7 +29,7 @@ TOOLS: list[Tool] = [
             "for the current agent. Supports three tiers: "
             "'key' (did:key, self-contained, zero infrastructure), "
             "'mesh' (did:web via Tailscale Serve, mesh-private only), "
-            "'public' (did:web:skworld.io, minimal — public key + name only), "
+            "'public' (did:web:skworld.io, minimal - public key + name only), "
             "or 'all' to display all three tiers at once."
         ),
         inputSchema={
@@ -75,7 +75,7 @@ TOOLS: list[Tool] = [
         description=(
             "Generate all DID tiers and write them to disk. "
             "By default, writes all three tiers including the public Tier 3 document. "
-            "Set publish_public=false to opt out of Tier 3 generation — "
+            "Set publish_public=false to opt out of Tier 3 generation - "
             "only Tier 1 (did:key) and Tier 2 (mesh) will be written. "
             "The choice is persisted to ~/.skcapstone/did/policy.json."
         ),
@@ -86,7 +86,7 @@ TOOLS: list[Tool] = [
                     "type": "boolean",
                     "description": (
                         "Whether to generate the Tier 3 public DID document (default: true). "
-                        "Set false to keep your identity private — only did:key + mesh tier."
+                        "Set false to keep your identity private - only did:key + mesh tier."
                     ),
                 },
                 "tailnet_hostname": {
@@ -115,7 +115,7 @@ TOOLS: list[Tool] = [
             "View or set the DID publication policy for this agent. "
             "Controls whether Tier 3 (public) DID documents are generated. "
             "Default: publish_public=true. "
-            "Set publish_public=false to opt out — identity stays private (did:key + mesh only). "
+            "Set publish_public=false to opt out - identity stays private (did:key + mesh only). "
             "Policy is stored at ~/.skcapstone/did/policy.json."
         ),
         inputSchema={
@@ -134,7 +134,7 @@ TOOLS: list[Tool] = [
         description=(
             "Generate a full sovereign identity card combining the DID anchor, "
             "entity info, soul vibe/core traits, and capabilities. "
-            "This is a LOCAL-ONLY artifact — never published to the internet. "
+            "This is a LOCAL-ONLY artifact - never published to the internet. "
             "Used to render the agent's identity card on skworld.io."
         ),
         inputSchema={
@@ -277,7 +277,7 @@ async def _handle_did_verify_peer(args: dict) -> list[TextContent]:
                 "name": name,
                 "verified": False,
                 "cached_did_key": peer_data.get("did_key"),
-                "detail": "No public_key in peer file — cannot compute did:key",
+                "detail": "No public_key in peer file - cannot compute did:key",
             }
         )
 
@@ -373,13 +373,13 @@ async def _handle_did_publish(args: dict) -> list[TextContent]:
     skcomms_home = Path(_os.environ.get("SKCOMMS_HOME", str(Path.home() / ".skcomms")))
     did_dir = _home() / "did"
 
-    # Tier 2 (mesh) — always written; used by Tailscale Serve
+    # Tier 2 (mesh) - always written; used by Tailscale Serve
     _write(skcomms_home / "well-known" / "did.json", _json.dumps(docs[DIDTier.WEB_MESH], indent=2))
-    # Tier 1 (did:key) — always written; self-contained anchor
+    # Tier 1 (did:key) - always written; self-contained anchor
     _write(did_dir / "key.json", _json.dumps(docs[DIDTier.KEY], indent=2))
     _write(did_dir / "did_key.txt", gen._ctx.did_key_id)
 
-    # Tier 3 (public) — only written when opt-in (default)
+    # Tier 3 (public) - only written when opt-in (default)
     if publish_public:
         _write(did_dir / "public.json", _json.dumps(docs[DIDTier.WEB_PUBLIC], indent=2))
     else:
@@ -397,7 +397,7 @@ async def _handle_did_publish(args: dict) -> list[TextContent]:
             "note": (
                 None
                 if publish_public
-                else "Tier 3 (public) skipped — opt-out active. Run did_publish(publish_public=true) to enable."  # noqa: E501
+                else "Tier 3 (public) skipped - opt-out active. Run did_publish(publish_public=true) to enable."  # noqa: E501
             ),
         }
     )
@@ -422,9 +422,9 @@ async def _handle_did_policy(args: dict) -> list[TextContent]:
             "publish_public": publish_public,
             "policy_file": str(_policy_path()),
             "privacy_level": (
-                "public — Tier 1 (did:key) + Tier 2 (mesh) + Tier 3 (skworld.io)"
+                "public - Tier 1 (did:key) + Tier 2 (mesh) + Tier 3 (skworld.io)"
                 if publish_public
-                else "private — Tier 1 (did:key) + Tier 2 (mesh) only; no public internet exposure"
+                else "private - Tier 1 (did:key) + Tier 2 (mesh) only; no public internet exposure"
             ),
             "note": (
                 "Default. To opt out: did_policy(publish_public=false)"

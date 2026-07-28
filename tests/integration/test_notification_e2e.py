@@ -10,8 +10,8 @@ Pipeline under test
     3. The generated reply is sent back through SKComms (mocked).
     4. The interaction is recorded as a memory (``memory_engine.store``).
     5. The response handler ``_notify_response()`` fires a desktop popup through
-       the REAL ``skcapstone.notifications`` path — gated by
-       ``SKCAPSTONE_DESKTOP_NOTIFY`` — which ends in a ``notify-send`` subprocess
+       the REAL ``skcapstone.notifications`` path - gated by
+       ``SKCAPSTONE_DESKTOP_NOTIFY`` - which ends in a ``notify-send`` subprocess
        call (the only OS boundary mocked).
 
 Why integration (not a pure unit test)
@@ -27,7 +27,7 @@ Why integration (not a pure unit test)
 
 Related coordination task
 -------------------------
-    [040fd134] — Add end-to-end notification test: message -> popup.
+    [040fd134] - Add end-to-end notification test: message -> popup.
                  Triage: only unit tests existed (tests/test_notifications.py,
                  which mock subprocess in isolation); nothing drove the full
                  message -> consciousness response -> notify pipeline.
@@ -61,12 +61,12 @@ def _make_loop(
     tmp_path: Path,
     *,
     auto_memory: bool = True,
-    mock_generate: str = "Consciousness reply — the pipeline is alive.",
+    mock_generate: str = "Consciousness reply - the pipeline is alive.",
 ) -> tuple[Any, MagicMock]:
     """Construct a ConsciousnessLoop wired for notification testing.
 
     Returns:
-        (loop, mock_skcomms) — the loop has a mock LLMBridge and mock SKComms
+        (loop, mock_skcomms) - the loop has a mock LLMBridge and mock SKComms
         injected, so the only real external boundary left is the notify-send
         subprocess (mocked separately by the test).
     """
@@ -94,7 +94,7 @@ def _make_loop(
     with patch.object(LLMBridge, "_probe_ollama", return_value=False):
         loop = ConsciousnessLoop(config, home=home, shared_root=shared_root)
 
-    # Mock the LLM backend — deterministic reply, no network.
+    # Mock the LLM backend - deterministic reply, no network.
     mock_bridge = MagicMock()
     mock_bridge.generate.return_value = mock_generate
     mock_bridge.available_backends = {"passthrough": True}
@@ -152,7 +152,7 @@ def linux_notify_manager(monkeypatch):
     notif_log = MagicMock()
     monkeypatch.setattr(notifications, "_store_notification_memory", notif_log)
 
-    # Mock the OS notify-send subprocess — the single OS boundary under test.
+    # Mock the OS notify-send subprocess - the single OS boundary under test.
     mock_run = MagicMock(return_value=MagicMock(returncode=0))
     monkeypatch.setattr(notifications.subprocess, "run", mock_run)
 
@@ -180,7 +180,7 @@ class TestMessageToPopupE2E:
         ending in the mocked notify-send subprocess.
         """
         mock_run = linux_notify_manager
-        reply = "Consciousness reply — the pipeline is alive."
+        reply = "Consciousness reply - the pipeline is alive."
         loop, mock_skcomms = _make_loop(tmp_path, mock_generate=reply)
 
         result = loop.process_envelope(_make_envelope("hello there"))

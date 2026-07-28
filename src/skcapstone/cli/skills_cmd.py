@@ -65,7 +65,7 @@ def register_skills_commands(main: click.Group) -> None:
 
     @main.group()
     def skills():
-        """Skills registry — discover and install agent skills.
+        """Skills registry - discover and install agent skills.
 
         Fetches the latest skill catalog from GitHub. Falls back to the
         locally installed catalog if offline.
@@ -161,7 +161,7 @@ def register_skills_commands(main: click.Group) -> None:
         source_labels = {
             "github": "",
             "remote": "  [dim](registry)[/]",
-            "local": "  [dim](local — offline)[/]",
+            "local": "  [dim](local - offline)[/]",
         }
         label = f"[bold]{len(skill_entries)}[/] skill(s)"
         if query:

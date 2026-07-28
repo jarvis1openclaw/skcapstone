@@ -59,7 +59,7 @@ def _make_fake_envelope(sender: str = "peer-a", content: str = "hello") -> Simpl
 
 
 # ---------------------------------------------------------------------------
-# DaemonState — inflight tracking
+# DaemonState - inflight tracking
 # ---------------------------------------------------------------------------
 
 
@@ -86,7 +86,7 @@ class TestDaemonStateInflight:
         state.remove_inflight("nonexistent")  # should not raise
 
     def test_get_inflight_returns_snapshot(self) -> None:
-        """get_inflight returns a list copy — mutations don't affect stored state."""
+        """get_inflight returns a list copy - mutations don't affect stored state."""
         state = DaemonState()
         state.add_inflight("a", {"x": 1})
         state.add_inflight("b", {"x": 2})
@@ -336,7 +336,7 @@ class TestShutdownStartupRoundTrip:
 
 
 # ---------------------------------------------------------------------------
-# Graceful stop() — pidfile removal, component teardown, bounded, idempotent
+# Graceful stop() - pidfile removal, component teardown, bounded, idempotent
 # ---------------------------------------------------------------------------
 
 
@@ -414,7 +414,7 @@ class TestGracefulStop:
         assert written[0].emotional_summary == "peaceful"
 
     def test_stop_is_idempotent(self, tmp_path: Path) -> None:
-        """A second stop() call is a no-op — components stopped only once."""
+        """A second stop() call is a no-op - components stopped only once."""
         svc = _make_service(tmp_path)
         mock_consciousness = MagicMock()
         svc._consciousness = mock_consciousness
@@ -445,7 +445,7 @@ class TestGracefulStop:
         svc = _make_service(tmp_path)
         svc.config.shutdown_timeout = 0.5
 
-        never = threading.Event()  # never set — thread ignores the stop signal
+        never = threading.Event()  # never set - thread ignores the stop signal
         hung = threading.Thread(target=never.wait, name="wedged-worker", daemon=True)
         hung.start()
         svc._threads = [hung]

@@ -212,7 +212,7 @@ def _print_per_day_table(reports, model_filter: str | None, label: str) -> None:
     """Render a per-day breakdown table."""
     from rich.table import Table
 
-    table = Table(title=f"Per-day usage — {label}", box=None, padding=(0, 2))
+    table = Table(title=f"Per-day usage - {label}", box=None, padding=(0, 2))
     table.add_column("Date", style="bold")
     table.add_column("Calls", justify="right")
     table.add_column("Input", justify="right")

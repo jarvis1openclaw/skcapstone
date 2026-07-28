@@ -1,4 +1,4 @@
-"""Tests for the prompt adapter — per-model formatting."""
+"""Tests for the prompt adapter - per-model formatting."""
 
 from __future__ import annotations
 
@@ -111,7 +111,7 @@ class TestPromptAdapter:
         assert profile.family == "grok"
 
     def test_resolve_deepseek_r1(self, adapter):
-        """DeepSeek R1 resolves correctly — omit system prompt."""
+        """DeepSeek R1 resolves correctly - omit system prompt."""
         profile = adapter.resolve_profile("deepseek-r1-70b")
         assert profile.family == "deepseek-r1"
         assert profile.system_prompt_mode == "omit"
@@ -156,7 +156,7 @@ class TestAdapt:
         assert "system_as_separate_param" in result.adaptations_applied
 
     def test_deepseek_r1_no_system(self, adapter):
-        """DeepSeek R1 gets no system prompt — merged into user message."""
+        """DeepSeek R1 gets no system prompt - merged into user message."""
         result = adapter.adapt(
             "You are an agent.",
             "Explain quantum computing.",
@@ -327,16 +327,16 @@ class TestDetectModel:
         assert profile.family == "ollama-llama"
 
     def test_resolve_profile_caches_detected(self, adapter):
-        """A detected profile is cached — second call skips HTTP."""
+        """A detected profile is cached - second call skips HTTP."""
         with patch("urllib.request.urlopen", return_value=_make_ollama_resp("llama")) as mock_open:
             adapter.resolve_profile("my-new-model:latest")
             adapter.resolve_profile("my-new-model:latest")
 
-        # urlopen called exactly once — second lookup hit the cache
+        # urlopen called exactly once - second lookup hit the cache
         assert mock_open.call_count == 1
 
     def test_resolve_static_profile_not_overridden(self, adapter):
-        """Known model uses static profile — detect_model is never called."""
+        """Known model uses static profile - detect_model is never called."""
         with patch.object(adapter, "detect_model") as mock_detect:
             profile = adapter.resolve_profile("claude-opus-4-5")
 

@@ -90,7 +90,7 @@ def test_cloud_provider_constructs(cloud):
 
 
 # ---------------------------------------------------------------------------
-# Lazy SDK import path — installed branch (SDK returns a client)
+# Lazy SDK import path - installed branch (SDK returns a client)
 # ---------------------------------------------------------------------------
 
 

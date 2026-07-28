@@ -1,4 +1,4 @@
-"""Tests for C3 — bundled .stignore template + idempotent install."""
+"""Tests for C3 - bundled .stignore template + idempotent install."""
 
 from __future__ import annotations
 

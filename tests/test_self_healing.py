@@ -17,7 +17,7 @@ class TestHomeDirs:
         """Missing home subdirs are auto-created."""
         home = tmp_path / ".skcapstone"
         home.mkdir()
-        # Only create 'identity' — rest should be auto-fixed
+        # Only create 'identity' - rest should be auto-fixed
         (home / "identity").mkdir()
 
         doctor = SelfHealingDoctor(home)

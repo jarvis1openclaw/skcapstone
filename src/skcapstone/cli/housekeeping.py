@@ -43,7 +43,7 @@ def register_housekeeping_commands(main: click.Group) -> None:
         )
 
         if dry_run:
-            console.print("[bold yellow]DRY RUN[/] — no files deleted\n")
+            console.print("[bold yellow]DRY RUN[/] - no files deleted\n")
 
         table = Table(title="Housekeeping Results")
         table.add_column("Target", style="cyan")

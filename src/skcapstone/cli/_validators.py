@@ -68,5 +68,5 @@ def validate_soul_name(name: str) -> str:
 def validate_file_path(path: str) -> str:
     """Reject path traversal sequences in user-supplied file paths."""
     if ".." in path.split("/") or ".." in path.split("\\"):
-        raise click.BadParameter(f"Path '{path}' contains '..' traversal sequences — rejected.")
+        raise click.BadParameter(f"Path '{path}' contains '..' traversal sequences - rejected.")
     return path

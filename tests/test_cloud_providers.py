@@ -1,6 +1,6 @@
 """Tests for AWS EC2 and GCP Compute cloud provider adapters.
 
-All cloud API calls are mocked — no real infrastructure required.
+All cloud API calls are mocked - no real infrastructure required.
 """
 
 from __future__ import annotations

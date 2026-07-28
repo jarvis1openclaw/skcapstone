@@ -1,4 +1,4 @@
-"""CLI command: skcapstone preflight — run daemon startup checks."""
+"""CLI command: skcapstone preflight - run daemon startup checks."""
 
 from __future__ import annotations
 
@@ -79,7 +79,7 @@ def register_preflight_commands(main: click.Group) -> None:
                 console.print("[bold green]All preflight checks passed.[/]")
         else:
             console.print(
-                f"[bold red]Preflight FAILED — {critical} critical failure(s).[/] "
+                f"[bold red]Preflight FAILED - {critical} critical failure(s).[/] "
                 "Fix the issues above before starting the daemon."
             )
 

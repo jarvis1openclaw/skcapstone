@@ -1,4 +1,4 @@
-"""Archive command — manage conversation archival."""
+"""Archive command - manage conversation archival."""
 
 from __future__ import annotations
 
@@ -16,7 +16,7 @@ def register_archive_commands(main: click.Group) -> None:
 
     @main.group()
     def archive():
-        """Conversation archival — compress old messages to save space.
+        """Conversation archival - compress old messages to save space.
 
         Archives peer conversation messages older than 30 days that are
         not in the most-recent 100, compressing them into gzip files
@@ -77,7 +77,7 @@ def register_archive_commands(main: click.Group) -> None:
                         f"[bold green]Archived {result.archived_count} message(s)[/]\n"
                         f"Retained: {result.retained_count} message(s)\n"
                         f"Archive: [cyan]{result.archive_path}[/]",
-                        title=f"Archive — {peer}",
+                        title=f"Archive - {peer}",
                         border_style="green",
                     )
                 )
@@ -86,7 +86,7 @@ def register_archive_commands(main: click.Group) -> None:
         summary = archiver.archive_all()
 
         if summary.total_archived == 0:
-            console.print("\n[dim]Nothing to archive — all conversations are current.[/]\n")
+            console.print("\n[dim]Nothing to archive - all conversations are current.[/]\n")
             return
 
         table = Table(show_header=True, header_style="bold", box=None, padding=(0, 2))
@@ -102,7 +102,7 @@ def register_archive_commands(main: click.Group) -> None:
                 r.peer,
                 str(r.archived_count),
                 str(r.retained_count),
-                str(r.archive_path) if r.archive_path else "—",
+                str(r.archive_path) if r.archive_path else "-",
             )
 
         console.print(
@@ -153,7 +153,7 @@ def register_archive_commands(main: click.Group) -> None:
             total_bytes += a["size_bytes"]
 
         console.print(
-            f"\n[bold]{len(archives)}[/] archive(s) — "
+            f"\n[bold]{len(archives)}[/] archive(s) - "
             f"{total_msgs} messages, {total_bytes / 1024:.1f} KB total:\n"
         )
         console.print(table)

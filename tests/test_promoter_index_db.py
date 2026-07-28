@@ -2,7 +2,7 @@
 
 Incident (2026-07-12 "skmemory drift"): archive_old_memories/_archive_deduped
 moved flat files into memory/archive/ and called _remove_from_index, but that
-only edited index.json — never index.db. Stale index.db rows then showed up as
+only edited index.json - never index.db. Stale index.db rows then showed up as
 phantom orphans in `skmemory health`, producing permanent false-DRIFT reports.
 """
 
@@ -74,7 +74,7 @@ def test_remove_from_index_deletes_sqlite_row(home: Path) -> None:
 
 
 def test_remove_from_index_no_db_is_noop(home: Path) -> None:
-    # No index.db present — must not raise.
+    # No index.db present - must not raise.
     _remove_from_index(home, "whatever")
 
 

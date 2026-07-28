@@ -95,7 +95,7 @@ class SKCapstoneClient:
         API key (``X-API-Key`` header) **or** CapAuth Bearer token
         (``Authorization: Bearer <token>`` header).  Pass a plain API key
         string for the standard key-based auth; pass a CapAuth PGP token
-        the same way — the client always sends both headers so the server
+        the same way - the client always sends both headers so the server
         can pick the appropriate scheme.
     timeout:
         Default request timeout in seconds (default: 30.0).
