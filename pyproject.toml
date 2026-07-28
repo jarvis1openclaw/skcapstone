@@ -96,6 +96,7 @@ all = [
 dev = [
     "pytest>=7.0",
     "pytest-cov>=4.0",
+    "pytest-asyncio>=0.23",
     "black>=24.0",
     "ruff>=0.3",
 ]
@@ -143,7 +144,9 @@ select = ["E", "F", "I", "N", "W"]
 testpaths = ["tests"]
 pythonpath = ["src"]
 addopts = "-v --tb=short"
+asyncio_mode = "strict"
 markers = [
     "integration: cross-component test requiring real services/network (excluded from default CI unit run)",
     "e2e: live end-to-end test requiring an installed skcapstone CLI / running daemon (excluded from default CI unit run)",
+    "asyncio: mark an async test to be run by pytest-asyncio (registered here so --strict-markers passes even before the plugin loads)",
 ]
