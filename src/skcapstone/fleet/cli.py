@@ -9,7 +9,8 @@ import json as jsonlib
 
 import click
 
-from . import admission, node_controller, store
+from . import admission, node_controller, service_controller, store
+from . import services as services_mod
 from . import sknoded as sknoded_mod
 from .explain import explain as explain_kind
 from .paths import default_paths, self_node_name
@@ -134,6 +135,70 @@ def sknoded_cmd(once: bool, interval: int, actuation_interval: int | None) -> No
         once=once,
         actuation_interval=actuation_interval,
     )
+
+
+@fleet.command("apply")
+@click.option("-f", "--file", "file_path", required=True,
+              type=click.Path(exists=True, dir_okay=False))
+def apply_cmd(file_path: str) -> None:
+    """Write one object spec from a JSON doc {kind, name, labels?, spec}."""
+    from pathlib import Path
+
+    try:
+        doc = jsonlib.loads(Path(file_path).read_text(encoding="utf-8"))
+    except ValueError as exc:
+        raise click.ClickException(f"not valid JSON: {exc}") from exc
+    kind, name = doc.get("kind"), doc.get("name")
+    if not kind or not name:
+        raise click.ClickException("doc must carry 'kind' and 'name'")
+    spec = doc.get("spec", {})
+    if kind == "service":
+        try:
+            services_mod.normalize_service_spec(spec)
+        except services_mod.ServiceSpecError as exc:
+            raise click.ClickException(f"invalid service spec: {exc}") from exc
+    try:
+        payload = store.write_spec(default_paths(), kind, name, spec,
+                                   writer=_operator(), labels=doc.get("labels"))
+    except store.OwnershipError as exc:
+        raise click.ClickException(str(exc)) from exc
+    click.echo(f"applied {kind}/{name} (generation {payload['generation']})")
+
+
+@fleet.command("services")
+def services_cmd() -> None:
+    """List all Services with placement, observed state, and readiness."""
+    rows = service_controller.service_rows(default_paths())
+    if not rows:
+        click.echo("no services")
+        return
+    for r in rows:
+        flags = "".join([" PAUSED" if r.paused else "", " STALE" if r.stale else ""])
+        click.echo(f"{r.name}\t-> {r.node or 'unplaced'}\t"
+                   f"state={r.state}\tready={r.ready}{flags}")
+
+
+@fleet.command("reconcile")
+def reconcile_cmd() -> None:
+    """One ServiceController pass (place-once + failover watch)."""
+    out = service_controller.reconcile_once(default_paths(), node=self_node_name())
+    click.echo(f"placed={len(out['placed'])} kept={len(out['kept'])} "
+               f"failovers={len(out['failovers'])} alerted={len(out['alerted'])} "
+               f"skipped={len(out['skipped'])}")
+
+
+@fleet.command("actuation")
+@click.argument("name")
+@click.option("--enable/--disable", "enabled", required=True,
+              help="Opt this node in or out of actuation (default is report-only).")
+def actuation_cmd(name: str, enabled: bool) -> None:
+    """Toggle sknoded actuation for one node (report-only by default)."""
+    try:
+        node_controller.set_actuation(default_paths(), name, enabled,
+                                      writer=_operator())
+    except LookupError as exc:
+        raise click.ClickException(str(exc)) from exc
+    click.echo(f"{name} actuation {'ENABLED' if enabled else 'disabled (report-only)'}")
 
 
 @fleet.command("admit")

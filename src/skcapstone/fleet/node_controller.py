@@ -92,3 +92,20 @@ def cordon(paths: FleetPaths, name: str, cordoned: bool, *, writer: store.Writer
     return store.write_spec(
         paths, "node", name, new_spec, writer=writer, labels=current.get("labels", {})
     )
+
+
+def set_actuation(
+    paths: FleetPaths, name: str, enabled: bool, *, writer: store.Writer
+) -> dict:
+    """Toggle the per-node actuation opt-in (operator action, spec R4).
+
+    Every node is born report-only; this is the single explicit lever that
+    lets sknoded on that node actuate. Preserves all other spec fields.
+    """
+    current = store.read_spec(paths, "node", name)
+    if current is None:
+        raise LookupError(f"no such node object: {name!r}")
+    new_spec = dict(current.get("spec", {}), actuate=enabled)
+    return store.write_spec(
+        paths, "node", name, new_spec, writer=writer, labels=current.get("labels", {})
+    )
