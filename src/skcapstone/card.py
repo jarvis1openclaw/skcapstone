@@ -539,7 +539,7 @@ def _clean(text: str) -> str:
     Card titles come from live coord/ITIL data that may contain typographic
     dashes; the generated board keeps the house rule of plain hyphens only.
     """
-    return html.escape(text).replace("-", "-").replace("-", "-")
+    return html.escape(text).replace(chr(0x2014), "-").replace(chr(0x2013), "-")
 
 
 def _render_card(c: Card) -> str:
