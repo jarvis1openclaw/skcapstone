@@ -266,3 +266,69 @@ def set_frozen(paths: FleetPaths, frozen: bool, *, writer: Writer, reason: str =
 def actuation_allowed(paths: FleetPaths) -> bool:
     """The one guard every actuating component checks before acting."""
     return not is_frozen(paths)
+
+
+def write_placement(
+    paths: FleetPaths,
+    kind: str,
+    name: str,
+    *,
+    node: str,
+    reason: str,
+    writer: Writer,
+) -> tuple[dict, bool]:
+    """Write the scheduler's decision for one object (write-on-change).
+
+    Only the scheduler role may write placements (spec 3.2 ownership table);
+    it never writes status and never touches spec. placementGeneration bumps
+    only when the decision content (node or reason) changed, so an idempotent
+    re-run produces zero churn (R2).
+
+    Returns:
+        (payload as on disk, True when a write happened).
+    Raises:
+        OwnershipError: wrong role, or unsafe kind/name.
+    """
+    if writer.role != "scheduler":
+        raise OwnershipError(f"role {writer.role!r} may not write placements")
+    if not (valid_name(kind) and valid_name(name)):
+        raise OwnershipError(f"invalid kind/name: {kind!r}/{name!r}")
+    path = paths.placement_path(kind, name)
+    existing = _load(path)
+    if (existing is not None and existing.get("node") == node
+            and existing.get("reason") == reason):
+        return existing, False
+    payload = {
+        "kind": kind.capitalize(),
+        "name": name,
+        "node": node,
+        "reason": reason,
+        "placementGeneration": int((existing or {}).get("placementGeneration", 0)) + 1,
+        "writer": _writer_block(writer),
+        "updatedAt": _now_iso(),
+    }
+    _dump(path, payload)
+    return payload, True
+
+
+def read_placement(paths: FleetPaths, kind: str, name: str) -> dict | None:
+    """Read one placement record, or None when absent."""
+    return _load(paths.placement_path(kind, name))
+
+
+def list_placements(paths: FleetPaths, kind: str | None = None) -> list[dict]:
+    """All placement records, sorted by (kind, name). Zero objects cost nothing."""
+    if not paths.placements.exists():
+        return []
+    kinds = ([kind] if kind is not None
+             else sorted(p.name for p in paths.placements.iterdir() if p.is_dir()))
+    out: list[dict] = []
+    for k in kinds:
+        kind_dir = paths.placements / k
+        if not kind_dir.exists():
+            continue
+        for p in sorted(kind_dir.glob("*.json")):
+            payload = _load(p)
+            if payload is not None:
+                out.append(payload)
+    return out

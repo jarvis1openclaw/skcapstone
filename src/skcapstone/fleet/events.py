@@ -44,7 +44,7 @@ def emit(
     rotation, serialized by a local flock so same-node processes share
     one file while the single-writer-per-node invariant holds for sync.
     """
-    if writer.role not in {"sknoded", "controller"}:
+    if writer.role not in {"sknoded", "controller", "scheduler"}:
         raise OwnershipError(f"role {writer.role!r} may not emit events")
     ts = time.time() if now is None else now
     key = (writer.node, kind, name, type, reason)

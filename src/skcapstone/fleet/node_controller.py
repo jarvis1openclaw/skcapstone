@@ -26,6 +26,7 @@ class NodeView:
     labels: dict = field(default_factory=dict)
     taints: list = field(default_factory=list)
     capacity: dict = field(default_factory=dict)
+    allocatable: dict = field(default_factory=dict)
     heartbeat_age_s: float | None = None
     conditions: list = field(default_factory=list)
 
@@ -71,6 +72,8 @@ def node_views(paths: FleetPaths, *, now: datetime | None = None) -> list[NodeVi
                 labels=(spec or {}).get("labels", {}),
                 taints=(spec or {}).get("spec", {}).get("taints", []),
                 capacity=report.get("status", {}).get("capacity", {}),
+                allocatable=(report.get("status", {}).get("allocatable")
+                             or report.get("status", {}).get("capacity", {})),
                 heartbeat_age_s=age,
                 conditions=report.get("conditions", []),
             )
