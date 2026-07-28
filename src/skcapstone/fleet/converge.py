@@ -121,17 +121,32 @@ def _heal(
     """One bounded heal attempt (start or restart) with logs-on-failure."""
     if state.state == "failed":
         logs = actuation.systemd_logs(spec["unit"], runner=runner)
-        events.emit(paths, writer, kind="service", name=name, type="Actuation",
-                    reason="FailureLogs", message=logs[-800:], now=now)
+        events.emit(
+            paths,
+            writer,
+            kind="service",
+            name=name,
+            type="Actuation",
+            reason="FailureLogs",
+            message=logs[-800:],
+            now=now,
+        )
         ok = actuation.systemd_restart(spec["unit"], runner=runner)
         reason = "Restarted" if ok else "RestartFailed"
     else:
         ok = actuation.systemd_start(spec["unit"], runner=runner)
         reason = "Started" if ok else "StartFailed"
     backoff.record_attempt(track, now)
-    events.emit(paths, writer, kind="service", name=name, type="Actuation",
-                reason=reason, message=f"unit={spec['unit']} attempt={track['attempts']}",
-                now=now)
+    events.emit(
+        paths,
+        writer,
+        kind="service",
+        name=name,
+        type="Actuation",
+        reason=reason,
+        message=f"unit={spec['unit']} attempt={track['attempts']}",
+        now=now,
+    )
 
 
 def converge_service(
@@ -149,15 +164,30 @@ def converge_service(
     """Converge one locally placed service. Returns a summary dict."""
     now_iso = _now_iso(now)
     if spec_payload is None:
-        events.emit(paths, writer, kind="service", name=name, type="Degrade",
-                    reason="SpecUnreadable",
-                    message="spec missing or unreadable; unit left untouched", now=now)
+        events.emit(
+            paths,
+            writer,
+            kind="service",
+            name=name,
+            type="Degrade",
+            reason="SpecUnreadable",
+            message="spec missing or unreadable; unit left untouched",
+            now=now,
+        )
         return {"skipped": "spec unreadable"}
     try:
         spec = normalize_service_spec(spec_payload.get("spec", {}))
     except ServiceSpecError as exc:
-        events.emit(paths, writer, kind="service", name=name, type="Degrade",
-                    reason="SpecInvalid", message=str(exc), now=now)
+        events.emit(
+            paths,
+            writer,
+            kind="service",
+            name=name,
+            type="Degrade",
+            reason="SpecInvalid",
+            message=str(exc),
+            now=now,
+        )
         return {"skipped": f"spec invalid: {exc}"}
     if spec["deleted"]:
         return {"skipped": "tombstoned (deleted: true); unit left untouched"}
@@ -181,13 +211,21 @@ def converge_service(
     )
     if may_heal:
         if backoff.is_crash_looping(track):
-            if events.emit(paths, writer, kind="service", name=name, type="Actuation",
-                           reason="CrashLooping",
-                           message=f"unit={spec['unit']} attempts={track['attempts']}; "
-                                   "healing stopped", now=now):
+            if events.emit(
+                paths,
+                writer,
+                kind="service",
+                name=name,
+                type="Actuation",
+                reason="CrashLooping",
+                message=f"unit={spec['unit']} attempts={track['attempts']}; " "healing stopped",
+                now=now,
+            ):
                 alerts.send_alert(
                     f"fleet: service {name} CrashLooping on {node} "
-                    f"({track['attempts']} attempts); healing stopped", level="error")
+                    f"({track['attempts']} attempts); healing stopped",
+                    level="error",
+                )
             acted = "crash-looping"
         elif backoff.allowed(track, now):
             _heal(paths, writer, name, spec, state, track, runner, now)
@@ -198,30 +236,44 @@ def converge_service(
     if healthy:
         ready = _cond("Ready", True, "UnitActive", f"unit {spec['unit']} active", now_iso)
     elif state.state == "active" and not probe_ok:
-        ready = _cond("Ready", False, "ProbeFailed",
-                      f"port {spec['healthCheck']['port']} closed", now_iso)
+        ready = _cond(
+            "Ready", False, "ProbeFailed", f"port {spec['healthCheck']['port']} closed", now_iso
+        )
     elif state.state == "unknown":
-        ready = {**_cond("Ready", False, "StateUnknown", "unit state unknown", now_iso),
-                 "status": "Unknown"}
+        ready = {
+            **_cond("Ready", False, "StateUnknown", "unit state unknown", now_iso),
+            "status": "Unknown",
+        }
     else:
         ready = _cond("Ready", False, "UnitDown", f"unit state {state.state}", now_iso)
     if mode != "actuate":
-        prog = _cond("Progressing", False,
-                     "Frozen" if mode == "frozen" else "ReportOnly",
-                     "actuation halted" if mode == "frozen" else "node not opted in",
-                     now_iso)
+        prog = _cond(
+            "Progressing",
+            False,
+            "Frozen" if mode == "frozen" else "ReportOnly",
+            "actuation halted" if mode == "frozen" else "node not opted in",
+            now_iso,
+        )
     elif spec["paused"]:
         prog = _cond("Progressing", False, "Paused", "spec.paused is true", now_iso)
     else:
-        prog = _cond("Progressing", acted in {"healed", "backoff-wait"},
-                     "Healing" if acted in {"healed", "backoff-wait"} else "Converged",
-                     f"last action: {acted}", now_iso)
+        prog = _cond(
+            "Progressing",
+            acted in {"healed", "backoff-wait"},
+            "Healing" if acted in {"healed", "backoff-wait"} else "Converged",
+            f"last action: {acted}",
+            now_iso,
+        )
     conds = [
         ready,
         prog,
-        _cond("CrashLooping", backoff.is_crash_looping(track), "BackoffExhausted"
-              if backoff.is_crash_looping(track) else "WithinBudget",
-              f"attempts={track['attempts']}", now_iso),
+        _cond(
+            "CrashLooping",
+            backoff.is_crash_looping(track),
+            "BackoffExhausted" if backoff.is_crash_looping(track) else "WithinBudget",
+            f"attempts={track['attempts']}",
+            now_iso,
+        ),
     ]
     generation = int(spec_payload.get("generation", 0))
     _write_service_status(paths, writer, name, state, spec, generation, conds, track)
@@ -254,6 +306,14 @@ def converge_once(
     results: dict[str, dict] = {}
     for entry in entries:
         results[entry["name"]] = converge_service(
-            paths, node, entry["name"], entry["spec_payload"],
-            writer=writer, runner=runner, prober=prober, mode=mode, now=now)
+            paths,
+            node,
+            entry["name"],
+            entry["spec_payload"],
+            writer=writer,
+            runner=runner,
+            prober=prober,
+            mode=mode,
+            now=now,
+        )
     return {"mode": mode, "services": results}

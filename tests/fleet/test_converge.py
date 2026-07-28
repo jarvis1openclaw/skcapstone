@@ -1,4 +1,5 @@
 """Tests for the sknoded converge loop: gates, healing, degrade-safe."""
+
 from __future__ import annotations
 
 from subprocess import CompletedProcess
@@ -8,12 +9,12 @@ import pytest
 from skcapstone.fleet import backoff, converge, events, store
 
 NODE = "node-41"
-SHOW = ("systemctl --user show skgateway.service "
-        "--property=LoadState,ActiveState,MainPID,ActiveEnterTimestamp")
-ACTIVE = (0, "LoadState=loaded\nActiveState=active\nMainPID=42\n"
-             "ActiveEnterTimestamp=t0\n")
-FAILED = (0, "LoadState=loaded\nActiveState=failed\nMainPID=0\n"
-             "ActiveEnterTimestamp=\n")
+SHOW = (
+    "systemctl --user show skgateway.service "
+    "--property=LoadState,ActiveState,MainPID,ActiveEnterTimestamp"
+)
+ACTIVE = (0, "LoadState=loaded\nActiveState=active\nMainPID=42\n" "ActiveEnterTimestamp=t0\n")
+FAILED = (0, "LoadState=loaded\nActiveState=failed\nMainPID=0\n" "ActiveEnterTimestamp=\n")
 
 
 class FakeRunner:
@@ -27,8 +28,11 @@ class FakeRunner:
         return CompletedProcess(cmd, code, stdout=out, stderr="")
 
     def verbs(self) -> list[str]:
-        return [" ".join(c) for c in self.calls
-                if c[:2] == ["systemctl", "--user"] and c[2] in ("start", "restart")]
+        return [
+            " ".join(c)
+            for c in self.calls
+            if c[:2] == ["systemctl", "--user"] and c[2] in ("start", "restart")
+        ]
 
 
 @pytest.fixture(autouse=True)
@@ -45,10 +49,12 @@ def _fleet(paths, operator, scheduler_writer, *, actuate=True, spec=None) -> Non
     if actuate:
         node_spec["actuate"] = True
     store.write_spec(paths, "node", NODE, node_spec, writer=operator)
-    store.write_spec(paths, "service", "skgateway",
-                     spec or {"unit": "skgateway.service"}, writer=operator)
-    store.write_placement(paths, "service", "skgateway", node=NODE,
-                          reason="pinned for test", writer=scheduler_writer)
+    store.write_spec(
+        paths, "service", "skgateway", spec or {"unit": "skgateway.service"}, writer=operator
+    )
+    store.write_placement(
+        paths, "service", "skgateway", node=NODE, reason="pinned for test", writer=scheduler_writer
+    )
 
 
 def test_healthy_service_writes_status_and_no_verbs(paths, operator, scheduler_writer) -> None:
@@ -56,7 +62,7 @@ def test_healthy_service_writes_status_and_no_verbs(paths, operator, scheduler_w
     runner = FakeRunner({SHOW: ACTIVE})
     out = converge.converge_once(paths, NODE, runner=runner, now=1000.0)
     assert out["mode"] == "actuate"
-    assert runner.verbs() == []                       # in sync: no actuation
+    assert runner.verbs() == []  # in sync: no actuation
     st = store.read_status(paths, "service", "skgateway", NODE)
     assert st["status"]["state"] == "active" and st["status"]["pid"] == 42
     assert st["observedGeneration"] == 1
@@ -66,11 +72,13 @@ def test_healthy_service_writes_status_and_no_verbs(paths, operator, scheduler_w
 
 def test_failed_service_is_healed_with_logs_event(paths, operator, scheduler_writer) -> None:
     _fleet(paths, operator, scheduler_writer)
-    runner = FakeRunner({
-        SHOW: FAILED,
-        "systemctl --user restart skgateway.service": (0, ""),
-        "journalctl --user -u skgateway.service -n 30 --no-pager": (0, "segv\n"),
-    })
+    runner = FakeRunner(
+        {
+            SHOW: FAILED,
+            "systemctl --user restart skgateway.service": (0, ""),
+            "journalctl --user -u skgateway.service -n 30 --no-pager": (0, "segv\n"),
+        }
+    )
     converge.converge_once(paths, NODE, runner=runner, now=1000.0)
     assert runner.verbs() == ["systemctl --user restart skgateway.service"]
     logged = events.read(paths, NODE, kind="service", name="skgateway")
@@ -81,11 +89,15 @@ def test_failed_service_is_healed_with_logs_event(paths, operator, scheduler_wri
 
 def test_missing_unit_is_started(paths, operator, scheduler_writer) -> None:
     _fleet(paths, operator, scheduler_writer)
-    runner = FakeRunner({
-        SHOW: (0, "LoadState=loaded\nActiveState=inactive\nMainPID=0\n"
-                  "ActiveEnterTimestamp=\n"),
-        "systemctl --user start skgateway.service": (0, ""),
-    })
+    runner = FakeRunner(
+        {
+            SHOW: (
+                0,
+                "LoadState=loaded\nActiveState=inactive\nMainPID=0\n" "ActiveEnterTimestamp=\n",
+            ),
+            "systemctl --user start skgateway.service": (0, ""),
+        }
+    )
     converge.converge_once(paths, NODE, runner=runner, now=1000.0)
     assert runner.verbs() == ["systemctl --user start skgateway.service"]
 
@@ -96,9 +108,9 @@ def test_freeze_halts_all_actuation_but_not_reporting(paths, operator, scheduler
     runner = FakeRunner({SHOW: FAILED})
     out = converge.converge_once(paths, NODE, runner=runner, now=1000.0)
     assert out["mode"] == "frozen"
-    assert runner.verbs() == []                       # kill-switch: zero verbs
+    assert runner.verbs() == []  # kill-switch: zero verbs
     st = store.read_status(paths, "service", "skgateway", NODE)
-    assert st["status"]["state"] == "failed"          # self-report continues
+    assert st["status"]["state"] == "failed"  # self-report continues
 
 
 def test_report_only_without_opt_in(paths, operator, scheduler_writer) -> None:
@@ -111,8 +123,7 @@ def test_report_only_without_opt_in(paths, operator, scheduler_writer) -> None:
 
 
 def test_paused_spec_stops_healing(paths, operator, scheduler_writer) -> None:
-    _fleet(paths, operator, scheduler_writer,
-           spec={"unit": "skgateway.service", "paused": True})
+    _fleet(paths, operator, scheduler_writer, spec={"unit": "skgateway.service", "paused": True})
     runner = FakeRunner({SHOW: FAILED})
     converge.converge_once(paths, NODE, runner=runner, now=1000.0)
     assert runner.verbs() == []
@@ -126,8 +137,8 @@ def test_unreadable_spec_never_touches_the_unit(paths, operator, scheduler_write
     paths.spec_path("service", "skgateway").write_text("not json")
     runner = FakeRunner({SHOW: FAILED})
     out = converge.converge_once(paths, NODE, runner=runner, now=1000.0)
-    assert runner.verbs() == []                       # degrade-safe: no verbs
-    assert runner.calls == []                         # not even a state probe
+    assert runner.verbs() == []  # degrade-safe: no verbs
+    assert runner.calls == []  # not even a state probe
     assert out["services"]["skgateway"]["skipped"] == "spec unreadable"
     logged = events.read(paths, NODE, kind="service", name="skgateway")
     assert [e["reason"] for e in logged] == ["SpecUnreadable"]
@@ -145,46 +156,54 @@ def test_unreachable_tree_is_degraded_noop(paths, monkeypatch) -> None:
 def test_crash_loop_backoff_and_condition(paths, operator, scheduler_writer, monkeypatch) -> None:
     _fleet(paths, operator, scheduler_writer)
     alerted: list[str] = []
-    monkeypatch.setattr(converge.alerts, "send_alert",
-                        lambda msg, **kw: alerted.append(msg) or True)
-    runner = FakeRunner({
-        SHOW: FAILED,
-        "systemctl --user restart skgateway.service": (0, ""),
-        "journalctl --user -u skgateway.service -n 30 --no-pager": (0, ""),
-    })
+    monkeypatch.setattr(
+        converge.alerts, "send_alert", lambda msg, **kw: alerted.append(msg) or True
+    )
+    runner = FakeRunner(
+        {
+            SHOW: FAILED,
+            "systemctl --user restart skgateway.service": (0, ""),
+            "journalctl --user -u skgateway.service -n 30 --no-pager": (0, ""),
+        }
+    )
     now = 1000.0
     for i in range(backoff.CRASH_LOOP_AFTER):
         converge.converge_once(paths, NODE, runner=runner, now=now)
         now += backoff.next_delay(i + 1)
     heals = len(runner.verbs())
-    assert heals == backoff.CRASH_LOOP_AFTER          # bounded attempt budget
+    assert heals == backoff.CRASH_LOOP_AFTER  # bounded attempt budget
     converge.converge_once(paths, NODE, runner=runner, now=now + 1.0)
-    assert len(runner.verbs()) == heals               # looping: healing stopped
+    assert len(runner.verbs()) == heals  # looping: healing stopped
     st = store.read_status(paths, "service", "skgateway", NODE)
     conds = {c["type"]: c["status"] for c in st["conditions"]}
     assert conds["CrashLooping"] == "True"
     assert any("CrashLooping" in m for m in alerted)  # alerted exactly via event
-    assert len(alerted) == 1                          # dedupe window caps alerts
+    assert len(alerted) == 1  # dedupe window caps alerts
 
 
 def test_backoff_window_skips_early_retry(paths, operator, scheduler_writer) -> None:
     _fleet(paths, operator, scheduler_writer)
-    runner = FakeRunner({
-        SHOW: FAILED,
-        "systemctl --user restart skgateway.service": (0, ""),
-        "journalctl --user -u skgateway.service -n 30 --no-pager": (0, ""),
-    })
+    runner = FakeRunner(
+        {
+            SHOW: FAILED,
+            "systemctl --user restart skgateway.service": (0, ""),
+            "journalctl --user -u skgateway.service -n 30 --no-pager": (0, ""),
+        }
+    )
     converge.converge_once(paths, NODE, runner=runner, now=1000.0)
-    converge.converge_once(paths, NODE, runner=runner, now=1005.0)   # inside 10s
-    assert len(runner.verbs()) == 1                   # second pass waited
+    converge.converge_once(paths, NODE, runner=runner, now=1005.0)  # inside 10s
+    assert len(runner.verbs()) == 1  # second pass waited
 
 
 def test_health_probe_gates_ready(paths, operator, scheduler_writer) -> None:
-    _fleet(paths, operator, scheduler_writer,
-           spec={"unit": "skgateway.service", "healthCheck": {"port": 18780}})
+    _fleet(
+        paths,
+        operator,
+        scheduler_writer,
+        spec={"unit": "skgateway.service", "healthCheck": {"port": 18780}},
+    )
     runner = FakeRunner({SHOW: ACTIVE})
-    converge.converge_once(paths, NODE, runner=runner, now=1000.0,
-                           prober=lambda check: False)
+    converge.converge_once(paths, NODE, runner=runner, now=1000.0, prober=lambda check: False)
     st = store.read_status(paths, "service", "skgateway", NODE)
     ready = {c["type"]: c for c in st["conditions"]}["Ready"]
     assert ready["status"] == "False" and ready["reason"] == "ProbeFailed"
@@ -192,10 +211,10 @@ def test_health_probe_gates_ready(paths, operator, scheduler_writer) -> None:
 
 def test_placement_elsewhere_is_ignored(paths, operator, scheduler_writer) -> None:
     store.write_spec(paths, "node", NODE, {"actuate": True}, writer=operator)
-    store.write_spec(paths, "service", "skgateway", {"unit": "u.service"},
-                     writer=operator)
-    store.write_placement(paths, "service", "skgateway", node="node-158",
-                          reason="r", writer=scheduler_writer)
+    store.write_spec(paths, "service", "skgateway", {"unit": "u.service"}, writer=operator)
+    store.write_placement(
+        paths, "service", "skgateway", node="node-158", reason="r", writer=scheduler_writer
+    )
     runner = FakeRunner({})
     out = converge.converge_once(paths, NODE, runner=runner, now=1000.0)
     assert out["services"] == {} and runner.calls == []
@@ -206,8 +225,9 @@ def test_main_loop_once_reports_and_converges(paths, monkeypatch) -> None:
 
     ran: list[str] = []
     monkeypatch.setattr(sknoded, "run_once", lambda p, n: ran.append("report"))
-    monkeypatch.setattr("skcapstone.fleet.converge.converge_once",
-                        lambda p, n: ran.append("converge") or {"mode": "report-only",
-                                                                "services": {}})
+    monkeypatch.setattr(
+        "skcapstone.fleet.converge.converge_once",
+        lambda p, n: ran.append("converge") or {"mode": "report-only", "services": {}},
+    )
     sknoded.main_loop(paths, NODE, once=True)
     assert ran == ["report", "converge"]

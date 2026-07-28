@@ -118,12 +118,20 @@ def unfreeze_cmd() -> None:
 @fleet.command("sknoded")
 @click.option("--once", is_flag=True, help="One self-report + converge pass, then exit.")
 @click.option("--interval", default=sknoded_mod.HEARTBEAT_INTERVAL_S, show_default=True)
-@click.option("--actuation-interval", "actuation_interval", default=None, type=int,
-              help="Seconds between converge passes (default 30).")
+@click.option(
+    "--actuation-interval",
+    "actuation_interval",
+    default=None,
+    type=int,
+    help="Seconds between converge passes (default 30).",
+)
 def sknoded_cmd(once: bool, interval: int, actuation_interval: int | None) -> None:
     """Run the node agent loop (self-report + Phase 3 converge)."""
     sknoded_mod.main_loop(
-        default_paths(), self_node_name(), interval=interval, once=once,
+        default_paths(),
+        self_node_name(),
+        interval=interval,
+        once=once,
         actuation_interval=actuation_interval,
     )
 
