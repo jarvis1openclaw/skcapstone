@@ -4,8 +4,6 @@ from __future__ import annotations
 
 import hashlib
 
-import pytest
-
 from skcapstone.fleet import signing, store
 
 
