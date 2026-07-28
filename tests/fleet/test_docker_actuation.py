@@ -1,9 +1,8 @@
 """Tests for docker verbs + runtime dispatch (all runners faked)."""
+
 from __future__ import annotations
 
 from subprocess import CompletedProcess
-
-import pytest
 
 from skcapstone.fleet import actuation, backoff, converge, events, store
 from skcapstone.fleet.services import normalize_service_spec
@@ -20,10 +19,7 @@ class FakeRunner:
         return CompletedProcess(cmd, code, stdout=out, stderr=err)
 
 
-INSPECT = (
-    "docker inspect -f "
-    "{{.State.Status}}|{{.State.Pid}}|{{.State.StartedAt}} coturn"
-)
+INSPECT = "docker inspect -f " "{{.State.Status}}|{{.State.Pid}}|{{.State.StartedAt}} coturn"
 
 
 def test_docker_state_running_exited_missing() -> None:
@@ -60,9 +56,7 @@ def test_compose_up() -> None:
             "docker compose -f /opt/coturn/compose.yml up -d coturn": (0, "", ""),
         }
     )
-    assert (
-        actuation.compose_up("/opt/coturn/compose.yml", "coturn", runner=runner) is True
-    )
+    assert actuation.compose_up("/opt/coturn/compose.yml", "coturn", runner=runner) is True
 
 
 def test_dispatch_by_runtime() -> None:
@@ -105,8 +99,7 @@ def test_docker_service_converges_like_systemd(paths, operator, scheduler_writer
     runner = FakeRunner(
         {
             (
-                "docker inspect -f {{.State.Status}}|{{.State.Pid}}|"
-                "{{.State.StartedAt}} coturn"
+                "docker inspect -f {{.State.Status}}|{{.State.Pid}}|" "{{.State.StartedAt}} coturn"
             ): (0, "exited|0|t\n", ""),
             "docker logs --tail 30 coturn": (0, "bye\n", ""),
             "docker restart coturn": (0, "", ""),

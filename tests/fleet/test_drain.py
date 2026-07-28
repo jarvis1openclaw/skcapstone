@@ -1,7 +1,7 @@
 """Tests for skfleet drain: cordon + resident listing + alert, no moves."""
+
 from __future__ import annotations
 
-import pytest
 from click.testing import CliRunner
 
 from skcapstone.fleet import alerts, service_controller, store
