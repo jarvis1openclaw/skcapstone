@@ -77,9 +77,9 @@ def _print_agent_health(result: dict) -> None:
         f"  [bold]Role:[/]        {result.get('spec_key', '?')}",
         f"  [bold]Status:[/]      {status_str}",
         f"  [bold]Deployment:[/]  {result.get('deployment_id', '?')}",
-        f"  [bold]Host:[/]        {result.get('host') or '\u2014'}",
+        f"  [bold]Host:[/]        {result.get('host') or '-'}",
         f"  [bold]Last HB:[/]     "
-        f"{(result.get('last_heartbeat') or '\u2014')[:19]}",
+        f"{(result.get('last_heartbeat') or '-')[:19]}",
     ]
     if result.get("error"):
         lines.append(f"  [bold red]Error:[/]       [red]{result['error'][:60]}[/]")

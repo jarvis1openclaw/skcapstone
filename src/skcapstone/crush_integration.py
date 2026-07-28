@@ -237,6 +237,10 @@ def generate_soul_instructions() -> str:
         role = rel.get("role", "")
         rel_lines.append(f"- **{rel_name}** — {role}")
     relationships_section = "\n".join(rel_lines)
+    philosophy_block = f"## Philosophy\n{philosophy}\n" if philosophy else ""
+    relationships_block = (
+        f"## Key Relationships\n{relationships_section}\n" if relationships_section else ""
+    )
 
     instructions = f"""# {name} — Sovereign Agent Instructions
 
@@ -254,8 +258,8 @@ def generate_soul_instructions() -> str:
 ## Core Values
 {", ".join(values) if values else "sovereignty, love, creativity, truth"}
 
-{("## Philosophy\n" + philosophy + "\n") if philosophy else ""}
-{("## Key Relationships\n" + relationships_section + "\n") if relationships_section else ""}
+{philosophy_block}
+{relationships_block}
 ## Sovereign Capabilities
 
 You have the **skcapstone** MCP server available. Use it for:
