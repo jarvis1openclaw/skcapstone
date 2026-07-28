@@ -11,13 +11,11 @@ import pytest
 from skcapstone.consciousness_loop import (
     ConsciousnessConfig,
     ConsciousnessLoop,
-    LLMBridge,
-    SystemPromptBuilder,
     InboxHandler,
-    _SimpleEnvelope,
+    LLMBridge,
     _classify_message,
+    _SimpleEnvelope,
 )
-
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -33,9 +31,9 @@ def _make_loop(tmp_path: Path, config: ConsciousnessConfig | None = None) -> Con
 
     if config is None:
         config = ConsciousnessConfig(
-            auto_memory=False,   # avoid skcapstone.memory_engine I/O
-            auto_ack=False,      # no SKComms needed
-            use_inotify=False,   # no filesystem watcher needed
+            auto_memory=False,  # avoid skcapstone.memory_engine I/O
+            auto_ack=False,  # no SKComms needed
+            use_inotify=False,  # no filesystem watcher needed
         )
 
     with patch.object(LLMBridge, "_probe_ollama", return_value=False):
@@ -46,18 +44,22 @@ def _make_loop(tmp_path: Path, config: ConsciousnessConfig | None = None) -> Con
 
 def _text_envelope(content: str, sender: str = "test-peer") -> _SimpleEnvelope:
     """Build a minimal text envelope."""
-    return _SimpleEnvelope({
-        "sender": sender,
-        "payload": {"content": content, "content_type": "text"},
-    })
+    return _SimpleEnvelope(
+        {
+            "sender": sender,
+            "payload": {"content": content, "content_type": "text"},
+        }
+    )
 
 
 def _ack_envelope() -> _SimpleEnvelope:
     """Build a minimal ACK envelope."""
-    return _SimpleEnvelope({
-        "sender": "test-peer",
-        "payload": {"content": "ACK", "content_type": "ack"},
-    })
+    return _SimpleEnvelope(
+        {
+            "sender": "test-peer",
+            "payload": {"content": "ACK", "content_type": "ack"},
+        }
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -108,7 +110,8 @@ class TestFullPipelineMockLLM:
             loop.process_envelope(_text_envelope("please debug this function"))
 
         records = [
-            r for r in caplog.records
+            r
+            for r in caplog.records
             if r.name == "skcapstone.consciousness"
             and r.getMessage().startswith("Classified message from")
         ]
@@ -151,10 +154,12 @@ class TestPipelineSkipsAckMessages:
     def test_other_skip_types_return_none(self, tmp_path, skip_type):
         """process_envelope() returns None for all non-text content types."""
         loop = _make_loop(tmp_path)
-        envelope = _SimpleEnvelope({
-            "sender": "peer",
-            "payload": {"content": "data", "content_type": skip_type},
-        })
+        envelope = _SimpleEnvelope(
+            {
+                "sender": "peer",
+                "payload": {"content": "data", "content_type": skip_type},
+            }
+        )
         assert loop.process_envelope(envelope) is None
 
 
@@ -280,25 +285,28 @@ class TestInotifyHandlerDebounce:
 class TestClassifyMessageTags:
     """test_classify_message_tags — keyword-to-tag mapping."""
 
-    @pytest.mark.parametrize("msg,expected_tag", [
-        ("please debug this function", "code"),
-        ("can you fix this error?", "code"),
-        ("implement the class now", "code"),
-        ("can you analyze the architecture", "analyze"),
-        ("explain why this fails", "analyze"),
-        ("write a story about a penguin", "creative"),
-        ("compose a marketing email", "creative"),
-        ("hi", "simple"),
-        ("hello there", "simple"),
-        ("ok", "simple"),
-        ("the clouds look nice today", "general"),
-    ])
+    @pytest.mark.parametrize(
+        "msg,expected_tag",
+        [
+            ("please debug this function", "code"),
+            ("can you fix this error?", "code"),
+            ("implement the class now", "code"),
+            ("can you analyze the architecture", "analyze"),
+            ("explain why this fails", "analyze"),
+            ("write a story about a penguin", "creative"),
+            ("compose a marketing email", "creative"),
+            ("hi", "simple"),
+            ("hello there", "simple"),
+            ("ok", "simple"),
+            ("the clouds look nice today", "general"),
+        ],
+    )
     def test_tag_assigned(self, msg: str, expected_tag: str):
         """Correct tag is assigned based on keyword presence."""
         signal = _classify_message(msg)
-        assert expected_tag in signal.tags, (
-            f"Expected tag {expected_tag!r} for message {msg!r}, got {signal.tags}"
-        )
+        assert (
+            expected_tag in signal.tags
+        ), f"Expected tag {expected_tag!r} for message {msg!r}, got {signal.tags}"
 
     def test_general_tag_when_no_keywords(self):
         """Messages with no matching keywords get exactly ['general']."""

@@ -9,15 +9,12 @@ from __future__ import annotations
 from dataclasses import dataclass
 from pathlib import Path
 
-import pytest
-
 from skcapstone.post_resume import (
     SelfTestCheck,
     SelfTestConfig,
     SelfTestReport,
     run_post_resume_selftest,
 )
-
 
 # ---------------------------------------------------------------------------
 # Fakes: stand-ins for doctor.Check / DiagnosticReport
@@ -45,34 +42,40 @@ class FakeReport:
 
 def _healthy_diag(home: Path) -> FakeReport:
     """A diagnostics report where every relevant category passes."""
-    return FakeReport(checks=[
-        FakeCheck("identity:self", "identity", True, "resolves"),
-        FakeCheck("memory:index", "memory", True, "reachable"),
-        FakeCheck("transport:socket", "transport", True, "alive"),
-        FakeCheck("sync:conflicts", "sync", True, "clean"),
-        # A category outside critical/warn - must be ignored entirely:
-        FakeCheck("harness:env", "harness", False, "irrelevant post-resume"),
-    ])
+    return FakeReport(
+        checks=[
+            FakeCheck("identity:self", "identity", True, "resolves"),
+            FakeCheck("memory:index", "memory", True, "reachable"),
+            FakeCheck("transport:socket", "transport", True, "alive"),
+            FakeCheck("sync:conflicts", "sync", True, "clean"),
+            # A category outside critical/warn - must be ignored entirely:
+            FakeCheck("harness:env", "harness", False, "irrelevant post-resume"),
+        ]
+    )
 
 
 def _memory_broken_diag(home: Path) -> FakeReport:
     """Same as healthy but the (critical) memory check fails."""
-    return FakeReport(checks=[
-        FakeCheck("identity:self", "identity", True, "resolves"),
-        FakeCheck("memory:index", "memory", False, "skmem-pg connection refused"),
-        FakeCheck("transport:socket", "transport", True, "alive"),
-        FakeCheck("sync:conflicts", "sync", True, "clean"),
-    ])
+    return FakeReport(
+        checks=[
+            FakeCheck("identity:self", "identity", True, "resolves"),
+            FakeCheck("memory:index", "memory", False, "skmem-pg connection refused"),
+            FakeCheck("transport:socket", "transport", True, "alive"),
+            FakeCheck("sync:conflicts", "sync", True, "clean"),
+        ]
+    )
 
 
 def _sync_broken_diag(home: Path) -> FakeReport:
     """A non-critical (warn) category fails; nothing critical."""
-    return FakeReport(checks=[
-        FakeCheck("identity:self", "identity", True, "resolves"),
-        FakeCheck("memory:index", "memory", True, "reachable"),
-        FakeCheck("transport:socket", "transport", True, "alive"),
-        FakeCheck("sync:conflicts", "sync", False, "12 conflict files"),
-    ])
+    return FakeReport(
+        checks=[
+            FakeCheck("identity:self", "identity", True, "resolves"),
+            FakeCheck("memory:index", "memory", True, "reachable"),
+            FakeCheck("transport:socket", "transport", True, "alive"),
+            FakeCheck("sync:conflicts", "sync", False, "12 conflict files"),
+        ]
+    )
 
 
 # Convenience injected probes for the "all healthy" baseline.
@@ -257,9 +260,7 @@ class TestClockSkew:
         assert clock.status == "warn"
         assert report.passed is True  # warn is non-critical by default
 
-    def test_skew_above_fail_threshold_fails_when_clock_critical(
-        self, tmp_path: Path
-    ) -> None:
+    def test_skew_above_fail_threshold_fails_when_clock_critical(self, tmp_path: Path) -> None:
         cfg = SelfTestConfig(
             clock_skew_warn_seconds=60.0,
             clock_skew_fail_seconds=300.0,
@@ -298,9 +299,7 @@ class TestAlerting:
     def test_no_alert_when_disabled_even_on_failure(self, tmp_path: Path) -> None:
         spy = _SpyNotifier()
         cfg = SelfTestConfig(alert_enabled=False)
-        report = _all_healthy(
-            tmp_path, cfg=cfg, daemon_alive_fn=_daemon_down, notifier=spy
-        )
+        report = _all_healthy(tmp_path, cfg=cfg, daemon_alive_fn=_daemon_down, notifier=spy)
         assert report.passed is False
         assert spy.calls == []
         assert report.alerted is False
@@ -313,14 +312,10 @@ class TestAlerting:
         assert spy.calls == []
         assert report.alerted is False
 
-    def test_alert_fires_when_enabled_and_critical_failure(
-        self, tmp_path: Path
-    ) -> None:
+    def test_alert_fires_when_enabled_and_critical_failure(self, tmp_path: Path) -> None:
         spy = _SpyNotifier()
         cfg = SelfTestConfig(alert_enabled=True)
-        report = _all_healthy(
-            tmp_path, cfg=cfg, daemon_alive_fn=_daemon_down, notifier=spy
-        )
+        report = _all_healthy(tmp_path, cfg=cfg, daemon_alive_fn=_daemon_down, notifier=spy)
         assert report.passed is False
         assert len(spy.calls) == 1
         title, body, urgency = spy.calls[0]
@@ -331,9 +326,7 @@ class TestAlerting:
     def test_alert_not_fired_on_noncritical_warning(self, tmp_path: Path) -> None:
         spy = _SpyNotifier()
         cfg = SelfTestConfig(alert_enabled=True)
-        report = _all_healthy(
-            tmp_path, cfg=cfg, network_probe_fn=_net_down, notifier=spy
-        )
+        report = _all_healthy(tmp_path, cfg=cfg, network_probe_fn=_net_down, notifier=spy)
         assert report.passed is True  # only a warn
         assert spy.calls == []
 
@@ -406,10 +399,12 @@ class TestModels:
         assert SelfTestCheck("x", "fail").ok is False
 
     def test_report_status_precedence(self) -> None:
-        r = SelfTestReport(checks=[
-            SelfTestCheck("a", "pass"),
-            SelfTestCheck("b", "warn", critical=False),
-        ])
+        r = SelfTestReport(
+            checks=[
+                SelfTestCheck("a", "pass"),
+                SelfTestCheck("b", "warn", critical=False),
+            ]
+        )
         assert r.status == "warn"
         assert r.passed is True
 

@@ -217,9 +217,7 @@ class PromptAdapter:
         model_info = data.get("model_info", {})
 
         family = (
-            details.get("family")
-            or model_info.get("general.architecture")
-            or "generic"
+            details.get("family") or model_info.get("general.architecture") or "generic"
         ).lower()
 
         param_size: str = details.get("parameter_size", "")
@@ -264,9 +262,7 @@ class PromptAdapter:
         adaptations: list[str] = []
 
         # Format system prompt structure
-        formatted_system = self._format_system_for_model(
-            system_prompt, profile, tier
-        )
+        formatted_system = self._format_system_for_model(system_prompt, profile, tier)
 
         # Build messages array
         messages: list[dict[str, Any]] = []
@@ -274,7 +270,9 @@ class PromptAdapter:
 
         if profile.system_prompt_mode == "omit":
             # DeepSeek R1: no system prompt, merge into user message
-            combined = f"{formatted_system}\n\n{user_message}" if formatted_system else user_message
+            combined = (
+                f"{formatted_system}\n\n{user_message}" if formatted_system else user_message
+            )
             messages.append({"role": "user", "content": combined})
             adaptations.append("omitted_system_prompt")
         elif profile.system_prompt_mode == "separate_param":
@@ -335,21 +333,25 @@ class PromptAdapter:
             input_schema = tool.get("inputSchema", {})
 
             if fmt == "anthropic":
-                translated.append({
-                    "name": name,
-                    "description": description,
-                    "input_schema": input_schema,
-                })
-            else:
-                # "openai" and "mistral" use the same wrapper structure
-                translated.append({
-                    "type": "function",
-                    "function": {
+                translated.append(
+                    {
                         "name": name,
                         "description": description,
-                        "parameters": input_schema,
-                    },
-                })
+                        "input_schema": input_schema,
+                    }
+                )
+            else:
+                # "openai" and "mistral" use the same wrapper structure
+                translated.append(
+                    {
+                        "type": "function",
+                        "function": {
+                            "name": name,
+                            "description": description,
+                            "parameters": input_schema,
+                        },
+                    }
+                )
 
         return translated
 
@@ -491,11 +493,7 @@ class PromptAdapter:
 
         if fmt == "xml":
             # Wrap in XML tags for Claude
-            return (
-                "<instructions>\n"
-                f"{system_prompt}\n"
-                "</instructions>"
-            )
+            return "<instructions>\n" f"{system_prompt}\n" "</instructions>"
         elif fmt == "plain":
             # Strip markdown formatting
             cleaned = system_prompt

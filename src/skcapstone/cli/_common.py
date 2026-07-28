@@ -6,25 +6,21 @@ and common imports used across every command group.
 
 from __future__ import annotations
 
-import json
 import logging
 import os
-import sys
-from datetime import datetime, timezone
 from pathlib import Path
-from typing import Optional
 
-import click
-import yaml
 from rich.console import Console
-from rich.panel import Panel
-from rich.table import Table
-from rich.text import Text
 
 import skcapstone as _pkg
-from .. import AGENT_HOME, SHARED_ROOT, SKCAPSTONE_AGENT, __version__
-from ..models import AgentConfig, PillarStatus, SyncConfig
-from ..runtime import AgentRuntime, get_runtime
+
+from .. import (
+    AGENT_HOME,
+    SHARED_ROOT,
+    SKCAPSTONE_AGENT,  # noqa: F401  (re-exported for cli/context_cmd.py)
+)
+from ..models import PillarStatus
+from ..runtime import get_runtime  # noqa: F401  (re-exported for cli/chat.py)
 
 logger = logging.getLogger("skcapstone.cli")
 

@@ -83,7 +83,7 @@ def test_mcp_and_skos_sink_share_one_store_lock(tmp_path: Path):
     def hold_mcp_lock():
         with _store_lock():
             holding.set()
-            time.sleep(0.25)          # keep the lock while the sink tries to write
+            time.sleep(0.25)  # keep the lock while the sink tries to write
             order.append("mcp-release")
 
     t_mcp = threading.Thread(target=hold_mcp_lock)
@@ -91,8 +91,9 @@ def test_mcp_and_skos_sink_share_one_store_lock(tmp_path: Path):
     assert holding.wait(2), "MCP lock holder never started"
 
     def skos_write():
-        sink.capture(sink.GtdCapture(
-            text="cron: backup failed", source="cron", source_ref="cron:backup@1"))
+        sink.capture(
+            sink.GtdCapture(text="cron: backup failed", source="cron", source_ref="cron:backup@1")
+        )
         order.append("skos-done")
 
     t_sink = threading.Thread(target=skos_write)
@@ -131,8 +132,17 @@ def test_capture_dedupes_by_source_ref_through_mcp(tmp_path: Path):
     assert sum(1 for it in inbox if it.get("source_ref") == "gmail:thread-123") == 1
 
     # Whole-store dedupe: a ref already sitting in the archive also blocks.
-    _save_archive([{"id": "arch1", "text": "old", "source": "email",
-                    "source_ref": "gmail:thread-arch", "status": "done"}])
+    _save_archive(
+        [
+            {
+                "id": "arch1",
+                "text": "old",
+                "source": "email",
+                "source_ref": "gmail:thread-arch",
+                "status": "done",
+            }
+        ]
+    )
     d = cap(text="re-surfaced", source="email", source_ref="gmail:thread-arch")
     assert d["captured"] is False and d.get("duplicate") is True
 

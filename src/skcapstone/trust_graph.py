@@ -19,7 +19,6 @@ from __future__ import annotations
 
 import json
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Optional
 
@@ -125,13 +124,15 @@ def _add_self_node(home: Path, graph: TrustGraph) -> None:
             data = json.loads(identity_file.read_text(encoding="utf-8"))
             name = data.get("name", "self")
             graph.agent_name = name
-            graph.add_node(TrustNode(
-                id=name,
-                label=name,
-                node_type="agent",
-                fingerprint=data.get("fingerprint"),
-                metadata={"capauth_managed": data.get("capauth_managed", False)},
-            ))
+            graph.add_node(
+                TrustNode(
+                    id=name,
+                    label=name,
+                    node_type="agent",
+                    fingerprint=data.get("fingerprint"),
+                    metadata={"capauth_managed": data.get("capauth_managed", False)},
+                )
+            )
         except (json.JSONDecodeError, OSError):
             pass
 
@@ -160,24 +161,28 @@ def _add_operator_edge(manifest_data: dict[str, Any], graph: TrustGraph) -> None
         return
 
     node_id = str(operator.get("fingerprint", "")).strip() or f"operator:{name}"
-    graph.add_node(TrustNode(
-        id=node_id,
-        label=name,
-        node_type="peer",
-        fingerprint=str(operator.get("fingerprint", "")).strip() or None,
-        metadata={
-            "relationship": operator.get("relationship", "human-operator"),
-            "entity_type": operator.get("entity_type", "human"),
-            "source": operator.get("source", "manifest"),
-        },
-    ))
-    graph.add_edge(TrustEdge(
-        source=graph.agent_name,
-        target=node_id,
-        edge_type="operator",
-        label=operator.get("relationship", "human-operator"),
-        strength=1.0,
-    ))
+    graph.add_node(
+        TrustNode(
+            id=node_id,
+            label=name,
+            node_type="peer",
+            fingerprint=str(operator.get("fingerprint", "")).strip() or None,
+            metadata={
+                "relationship": operator.get("relationship", "human-operator"),
+                "entity_type": operator.get("entity_type", "human"),
+                "source": operator.get("source", "manifest"),
+            },
+        )
+    )
+    graph.add_edge(
+        TrustEdge(
+            source=graph.agent_name,
+            target=node_id,
+            edge_type="operator",
+            label=operator.get("relationship", "human-operator"),
+            strength=1.0,
+        )
+    )
 
 
 def _add_token_edges(home: Path, graph: TrustGraph) -> None:
@@ -199,20 +204,27 @@ def _add_token_edges(home: Path, graph: TrustGraph) -> None:
             if not subject:
                 continue
 
-            graph.add_node(TrustNode(
-                id=subject,
-                label=subject,
-                node_type="service" if ":" in subject else "peer",
-            ))
+            graph.add_node(
+                TrustNode(
+                    id=subject,
+                    label=subject,
+                    node_type="service" if ":" in subject else "peer",
+                )
+            )
 
-            graph.add_edge(TrustEdge(
-                source=issuer if issuer != subject else graph.agent_name,
-                target=subject,
-                edge_type="token",
-                label=", ".join(caps[:3]),
-                strength=0.6 if "*" not in caps else 0.9,
-                metadata={"capabilities": caps, "token_type": payload.get("token_type", "capability")},
-            ))
+            graph.add_edge(
+                TrustEdge(
+                    source=issuer if issuer != subject else graph.agent_name,
+                    target=subject,
+                    edge_type="token",
+                    label=", ".join(caps[:3]),
+                    strength=0.6 if "*" not in caps else 0.9,
+                    metadata={
+                        "capabilities": caps,
+                        "token_type": payload.get("token_type", "capability"),
+                    },
+                )
+            )
         except (json.JSONDecodeError, OSError):
             continue
 
@@ -229,23 +241,27 @@ def _add_feb_edges(home: Path, graph: TrustGraph) -> None:
         return
 
     if data.get("entangled"):
-        graph.add_node(TrustNode(
-            id="human-partner",
-            label="Human Partner",
-            node_type="agent",
-            metadata={"entangled": True},
-        ))
-        graph.add_edge(TrustEdge(
-            source=graph.agent_name,
-            target="human-partner",
-            edge_type="feb",
-            label=f"entangled (depth={data.get('depth', 0):.0f})",
-            strength=min(1.0, data.get("trust_level", 0)),
-            metadata={
-                "depth": data.get("depth", 0),
-                "love_intensity": data.get("love_intensity", 0),
-            },
-        ))
+        graph.add_node(
+            TrustNode(
+                id="human-partner",
+                label="Human Partner",
+                node_type="agent",
+                metadata={"entangled": True},
+            )
+        )
+        graph.add_edge(
+            TrustEdge(
+                source=graph.agent_name,
+                target="human-partner",
+                edge_type="feb",
+                label=f"entangled (depth={data.get('depth', 0):.0f})",
+                strength=min(1.0, data.get("trust_level", 0)),
+                metadata={
+                    "depth": data.get("depth", 0),
+                    "love_intensity": data.get("love_intensity", 0),
+                },
+            )
+        )
 
     febs_dir = home / "trust" / "febs"
     if febs_dir.exists():
@@ -256,18 +272,22 @@ def _add_feb_edges(home: Path, graph: TrustGraph) -> None:
                 emotion = feb_data.get("emotion", "unknown")
                 intensity = feb_data.get("intensity", 0)
 
-                graph.add_node(TrustNode(
-                    id=f"feb:{subject}",
-                    label=f"FEB: {subject}",
-                    node_type="agent",
-                ))
-                graph.add_edge(TrustEdge(
-                    source=graph.agent_name,
-                    target=f"feb:{subject}",
-                    edge_type="feb",
-                    label=f"{emotion} ({intensity})",
-                    strength=min(1.0, intensity / 10.0),
-                ))
+                graph.add_node(
+                    TrustNode(
+                        id=f"feb:{subject}",
+                        label=f"FEB: {subject}",
+                        node_type="agent",
+                    )
+                )
+                graph.add_edge(
+                    TrustEdge(
+                        source=graph.agent_name,
+                        target=f"feb:{subject}",
+                        edge_type="feb",
+                        label=f"{emotion} ({intensity})",
+                        strength=min(1.0, intensity / 10.0),
+                    )
+                )
             except (json.JSONDecodeError, OSError):
                 continue
 
@@ -290,19 +310,23 @@ def _add_sync_edges(home: Path, graph: TrustGraph) -> None:
                 host = data.get("source_host", "unknown")
                 if agent and agent not in seen_agents and agent != graph.agent_name:
                     seen_agents.add(agent)
-                    graph.add_node(TrustNode(
-                        id=agent,
-                        label=f"{agent}@{host}",
-                        node_type="peer",
-                        metadata={"host": host},
-                    ))
-                    graph.add_edge(TrustEdge(
-                        source=agent,
-                        target=graph.agent_name,
-                        edge_type="sync",
-                        label=f"sync via {host}",
-                        strength=0.5,
-                    ))
+                    graph.add_node(
+                        TrustNode(
+                            id=agent,
+                            label=f"{agent}@{host}",
+                            node_type="peer",
+                            metadata={"host": host},
+                        )
+                    )
+                    graph.add_edge(
+                        TrustEdge(
+                            source=agent,
+                            target=graph.agent_name,
+                            edge_type="sync",
+                            label=f"sync via {host}",
+                            strength=0.5,
+                        )
+                    )
             except (json.JSONDecodeError, OSError):
                 continue
 
@@ -321,19 +345,23 @@ def _add_coord_agents(home: Path, graph: TrustGraph) -> None:
                 continue
 
             completed = len(data.get("completed_tasks", []))
-            graph.add_node(TrustNode(
-                id=name,
-                label=name,
-                node_type="agent",
-                metadata={"state": data.get("state", "unknown"), "tasks_done": completed},
-            ))
-            graph.add_edge(TrustEdge(
-                source=graph.agent_name,
-                target=name,
-                edge_type="coord",
-                label=f"collaborator ({completed} tasks)",
-                strength=min(1.0, 0.3 + completed * 0.05),
-            ))
+            graph.add_node(
+                TrustNode(
+                    id=name,
+                    label=name,
+                    node_type="agent",
+                    metadata={"state": data.get("state", "unknown"), "tasks_done": completed},
+                )
+            )
+            graph.add_edge(
+                TrustEdge(
+                    source=graph.agent_name,
+                    target=name,
+                    edge_type="coord",
+                    label=f"collaborator ({completed} tasks)",
+                    strength=min(1.0, 0.3 + completed * 0.05),
+                )
+            )
         except (json.JSONDecodeError, OSError):
             continue
 
@@ -354,7 +382,7 @@ def format_dot(graph: TrustGraph) -> str:
     """
     lines = [
         "digraph trust_web {",
-        '  rankdir=LR;',
+        "  rankdir=LR;",
         '  node [shape=box, style=rounded, fontname="Helvetica"];',
         '  edge [fontname="Helvetica", fontsize=10];',
         "",
@@ -367,7 +395,7 @@ def format_dot(graph: TrustGraph) -> str:
     }
 
     for node in graph.nodes:
-        style = node_styles.get(node.node_type, 'style=rounded')
+        style = node_styles.get(node.node_type, "style=rounded")
         fp = f"\\n{node.fingerprint[:12]}..." if node.fingerprint else ""
         lines.append(f'  "{node.id}" [label="{node.label}{fp}", {style}];')
 
@@ -403,33 +431,37 @@ def format_json(graph: TrustGraph) -> str:
     Returns:
         JSON string with nodes and edges arrays.
     """
-    return json.dumps({
-        "agent": graph.agent_name,
-        "nodes": [
-            {
-                "id": n.id,
-                "label": n.label,
-                "type": n.node_type,
-                "fingerprint": n.fingerprint,
-            }
-            for n in graph.nodes
-        ],
-        "edges": [
-            {
-                "source": e.source,
-                "target": e.target,
-                "type": e.edge_type,
-                "label": e.label,
-                "strength": e.strength,
-            }
-            for e in graph.edges
-        ],
-        "stats": {
-            "nodes": len(graph.nodes),
-            "edges": len(graph.edges),
-            "by_type": _count_by_type(graph),
+    return json.dumps(
+        {
+            "agent": graph.agent_name,
+            "nodes": [
+                {
+                    "id": n.id,
+                    "label": n.label,
+                    "type": n.node_type,
+                    "fingerprint": n.fingerprint,
+                }
+                for n in graph.nodes
+            ],
+            "edges": [
+                {
+                    "source": e.source,
+                    "target": e.target,
+                    "type": e.edge_type,
+                    "label": e.label,
+                    "strength": e.strength,
+                }
+                for e in graph.edges
+            ],
+            "stats": {
+                "nodes": len(graph.nodes),
+                "edges": len(graph.edges),
+                "by_type": _count_by_type(graph),
+            },
         },
-    }, indent=2, default=str)
+        indent=2,
+        default=str,
+    )
 
 
 def format_table(graph: TrustGraph) -> str:

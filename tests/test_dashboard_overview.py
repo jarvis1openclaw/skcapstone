@@ -1,4 +1,5 @@
 """Tests for the Overview home aggregate (dashboard_overview + /api/overview)."""
+
 from __future__ import annotations
 
 import pytest
@@ -10,7 +11,8 @@ from skcapstone.coordination import AgentFile, Board, Task
 
 @pytest.fixture
 def home(tmp_path):
-    b = Board(tmp_path); b.ensure_dirs()
+    b = Board(tmp_path)
+    b.ensure_dirs()
     b.create_task(Task(id="a1", title="in progress task", created_by="opus"))
     b.save_agent(AgentFile(agent="lumina", current_task="a1", claimed_tasks=["a1"]))
     import_from_legacy(tmp_path)
@@ -28,7 +30,9 @@ def test_overview_home_shape(home):
 
 def test_overview_route(home):
     from starlette.testclient import TestClient
+
     from skcapstone.dashboard import create_app
+
     client = TestClient(create_app(home))
     d = client.get("/api/overview").json()
     assert "kanban" in d and "itil" in d

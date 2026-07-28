@@ -6,12 +6,11 @@ import sys
 from pathlib import Path
 
 import click
+from rich.table import Table
 
+from ..pillars.security import audit_event
 from ._common import AGENT_HOME, console
 from ._validators import validate_agent_name, validate_task_id
-from ..pillars.security import audit_event
-
-from rich.table import Table
 
 
 def register_token_commands(main: click.Group) -> None:
@@ -54,8 +53,12 @@ def register_token_commands(main: click.Group) -> None:
 
         console.print(f"\n  Issuing [cyan]{tt.value}[/] token for [bold]{subject}[/]...")
         signed = issue_token(
-            home=home_path, subject=subject, capabilities=capabilities,
-            token_type=tt, ttl_hours=ttl_hours, sign=not no_sign,
+            home=home_path,
+            subject=subject,
+            capabilities=capabilities,
+            token_type=tt,
+            ttl_hours=ttl_hours,
+            sign=not no_sign,
         )
 
         console.print(f"  [green]Token issued:[/] {signed.payload.token_id[:16]}...")
@@ -69,7 +72,9 @@ def register_token_commands(main: click.Group) -> None:
         else:
             console.print("  [yellow]Unsigned[/]")
 
-        audit_event(home_path, "TOKEN_ISSUE", f"Token {signed.payload.token_id[:16]} for {subject}")
+        audit_event(
+            home_path, "TOKEN_ISSUE", f"Token {signed.payload.token_id[:16]} for {subject}"
+        )
         console.print()
 
     @token.command("list")
@@ -109,8 +114,14 @@ def register_token_commands(main: click.Group) -> None:
                 st = "[dim]UNSIGNED[/]"
 
             exp_str = p.expires_at.strftime("%m/%d %H:%M") if p.expires_at else "never"
-            table.add_row(p.token_id[:16], p.token_type.value, p.subject,
-                          ", ".join(p.capabilities), st, exp_str)
+            table.add_row(
+                p.token_id[:16],
+                p.token_type.value,
+                p.subject,
+                ", ".join(p.capabilities),
+                st,
+                exp_str,
+            )
 
         console.print()
         console.print(table)

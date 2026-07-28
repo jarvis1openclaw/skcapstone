@@ -8,14 +8,13 @@ from pathlib import Path
 from typing import Optional
 
 import click
-
-from ._common import AGENT_HOME, console, status_icon, logger
-from ._validators import validate_file_path
-from ..pillars.security import audit_event
-from ..pillars.sync import discover_sync, push_seed, pull_seeds, save_sync_state
-from ..runtime import get_runtime
-
 from rich.panel import Panel
+
+from ..pillars.security import audit_event
+from ..pillars.sync import discover_sync, pull_seeds, push_seed, save_sync_state
+from ..runtime import get_runtime
+from ._common import AGENT_HOME, console, logger, status_icon
+from ._validators import validate_file_path
 
 
 def _register_peer_fingerprint(home_path: Path, fingerprint: str) -> None:
@@ -173,10 +172,12 @@ def register_sync_commands(main: click.Group) -> None:
             console.print("  [yellow]Could not start Syncthing automatically.[/]")
 
         if result["device_id"]:
-            console.print(f"\n  [bold]Your Device ID:[/bold]")
+            console.print("\n  [bold]Your Device ID:[/bold]")
             console.print(f"  [cyan]{result['device_id']}[/cyan]")
             console.print("\n  Share this ID with your other device to pair.")
-            console.print(f"  On the other device: [cyan]skcapstone sync pair {result['device_id']}[/cyan]")
+            console.print(
+                f"  On the other device: [cyan]skcapstone sync pair {result['device_id']}[/cyan]"
+            )
 
             if result["qr_code"]:
                 console.print("\n  [bold]QR Code:[/bold]")
@@ -184,7 +185,9 @@ def register_sync_commands(main: click.Group) -> None:
             else:
                 console.print("\n  [dim]Install 'qrcode' for QR output: pip install qrcode[/dim]")
         else:
-            console.print("  [yellow]Could not retrieve device ID. Syncthing may still be starting.[/]")
+            console.print(
+                "  [yellow]Could not retrieve device ID. Syncthing may still be starting.[/]"
+            )
 
         console.print()
 
@@ -196,12 +199,14 @@ def register_sync_commands(main: click.Group) -> None:
         from ..skills.syncthing_setup import add_remote_device, detect_syncthing
 
         if not detect_syncthing():
-            console.print("[red]Syncthing not installed.[/] Run [cyan]skcapstone sync setup[/cyan] first.")
+            console.print(
+                "[red]Syncthing not installed.[/] Run [cyan]skcapstone sync setup[/cyan] first."
+            )
             sys.exit(1)
 
         console.print(f"\n  Adding device [cyan]{name}[/cyan]...")
         if add_remote_device(device_id, name):
-            console.print(f"  [green]Device paired![/green]")
+            console.print("  [green]Device paired![/green]")
             console.print(f"  Device ID: [dim]{device_id[:20]}...[/dim]")
             console.print("  The skcapstone-sync folder is now shared with this device.")
         else:
@@ -223,14 +228,21 @@ def register_sync_commands(main: click.Group) -> None:
             sys.exit(1)
 
         from ..pillars.sync import _detect_gpg_key
+
         fingerprint = _detect_gpg_key(home_path)
         if not fingerprint:
-            console.print("[red]No GPG key found.[/] Run [cyan]skcapstone init[/cyan] to generate.")
+            console.print(
+                "[red]No GPG key found.[/] Run [cyan]skcapstone init[/cyan] to generate."
+            )
             sys.exit(1)
 
         try:
-            result = sp.run(["gpg", "--armor", "--export", fingerprint],
-                            capture_output=True, check=True, timeout=15)
+            result = sp.run(
+                ["gpg", "--armor", "--export", fingerprint],
+                capture_output=True,
+                check=True,
+                timeout=15,
+            )
             pubkey_data = result.stdout
         except sp.CalledProcessError as exc:
             console.print(f"[red]GPG export failed:[/] {exc}")
@@ -240,14 +252,18 @@ def register_sync_commands(main: click.Group) -> None:
             Path(output).write_bytes(pubkey_data)
             console.print(f"  [green]Public key exported to:[/] {output}")
             console.print(f"  [dim]Fingerprint: {fingerprint}[/]")
-            console.print(f"  Share this file with your peer. They import it with: "
-                          f"[cyan]skcapstone sync import-peer-key --file {output}[/cyan]")
+            console.print(
+                f"  Share this file with your peer. They import it with: "
+                f"[cyan]skcapstone sync import-peer-key --file {output}[/cyan]"
+            )
         else:
             console.print(pubkey_data.decode("utf-8", errors="replace"))
 
     @sync.command("import-peer-key")
     @click.option("--home", default=AGENT_HOME, type=click.Path(), help="Agent home directory.")
-    @click.option("--file", "-f", "keyfile", required=True, help="Path to peer's exported public key.")
+    @click.option(
+        "--file", "-f", "keyfile", required=True, help="Path to peer's exported public key."
+    )
     @click.option("--fingerprint", default=None, help="Expected fingerprint (for verification).")
     def sync_import_peer_key(home, keyfile, fingerprint):
         """Import a peer's GPG public key and register it for encrypted sync."""
@@ -268,8 +284,9 @@ def register_sync_commands(main: click.Group) -> None:
             sys.exit(1)
 
         try:
-            result = sp.run(["gpg", "--import", str(key_path)],
-                            capture_output=True, text=True, timeout=15)
+            result = sp.run(
+                ["gpg", "--import", str(key_path)], capture_output=True, text=True, timeout=15
+            )
             if result.returncode != 0:
                 console.print(f"[red]GPG import failed:[/] {result.stderr.strip()}")
                 sys.exit(1)
@@ -283,14 +300,18 @@ def register_sync_commands(main: click.Group) -> None:
                 parts = line.split(":")
                 for part in parts:
                     part = part.strip().replace(" ", "")
-                    if len(part) in (8, 16, 40) and all(c in "0123456789ABCDEFabcdef" for c in part):
+                    if len(part) in (8, 16, 40) and all(
+                        c in "0123456789ABCDEFabcdef" for c in part
+                    ):
                         imported_fp = part.upper()
                         break
                 if imported_fp:
                     break
 
         if fingerprint and imported_fp and fingerprint.upper() != imported_fp:
-            console.print(f"[yellow]Warning: expected fingerprint {fingerprint} but got {imported_fp}[/]")
+            console.print(
+                f"[yellow]Warning: expected fingerprint {fingerprint} but got {imported_fp}[/]"
+            )
 
         if imported_fp:
             _register_peer_fingerprint(home_path, imported_fp)

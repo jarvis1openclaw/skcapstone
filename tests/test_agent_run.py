@@ -1,4 +1,5 @@
 """Tests for the Phase 4 AI next-steps runner (agent_run)."""
+
 from __future__ import annotations
 
 import pytest
@@ -78,8 +79,11 @@ def test_process_one_live_dispatch(home, monkeypatch):
 
     def dispatcher(ctx):
         calls["ctx"] = ctx
-        return {"summary": "did the thing", "activity": [{"atype": "action", "text": "ran tests"}],
-                "links": {"pr": "#42"}}
+        return {
+            "summary": "did the thing",
+            "activity": [{"atype": "action", "text": "ran tests"}],
+            "links": {"pr": "#42"},
+        }
 
     out = ar.process_one(home, item, dispatcher=dispatcher)
     assert out["state"] == "needs-review"
@@ -92,6 +96,7 @@ def test_process_one_live_dispatch(home, monkeypatch):
 def test_run_ai_runner_job_smoke(home, monkeypatch):
     # zero-arg job entrypoint should process queued runs against SHARED_ROOT
     import skcapstone
+
     monkeypatch.setattr(skcapstone, "SHARED_ROOT", str(home), raising=False)
     ar.request_run(home, "t1", "do it", mode="propose")
     ar.run_ai_runner_job()  # no exception; records a plan
@@ -100,13 +105,17 @@ def test_run_ai_runner_job_smoke(home, monkeypatch):
 
 def test_queue_ai_endpoint_and_capability(home, monkeypatch):
     from starlette.testclient import TestClient
+
     from skcapstone.dashboard import create_app
+
     client = TestClient(create_app(home))
 
     # open (no token configured) -> queues
-    r = client.post("/api/card/t1/queue-ai",
-                    json={"instruction": "add tests", "agent": "opus", "mode": "propose"},
-                    headers={"X-SK-Actor": "chef"})
+    r = client.post(
+        "/api/card/t1/queue-ai",
+        json={"instruction": "add tests", "agent": "opus", "mode": "propose"},
+        headers={"X-SK-Actor": "chef"},
+    )
     assert r.status_code == 200 and r.json()["ok"]
     run = client.get("/api/card/t1").json()["card"]["meta"]["agent_run"]
     assert run["state"] == "queued" and run["agent"] == "opus"
@@ -116,8 +125,9 @@ def test_queue_ai_endpoint_and_capability(home, monkeypatch):
     monkeypatch.setenv("SKAI_QUEUE_TOKEN", "s3cret")
     bad = client.post("/api/card/t1/queue-ai", json={"instruction": "x"})
     assert bad.status_code == 403
-    good = client.post("/api/card/t1/queue-ai", json={"instruction": "x"},
-                       headers={"X-SK-Capability": "s3cret"})
+    good = client.post(
+        "/api/card/t1/queue-ai", json={"instruction": "x"}, headers={"X-SK-Capability": "s3cret"}
+    )
     assert good.status_code == 200 and good.json()["ok"]
 
 
@@ -125,19 +135,24 @@ def test_suggest_heuristic(home):
     d = ar.suggest_next_steps(home, "t1", use_llm=False)
     assert d["source"] == "heuristic"
     assert len(d["suggestions"]) >= 3
-    assert all("text" in s and s["mode"] in ("propose", "dry-run", "execute") for s in d["suggestions"])
+    assert all(
+        "text" in s and s["mode"] in ("propose", "dry-run", "execute") for s in d["suggestions"]
+    )
 
 
 def test_ensure_card_and_suggest_for_itil(tmp_path):
     from skcapstone.itil import ITILManager
+
     mgr = ITILManager(tmp_path)
     inc = mgr.create_incident(title="skmem-pg down", severity="sev2", created_by="lumina")
     # incident is not yet a CardStore card; suggest should materialize it
     d = ar.suggest_next_steps(tmp_path, inc.id, use_llm=False)
     assert d["suggestions"] and d["source"] == "heuristic"
     # incident heuristics mention investigation
-    assert any("investigate" in s["text"].lower() or "root cause" in s["text"].lower()
-               for s in d["suggestions"])
+    assert any(
+        "investigate" in s["text"].lower() or "root cause" in s["text"].lower()
+        for s in d["suggestions"]
+    )
     # and we can queue an AI run on the ITIL ticket
     r = ar.request_run(tmp_path, inc.id, "investigate root cause", mode="propose")
     assert r["ok"]
@@ -146,6 +161,7 @@ def test_ensure_card_and_suggest_for_itil(tmp_path):
 
 def test_change_suggestions_never_execute(tmp_path):
     from skcapstone.itil import ITILManager
+
     mgr = ITILManager(tmp_path)
     ch = mgr.propose_change(title="Gateway cutover", created_by="lumina")
     d = ar.suggest_next_steps(tmp_path, ch.id, use_llm=False)
@@ -154,7 +170,9 @@ def test_change_suggestions_never_execute(tmp_path):
 
 def test_suggestions_route(home):
     from starlette.testclient import TestClient
+
     from skcapstone.dashboard import create_app
+
     client = TestClient(create_app(home))
     d = client.get("/api/card/t1/ai-suggestions?llm=0").json()
     assert d["suggestions"] and d["source"] == "heuristic"

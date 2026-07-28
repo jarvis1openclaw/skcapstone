@@ -118,9 +118,7 @@ class PluginRegistry:
             spec.loader.exec_module(mod)  # type: ignore[union-attr]
 
             if not hasattr(mod, "register"):
-                logger.warning(
-                    "Plugin %s: no register() function — skipping", plugin_path.name
-                )
+                logger.warning("Plugin %s: no register() function — skipping", plugin_path.name)
                 sys.modules.pop(module_name, None)
                 return False
 
@@ -130,9 +128,7 @@ class PluginRegistry:
             return True
 
         except Exception as exc:
-            logger.error(
-                "Plugin %s failed to load: %s", plugin_path.name, exc, exc_info=True
-            )
+            logger.error("Plugin %s failed to load: %s", plugin_path.name, exc, exc_info=True)
             sys.modules.pop(module_name, None)
             return False
 

@@ -10,6 +10,7 @@ incidents affect a CI (via the incident's affected_services).
 
     ~/.skcapstone/cmdb/<ci_id>/{core.json, events/<agent>@<host>.jsonl}
 """
+
 from __future__ import annotations
 
 import fcntl
@@ -18,7 +19,6 @@ import logging
 import os
 import re
 import socket
-import uuid
 from datetime import datetime, timezone
 from enum import Enum
 from pathlib import Path
@@ -49,8 +49,8 @@ class CIStatus(str, Enum):
 
 
 class Relationship(BaseModel):
-    rel_type: str = "depends_on"   # depends_on | runs_on | hosts | connects_to
-    target: str                    # target CI id
+    rel_type: str = "depends_on"  # depends_on | runs_on | hosts | connects_to
+    target: str  # target CI id
 
 
 class ConfigItem(BaseModel):
@@ -60,7 +60,7 @@ class ConfigItem(BaseModel):
     status: str = CIStatus.OPERATIONAL.value
     description: str = ""
     owner: str = ""
-    node: str = ""                 # host it runs on (for services)
+    node: str = ""  # host it runs on (for services)
     attributes: dict = Field(default_factory=dict)
     relationships: list[Relationship] = Field(default_factory=list)
     tags: list[str] = Field(default_factory=list)
@@ -98,16 +98,30 @@ class CMDBManager:
 
     # ── writes ────────────────────────────────────────────────────────────
 
-    def create_ci(self, name: str, ci_type: str = "service", description: str = "",
-                  owner: str = "", node: str = "", attributes: Optional[dict] = None,
-                  tags: Optional[list] = None, ci_id: Optional[str] = None) -> ConfigItem:
+    def create_ci(
+        self,
+        name: str,
+        ci_type: str = "service",
+        description: str = "",
+        owner: str = "",
+        node: str = "",
+        attributes: Optional[dict] = None,
+        tags: Optional[list] = None,
+        ci_id: Optional[str] = None,
+    ) -> ConfigItem:
         """Create (or return existing) a CI. Write-once core, idempotent by id."""
         self.ensure_dirs()
         cid = ci_id or make_ci_id(ci_type, name)
         core = {
-            "id": cid, "ci_type": ci_type, "name": name, "description": description,
-            "owner": owner, "node": node, "attributes": attributes or {},
-            "tags": tags or [], "created_at": _now_iso(),
+            "id": cid,
+            "ci_type": ci_type,
+            "name": name,
+            "description": description,
+            "owner": owner,
+            "node": node,
+            "attributes": attributes or {},
+            "tags": tags or [],
+            "created_at": _now_iso(),
         }
         rec_dir = self.cmdb_dir / cid
         rec_dir.mkdir(parents=True, exist_ok=True)
@@ -133,8 +147,13 @@ class CMDBManager:
             try:
                 fh.seek(0)
                 seq = sum(1 for _ in fh)
-                event = {"ts": _now_iso(), "writer": agent, "node": _HOST,
-                         "seq": seq, "action": action}
+                event = {
+                    "ts": _now_iso(),
+                    "writer": agent,
+                    "node": _HOST,
+                    "seq": seq,
+                    "action": action,
+                }
                 event.update(payload)
                 fh.seek(0, os.SEEK_END)
                 fh.write(json.dumps(event, default=str) + "\n")
@@ -181,10 +200,15 @@ class CMDBManager:
         except ValueError:
             return None
         ci = ConfigItem(
-            id=core["id"], ci_type=core.get("ci_type", "service"), name=core.get("name", ""),
-            description=core.get("description", ""), owner=core.get("owner", ""),
-            node=core.get("node", ""), attributes=dict(core.get("attributes", {})),
-            tags=list(core.get("tags", [])), created_at=core.get("created_at", ""),
+            id=core["id"],
+            ci_type=core.get("ci_type", "service"),
+            name=core.get("name", ""),
+            description=core.get("description", ""),
+            owner=core.get("owner", ""),
+            node=core.get("node", ""),
+            attributes=dict(core.get("attributes", {})),
+            tags=list(core.get("tags", [])),
+            created_at=core.get("created_at", ""),
         )
         for e in self._read_events(ci_id):
             act = e.get("action")
@@ -193,12 +217,17 @@ class CMDBManager:
             elif act == "attribute" and e.get("key"):
                 ci.attributes[e["key"]] = e.get("value")
             elif act == "relate":
-                rel = Relationship(rel_type=e.get("rel_type", "depends_on"), target=e.get("target", ""))
+                rel = Relationship(
+                    rel_type=e.get("rel_type", "depends_on"), target=e.get("target", "")
+                )
                 if rel.target and rel not in ci.relationships:
                     ci.relationships.append(rel)
             elif act == "unrelate":
-                ci.relationships = [r for r in ci.relationships
-                                    if not (r.rel_type == e.get("rel_type") and r.target == e.get("target"))]
+                ci.relationships = [
+                    r
+                    for r in ci.relationships
+                    if not (r.rel_type == e.get("rel_type") and r.target == e.get("target"))
+                ]
             ci.updated_at = e.get("ts", ci.updated_at)
         return ci
 
@@ -227,28 +256,45 @@ class CMDBManager:
         """
         hosts = {
             "noroc2027": {"desc": ".158 primary / dev source-of-truth", "ip": "192.168.0.158"},
-            "cbrd21-laptop12thgenintelcore": {"desc": ".41 heavy-build mirror", "ip": "192.168.0.41"},
-            "comfyui": {"desc": ".100 GPU (RTX 5060 Ti) / LLM + embeddings", "ip": "192.168.0.100"},
+            "cbrd21-laptop12thgenintelcore": {
+                "desc": ".41 heavy-build mirror",
+                "ip": "192.168.0.41",
+            },
+            "comfyui": {
+                "desc": ".100 GPU (RTX 5060 Ti) / LLM + embeddings",
+                "ip": "192.168.0.100",
+            },
         }
         created = 0
         for name, meta in hosts.items():
-            self.create_ci(name, CIType.HOST.value, description=meta["desc"],
-                           attributes={"ip": meta["ip"]}, tags=["fleet"])
+            self.create_ci(
+                name,
+                CIType.HOST.value,
+                description=meta["desc"],
+                attributes={"ip": meta["ip"]},
+                tags=["fleet"],
+            )
             created += 1
         for a in ("lumina", "opus", "jarvis"):
-            self.create_ci(a, CIType.AGENT.value, description=f"{a} sovereign agent",
-                           node="noroc2027", tags=["agent"])
+            self.create_ci(
+                a,
+                CIType.AGENT.value,
+                description=f"{a} sovereign agent",
+                node="noroc2027",
+                tags=["agent"],
+            )
             created += 1
 
         # Service CIs from ITIL incident affected_services; health from open incidents.
-        services: dict[str, str] = {}   # service -> worst open severity
+        services: dict[str, str] = {}  # service -> worst open severity
         try:
             from .itil import ITILManager
+
             mgr = ITILManager(self.home)
             rank = {"sev1": 0, "sev2": 1, "sev3": 2, "sev4": 3}
             for inc in mgr.list_incidents():
                 open_ = inc.status.value not in ("resolved", "closed")
-                for svc in (inc.affected_services or []):
+                for svc in inc.affected_services or []:
                     if open_:
                         cur = services.get(svc)
                         if cur is None or rank.get(inc.severity.value, 9) < rank.get(cur, 9):
@@ -259,12 +305,16 @@ class CMDBManager:
             pass
         for svc, worst in services.items():
             ci = self.create_ci(svc, CIType.SERVICE.value, node="noroc2027", tags=["service"])
-            status = (CIStatus.DOWN.value if worst in ("sev1", "sev2")
-                      else CIStatus.DEGRADED.value if worst == "sev3"
-                      else CIStatus.OPERATIONAL.value)
+            status = (
+                CIStatus.DOWN.value
+                if worst in ("sev1", "sev2")
+                else CIStatus.DEGRADED.value if worst == "sev3" else CIStatus.OPERATIONAL.value
+            )
             if ci and ci.status != status:
                 self.set_status(ci.id, agent, status, note="from incident health")
-            self.add_relationship(ci.id, agent, "runs_on", make_ci_id(CIType.HOST.value, "noroc2027"))
+            self.add_relationship(
+                ci.id, agent, "runs_on", make_ci_id(CIType.HOST.value, "noroc2027")
+            )
             created += 1
         return {"cis": len(self.list_cis()), "touched": created}
 
@@ -277,18 +327,33 @@ class CMDBManager:
         for other in self.list_cis():
             for rel in other.relationships:
                 if rel.target == ci_id and rel.rel_type in ("depends_on", "runs_on"):
-                    dependents.append({"id": other.id, "name": other.name,
-                                       "ci_type": other.ci_type, "rel": rel.rel_type})
+                    dependents.append(
+                        {
+                            "id": other.id,
+                            "name": other.name,
+                            "ci_type": other.ci_type,
+                            "rel": rel.rel_type,
+                        }
+                    )
         incidents = []
         try:
             from .itil import ITILManager
+
             mgr = ITILManager(self.home)
             for inc in mgr.list_incidents():
                 if inc.status.value in ("resolved", "closed"):
                     continue
-                if ci.name in (inc.affected_services or []) or ci_id in (inc.affected_services or []):
-                    incidents.append({"id": inc.id, "severity": inc.severity.value,
-                                      "status": inc.status.value, "title": inc.title})
+                if ci.name in (inc.affected_services or []) or ci_id in (
+                    inc.affected_services or []
+                ):
+                    incidents.append(
+                        {
+                            "id": inc.id,
+                            "severity": inc.severity.value,
+                            "status": inc.status.value,
+                            "title": inc.title,
+                        }
+                    )
         except Exception:  # noqa: BLE001
             pass
         return {"ci": ci.model_dump(), "dependents": dependents, "open_incidents": incidents}

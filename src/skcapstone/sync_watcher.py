@@ -24,7 +24,10 @@ import threading
 import time
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any, Optional
+from typing import TYPE_CHECKING, Any, Optional
+
+if TYPE_CHECKING:
+    from skmemory.models import Memory
 
 logger = logging.getLogger("skcapstone.sync_watcher")
 
@@ -70,19 +73,13 @@ def load_sync_config(home: Path) -> dict[str, Any]:
         sync_data = data.get("sync", {})
         return {
             "auto_import": sync_data.get("auto_import", defaults["auto_import"]),
-            "auto_vector_index": sync_data.get(
-                "auto_vector_index", defaults["auto_vector_index"]
-            ),
-            "auto_graph_index": sync_data.get(
-                "auto_graph_index", defaults["auto_graph_index"]
-            ),
+            "auto_vector_index": sync_data.get("auto_vector_index", defaults["auto_vector_index"]),
+            "auto_graph_index": sync_data.get("auto_graph_index", defaults["auto_graph_index"]),
             "inbox_path": str(
                 Path(sync_data.get("inbox_path", defaults["inbox_path"])).expanduser()
             ),
             "processed_log": str(
-                Path(
-                    sync_data.get("processed_log", defaults["processed_log"])
-                ).expanduser()
+                Path(sync_data.get("processed_log", defaults["processed_log"])).expanduser()
             ),
         }
     except Exception as exc:
@@ -188,20 +185,16 @@ def vector_index_seed(memory: "Memory") -> bool:
         True if the memory was successfully indexed, False otherwise.
     """
     try:
-        from skmemory.config import merge_env_and_config
         from skmemory.backends.skvector_backend import SKVectorBackend
+        from skmemory.config import merge_env_and_config
     except ImportError:
-        logger.debug(
-            "skmemory vector backend not importable — skipping vector index"
-        )
+        logger.debug("skmemory vector backend not importable — skipping vector index")
         return False
 
     try:
         skvector_url, skvector_key, _ = merge_env_and_config()
         if not skvector_url:
-            logger.debug(
-                "No SKVector URL configured — skipping vector index"
-            )
+            logger.debug("No SKVector URL configured — skipping vector index")
             return False
 
         backend = SKVectorBackend(url=skvector_url, api_key=skvector_key)
@@ -232,20 +225,16 @@ def graph_index_seed(memory: "Memory") -> bool:
         True if the memory was successfully indexed, False otherwise.
     """
     try:
-        from skmemory.config import merge_env_and_config
         from skmemory.backends.skgraph_backend import SKGraphBackend
+        from skmemory.config import merge_env_and_config
     except ImportError:
-        logger.debug(
-            "skmemory graph backend not importable — skipping graph index"
-        )
+        logger.debug("skmemory graph backend not importable — skipping graph index")
         return False
 
     try:
         _, _, skgraph_url = merge_env_and_config()
         if not skgraph_url:
-            logger.debug(
-                "No SKGraph URL configured — skipping graph index"
-            )
+            logger.debug("No SKGraph URL configured — skipping graph index")
             return False
 
         backend = SKGraphBackend(url=skgraph_url)
@@ -301,8 +290,8 @@ def import_seed_to_memory(seed_path: Path, home: Path) -> Optional[str]:
     graph_indexed = 0
     if memory_entries:
         try:
-            from skmemory.store import MemoryStore
             from skmemory.models import MemoryLayer
+            from skmemory.store import MemoryStore
 
             store = MemoryStore(use_sqlite=True)
 
@@ -366,7 +355,6 @@ def import_seed_to_memory(seed_path: Path, home: Path) -> Optional[str]:
     # Also use the existing pull_seeds machinery for identity/trust/FEBs
     try:
         if "identity" in data or "trust" in data or "febs" in data:
-            from .pillars.sync import pull_seeds as _pull_existing
 
             # pull_seeds reads from inbox, but the file is already there —
             # we just log what it would pick up
@@ -386,7 +374,9 @@ def import_seed_to_memory(seed_path: Path, home: Path) -> Optional[str]:
 
     logger.info(
         "Seed %s from %s@%s contained no importable data",
-        seed_path.name, agent_name, source_host,
+        seed_path.name,
+        agent_name,
+        source_host,
     )
     return f"Seed from {agent_name}@{source_host}: no importable data"
 
@@ -456,9 +446,7 @@ class SeedFileHandler:
         # Clean up old entries (prevent unbounded growth)
         if len(self._last_event) > 100:
             cutoff = now - 60
-            self._last_event = {
-                k: v for k, v in self._last_event.items() if v > cutoff
-            }
+            self._last_event = {k: v for k, v in self._last_event.items() if v > cutoff}
 
         logger.debug("Seed file detected: %s", src_path)
         self._callback(Path(src_path))
@@ -527,9 +515,7 @@ class SyncWatcher:
             self._enabled = True
 
         self._inbox = Path(inbox_path or config["inbox_path"]).expanduser()
-        self._tracker = ProcessedTracker(
-            processed_log or config["processed_log"]
-        )
+        self._tracker = ProcessedTracker(processed_log or config["processed_log"])
         self._observer = None
         self._lock = threading.Lock()
 
@@ -564,7 +550,8 @@ class SyncWatcher:
 
         logger.info(
             "SyncWatcher started — inbox=%s, inotify=yes, poll=%ds",
-            self._inbox, POLL_INTERVAL_S,
+            self._inbox,
+            POLL_INTERVAL_S,
         )
         return threads
 

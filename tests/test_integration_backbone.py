@@ -44,9 +44,6 @@ from __future__ import annotations
 
 import importlib
 import json
-import logging
-import os
-import sys
 from pathlib import Path
 from types import ModuleType
 from typing import NamedTuple, Optional
@@ -270,9 +267,7 @@ class TestStandaloneMode:
         mod.alert("no_files_please", {"reason": "standalone"}, "error")
         pubsub_root = tmp_path / "pubsub" / "topics"
         topic_files = list(pubsub_root.glob("**/*.json")) if pubsub_root.exists() else []
-        assert topic_files == [], (
-            f"Standalone mode wrote pubsub files: {topic_files}"
-        )
+        assert topic_files == [], f"Standalone mode wrote pubsub files: {topic_files}"
 
     def test_no_jobs_d_files_written_in_standalone(
         self,
@@ -290,9 +285,7 @@ class TestStandaloneMode:
         mod.ensure_schedule()
         jobs_d = tmp_path / "config" / "jobs.d"
         job_files = list(jobs_d.glob("*.yaml")) if jobs_d.exists() else []
-        assert job_files == [], (
-            f"Standalone mode wrote jobs.d files: {job_files}"
-        )
+        assert job_files == [], f"Standalone mode wrote jobs.d files: {job_files}"
 
 
 # ---------------------------------------------------------------------------
@@ -408,15 +401,15 @@ class TestIntegratedMode:
         importlib.reload(mod)
 
         result = mod.ensure_schedule()
-        assert result is True, (
-            f"{spec.service}.ensure_schedule() returned False in integrated mode"
-        )
+        assert (
+            result is True
+        ), f"{spec.service}.ensure_schedule() returned False in integrated mode"
 
         jobs_d = skcap_sandbox / "config" / "jobs.d"
         job_file = jobs_d / f"{spec.job_name}.yaml"
-        assert job_file.exists(), (
-            f"Expected jobs.d fragment {job_file} — ensure_schedule() did not write it"
-        )
+        assert (
+            job_file.exists()
+        ), f"Expected jobs.d fragment {job_file} — ensure_schedule() did not write it"
 
         job_data = yaml.safe_load(job_file.read_text())
         assert isinstance(job_data, dict), f"jobs.d fragment is not valid YAML: {job_data}"
@@ -424,17 +417,13 @@ class TestIntegratedMode:
         # The scheduler serialises fragments as:
         #   jobs:
         #     <job_name>:
-        #       type: shell
+        # type: shell
         #       command: ...
         #       every: ...
         # so the top-level key is "jobs" and the job name is the nested key.
-        assert "jobs" in job_data, (
-            f"jobs.d fragment missing top-level 'jobs' key: {job_data}"
-        )
+        assert "jobs" in job_data, f"jobs.d fragment missing top-level 'jobs' key: {job_data}"
         job_entries = job_data["jobs"]
-        assert isinstance(job_entries, dict), (
-            f"jobs.d 'jobs' value is not a dict: {job_entries}"
-        )
+        assert isinstance(job_entries, dict), f"jobs.d 'jobs' value is not a dict: {job_entries}"
         assert spec.job_name in job_entries, (
             f"Job name {spec.job_name!r} not found in jobs.d fragment keys: "
             f"{list(job_entries.keys())}"
@@ -442,9 +431,9 @@ class TestIntegratedMode:
         job_body = job_entries[spec.job_name]
         assert "command" in job_body, f"Job body missing 'command' key: {job_body}"
         # Must have either 'every' (interval) or 'schedule' (cron)
-        assert "every" in job_body or "schedule" in job_body, (
-            f"Job body has neither 'every' nor 'schedule': {job_body}"
-        )
+        assert (
+            "every" in job_body or "schedule" in job_body
+        ), f"Job body has neither 'every' nor 'schedule': {job_body}"
 
     def test_ensure_schedule_is_idempotent(
         self, spec: AdapterSpec, skcap_sandbox: Path, monkeypatch: pytest.MonkeyPatch
@@ -461,9 +450,9 @@ class TestIntegratedMode:
 
         jobs_d = skcap_sandbox / "config" / "jobs.d"
         job_files = list(jobs_d.glob(f"{spec.job_name}*.yaml"))
-        assert len(job_files) == 1, (
-            f"Expected 1 jobs.d file after idempotent calls, got {len(job_files)}: {job_files}"
-        )
+        assert (
+            len(job_files) == 1
+        ), f"Expected 1 jobs.d file after idempotent calls, got {len(job_files)}: {job_files}"
 
     def test_register_self_returns_true_and_writes_registry(
         self, spec: AdapterSpec, skcap_sandbox: Path, monkeypatch: pytest.MonkeyPatch
@@ -476,20 +465,18 @@ class TestIntegratedMode:
         importlib.reload(mod)
 
         result = mod.register_self()
-        assert result is True, (
-            f"{spec.service}.register_self() returned False in integrated mode"
-        )
+        assert result is True, f"{spec.service}.register_self() returned False in integrated mode"
 
         registry = skcap_sandbox / "registry"
         entry_file = registry / f"{spec.service}.json"
-        assert entry_file.exists(), (
-            f"Expected registry entry {entry_file} — register_self() did not write it"
-        )
+        assert (
+            entry_file.exists()
+        ), f"Expected registry entry {entry_file} — register_self() did not write it"
 
         entry = json.loads(entry_file.read_text())
-        assert entry.get("name") == spec.service, (
-            f"Registry entry name mismatch: {entry.get('name')!r} != {spec.service!r}"
-        )
+        assert (
+            entry.get("name") == spec.service
+        ), f"Registry entry name mismatch: {entry.get('name')!r} != {spec.service!r}"
 
     def test_unregister_schedule_cleans_up(
         self, spec: AdapterSpec, skcap_sandbox: Path, monkeypatch: pytest.MonkeyPatch
@@ -506,12 +493,10 @@ class TestIntegratedMode:
         assert job_file.exists(), "Precondition: ensure_schedule() should have written the file"
 
         result = mod.unregister_schedule()
-        assert result is True, (
-            f"{spec.service}.unregister_schedule() returned False"
-        )
-        assert not job_file.exists(), (
-            f"jobs.d fragment {job_file} still present after unregister_schedule()"
-        )
+        assert result is True, f"{spec.service}.unregister_schedule() returned False"
+        assert (
+            not job_file.exists()
+        ), f"jobs.d fragment {job_file} still present after unregister_schedule()"
 
     def test_no_leak_to_real_home(
         self,
@@ -527,8 +512,12 @@ class TestIntegratedMode:
         pollution of the developer's actual ~/.skcapstone tree.
         """
         # Record files in real home BEFORE the test actions
-        real_jobs_before = set(real_jobs_d.glob(f"*{spec.service}*")) if real_jobs_d.exists() else set()
-        real_reg_before = set(real_registry.glob(f"{spec.service}*")) if real_registry.exists() else set()
+        real_jobs_before = (
+            set(real_jobs_d.glob(f"*{spec.service}*")) if real_jobs_d.exists() else set()
+        )
+        real_reg_before = (
+            set(real_registry.glob(f"{spec.service}*")) if real_registry.exists() else set()
+        )
 
         monkeypatch.delenv("SK_STANDALONE", raising=False)
         mod = _load_adapter(spec)
@@ -541,8 +530,12 @@ class TestIntegratedMode:
         mod.register_self()
 
         # Verify no NEW files appeared in the real home
-        real_jobs_after = set(real_jobs_d.glob(f"*{spec.service}*")) if real_jobs_d.exists() else set()
-        real_reg_after = set(real_registry.glob(f"{spec.service}*")) if real_registry.exists() else set()
+        real_jobs_after = (
+            set(real_jobs_d.glob(f"*{spec.service}*")) if real_jobs_d.exists() else set()
+        )
+        real_reg_after = (
+            set(real_registry.glob(f"{spec.service}*")) if real_registry.exists() else set()
+        )
 
         new_job_files = real_jobs_after - real_jobs_before
         new_reg_files = real_reg_after - real_reg_before
@@ -552,9 +545,7 @@ class TestIntegratedMode:
             f"Check that SKCAPSTONE_HOME env and skcapstone.AGENT_HOME are both "
             f"patched to the sandbox path."
         )
-        assert not new_reg_files, (
-            f"LEAK: {spec.service} wrote to real registry: {new_reg_files}."
-        )
+        assert not new_reg_files, f"LEAK: {spec.service} wrote to real registry: {new_reg_files}."
 
 
 # ---------------------------------------------------------------------------

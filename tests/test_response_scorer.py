@@ -15,7 +15,6 @@ from skcapstone.response_scorer import (
     score_response,
 )
 
-
 # ---------------------------------------------------------------------------
 # ResponseScore dataclass
 # ---------------------------------------------------------------------------
@@ -247,6 +246,7 @@ class TestConsciousnessMetricsQuality:
     def cm(self, tmp_path: Path):
         """ConsciousnessMetrics with no background thread."""
         from skcapstone.metrics import ConsciousnessMetrics
+
         return ConsciousnessMetrics(home=tmp_path, persist_interval=0)
 
     def test_initial_quality_avg_zeros(self, cm) -> None:

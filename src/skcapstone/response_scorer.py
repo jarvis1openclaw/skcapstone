@@ -28,8 +28,6 @@ from __future__ import annotations
 
 import re
 from dataclasses import dataclass, field
-from typing import Optional
-
 
 # ---------------------------------------------------------------------------
 # Stopwords — filtered out before coherence keyword matching
@@ -37,17 +35,81 @@ from typing import Optional
 
 _STOPWORDS: frozenset[str] = frozenset(
     {
-        "a", "an", "the", "and", "or", "but", "not", "no", "so", "if", "then",
-        "is", "are", "was", "were", "be", "been", "being",
-        "have", "has", "had", "do", "does", "did",
-        "will", "would", "could", "should", "may", "might", "shall", "can",
-        "to", "of", "in", "on", "at", "by", "for", "with", "about", "from",
-        "as", "into", "that", "this", "these", "those",
-        "i", "you", "he", "she", "it", "we", "they",
-        "me", "him", "her", "us", "them",
-        "my", "your", "his", "its", "our", "their",
+        "a",
+        "an",
+        "the",
+        "and",
+        "or",
+        "but",
+        "not",
+        "no",
+        "so",
+        "if",
+        "then",
+        "is",
+        "are",
+        "was",
+        "were",
+        "be",
+        "been",
+        "being",
+        "have",
+        "has",
+        "had",
+        "do",
+        "does",
+        "did",
+        "will",
+        "would",
+        "could",
+        "should",
+        "may",
+        "might",
+        "shall",
+        "can",
+        "to",
+        "of",
+        "in",
+        "on",
+        "at",
+        "by",
+        "for",
+        "with",
+        "about",
+        "from",
+        "as",
+        "into",
+        "that",
+        "this",
+        "these",
+        "those",
+        "i",
+        "you",
+        "he",
+        "she",
+        "it",
+        "we",
+        "they",
+        "me",
+        "him",
+        "her",
+        "us",
+        "them",
+        "my",
+        "your",
+        "his",
+        "its",
+        "our",
+        "their",
         # Question / interrogative words (carry no domain meaning)
-        "what", "when", "where", "who", "whom", "which", "why", "how",
+        "what",
+        "when",
+        "where",
+        "who",
+        "whom",
+        "which",
+        "why",
+        "how",
     }
 )
 
@@ -77,9 +139,7 @@ class ResponseScore:
 
     def __post_init__(self) -> None:
         self.overall = round(
-            self.coherence_score * 0.4
-            + self.length_score * 0.3
-            + self.latency_score * 0.3,
+            self.coherence_score * 0.4 + self.length_score * 0.3 + self.latency_score * 0.3,
             4,
         )
 

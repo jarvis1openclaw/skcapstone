@@ -12,13 +12,11 @@ from pathlib import Path
 from typing import Optional
 
 import click
-
-from ._common import AGENT_HOME, console, status_icon, consciousness_banner
-from ..models import PillarStatus
-from ..runtime import get_runtime
-
 from rich.panel import Panel
 from rich.table import Table
+
+from ..runtime import get_runtime
+from ._common import AGENT_HOME, consciousness_banner, console, status_icon
 
 logger = logging.getLogger(__name__)
 
@@ -42,9 +40,7 @@ def _probe_llm_backends() -> dict[str, bool]:
     }
     host = os.environ.get("OLLAMA_HOST", "http://localhost:11434")
     try:
-        with urllib.request.urlopen(
-            urllib.request.Request(f"{host}/api/tags"), timeout=2
-        ):
+        with urllib.request.urlopen(urllib.request.Request(f"{host}/api/tags"), timeout=2):
             backends["ollama"] = True
     except Exception as exc:
         logger.debug("Ollama probe failed (not available): %s", exc)
@@ -61,7 +57,7 @@ def _get_daemon_info(home: Path) -> dict:
         Dict with 'running' bool and optional 'pid', 'uptime', 'messages'.
     """
     try:
-        from ..daemon import read_pid, get_daemon_status
+        from ..daemon import get_daemon_status, read_pid
 
         pid = read_pid(home)
         if pid is None:
@@ -126,6 +122,7 @@ def _read_local_heartbeat(home: Path) -> Optional[dict]:
             agent_name = ident.get("name", agent_name).lower()
         # Try shared root first, fall back to home
         from .. import SHARED_ROOT
+
         shared = Path(SHARED_ROOT).expanduser()
         hb_path = shared / "heartbeats" / f"{agent_name}.json"
         if not hb_path.exists():
@@ -148,8 +145,8 @@ def _print_consciousness_metrics(console, home: Optional[Path] = None) -> None:
         console: Rich console instance.
         home: Agent home directory (used to read heartbeat for system metrics).
     """
-    import urllib.request
     import urllib.error
+    import urllib.request
 
     from .. import SKCAPSTONE_AGENT
     from .daemon import _resolve_agent_port
@@ -209,14 +206,14 @@ def register_status_commands(main: click.Group) -> None:
     @click.option("--agent", default=None, help="Agent name (e.g. opus, lumina).")
     def status(home: Optional[str], agent: Optional[str]):
         """Show the sovereign agent's current state."""
-        from .. import SKCAPSTONE_AGENT as default_agent
+        from .. import SKCAPSTONE_AGENT as default_agent  # noqa: N811
 
         if home:
             home_path = Path(home).expanduser()
             if not home_path.exists():
                 console.print(
                     "[bold red]No agent found.[/] "
-                    "Run [bold]skcapstone init --name \"YourAgent\"[/] first."
+                    'Run [bold]skcapstone init --name "YourAgent"[/] first.'
                 )
                 sys.exit(1)
             runtime = get_runtime(home=home_path)
@@ -229,8 +226,7 @@ def register_status_commands(main: click.Group) -> None:
         console.print()
         console.print(
             Panel(
-                f"[bold]{m.name}[/] v{m.version}\n"
-                f"{consciousness_banner(m.is_conscious)}",
+                f"[bold]{m.name}[/] v{m.version}\n" f"{consciousness_banner(m.is_conscious)}",
                 title="SKCapstone Agent",
                 border_style="bright_blue",
             )
@@ -244,13 +240,17 @@ def register_status_commands(main: click.Group) -> None:
 
         ident = m.identity
         table.add_row(
-            "Identity", "CapAuth", status_icon(ident.status),
+            "Identity",
+            "CapAuth",
+            status_icon(ident.status),
             ident.fingerprint[:16] + "..." if ident.fingerprint else "no key",
         )
 
         mem = m.memory
         table.add_row(
-            "Memory", "SKMemory", status_icon(mem.status),
+            "Memory",
+            "SKMemory",
+            status_icon(mem.status),
             f"{mem.total_memories} memories ({mem.long_term}L/{mem.mid_term}M/{mem.short_term}S)",
         )
 
@@ -270,7 +270,9 @@ def register_status_commands(main: click.Group) -> None:
 
         sec = m.security
         table.add_row(
-            "Security", "SKSecurity", status_icon(sec.status),
+            "Security",
+            "SKSecurity",
+            status_icon(sec.status),
             f"{sec.audit_entries} audit entries, {sec.threats_detected} threats",
         )
 
@@ -312,14 +314,10 @@ def register_status_commands(main: click.Group) -> None:
             msgs = daemon.get("messages", 0)
             msg_part = f"  [dim]msgs={msgs}[/]" if msgs else ""
             console.print(
-                f"  Daemon: [green]RUNNING[/]  "
-                f"[dim]pid={pid}  up={uptime}{msg_part}[/]"
+                f"  Daemon: [green]RUNNING[/]  " f"[dim]pid={pid}  up={uptime}{msg_part}[/]"
             )
         else:
-            console.print(
-                "  Daemon: [red]STOPPED[/]  "
-                "[dim](skcapstone daemon start)[/]"
-            )
+            console.print("  Daemon: [red]STOPPED[/]  " "[dim](skcapstone daemon start)[/]")
 
         # ── LLM backends ─────────────────────────────────────────────────────
         backends = _probe_llm_backends()
@@ -337,14 +335,11 @@ def register_status_commands(main: click.Group) -> None:
         # ── Last conversation ─────────────────────────────────────────────────
         conv = _get_last_conversation(home_path)
         if conv:
-            console.print(
-                f"  Last convo: [cyan]{conv['peer']}[/]  "
-                f"[dim]{conv['when']}[/]"
-            )
+            console.print(f"  Last convo: [cyan]{conv['peer']}[/]  " f"[dim]{conv['when']}[/]")
 
         # ── Disk space warning ────────────────────────────────────────────────
         try:
-            free_gb = shutil.disk_usage(home_path).free / (1024 ** 3)
+            free_gb = shutil.disk_usage(home_path).free / (1024**3)
             if free_gb < 5.0:
                 console.print(
                     f"\n  [bold yellow]WARNING:[/] [yellow]Low disk space: "
@@ -364,11 +359,10 @@ def register_status_commands(main: click.Group) -> None:
     @click.option("--json-out", is_flag=True, help="Output as machine-readable JSON.")
     def summary(home: str, json_out: bool):
         """At-a-glance agent dashboard: consciousness, pillars, memory, board, inbox, sync."""
-        from ..summary import gather_briefing
-        from rich.columns import Columns
-        from rich.text import Text
-        from rich.rule import Rule
         from rich import box as rich_box
+        from rich.rule import Rule
+
+        from ..summary import gather_briefing
 
         home_path = Path(home).expanduser()
         briefing = gather_briefing(home_path)
@@ -397,12 +391,17 @@ def register_status_commands(main: click.Group) -> None:
         }.get(consciousness, "dim")
 
         header_text = (
-            f"[bold white]{agent.get('name', '?')}[/]  "
-            f"[{con_color}]\u25cf {consciousness}[/]"
+            f"[bold white]{agent.get('name', '?')}[/]  " f"[{con_color}]\u25cf {consciousness}[/]"
         )
         console.print()
-        console.print(Panel(header_text, title="[bold cyan]Sovereign Agent Dashboard[/]",
-                             border_style="cyan", padding=(0, 2)))
+        console.print(
+            Panel(
+                header_text,
+                title="[bold cyan]Sovereign Agent Dashboard[/]",
+                border_style="cyan",
+                padding=(0, 2),
+            )
+        )
 
         # ── Pillars ──────────────────────────────────────────────────────────
         pillar_icons = {
@@ -419,7 +418,7 @@ def register_status_commands(main: click.Group) -> None:
         pillar_table.add_column(no_wrap=True)
         pillar_table.add_column(no_wrap=True)
 
-        row_icons, row_names = [], []
+        row_icons, _row_names = [], []
         for pname, pstatus in pillars.items():
             icon_markup, color = pillar_icons.get(pstatus, ("[dim]\u25cf[/]", "dim"))
             row_icons.append(f"{icon_markup} [{color}]{pname}[/]")
@@ -433,7 +432,8 @@ def register_status_commands(main: click.Group) -> None:
         h_pass = health.get("passed", 0)
         h_total = health.get("total", 0)
         health_str = (
-            f"[green]{h_pass}/{h_total}[/]" if health.get("all_passed")
+            f"[green]{h_pass}/{h_total}[/]"
+            if health.get("all_passed")
             else f"[yellow]{h_pass}[/][dim]/{h_total}[/]"
         )
 
@@ -444,19 +444,19 @@ def register_status_commands(main: click.Group) -> None:
         )
 
         inbox_count = inbox.get("count", 0)
-        inbox_str = (
-            f"[bold yellow]{inbox_count} unread[/]" if inbox_count > 0
-            else "[dim]empty[/]"
-        )
+        inbox_str = f"[bold yellow]{inbox_count} unread[/]" if inbox_count > 0 else "[dim]empty[/]"
 
         sync_status = sync.get("status", "unknown")
-        sync_color = {"active": "green", "degraded": "yellow", "missing": "red"}.get(sync_status, "dim")
+        sync_color = {"active": "green", "degraded": "yellow", "missing": "red"}.get(
+            sync_status, "dim"
+        )
         seed_count = sync.get("seed_count", 0)
         transport = sync.get("transport") or "–"
         last_push = sync.get("last_push")
         if last_push:
             try:
                 from datetime import datetime
+
                 dt = datetime.fromisoformat(last_push.replace("Z", "+00:00"))
                 last_push_str = dt.strftime("%m/%d %H:%M")
             except Exception:
@@ -469,9 +469,7 @@ def register_status_commands(main: click.Group) -> None:
         )
 
         peer_count = peers.get("count", 0)
-        peer_str = (
-            f"[cyan]{peer_count}[/]" if peer_count > 0 else "[dim]0[/]"
-        )
+        peer_str = f"[cyan]{peer_count}[/]" if peer_count > 0 else "[dim]0[/]"
 
         mem_total = mem.get("total", 0)
         mem_str = (
@@ -526,16 +524,26 @@ def register_status_commands(main: click.Group) -> None:
                 console.print(f"  [yellow]\u25b6[/] {task['title']}{assignee_str}")
             console.print()
 
-        console.print(f"  [dim]Home: {agent.get('home', home_path)}  ·  {briefing['timestamp'][:19]}Z[/]")
+        console.print(
+            f"  [dim]Home: {agent.get('home', home_path)}  ·  {briefing['timestamp'][:19]}Z[/]"
+        )
         console.print()
 
     @main.command()
     @click.option("--home", default=AGENT_HOME, type=click.Path())
     @click.option("--json-out", is_flag=True, help="Output as machine-readable JSON.")
-    @click.option("--fix", "auto_fix", is_flag=True,
-                  help="Attempt to auto-fix failing checks (mkdir, write defaults, rebuild index).")
-    @click.option("--verbose", "-v", is_flag=True,
-                  help="Show detailed output for ALL checks, including passing ones.")
+    @click.option(
+        "--fix",
+        "auto_fix",
+        is_flag=True,
+        help="Attempt to auto-fix failing checks (mkdir, write defaults, rebuild index).",
+    )
+    @click.option(
+        "--verbose",
+        "-v",
+        is_flag=True,
+        help="Show detailed output for ALL checks, including passing ones.",
+    )
     def doctor(home: str, json_out: bool, auto_fix: bool, verbose: bool):
         """Diagnose sovereign stack health.
 
@@ -563,8 +571,12 @@ def register_status_commands(main: click.Group) -> None:
             data = report.to_dict()
             if fix_results:
                 data["fixes"] = [
-                    {"check": r.check_name, "success": r.success,
-                     "action": r.action, "error": r.error}
+                    {
+                        "check": r.check_name,
+                        "success": r.success,
+                        "action": r.action,
+                        "error": r.error,
+                    }
                     for r in fix_results
                 ]
             click.echo(json.dumps(data, indent=2))
@@ -632,8 +644,7 @@ def register_status_commands(main: click.Group) -> None:
                 if not failing:
                     count = len(checks)
                     console.print(
-                        f"  [bold]{label}[/]  "
-                        f"[dim green]\u2713 {count}/{count} passed[/]"
+                        f"  [bold]{label}[/]  " f"[dim green]\u2713 {count}/{count} passed[/]"
                     )
                 else:
                     console.print(f"  [bold]{label}[/]")
@@ -692,10 +703,14 @@ def register_status_commands(main: click.Group) -> None:
         table.add_column("Host", style="dim")
 
         event_colors = {
-            "INIT": "green", "AUTH": "blue",
-            "SYNC_PUSH": "magenta", "SYNC_PULL": "magenta",
-            "TOKEN_ISSUE": "yellow", "TOKEN_REVOKE": "red",
-            "SECURITY": "red", "LEGACY": "dim",
+            "INIT": "green",
+            "AUTH": "blue",
+            "SYNC_PUSH": "magenta",
+            "SYNC_PULL": "magenta",
+            "TOKEN_ISSUE": "yellow",
+            "TOKEN_REVOKE": "red",
+            "SECURITY": "red",
+            "LEGACY": "dim",
         }
 
         for e in entries:
@@ -711,11 +726,15 @@ def register_status_commands(main: click.Group) -> None:
     @click.option("--port", default=7778, help="Port for the dashboard (default: 7778).")
     @click.option("--no-open", is_flag=True, help="Don't attempt to open a browser.")
     @click.option(
-        "--json", "json_mode", is_flag=True,
+        "--json",
+        "json_mode",
+        is_flag=True,
         help="Print daemon status as JSON and exit (no server). For Flutter app consumption.",
     )
     @click.option(
-        "--daemon-port", default=7777, show_default=True,
+        "--daemon-port",
+        default=7777,
+        show_default=True,
         help="Daemon HTTP API port (used with --json).",
     )
     def dashboard(home: str, port: int, no_open: bool, json_mode: bool, daemon_port: int):
@@ -726,7 +745,7 @@ def register_status_commands(main: click.Group) -> None:
         message counts, and error count — then exits without starting a
         server.  Designed for Flutter app consumption.
         """
-        from ..dashboard import start_dashboard, _get_daemon_json
+        from ..dashboard import _get_daemon_json, start_dashboard
 
         home_path = Path(home).expanduser()
 
@@ -740,12 +759,13 @@ def register_status_commands(main: click.Group) -> None:
             sys.exit(1)
 
         url = f"http://127.0.0.1:{port}"
-        console.print(f"\n  [green]Sovereign Agent Dashboard[/]")
+        console.print("\n  [green]Sovereign Agent Dashboard[/]")
         console.print(f"  [cyan]{url}[/]")
-        console.print(f"  [dim]Press Ctrl+C to stop[/]\n")
+        console.print("  [dim]Press Ctrl+C to stop[/]\n")
 
         if not no_open:
             import webbrowser
+
             try:
                 webbrowser.open(url)
             except Exception as exc:
@@ -761,11 +781,17 @@ def register_status_commands(main: click.Group) -> None:
     @main.command()
     @click.option("--home", default=AGENT_HOME, type=click.Path())
     @click.option("--json-out", is_flag=True, help="Output as machine-readable JSON.")
-    @click.option("--export", "export_path", default=None, type=click.Path(), help="Save identity card to file.")
+    @click.option(
+        "--export",
+        "export_path",
+        default=None,
+        type=click.Path(),
+        help="Save identity card to file.",
+    )
     @click.option("--compact", is_flag=True, help="Compact output (no public key).")
     def whoami(home: str, json_out: bool, export_path: str, compact: bool):
         """Show your sovereign identity card."""
-        from ..whoami import generate_card, export_card
+        from ..whoami import export_card, generate_card
 
         home_path = Path(home).expanduser()
         card = generate_card(home_path)
@@ -783,7 +809,9 @@ def register_status_commands(main: click.Group) -> None:
             return
 
         console.print()
-        fp_display = card.fingerprint[:20] + "..." if len(card.fingerprint) > 20 else card.fingerprint
+        fp_display = (
+            card.fingerprint[:20] + "..." if len(card.fingerprint) > 20 else card.fingerprint
+        )
         info_lines = [
             f"[bold]Name:[/]          [cyan]{card.name}[/]",
             f"[bold]Type:[/]          {card.entity_type}",
@@ -808,7 +836,9 @@ def register_status_commands(main: click.Group) -> None:
             key_preview = card.public_key[:60] + "..."
             info_lines.append(f"[bold]PGP Key:[/]       [dim]{key_preview}[/]")
 
-        console.print(Panel("\n".join(info_lines), title="Sovereign Identity Card", border_style="cyan"))
+        console.print(
+            Panel("\n".join(info_lines), title="Sovereign Identity Card", border_style="cyan")
+        )
         console.print("  [dim]Share this card: skcapstone whoami --export card.json[/]")
         console.print("  [dim]Peer imports it: skcapstone peer add --card card.json[/]")
         console.print()
@@ -819,7 +849,8 @@ def register_status_commands(main: click.Group) -> None:
     @click.option("--save", "do_save", is_flag=True, help="Save current state as baseline.")
     def state_diff_cmd(home: str, fmt: str, do_save: bool):
         """Show what changed since the last sync/snapshot."""
-        from ..state_diff import FORMATTERS as DIFF_FORMATTERS, compute_diff, save_snapshot
+        from ..state_diff import FORMATTERS as DIFF_FORMATTERS
+        from ..state_diff import compute_diff, save_snapshot
 
         home_path = Path(home).expanduser()
 
@@ -852,8 +883,11 @@ def register_status_commands(main: click.Group) -> None:
             console.print("\n  [cyan]Running sovereign stack tests...[/]\n")
 
         report = run_all_tests(
-            monorepo_root=monorepo_root, packages=packages_filter,
-            fail_fast=fast, verbose=verbose, timeout=timeout,
+            monorepo_root=monorepo_root,
+            packages=packages_filter,
+            fail_fast=fast,
+            verbose=verbose,
+            timeout=timeout,
         )
 
         if json_out:
@@ -861,7 +895,10 @@ def register_status_commands(main: click.Group) -> None:
             return
 
         table = Table(
-            show_header=True, header_style="bold", box=None, padding=(0, 2),
+            show_header=True,
+            header_style="bold",
+            box=None,
+            padding=(0, 2),
             title="Test Results",
         )
         table.add_column("Package", style="cyan")
@@ -930,7 +967,10 @@ def register_status_commands(main: click.Group) -> None:
 
         console.print()
         table = Table(
-            show_header=True, header_style="bold", box=None, padding=(0, 2),
+            show_header=True,
+            header_style="bold",
+            box=None,
+            padding=(0, 2),
             title="Ecosystem Package Versions",
         )
         table.add_column("Package", style="cyan")

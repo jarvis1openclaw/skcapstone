@@ -23,7 +23,7 @@ TOOLS: list[Tool] = [
                 "action": {
                     "type": "string",
                     "enum": ["show", "recommend", "set", "reset"],
-                    "description": "Action: show current, recommend changes, set a value, or reset (default: show)",
+                    "description": "Action: show current, recommend changes, set a value, or reset (default: show)",  # noqa: E501
                 },
                 "key": {
                     "type": "string",
@@ -86,7 +86,9 @@ async def _handle_trust_calibrate(args: dict) -> list[TextContent]:
             return _error_response("key and value are required for action=set")
         try:
             updated = apply_setting(home, key, value)
-            return _json_response({"updated": True, "key": key, "value": value, "thresholds": updated.model_dump()})
+            return _json_response(
+                {"updated": True, "key": key, "value": value, "thresholds": updated.model_dump()}
+            )
         except ValueError as exc:
             return _error_response(str(exc))
 

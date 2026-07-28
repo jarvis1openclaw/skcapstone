@@ -75,7 +75,7 @@ def register_crush_commands(main: click.Group) -> None:
 
         console.print()
         console.print(
-            "  [dim]Run crush in your project directory to start coding with your sovereign agent.[/]"
+            "  [dim]Run crush in your project directory to start coding with your sovereign agent.[/]"  # noqa: E501
         )
         if not result["installed"]:
             console.print()
@@ -103,20 +103,20 @@ def register_crush_commands(main: click.Group) -> None:
             console.print_json(json.dumps(config, indent=2))
             console.print()
             console.print(
-                f"  [dim]Write this to [cyan]~/.config/crush/crush.json[/] "
-                f"with:  skcapstone crush setup[/]"
+                "  [dim]Write this to [cyan]~/.config/crush/crush.json[/] "
+                "with:  skcapstone crush setup[/]"
             )
             console.print()
 
     @crush.command("status")
     def crush_status() -> None:
         """Show Crush installation and config status."""
+        from pathlib import Path
+
         from ..crush_integration import (
             find_crush_binary,
             get_install_hint,
-            is_crush_installed,
         )
-        from pathlib import Path
 
         crush_config_dir = Path("~/.config/crush").expanduser()
         crush_json = crush_config_dir / "crush.json"

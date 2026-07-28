@@ -1,4 +1,5 @@
 """Tests for the Phase 5 assistant console (dashboard_assistant + route)."""
+
 from __future__ import annotations
 
 import pytest
@@ -28,7 +29,7 @@ def test_board_summary(home):
 
 def test_most_involved_tasks(home):
     top = da.most_involved_tasks(home, n=2)
-    assert top and top[0]["id"] == "t1"        # most events
+    assert top and top[0]["id"] == "t1"  # most events
     assert top[0]["events"] >= 4
 
 
@@ -68,7 +69,9 @@ def test_stream_answer_with_stub(home, monkeypatch):
         yield 'ACTION {"tool": "note", "card_id": "t1", "text": "flagged"}'
 
     monkeypatch.setattr(gw, "chat_stream", fake_stream)
-    frames = list(da.stream_answer(home, "top incidents; note t1", actor="chef", capability_ok=True))
+    frames = list(
+        da.stream_answer(home, "top incidents; note t1", actor="chef", capability_ok=True)
+    )
     joined = "".join(frames)
     assert "event: token" in joined and "event: action" in joined and "event: done" in joined
     # the action executed
@@ -77,6 +80,7 @@ def test_stream_answer_with_stub(home, monkeypatch):
 
 def test_assistant_route_streams(home, monkeypatch):
     from starlette.testclient import TestClient
+
     from skcapstone import skgateway_client as gw
     from skcapstone.dashboard import create_app
 

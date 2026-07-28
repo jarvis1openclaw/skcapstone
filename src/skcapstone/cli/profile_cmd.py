@@ -4,13 +4,12 @@ from __future__ import annotations
 
 import json
 import sys
-from datetime import date, datetime, timedelta, timezone
+from datetime import date, datetime, timedelta
 from pathlib import Path
 
 import click
 
 from ._common import AGENT_HOME, console
-
 
 # Number of days before a profile is considered stale.
 _STALE_DAYS = 90
@@ -86,7 +85,9 @@ def register_profile_commands(main: click.Group) -> None:
 
     @profile.command("list")
     @click.option(
-        "--home", default=AGENT_HOME, type=click.Path(),
+        "--home",
+        default=AGENT_HOME,
+        type=click.Path(),
         help="Agent home directory (used to resolve overrides).",
     )
     @click.option("--json", "json_out", is_flag=True, help="Output raw JSON.")
@@ -139,9 +140,7 @@ def register_profile_commands(main: click.Group) -> None:
 
         label = f"[bold]{len(profiles)}[/] model profile(s) loaded"
         console.print()
-        console.print(
-            Panel(label, title="Model Profiles", border_style="bright_blue")
-        )
+        console.print(Panel(label, title="Model Profiles", border_style="bright_blue"))
         console.print(table)
         console.print()
 
@@ -152,7 +151,9 @@ def register_profile_commands(main: click.Group) -> None:
     @profile.command("show")
     @click.argument("model")
     @click.option(
-        "--home", default=AGENT_HOME, type=click.Path(),
+        "--home",
+        default=AGENT_HOME,
+        type=click.Path(),
         help="Agent home directory (used to resolve overrides).",
     )
     @click.option("--json", "json_out", is_flag=True, help="Output raw JSON.")
@@ -201,12 +202,22 @@ def register_profile_commands(main: click.Group) -> None:
             ("thinking_enabled", str(p.thinking_enabled)),
             ("thinking_mode", p.thinking_mode),
             ("thinking_budget_tokens", str(p.thinking_budget_tokens)),
-            ("default_temperature",
-             str(p.default_temperature) if p.default_temperature is not None else "[dim]—[/]"),
-            ("code_temperature",
-             str(p.code_temperature) if p.code_temperature is not None else "[dim]—[/]"),
-            ("reasoning_temperature",
-             str(p.reasoning_temperature) if p.reasoning_temperature is not None else "[dim]—[/]"),
+            (
+                "default_temperature",
+                str(p.default_temperature) if p.default_temperature is not None else "[dim]—[/]",
+            ),
+            (
+                "code_temperature",
+                str(p.code_temperature) if p.code_temperature is not None else "[dim]—[/]",
+            ),
+            (
+                "reasoning_temperature",
+                (
+                    str(p.reasoning_temperature)
+                    if p.reasoning_temperature is not None
+                    else "[dim]—[/]"
+                ),
+            ),
             ("max_system_tokens", str(p.max_system_tokens)),
             ("tool_format", p.tool_format),
             ("no_few_shot", str(p.no_few_shot)),
@@ -228,11 +239,16 @@ def register_profile_commands(main: click.Group) -> None:
 
     @profile.command("stale")
     @click.option(
-        "--home", default=AGENT_HOME, type=click.Path(),
+        "--home",
+        default=AGENT_HOME,
+        type=click.Path(),
         help="Agent home directory (used to resolve overrides).",
     )
     @click.option(
-        "--days", default=_STALE_DAYS, type=int, show_default=True,
+        "--days",
+        default=_STALE_DAYS,
+        type=int,
+        show_default=True,
         help="Number of days before a profile is considered stale.",
     )
     @click.option("--json", "json_out", is_flag=True, help="Output raw JSON.")
@@ -269,17 +285,13 @@ def register_profile_commands(main: click.Group) -> None:
             rows = []
             for p, updated in stale:
                 d = p.model_dump()
-                d["_days_old"] = (
-                    (date.today() - updated).days if updated else None
-                )
+                d["_days_old"] = (date.today() - updated).days if updated else None
                 rows.append(d)
             click.echo(json.dumps(rows, indent=2))
             return
 
         if not stale:
-            console.print(
-                f"\n  [bold green]✓[/] All profiles updated within {days} days.\n"
-            )
+            console.print(f"\n  [bold green]✓[/] All profiles updated within {days} days.\n")
             return
 
         label = (
@@ -287,9 +299,7 @@ def register_profile_commands(main: click.Group) -> None:
             f"(older than {days} days — cutoff [dim]{cutoff}[/])"
         )
         console.print()
-        console.print(
-            Panel(label, title="Stale Profiles", border_style="yellow")
-        )
+        console.print(Panel(label, title="Stale Profiles", border_style="yellow"))
 
         table = Table(show_header=True, header_style="bold", box=None, padding=(0, 2))
         table.add_column("Family", style="cyan")

@@ -41,12 +41,16 @@ def test_alert_publishes_to_topic(home: Path):
 
 def test_alert_unknown_level_falls_back_to_info(home: Path):
     sdk.alert("svc.weird", {"x": 1}, level="bogus")
-    data = json.loads(next((home / "pubsub" / "topics" / "svc.weird").glob("msg-*.json")).read_text())
+    data = json.loads(
+        next((home / "pubsub" / "topics" / "svc.weird").glob("msg-*.json")).read_text()
+    )
     assert data["tags"] == ["info"]
 
 
 def test_register_and_unregister_job(home: Path):
-    path = sdk.register_job({"name": "svc_tick", "every": "10m", "type": "shell", "command": "echo hi"})
+    path = sdk.register_job(
+        {"name": "svc_tick", "every": "10m", "type": "shell", "command": "echo hi"}
+    )
     assert Path(path).exists()
     assert Path(path).name == "svc_tick.yaml"
     assert sdk.unregister_job("svc_tick") is True
@@ -63,7 +67,9 @@ def test_coord_create_writes_task(home: Path):
 
 
 def test_register_service_writes_registry(home: Path):
-    path = sdk.register_service("skvoice", health_url="http://localhost:9/health", pid_file="/tmp/x.pid")
+    path = sdk.register_service(
+        "skvoice", health_url="http://localhost:9/health", pid_file="/tmp/x.pid"
+    )
     entry = json.loads(Path(path).read_text())
     assert entry["name"] == "skvoice"
     assert entry["health_url"] == "http://localhost:9/health"

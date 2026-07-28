@@ -7,8 +7,6 @@ import threading
 import time
 from datetime import datetime, timezone
 
-import pytest
-
 from skcapstone.daemon import ComponentHealth, ComponentManager
 
 # ---------------------------------------------------------------------------

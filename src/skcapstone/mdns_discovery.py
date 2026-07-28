@@ -65,9 +65,9 @@ class MDNSDiscovery:
         self._port = port
         self._heartbeats_dir = heartbeats_dir
 
-        self._zc: Optional[object] = None       # Zeroconf instance
+        self._zc: Optional[object] = None  # Zeroconf instance
         self._browser: Optional[object] = None  # ServiceBrowser
-        self._info: Optional[object] = None     # ServiceInfo
+        self._info: Optional[object] = None  # ServiceInfo
 
         self._lock = threading.Lock()
         # Maps raw mDNS service name → agent_name for peers we track
@@ -111,9 +111,7 @@ class MDNSDiscovery:
 
         try:
             zc.register_service(self._info)
-            logger.info(
-                "mDNS: registered '%s' on port %d", instance_name, self._port
-            )
+            logger.info("mDNS: registered '%s' on port %d", instance_name, self._port)
         except Exception as exc:
             logger.warning("mDNS: service registration failed: %s", exc)
 
@@ -179,8 +177,7 @@ class MDNSDiscovery:
                 return
 
             addresses = [
-                socket.inet_ntoa(a) if len(a) == 4 else a.hex()
-                for a in (info.addresses or [])
+                socket.inet_ntoa(a) if len(a) == 4 else a.hex() for a in (info.addresses or [])
             ]
 
             logger.info(
@@ -239,7 +236,9 @@ class MDNSDiscovery:
                     )
                     return
             except Exception as exc:
-                logger.warning("Failed to read existing mDNS heartbeat for %s: %s", agent_name, exc)
+                logger.warning(
+                    "Failed to read existing mDNS heartbeat for %s: %s", agent_name, exc
+                )
 
         heartbeat = {
             "agent_name": agent_name,
@@ -282,9 +281,7 @@ class MDNSDiscovery:
         tmp = path.with_suffix(".json.tmp")
         tmp.write_text(json.dumps(heartbeat, indent=2), encoding="utf-8")
         tmp.rename(path)
-        logger.debug(
-            "mDNS: wrote heartbeat for '%s' (offline=%s)", agent_name, offline
-        )
+        logger.debug("mDNS: wrote heartbeat for '%s' (offline=%s)", agent_name, offline)
 
     @staticmethod
     def _local_addresses() -> list[bytes]:

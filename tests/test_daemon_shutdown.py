@@ -22,17 +22,17 @@ from unittest.mock import MagicMock, patch
 import pytest
 
 from skcapstone.daemon import (
+    PID_FILE,
+    SHUTDOWN_STATE_FILE,
     DaemonConfig,
     DaemonService,
     DaemonState,
-    PID_FILE,
-    SHUTDOWN_STATE_FILE,
 )
-
 
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
 
 def _make_service(tmp_path: Path) -> DaemonService:
     """Create a DaemonService backed by a temp directory (no real threads)."""
@@ -61,6 +61,7 @@ def _make_fake_envelope(sender: str = "peer-a", content: str = "hello") -> Simpl
 # ---------------------------------------------------------------------------
 # DaemonState — inflight tracking
 # ---------------------------------------------------------------------------
+
 
 class TestDaemonStateInflight:
     """Unit tests for add/remove/get inflight on DaemonState."""
@@ -106,6 +107,7 @@ class TestDaemonStateInflight:
 # _save_shutdown_state
 # ---------------------------------------------------------------------------
 
+
 class TestSaveShutdownState:
     """Tests for _save_shutdown_state."""
 
@@ -147,6 +149,7 @@ class TestSaveShutdownState:
 # _load_startup_state
 # ---------------------------------------------------------------------------
 
+
 class TestLoadStartupState:
     """Tests for _load_startup_state."""
 
@@ -159,11 +162,16 @@ class TestLoadStartupState:
     def test_restores_metrics_from_file(self, tmp_path: Path) -> None:
         """metrics are accumulated from the state file into current state."""
         state_file = tmp_path / SHUTDOWN_STATE_FILE
-        state_file.write_text(json.dumps({
-            "shutdown_at": "2026-03-01T00:00:00+00:00",
-            "inflight_messages": [],
-            "metrics": {"messages_received": 42, "syncs_completed": 5},
-        }), encoding="utf-8")
+        state_file.write_text(
+            json.dumps(
+                {
+                    "shutdown_at": "2026-03-01T00:00:00+00:00",
+                    "inflight_messages": [],
+                    "metrics": {"messages_received": 42, "syncs_completed": 5},
+                }
+            ),
+            encoding="utf-8",
+        )
 
         svc = _make_service(tmp_path)
         svc._load_startup_state()
@@ -174,11 +182,16 @@ class TestLoadStartupState:
     def test_removes_state_file_after_load(self, tmp_path: Path) -> None:
         """The shutdown_state.json is deleted after successful load."""
         state_file = tmp_path / SHUTDOWN_STATE_FILE
-        state_file.write_text(json.dumps({
-            "shutdown_at": "2026-03-01T00:00:00+00:00",
-            "inflight_messages": [],
-            "metrics": {},
-        }), encoding="utf-8")
+        state_file.write_text(
+            json.dumps(
+                {
+                    "shutdown_at": "2026-03-01T00:00:00+00:00",
+                    "inflight_messages": [],
+                    "metrics": {},
+                }
+            ),
+            encoding="utf-8",
+        )
 
         svc = _make_service(tmp_path)
         svc._load_startup_state()
@@ -196,6 +209,7 @@ class TestLoadStartupState:
 # ---------------------------------------------------------------------------
 # _resume_inflight_messages
 # ---------------------------------------------------------------------------
+
 
 class TestResumeInflightMessages:
     """Tests for _resume_inflight_messages."""
@@ -280,6 +294,7 @@ class TestResumeInflightMessages:
 # Integration: save → load round-trip
 # ---------------------------------------------------------------------------
 
+
 class TestShutdownStartupRoundTrip:
     """End-to-end: save state then load it back."""
 
@@ -288,13 +303,16 @@ class TestShutdownStartupRoundTrip:
         svc = _make_service(tmp_path)
         svc.state.messages_received = 10
         svc.state.syncs_completed = 3
-        svc.state.add_inflight("rt1", {
-            "message_id": "rt1",
-            "sender": "peer-x",
-            "content": "round trip payload",
-            "content_type": "text",
-            "received_at": "2026-03-02T00:00:00+00:00",
-        })
+        svc.state.add_inflight(
+            "rt1",
+            {
+                "message_id": "rt1",
+                "sender": "peer-x",
+                "content": "round trip payload",
+                "content_type": "text",
+                "received_at": "2026-03-02T00:00:00+00:00",
+            },
+        )
 
         svc._save_shutdown_state()
 
@@ -320,6 +338,7 @@ class TestShutdownStartupRoundTrip:
 # ---------------------------------------------------------------------------
 # Graceful stop() — pidfile removal, component teardown, bounded, idempotent
 # ---------------------------------------------------------------------------
+
 
 class TestGracefulStop:
     """Tests for the bounded, idempotent stop() shutdown sequence."""

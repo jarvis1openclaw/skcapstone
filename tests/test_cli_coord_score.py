@@ -13,6 +13,7 @@ def _main() -> click.Group:
     @click.group()
     def main():
         pass
+
     register_coord_commands(main)
     return main
 
@@ -23,10 +24,25 @@ def test_coord_score_records_grade(tmp_path: Path):
     board.create_task(Task(id="abc12345", title="CLI score"))
     result = CliRunner().invoke(
         _main(),
-        ["coord", "score", "abc12345", "--home", str(tmp_path),
-         "--round", "1", "--score", "5", "--notes", "clean",
-         "--harness", "claude_code", "--phase", "grade",
-         "--ref", "https://gh/pr/9"],
+        [
+            "coord",
+            "score",
+            "abc12345",
+            "--home",
+            str(tmp_path),
+            "--round",
+            "1",
+            "--score",
+            "5",
+            "--notes",
+            "clean",
+            "--harness",
+            "claude_code",
+            "--phase",
+            "grade",
+            "--ref",
+            "https://gh/pr/9",
+        ],
     )
     assert result.exit_code == 0, result.output
     t = {x.id: x for x in board.load_tasks()}["abc12345"]
@@ -42,8 +58,7 @@ def test_coord_score_missing_task_errors(tmp_path: Path):
     board.ensure_dirs()
     result = CliRunner().invoke(
         _main(),
-        ["coord", "score", "deadbeef", "--home", str(tmp_path),
-         "--round", "1", "--score", "3"],
+        ["coord", "score", "deadbeef", "--home", str(tmp_path), "--round", "1", "--score", "3"],
     )
     assert result.exit_code == 1
     assert "Error" in result.output or "error" in result.output.lower()

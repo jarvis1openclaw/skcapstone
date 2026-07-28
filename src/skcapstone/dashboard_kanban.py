@@ -9,12 +9,12 @@ and publishes on an in-process bus so open dashboards refresh over SSE. A
 background poll of the card-events directory catches writes by other agents / the
 runner on this or other nodes (Syncthing-synced).
 """
+
 from __future__ import annotations
 
 import asyncio
 import logging
 from pathlib import Path
-from typing import Optional
 
 from .card import COLUMN_ORDER, LANE_ORDER, Column
 from .card_store import CardStore
@@ -28,6 +28,7 @@ _MUTATIONS = {"move", "assign", "unassign", "add_label", "remove_label", "priori
 # ---------------------------------------------------------------------------
 # Read
 # ---------------------------------------------------------------------------
+
 
 def _card_brief(c) -> dict:
     """A compact card dict for the board face."""
@@ -70,6 +71,7 @@ def get_card(home: Path, card_id: str) -> dict:
     """
     try:
         from . import agent_run
+
         agent_run.ensure_card(home, card_id)
     except Exception:  # noqa: BLE001
         pass
@@ -84,6 +86,7 @@ def get_card(home: Path, card_id: str) -> dict:
 # ---------------------------------------------------------------------------
 # Write
 # ---------------------------------------------------------------------------
+
 
 def apply_mutation(home: Path, card_id: str, action: str, actor: str, **fields) -> dict:
     """Append a mutation event to the CardStore and return the new card state.
@@ -132,6 +135,7 @@ def apply_mutation(home: Path, card_id: str, action: str, actor: str, **fields) 
 # ---------------------------------------------------------------------------
 # SSE bus (in-process pub/sub + background event-store poll)
 # ---------------------------------------------------------------------------
+
 
 class Bus:
     """Minimal async pub/sub for SSE fan-out."""

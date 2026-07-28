@@ -9,8 +9,6 @@ from pathlib import Path
 import pytest
 
 from skcapstone.tokens import (
-    Capability,
-    SignedToken,
     TokenPayload,
     TokenType,
     export_token,

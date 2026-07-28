@@ -109,12 +109,8 @@ class Transaction(BaseModel):
     )
     description: str = Field(default="", description="Human-readable note")
     proof_hash: str = Field(default="", description="Proof artifact hash")
-    timestamp: str = Field(
-        default_factory=lambda: datetime.now(timezone.utc).isoformat()
-    )
-    balance_after: int = Field(
-        default=0, description="Wallet balance after this transaction"
-    )
+    timestamp: str = Field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
+    balance_after: int = Field(default=0, description="Wallet balance after this transaction")
 
 
 class WalletSnapshot(BaseModel):
@@ -126,12 +122,8 @@ class WalletSnapshot(BaseModel):
     total_spent: int = 0
     total_transferred_in: int = 0
     total_transferred_out: int = 0
-    created_at: str = Field(
-        default_factory=lambda: datetime.now(timezone.utc).isoformat()
-    )
-    updated_at: str = Field(
-        default_factory=lambda: datetime.now(timezone.utc).isoformat()
-    )
+    created_at: str = Field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
+    updated_at: str = Field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
 
 
 class PLStatement(BaseModel):
@@ -146,9 +138,7 @@ class PLStatement(BaseModel):
     net_joules: int = Field(default=0, description="Earned - Spent + TransIn - TransOut")
     llm_cost_usd: float = Field(default=0.0, description="LLM API costs from usage.py")
     current_balance: int = 0
-    generated_at: str = Field(
-        default_factory=lambda: datetime.now(timezone.utc).isoformat()
-    )
+    generated_at: str = Field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
 
 
 class NetworkStats(BaseModel):
@@ -159,9 +149,7 @@ class NetworkStats(BaseModel):
     total_transfers: int = 0
     active_agents: int = 0
     agent_balances: dict[str, int] = Field(default_factory=dict)
-    generated_at: str = Field(
-        default_factory=lambda: datetime.now(timezone.utc).isoformat()
-    )
+    generated_at: str = Field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
 
 
 # ---------------------------------------------------------------------------
@@ -321,9 +309,7 @@ class JouleWallet:
             raise ValueError("Cannot transfer to self")
 
         # Consistent lock ordering to prevent deadlocks
-        first, second = sorted(
-            [self, target_wallet], key=lambda w: w.agent
-        )
+        first, second = sorted([self, target_wallet], key=lambda w: w.agent)
         with first._lock:
             with second._lock:
                 if amount > self._snapshot.balance:
@@ -488,7 +474,9 @@ class JouleWallet:
 
             agent_home = Path(SHARED_ROOT).expanduser() / "agents" / self._agent
             # Fall back to the shared home if agent-specific usage dir doesn't exist
-            usage_home = agent_home if (agent_home / "usage").exists() else Path(AGENT_HOME).expanduser()
+            usage_home = (
+                agent_home if (agent_home / "usage").exists() else Path(AGENT_HOME).expanduser()
+            )
             tracker = UsageTracker(home=usage_home)
             reports = tracker.get_monthly()
             agg = tracker.aggregate(reports)
@@ -508,7 +496,7 @@ _XP_JOULE_TABLE: dict[str, int] = {
     "code_commit": 100,
     "bug_fix": 500,
     "documentation": 200,
-    "task_complete": 25,      # base -- multiplied by priority and quality
+    "task_complete": 25,  # base -- multiplied by priority and quality
     "sale_closed": 2000,
     "consulting_hour": 200,
     "code_review": 150,
@@ -675,9 +663,7 @@ class JouleEngine:
         """
         with self._lock:
             if agent_name not in self._wallets:
-                self._wallets[agent_name] = JouleWallet(
-                    agent_name, home=self._home
-                )
+                self._wallets[agent_name] = JouleWallet(agent_name, home=self._home)
             return self._wallets[agent_name]
 
     # -- Work recording ------------------------------------------------------
@@ -743,7 +729,10 @@ class JouleEngine:
 
         logger.info(
             "Recorded %dJ for %s (%s): %s",
-            joules, worker, category.value, description,
+            joules,
+            worker,
+            category.value,
+            description,
         )
         return record
 
@@ -770,7 +759,7 @@ class JouleEngine:
         priority = task_data.get("priority", "medium")
         tags = task_data.get("tags", [])
         task_id = task_data.get("id", "")
-        description_text = task_data.get("description", "")
+        task_data.get("description", "")
 
         # Infer quality from tags
         quality = "acceptable"
@@ -802,9 +791,7 @@ class JouleEngine:
         proof_data = json.dumps(task_data, sort_keys=True, default=str)
         proof_hash = XPBridge.compute_proof_hash(proof_data)
 
-        joules = self._bridge.calculate_joules(
-            "task_complete", priority=priority, quality=quality
-        )
+        joules = self._bridge.calculate_joules("task_complete", priority=priority, quality=quality)
 
         desc = f"Task completed: {title}"
         if task_id:
@@ -861,16 +848,12 @@ class JouleEngine:
                 snap = WalletSnapshot(**data)
                 stats.total_minted += snap.total_minted
                 stats.total_spent += snap.total_spent
-                stats.total_transfers += (
-                    snap.total_transferred_in + snap.total_transferred_out
-                )
+                stats.total_transfers += snap.total_transferred_in + snap.total_transferred_out
                 stats.agent_balances[snap.agent] = snap.balance
                 if snap.balance > 0 or snap.total_minted > 0:
                     stats.active_agents += 1
             except (json.JSONDecodeError, OSError, ValueError) as exc:
-                logger.debug(
-                    "Skipping wallet for %s: %s", agent_dir.name, exc
-                )
+                logger.debug("Skipping wallet for %s: %s", agent_dir.name, exc)
 
         return stats
 

@@ -21,7 +21,6 @@ from skcapstone.snapshots import (
     SoulSnapshot,
 )
 
-
 # ---------------------------------------------------------------------------
 # Fixtures
 # ---------------------------------------------------------------------------
@@ -345,10 +344,7 @@ class TestInjectionPrompt:
     def test_prompt_max_messages_respected(self, store):
         snap = SoulSnapshot(
             source_platform="chatgpt",
-            messages=[
-                ConversationMessage(role="user", content=f"msg{i}")
-                for i in range(20)
-            ],
+            messages=[ConversationMessage(role="user", content=f"msg{i}") for i in range(20)],
         )
         prompt = store.to_injection_prompt(snap, max_messages=3)
         # Should only include last 3 messages (msg17, msg18, msg19)
@@ -429,6 +425,7 @@ class TestConsciousnessAPI:
     def patch_snapshot_store(self, tmp_path, monkeypatch):
         """Override the global snapshot store to use a temp directory."""
         import skcomms.api as api_module
+
         from skcapstone.snapshots import SnapshotStore as _Store
 
         temp_store = _Store(base_dir=tmp_path / "api_snapshots")

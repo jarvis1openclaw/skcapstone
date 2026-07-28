@@ -109,9 +109,7 @@ def cert_fingerprint_sha256(cert_path: Path) -> str:
     import base64
 
     lines = pem_data.decode().splitlines()
-    der_b64 = "".join(
-        ln for ln in lines if not ln.startswith("-----")
-    )
+    der_b64 = "".join(ln for ln in lines if not ln.startswith("-----"))
     der = base64.b64decode(der_b64)
     digest = hashlib.sha256(der).hexdigest().upper()
     return ":".join(digest[i : i + 2] for i in range(0, len(digest), 2))

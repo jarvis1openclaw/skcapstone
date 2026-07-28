@@ -11,14 +11,13 @@ import importlib
 import json
 import logging
 import shutil
-import subprocess
 from datetime import datetime
 from pathlib import Path
 from typing import Optional
 
 logger = logging.getLogger(__name__)
 
-from .models import (
+from .models import (  # noqa: E402
     ConsciousnessState,
     IdentityState,
     MemoryState,
@@ -367,8 +366,9 @@ def _probe_remote_registry(state: SkillsState) -> None:
     Args:
         state: SkillsState to update with remote info (mutated in place).
     """
-    from .registry_client import get_registry_client, DEFAULT_REGISTRY_URL
     import os
+
+    from .registry_client import DEFAULT_REGISTRY_URL, get_registry_client
 
     registry_url = os.environ.get("SKSKILLS_REGISTRY_URL", DEFAULT_REGISTRY_URL)
     state.registry_url = registry_url

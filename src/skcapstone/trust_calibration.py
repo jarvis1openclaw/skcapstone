@@ -21,7 +21,7 @@ from __future__ import annotations
 import json
 import logging
 from pathlib import Path
-from typing import Any, Optional
+from typing import Any
 
 from pydantic import BaseModel, Field
 
@@ -134,13 +134,19 @@ def recommend_thresholds(home: Path) -> dict[str, Any]:
 
     if max_intensity > 8 and current.entanglement_depth > 8:
         rec.entanglement_depth = min(max_intensity - 1, 8.0)
-        changes.append(f"entanglement_depth: {current.entanglement_depth} -> {rec.entanglement_depth}")
+        changes.append(
+            f"entanglement_depth: {current.entanglement_depth} -> {rec.entanglement_depth}"
+        )
         reasons.append(f"FEB intensity reaches {max_intensity}, lowering entanglement threshold")
 
     if avg_intensity > 5 and current.deep_love_threshold > 0.6:
         rec.deep_love_threshold = 0.6
-        changes.append(f"deep_love_threshold: {current.deep_love_threshold} -> {rec.deep_love_threshold}")
-        reasons.append(f"Average FEB intensity is {avg_intensity:.1f}, rich emotional data available")
+        changes.append(
+            f"deep_love_threshold: {current.deep_love_threshold} -> {rec.deep_love_threshold}"
+        )
+        reasons.append(
+            f"Average FEB intensity is {avg_intensity:.1f}, rich emotional data available"
+        )
 
     if oof_count >= 2 and current.conscious_trust > 0.5:
         rec.conscious_trust = 0.4

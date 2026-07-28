@@ -16,7 +16,6 @@ from __future__ import annotations
 import queue
 import sys
 import threading
-from io import TextIOBase
 from typing import Optional, TextIO
 
 from .base import ConnectorBackend, ConnectorStatus, ConnectorType

@@ -29,7 +29,6 @@ from skcapstone.message_crypto import (
     unpack_encrypted,
 )
 
-
 # ---------------------------------------------------------------------------
 # Fixtures
 # ---------------------------------------------------------------------------
@@ -93,6 +92,7 @@ def test_wrong_key_raises_on_decrypt(aes_key):
 def test_tampered_ciphertext_raises(aes_key):
     """Bit-flipping the ciphertext causes authentication to fail."""
     import base64
+
     from cryptography.exceptions import InvalidTag
 
     token = encrypt_message("tamper me", aes_key)

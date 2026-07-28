@@ -660,9 +660,7 @@ def run_housekeeping(
         # the real acks piled up at {home}/skcomms/acks (179k observed). Derive
         # from skcapstone_home so a custom shared_root stays consistent.
         env_home = os.environ.get("SKCOMMS_HOME")
-        skcomms_home = (
-            Path(env_home).expanduser() if env_home else skcapstone_home / "skcomms"
-        )
+        skcomms_home = Path(env_home).expanduser() if env_home else skcapstone_home / "skcomms"
 
     results: dict[str, dict] = {}
 
@@ -925,9 +923,7 @@ def _count_stale_comms_archive(skcapstone_home: Path, max_age_hours: int) -> int
     if agents_dir.is_dir():
         for agent_dir in agents_dir.iterdir():
             if agent_dir.is_dir():
-                count += _count_stale_skc_tree(
-                    agent_dir / "comms" / "archive", max_age_hours
-                )
+                count += _count_stale_skc_tree(agent_dir / "comms" / "archive", max_age_hours)
     return count
 
 

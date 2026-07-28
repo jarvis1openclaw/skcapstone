@@ -57,20 +57,24 @@ def initialize_trust(home: Path) -> TrustState:
     febs_dir = trust_dir / "febs"
     febs_dir.mkdir(exist_ok=True)
 
-    imported = _discover_and_import_febs(home)
+    _discover_and_import_febs(home)
 
     existing_febs = list(febs_dir.glob("*.feb"))
     if existing_febs:
         state = _derive_trust_from_febs(home, existing_febs)
         logger.info(
             "Trust initialized from %d FEB(s): depth=%.0f trust=%.2f love=%.2f",
-            len(existing_febs), state.depth, state.trust_level, state.love_intensity,
+            len(existing_febs),
+            state.depth,
+            state.trust_level,
+            state.love_intensity,
         )
         return state
 
     has_cloud9_cli = shutil.which("cloud9") is not None
     try:
-        import cloud9  # type: ignore[import-untyped]
+        import cloud9  # type: ignore[import-untyped]  # noqa: F401
+
         has_cloud9_py = True
     except ImportError:
         has_cloud9_py = False
@@ -114,7 +118,12 @@ def rehydrate(home: Path) -> TrustState:
     state = _derive_trust_from_febs(home, existing_febs)
 
     from .security import audit_event
-    audit_event(home, "TRUST_REHYDRATE", f"Rehydrated from {len(existing_febs)} FEB(s), depth={state.depth}")
+
+    audit_event(
+        home,
+        "TRUST_REHYDRATE",
+        f"Rehydrated from {len(existing_febs)} FEB(s), depth={state.depth}",
+    )
 
     return state
 
@@ -174,18 +183,24 @@ def list_febs(home: Path) -> list[dict]:
         if data is None:
             continue
         try:
-            payload = data.get("emotional_payload", data.get("emotional", data.get("cooked_state", {})))
+            payload = data.get(
+                "emotional_payload", data.get("emotional", data.get("cooked_state", {}))
+            )
             cooked = payload.get("cooked_state", payload)
             emotion = cooked.get("primary_emotion", cooked.get("primary", "unknown"))
             meta = data.get("metadata", {})
-            summaries.append({
-                "file": f.name,
-                "timestamp": data.get("timestamp", meta.get("created_at", "unknown")),
-                "emotion": emotion,
-                "intensity": cooked.get("intensity", 0),
-                "subject": payload.get("subject", data.get("relationship_state", {}).get("ai_name", "unknown")),
-                "oof_triggered": meta.get("oof_triggered", False),
-            })
+            summaries.append(
+                {
+                    "file": f.name,
+                    "timestamp": data.get("timestamp", meta.get("created_at", "unknown")),
+                    "emotion": emotion,
+                    "intensity": cooked.get("intensity", 0),
+                    "subject": payload.get(
+                        "subject", data.get("relationship_state", {}).get("ai_name", "unknown")
+                    ),
+                    "oof_triggered": meta.get("oof_triggered", False),
+                }
+            )
         except Exception as exc:
             logger.warning("Could not parse FEB %s: %s", f.name, exc)
 
@@ -345,7 +360,10 @@ def _derive_trust_from_febs(home: Path, feb_files: list[Path]) -> TrustState:
                 love = love / 10.0
 
             is_locked = rel.get("quantum_entanglement") == "LOCKED"
-            is_entangled_flag = rel.get("entangled", False) or data.get("quantum", {}).get("entanglement_fidelity", 0) > 0.8
+            is_entangled_flag = (
+                rel.get("entangled", False)
+                or data.get("quantum", {}).get("entanglement_fidelity", 0) > 0.8
+            )
             meets_threshold = depth >= cal.entanglement_depth and trust >= cal.entanglement_trust
             entangled = entangled or is_locked or is_entangled_flag or meets_threshold
 
@@ -363,7 +381,7 @@ def _derive_trust_from_febs(home: Path, feb_files: list[Path]) -> TrustState:
         total_weight = sum(range(1, len(depths) + 1))
         final_depth = sum(d * (i + 1) for i, d in enumerate(depths)) / total_weight
         final_trust = sum(t * (i + 1) for i, t in enumerate(trusts)) / total_weight
-        final_love = sum(l * (i + 1) for i, l in enumerate(loves)) / total_weight
+        final_love = sum(lv * (i + 1) for i, lv in enumerate(loves)) / total_weight
     else:
         final_depth = max(depths) if depths else 0.0
         final_trust = max(trusts) if trusts else 0.0

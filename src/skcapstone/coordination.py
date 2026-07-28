@@ -37,28 +37,28 @@ def _now_iso() -> str:
 
 def _slugify_filename(text: str) -> str:
     """Convert text to a filesystem-safe slug.
-    
+
     Removes or replaces characters that are illegal in filenames:
     - Forward slash (/) → dash (-)
     - Backslash (\\) → dash (-)
     - Colon (:) → dash (-)
     - Other special chars → removed
-    
+
     Args:
         text: Input string (e.g., task title)
-        
+
     Returns:
         Safe filename slug
     """
     slug = text.lower().strip()
     # Replace path separators and other illegal chars with dash
-    slug = re.sub(r'[/\\:*?"<>|]', '-', slug)
+    slug = re.sub(r'[/\\:*?"<>|]', "-", slug)
     # Remove remaining non-word chars (except dash and space)
-    slug = re.sub(r'[^\w\s-]', '', slug)
+    slug = re.sub(r"[^\w\s-]", "", slug)
     # Convert spaces and underscores to single dash
-    slug = re.sub(r'[\s_]+', '-', slug)
+    slug = re.sub(r"[\s_]+", "-", slug)
     # Remove leading/trailing dashes
-    return slug.strip('-')
+    return slug.strip("-")
 
 
 class TaskPriority(str, Enum):
@@ -107,9 +107,7 @@ class Task(BaseModel):
     priority: TaskPriority = TaskPriority.MEDIUM
     tags: list[str] = Field(default_factory=list)
     created_by: str = ""
-    created_at: str = Field(
-        default_factory=lambda: datetime.now(timezone.utc).isoformat()
-    )
+    created_at: str = Field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
     acceptance_criteria: list[str] = Field(default_factory=list)
     dependencies: list[str] = Field(default_factory=list)
     notes: list[str] = Field(default_factory=list)
@@ -125,9 +123,7 @@ class AgentFile(BaseModel):
     """
 
     agent: str
-    last_seen: str = Field(
-        default_factory=lambda: datetime.now(timezone.utc).isoformat()
-    )
+    last_seen: str = Field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
     host: str = Field(default_factory=socket.gethostname)
     state: AgentState = AgentState.ACTIVE
     current_task: Optional[str] = None
@@ -282,9 +278,7 @@ class Board:
         self.ensure_dirs()
         agent.last_seen = datetime.now(timezone.utc).isoformat()
         path = self.agents_dir / f"{agent.agent}.json"
-        atomic_write_text(
-            path, json.dumps(agent.model_dump(), indent=2) + "\n"
-        )
+        atomic_write_text(path, json.dumps(agent.model_dump(), indent=2) + "\n")
         return path
 
     def create_task(self, task: Task) -> Path:
@@ -301,9 +295,7 @@ class Board:
         # Reason: filename includes id + slug for human readability
         filename = f"{task.id}-{slug}.json"
         path = self.tasks_dir / filename
-        atomic_write_text(
-            path, json.dumps(task.model_dump(), indent=2) + "\n"
-        )
+        atomic_write_text(path, json.dumps(task.model_dump(), indent=2) + "\n")
         self._mirror_card_store("create", task=task)
         return path
 
@@ -327,9 +319,7 @@ class Board:
             elif op == "archive":
                 card_store.mirror_coord_archive(self.home, kw["task_id"], kw["agent"])
             elif op == "demote":
-                card_store.mirror_coord_move(
-                    self.home, kw["task_id"], "ready", kw["agent"]
-                )
+                card_store.mirror_coord_move(self.home, kw["task_id"], "ready", kw["agent"])
         except Exception as exc:  # noqa: BLE001
             logger.warning("CardStore mirror (%s) failed: %s", op, exc)
 
@@ -355,24 +345,30 @@ class Board:
             if exact.exists():
                 matches = [exact]
         if not matches:
-            raise FileNotFoundError(
-                f"No task file for id {task_id} in {self.tasks_dir}"
-            )
+            raise FileNotFoundError(f"No task file for id {task_id} in {self.tasks_dir}")
         path = matches[0]
         data = json.loads(path.read_text(encoding="utf-8"))
         mutate(data)
         atomic_write_text(path, json.dumps(data, indent=2) + "\n")
         return path
 
-    def score_task(self, task_id: str, round: int, score: int, notes: str = "",
-                   harness: str = "", phase: str | None = None,
-                   ref: str | None = None) -> Path:
+    def score_task(
+        self,
+        task_id: str,
+        round: int,
+        score: int,
+        notes: str = "",
+        harness: str = "",
+        phase: str | None = None,
+        ref: str | None = None,
+    ) -> Path:
         """Record an autopilot grade on a task (meta.autopilot.scores[]).
 
         Idempotent: a re-grade of the same (round, harness) replaces that entry
         in place instead of appending a duplicate. Goes through _write_task_raw,
         so all other keys are preserved.
         """
+
         def _mutate(d: dict) -> None:
             ap = d.setdefault("meta", {}).setdefault("autopilot", {})
             scores = ap.setdefault("scores", [])
@@ -396,10 +392,14 @@ class Board:
 
         return self._write_task_raw(task_id, _mutate)
 
-    def update_task(self, task_id: str, description: str | None = None,
-                    acceptance_criteria: list[str] | None = None,
-                    add_tags: list[str] | None = None,
-                    run_id: str | None = None) -> Path:
+    def update_task(
+        self,
+        task_id: str,
+        description: str | None = None,
+        acceptance_criteria: list[str] | None = None,
+        add_tags: list[str] | None = None,
+        run_id: str | None = None,
+    ) -> Path:
         """Rewrite task fields and snapshot each change for reversibility.
 
         Backs the Phase-0 stale action. A None argument leaves that field
@@ -407,32 +407,53 @@ class Board:
         meta.autopilot.edits[] as {field, old, new, ts, run_id}. Goes through
         the atomic raw-dict helper.
         """
+
         def _mutate(d: dict) -> None:
             ap = d.setdefault("meta", {}).setdefault("autopilot", {})
             edits = ap.setdefault("edits", [])
             ts = _now_iso()
             if description is not None and description != d.get("description", ""):
-                edits.append({"field": "description", "old": d.get("description", ""),
-                              "new": description, "ts": ts, "run_id": run_id})
+                edits.append(
+                    {
+                        "field": "description",
+                        "old": d.get("description", ""),
+                        "new": description,
+                        "ts": ts,
+                        "run_id": run_id,
+                    }
+                )
                 d["description"] = description
-            if acceptance_criteria is not None and \
-                    acceptance_criteria != d.get("acceptance_criteria", []):
-                edits.append({"field": "acceptance_criteria",
-                              "old": d.get("acceptance_criteria", []),
-                              "new": acceptance_criteria, "ts": ts, "run_id": run_id})
+            if acceptance_criteria is not None and acceptance_criteria != d.get(
+                "acceptance_criteria", []
+            ):
+                edits.append(
+                    {
+                        "field": "acceptance_criteria",
+                        "old": d.get("acceptance_criteria", []),
+                        "new": acceptance_criteria,
+                        "ts": ts,
+                        "run_id": run_id,
+                    }
+                )
                 d["acceptance_criteria"] = acceptance_criteria
             if add_tags:
                 existing = list(d.get("tags", []))
                 merged = existing + [t for t in add_tags if t not in existing]
                 if merged != existing:
-                    edits.append({"field": "tags", "old": existing,
-                                  "new": merged, "ts": ts, "run_id": run_id})
+                    edits.append(
+                        {
+                            "field": "tags",
+                            "old": existing,
+                            "new": merged,
+                            "ts": ts,
+                            "run_id": run_id,
+                        }
+                    )
                     d["tags"] = merged
 
         return self._write_task_raw(task_id, _mutate)
 
-    def close_task_obsolete(self, task_id: str, reason: str,
-                            run_id: str | None = None) -> Path:
+    def close_task_obsolete(self, task_id: str, reason: str, run_id: str | None = None) -> Path:
         """Mark a task obsolete on the task file itself.
 
         Task files carry no status field: done/claimed status is derived from
@@ -442,6 +463,7 @@ class Board:
         plus a human-readable line appended to notes[]. Reversible and
         auditable, via the atomic raw-dict helper.
         """
+
         def _mutate(d: dict) -> None:
             ts = _now_iso()
             ap = d.setdefault("meta", {}).setdefault("autopilot", {})
@@ -465,10 +487,7 @@ class Board:
         completed: set[str] = set()
         for ag in self.load_agents():
             completed.update(ag.completed_tasks)
-        return {
-            t.id for t in self.load_tasks()
-            if set(t.dependencies).issubset(completed)
-        }
+        return {t.id for t in self.load_tasks() if set(t.dependencies).issubset(completed)}
 
     def release_stale_claims(self, agent: str, older_than_seconds: int) -> list[str]:
         """Release an agent's uncompleted claims if it has gone stale.
@@ -740,14 +759,11 @@ class Board:
             for v in section_tasks:
                 t = v.task
                 assignee = f" @{v.claimed_by}" if v.claimed_by else ""
-                priority_icon = {
-                    "critical": "!!!", "high": "!!", "medium": "!", "low": ""
-                }.get(t.priority.value, "")
-                tags_str = " ".join(f"`{tag}`" for tag in t.tags)
-                lines.append(
-                    f"- **[{t.id}]** {t.title}{assignee} "
-                    f"{priority_icon} {tags_str}"
+                priority_icon = {"critical": "!!!", "high": "!!", "medium": "!", "low": ""}.get(
+                    t.priority.value, ""
                 )
+                tags_str = " ".join(f"`{tag}`" for tag in t.tags)
+                lines.append(f"- **[{t.id}]** {t.title}{assignee} " f"{priority_icon} {tags_str}")
                 if t.description:
                     lines.append(f"  > {t.description[:120]}")
             lines.append("")
@@ -760,9 +776,7 @@ class Board:
                     ag.state.value, "?"
                 )
                 current = f" working on `{ag.current_task}`" if ag.current_task else ""
-                lines.append(
-                    f"- {state_icon} **{ag.agent}** ({ag.host}){current}"
-                )
+                lines.append(f"- {state_icon} **{ag.agent}** ({ag.host}){current}")
                 if ag.notes:
                     lines.append(f"  > {ag.notes[:120]}")
             lines.append("")

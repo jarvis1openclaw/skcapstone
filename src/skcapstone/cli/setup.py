@@ -11,19 +11,10 @@ from pathlib import Path
 from typing import Optional
 
 import click
-import yaml
 
-from ._common import AGENT_HOME, __version__, console, status_icon, consciousness_banner
-from ._validators import validate_agent_name
-from ..models import AgentConfig, PillarStatus, SyncConfig
-from ..pillars.identity import generate_identity
-from ..pillars.memory import initialize_memory
-from ..pillars.security import audit_event, initialize_security
-from ..pillars.sync import initialize_sync
-from ..pillars.trust import initialize_trust
+from ..pillars.security import audit_event
 from ..runtime import get_runtime
-
-from rich.panel import Panel
+from ._common import AGENT_HOME, console
 
 
 def _get_claude_template_dir() -> Path:
@@ -42,7 +33,11 @@ def _write_global_claude_md(home_path: Path, agent_name: str) -> Optional[Path]:
 
     if platform.system() == "Windows":
         appdata = os.environ.get("APPDATA", "")
-        claude_dir = Path(appdata) / ".claude" if appdata else Path.home() / "AppData" / "Roaming" / ".claude"
+        claude_dir = (
+            Path(appdata) / ".claude"
+            if appdata
+            else Path.home() / "AppData" / "Roaming" / ".claude"
+        )
     else:
         claude_dir = Path.home() / ".claude"
 
@@ -88,12 +83,17 @@ def _write_claude_settings(merge: bool = True) -> Optional[Path]:
 
     if platform.system() == "Windows":
         appdata = os.environ.get("APPDATA", "")
-        claude_dir = Path(appdata) / ".claude" if appdata else Path.home() / "AppData" / "Roaming" / ".claude"
+        claude_dir = (
+            Path(appdata) / ".claude"
+            if appdata
+            else Path.home() / "AppData" / "Roaming" / ".claude"
+        )
     else:
         claude_dir = Path.home() / ".claude"
 
     try:
         import skmemory
+
         hooks_dir = str(Path(skmemory.__file__).parent / "hooks")
     except ImportError:
         return None  # skmemory not installed — caller should use skmemory register instead
@@ -170,16 +170,27 @@ def register_setup_commands(main: click.Group) -> None:
     @click.option("--skip-seeds", is_flag=True, help="Skip importing Cloud 9 seeds.")
     @click.option("--skip-ritual", is_flag=True, help="Skip the rehydration ritual.")
     @click.option("--skip-preflight", is_flag=True, help="Skip Git preflight check.")
-    @click.option("--path", "install_path", default=None, type=click.IntRange(1, 3),
-                  help="Pre-select install path: 1=fresh, 2=join, 3=update.")
-    def install_cmd(name, email, home, skip_deps, skip_seeds, skip_ritual, skip_preflight, install_path):
+    @click.option(
+        "--path",
+        "install_path",
+        default=None,
+        type=click.IntRange(1, 3),
+        help="Pre-select install path: 1=fresh, 2=join, 3=update.",
+    )
+    def install_cmd(
+        name, email, home, skip_deps, skip_seeds, skip_ritual, skip_preflight, install_path
+    ):
         """Guided setup wizard — set up, join, or update your sovereign node."""
         from ..install_wizard import run_install_wizard
 
         run_install_wizard(
-            name=name, email=email, home=home,
-            skip_deps=skip_deps, skip_seeds=skip_seeds,
-            skip_ritual=skip_ritual, skip_preflight=skip_preflight,
+            name=name,
+            email=email,
+            home=home,
+            skip_deps=skip_deps,
+            skip_seeds=skip_seeds,
+            skip_ritual=skip_ritual,
+            skip_preflight=skip_preflight,
             path=install_path,
         )
 
@@ -196,7 +207,9 @@ def register_setup_commands(main: click.Group) -> None:
         """Remove this sovereign node completely."""
         from ..uninstall_wizard import run_uninstall_wizard
 
-        run_uninstall_wizard(home=home, force=force, keep_data=keep_data, export_first=export_first)
+        run_uninstall_wizard(
+            home=home, force=force, keep_data=keep_data, export_first=export_first
+        )
 
     @main.command("install-gui")
     def install_gui_cmd():
@@ -255,7 +268,9 @@ def register_setup_commands(main: click.Group) -> None:
 
     @main.command("reset")
     @click.option("--home", default=AGENT_HOME, type=click.Path(), help="Agent home directory.")
-    @click.option("--force", is_flag=True, help="Skip confirmation prompt (for scripting/testing).")
+    @click.option(
+        "--force", is_flag=True, help="Skip confirmation prompt (for scripting/testing)."
+    )
     def reset_cmd(home: str, force: bool):
         """Factory reset — wipe all agent data.
 

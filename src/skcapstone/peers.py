@@ -59,9 +59,7 @@ class PeerRecord(BaseModel):
     capabilities: list[str] = Field(default_factory=list)
     contact_uris: list[str] = Field(default_factory=list)
     trust_level: str = "unknown"
-    added_at: str = Field(
-        default_factory=lambda: datetime.now(timezone.utc).isoformat()
-    )
+    added_at: str = Field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
     last_seen: Optional[str] = None
     source: str = "manual"
 

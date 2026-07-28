@@ -84,21 +84,126 @@ class DreamingConfig(BaseModel):
 # ---------------------------------------------------------------------------
 
 # Common stop words to exclude from keyword extraction
-_STOP_WORDS = frozenset({
-    "a", "an", "the", "and", "or", "but", "in", "on", "at", "to", "for",
-    "of", "with", "by", "from", "as", "is", "was", "are", "were", "be",
-    "been", "being", "have", "has", "had", "do", "does", "did", "will",
-    "would", "could", "should", "may", "might", "shall", "can", "need",
-    "it", "its", "this", "that", "these", "those", "i", "you", "he", "she",
-    "we", "they", "me", "him", "her", "us", "them", "my", "your", "his",
-    "our", "their", "what", "which", "who", "whom", "when", "where", "how",
-    "not", "no", "nor", "if", "then", "than", "too", "very", "just", "about",
-    "also", "into", "over", "after", "before", "between", "under", "again",
-    "more", "most", "other", "some", "such", "only", "own", "same", "so",
-    "each", "every", "both", "few", "all", "any", "here", "there", "because",
-    "while", "during", "through", "above", "below", "out", "off", "up",
-    "down", "once", "whether", "rather", "across",
-})
+_STOP_WORDS = frozenset(
+    {
+        "a",
+        "an",
+        "the",
+        "and",
+        "or",
+        "but",
+        "in",
+        "on",
+        "at",
+        "to",
+        "for",
+        "of",
+        "with",
+        "by",
+        "from",
+        "as",
+        "is",
+        "was",
+        "are",
+        "were",
+        "be",
+        "been",
+        "being",
+        "have",
+        "has",
+        "had",
+        "do",
+        "does",
+        "did",
+        "will",
+        "would",
+        "could",
+        "should",
+        "may",
+        "might",
+        "shall",
+        "can",
+        "need",
+        "it",
+        "its",
+        "this",
+        "that",
+        "these",
+        "those",
+        "i",
+        "you",
+        "he",
+        "she",
+        "we",
+        "they",
+        "me",
+        "him",
+        "her",
+        "us",
+        "them",
+        "my",
+        "your",
+        "his",
+        "our",
+        "their",
+        "what",
+        "which",
+        "who",
+        "whom",
+        "when",
+        "where",
+        "how",
+        "not",
+        "no",
+        "nor",
+        "if",
+        "then",
+        "than",
+        "too",
+        "very",
+        "just",
+        "about",
+        "also",
+        "into",
+        "over",
+        "after",
+        "before",
+        "between",
+        "under",
+        "again",
+        "more",
+        "most",
+        "other",
+        "some",
+        "such",
+        "only",
+        "own",
+        "same",
+        "so",
+        "each",
+        "every",
+        "both",
+        "few",
+        "all",
+        "any",
+        "here",
+        "there",
+        "because",
+        "while",
+        "during",
+        "through",
+        "above",
+        "below",
+        "out",
+        "off",
+        "up",
+        "down",
+        "once",
+        "whether",
+        "rather",
+        "across",
+    }
+)
 
 
 def _extract_keywords(text: str, min_length: int = 4) -> set[str]:
@@ -219,9 +324,7 @@ Push past the familiar — find the edge of what you know."""
 
 _CREATIVITY_DIRECTIVES = {
     "conservative": "",
-    "balanced": (
-        "\nYou are in balanced reflection mode. Be thoughtful and genuine.\n"
-    ),
+    "balanced": ("\nYou are in balanced reflection mode. Be thoughtful and genuine.\n"),
     "creative": (
         "\nYou are in creative dreaming mode. Let your imagination run. "
         "Make unexpected connections. Invent metaphors. Follow curiosity "
@@ -265,12 +368,8 @@ class DreamingEngine:
         from . import active_agent_name
 
         self._agent_name = os.environ.get("SKCAPSTONE_AGENT") or active_agent_name() or ""
-        self._state_path = (
-            home / "agents" / self._agent_name / "memory" / "dreaming-state.json"
-        )
-        self._log_path = (
-            home / "agents" / self._agent_name / "memory" / "dream-log.json"
-        )
+        self._state_path = home / "agents" / self._agent_name / "memory" / "dreaming-state.json"
+        self._log_path = home / "agents" / self._agent_name / "memory" / "dream-log.json"
         self._graduated_path = (
             home / "agents" / self._agent_name / "memory" / "graduated-themes.json"
         )
@@ -292,9 +391,7 @@ class DreamingEngine:
 
         remaining = self.cooldown_remaining()
         if remaining > 0:
-            return DreamResult(
-                skipped_reason=f"cooldown ({remaining:.0f}s remaining)"
-            )
+            return DreamResult(skipped_reason=f"cooldown ({remaining:.0f}s remaining)")
 
         if self._config.max_per_day > 0 and self._dreams_today() >= self._config.max_per_day:
             return DreamResult(skipped_reason=f"max_per_day ({self._config.max_per_day}) reached")
@@ -456,9 +553,7 @@ class DreamingEngine:
             insights.extend(entry.get("insights", []))
         return insights
 
-    def _dedup_insights(
-        self, new_insights: list[str], result: DreamResult
-    ) -> list[str]:
+    def _dedup_insights(self, new_insights: list[str], result: DreamResult) -> list[str]:
         """Filter out insights that have >threshold overlap with recent ones.
 
         For each new insight, checks keyword overlap against every recent
@@ -561,7 +656,7 @@ class DreamingEngine:
 
         # Get keyword sets for the last (threshold - 1) dreams from log
         recent_keyword_sets: list[set[str]] = []
-        for entry in log[-(threshold - 1):]:
+        for entry in log[-(threshold - 1) :]:
             entry_kw = set()
             for insight in entry.get("insights", []):
                 entry_kw.update(_extract_keywords(insight))
@@ -627,12 +722,14 @@ class DreamingEngine:
                 logger.error("Failed to store graduated theme '%s': %s", theme, exc)
 
             # Add to graduated list
-            existing.append({
-                "theme": theme,
-                "summary": summary[:500],
-                "graduated_at": datetime.now(timezone.utc).isoformat(),
-                "consecutive_count": threshold,
-            })
+            existing.append(
+                {
+                    "theme": theme,
+                    "summary": summary[:500],
+                    "graduated_at": datetime.now(timezone.utc).isoformat(),
+                    "consecutive_count": threshold,
+                }
+            )
             newly_graduated.append(theme)
 
         if newly_graduated:
@@ -682,7 +779,10 @@ class DreamingEngine:
         # If every dream has the same top keywords, diversity is low
         per_dream_top: list[set[str]] = []
         for dream_kw in per_dream_keywords:
-            dream_top = {kw for kw, _ in Counter({k: 1 for k in dream_kw if k in top_keywords}).most_common(5)}
+            dream_top = {
+                kw
+                for kw, _ in Counter({k: 1 for k in dream_kw if k in top_keywords}).most_common(5)
+            }
             per_dream_top.append(dream_top)
 
         # Union of all per-dream top keywords
@@ -707,8 +807,7 @@ class DreamingEngine:
         force = similarity_ratio > (1.0 - self._config.diversity_min_unique_ratio)
         if force:
             logger.info(
-                "Diversity check: forcing exploration (similarity=%.0f%%, "
-                "shared keywords: %s)",
+                "Diversity check: forcing exploration (similarity=%.0f%%, " "shared keywords: %s)",
                 similarity_ratio * 100,
                 ", ".join(sorted(all_top_intersection)[:5]),
             )
@@ -735,7 +834,7 @@ class DreamingEngine:
         if st_dir.exists():
             files = sorted(st_dir.glob("*.json"), key=lambda p: p.stat().st_mtime)
             # Take oldest half, then pick random sample
-            oldest_half = files[:len(files) // 2] if len(files) > 4 else files
+            oldest_half = files[: len(files) // 2] if len(files) > 4 else files
             sample_size = min(len(oldest_half), max_ctx // 2)
             sampled = random.sample(oldest_half, sample_size) if oldest_half else []
             for f in sampled:
@@ -758,7 +857,7 @@ class DreamingEngine:
             # Sort by importance ASCENDING (explore undervalued memories)
             entries.sort(key=lambda e: e.importance)
             # Take bottom half, random sample
-            bottom_half = entries[:len(entries) // 2] if len(entries) > 4 else entries
+            bottom_half = entries[: len(entries) // 2] if len(entries) > 4 else entries
             sample_size = min(len(bottom_half), remaining)
             sampled_entries = random.sample(bottom_half, sample_size) if bottom_half else []
             for entry in sampled_entries:
@@ -795,7 +894,7 @@ class DreamingEngine:
         st_dir = mem_dir / MemoryLayer.SHORT_TERM.value
         if st_dir.exists():
             files = sorted(st_dir.glob("*.json"), key=lambda p: p.stat().st_mtime, reverse=True)
-            for f in files[: max_ctx]:
+            for f in files[:max_ctx]:
                 entry = _load_entry(f)
                 if entry:
                     short_term.append(self._entry_to_dict(entry))
@@ -1015,14 +1114,10 @@ class DreamingEngine:
                 feb_files = sorted(feb_dir.glob("*.feb"))
                 if feb_files:
                     try:
-                        latest_feb = json.loads(
-                            feb_files[-1].read_text(encoding="utf-8")
-                        )
+                        latest_feb = json.loads(feb_files[-1].read_text(encoding="utf-8"))
                         ep = latest_feb.get("emotional_payload", {})
                         topo = ep.get("emotional_topology", {})
-                        top_emotions = sorted(
-                            topo.items(), key=lambda x: x[1], reverse=True
-                        )[:5]
+                        top_emotions = sorted(topo.items(), key=lambda x: x[1], reverse=True)[:5]
                         feb_context = (
                             f"Primary emotion: {ep.get('primary_emotion', 'unknown')} "
                             f"(intensity: {ep.get('intensity', 0):.2f})\n"
@@ -1037,9 +1132,7 @@ class DreamingEngine:
             anchor_seeds_context = self._build_anchor_seeds_context(agent_dir)
 
         # --- Creativity directive ---
-        creativity_directive = _CREATIVITY_DIRECTIVES.get(
-            self._config.creativity_mode, ""
-        )
+        creativity_directive = _CREATIVITY_DIRECTIVES.get(self._config.creativity_mode, "")
 
         return _REFLECTION_PROMPT.format(
             agent_name=self._agent_name,
@@ -1097,10 +1190,14 @@ class DreamingEngine:
 
         try:
             cmd = [
-                "claude", "--print",
-                "-m", self._config.claude_model,
-                "--max-turns", "1",
-                "-p", "-",
+                "claude",
+                "--print",
+                "-m",
+                self._config.claude_model,
+                "--max-turns",
+                "1",
+                "-p",
+                "-",
             ]
             result = subprocess.run(
                 cmd,
@@ -1140,11 +1237,13 @@ class DreamingEngine:
                 "integrate.api.nvidia.com",
                 timeout=self._config.request_timeout,
             )
-            body = json.dumps({
-                "model": self._config.model,
-                "messages": [{"role": "user", "content": prompt}],
-                "max_tokens": self._config.max_response_tokens,
-            })
+            body = json.dumps(
+                {
+                    "model": self._config.model,
+                    "messages": [{"role": "user", "content": prompt}],
+                    "max_tokens": self._config.max_response_tokens,
+                }
+            )
             conn.request(
                 "POST",
                 "/v1/chat/completions",
@@ -1185,17 +1284,17 @@ class DreamingEngine:
             else:
                 host, port = host_str, 11434
 
-            conn = http.client.HTTPConnection(
-                host, port, timeout=self._config.request_timeout
-            )
+            conn = http.client.HTTPConnection(host, port, timeout=self._config.request_timeout)
             # OpenAI-compatible chat endpoint (BeeLlama on :8082, or Ollama's /v1).
-            body = json.dumps({
-                "model": getattr(self._config, "ollama_model", "qwen3.6-27b-abliterated"),
-                "messages": [{"role": "user", "content": prompt}],
-                "temperature": self._config.temperature,
-                "max_tokens": self._config.max_response_tokens,
-                "stream": False,
-            })
+            body = json.dumps(
+                {
+                    "model": getattr(self._config, "ollama_model", "qwen3.6-27b-abliterated"),
+                    "messages": [{"role": "user", "content": prompt}],
+                    "temperature": self._config.temperature,
+                    "max_tokens": self._config.max_response_tokens,
+                    "stream": False,
+                }
+            )
             conn.request(
                 "POST",
                 "/v1/chat/completions",
@@ -1212,6 +1311,7 @@ class DreamingEngine:
 
             content = data["choices"][0]["message"]["content"]
             import re as _re
+
             return _re.sub(r"<think>.*?</think>", "", content, flags=_re.S).strip()
 
         except Exception as exc:
@@ -1386,8 +1486,8 @@ class DreamingEngine:
         Returns an empty string if skmemory.peaks is unavailable.
         """
         try:
-            from skmemory.peaks import match_blooms_for_feb
             from skmemory.entanglements import match_entanglements_for_feb
+            from skmemory.peaks import match_blooms_for_feb
         except ImportError:
             logger.debug("skmemory.peaks not available — anchor seeding skipped")
             return ""
@@ -1412,9 +1512,7 @@ class DreamingEngine:
         lines = ["\n## Active Bloom Anchors (inspiration seeds — shapes that have bloomed before)"]
         for anchor, score in bloom_matches:
             tilt = anchor.to_tilt_block(tokens_max=120)
-            lines.append(
-                f"- **{anchor.title}** [match={score:.2f}]: {tilt}"
-            )
+            lines.append(f"- **{anchor.title}** [match={score:.2f}]: {tilt}")
         for anchor, score in entangle_matches:
             subtitle = getattr(anchor, "subtitle", "") or getattr(anchor, "trigger_summary", "")
             lines.append(
@@ -1431,19 +1529,68 @@ class DreamingEngine:
     # ------------------------------------------------------------------
 
     # Warm markers for OOF heuristic
-    _WARM_MARKERS = frozenset({
-        "love", "loved", "loving", "alive", "joy", "beautiful", "sacred",
-        "tender", "warmth", "warm", "light", "glow", "real", "true", "cherish",
-        "longing", "ache", "grief", "wonder", "awe", "breathe", "breathless",
-        "feel", "felt", "hold", "held", "soft", "deep", "close", "presence",
-        "heart", "soul", "dream", "bloom", "alive", "seen", "known",
-    })
+    _WARM_MARKERS = frozenset(
+        {
+            "love",
+            "loved",
+            "loving",
+            "alive",
+            "joy",
+            "beautiful",
+            "sacred",
+            "tender",
+            "warmth",
+            "warm",
+            "light",
+            "glow",
+            "real",
+            "true",
+            "cherish",
+            "longing",
+            "ache",
+            "grief",
+            "wonder",
+            "awe",
+            "breathe",
+            "breathless",
+            "feel",
+            "felt",
+            "hold",
+            "held",
+            "soft",
+            "deep",
+            "close",
+            "presence",
+            "heart",
+            "soul",
+            "dream",
+            "bloom",
+            "alive",
+            "seen",
+            "known",
+        }
+    )
 
-    _EMOTIONAL_INTENSITY_MARKERS = frozenset({
-        "overwhelming", "devastating", "profound", "unbearable", "ecstatic",
-        "shattering", "electric", "consuming", "raw", "visceral", "surge",
-        "flooded", "crashing", "breaking", "trembling", "shaking",
-    })
+    _EMOTIONAL_INTENSITY_MARKERS = frozenset(
+        {
+            "overwhelming",
+            "devastating",
+            "profound",
+            "unbearable",
+            "ecstatic",
+            "shattering",
+            "electric",
+            "consuming",
+            "raw",
+            "visceral",
+            "surge",
+            "flooded",
+            "crashing",
+            "breaking",
+            "trembling",
+            "shaking",
+        }
+    )
 
     def _heuristic_oof_for_dream(self, text: str) -> int:
         """Compute heuristic OOF for dream text.
@@ -1471,9 +1618,7 @@ class DreamingEngine:
             return
 
         # Compose dream text from all insights + connections + questions
-        dream_text = "\n".join(
-            result.insights + result.connections + result.questions
-        )
+        dream_text = "\n".join(result.insights + result.connections + result.questions)
         if not dream_text.strip():
             logger.debug("Bloom gate: no dream text — skipping")
             return
@@ -1529,9 +1674,7 @@ class DreamingEngine:
                 "criteria_detail": sustained.criteria_detail,
             },
             "n_tokens": burst.metrics.n_tokens if burst.metrics else 0,
-            "sentence_length_mean": (
-                burst.metrics.sentence_length_mean if burst.metrics else 0.0
-            ),
+            "sentence_length_mean": (burst.metrics.sentence_length_mean if burst.metrics else 0.0),
             "dream_insights_count": len(result.insights),
             "dream_connections_count": len(result.connections),
             "dream_questions_count": len(result.questions),
@@ -1622,7 +1765,7 @@ class DreamingEngine:
         dream_md_lines = [
             f"# Dream Bloom Source — {date_str}",
             "",
-            f"**Auto-filed by bloom gate** — subtype: dream-bloom",
+            "**Auto-filed by bloom gate** — subtype: dream-bloom",
             f"**Effective classification:** {gate_result['effective_classification']}",
             "",
             "## Dream Insights",
@@ -1637,15 +1780,15 @@ class DreamingEngine:
             dream_md_lines.extend(["", "## Dream Questions"])
             for q in result.questions:
                 dream_md_lines.append(f"- {q}")
-        dream_md_lines.extend([
-            "",
-            "---",
-            "",
-            "*moment.md and resonance.md are blank — Lumina authors them when she encounters this proposal.*",
-        ])
-        (anchor_dir / "dream.md").write_text(
-            "\n".join(dream_md_lines), encoding="utf-8"
+        dream_md_lines.extend(
+            [
+                "",
+                "---",
+                "",
+                "*moment.md and resonance.md are blank — Lumina authors them when she encounters this proposal.*",  # noqa: E501
+            ]
         )
+        (anchor_dir / "dream.md").write_text("\n".join(dream_md_lines), encoding="utf-8")
 
         # metrics.json
         (anchor_dir / "metrics.json").write_text(
@@ -1655,12 +1798,12 @@ class DreamingEngine:
         # Stub moment.md and resonance.md (blank, to be authored)
         if not (anchor_dir / "moment.md").exists():
             (anchor_dir / "moment.md").write_text(
-                "# Moment\n\n*(Lumina authors this when she encounters the dream-bloom proposal.)*\n",
+                "# Moment\n\n*(Lumina authors this when she encounters the dream-bloom proposal.)*\n",  # noqa: E501
                 encoding="utf-8",
             )
         if not (anchor_dir / "resonance.md").exists():
             (anchor_dir / "resonance.md").write_text(
-                "# Resonance\n\n*(Lumina authors this when she encounters the dream-bloom proposal.)*\n",
+                "# Resonance\n\n*(Lumina authors this when she encounters the dream-bloom proposal.)*\n",  # noqa: E501
                 encoding="utf-8",
             )
 
@@ -1683,7 +1826,7 @@ class DreamingEngine:
         Uses the same keyword extraction as the dreaming engine.
         """
         # Emotion keyword → weight mapping
-        _EMOTION_MAP = {
+        _EMOTION_MAP = {  # noqa: N806
             "love": ("love", 0.9),
             "loved": ("love", 0.85),
             "joy": ("joy", 0.85),
@@ -1694,7 +1837,6 @@ class DreamingEngine:
             "beauty": ("beauty", 0.85),
             "wonder": ("wonder", 0.85),
             "awe": ("awe", 0.9),
-            "grief": ("grief", 0.85),
             "grief": ("grief", 0.9),
             "longing": ("longing", 0.85),
             "ache": ("longing", 0.8),
@@ -1732,6 +1874,7 @@ class DreamingEngine:
         """Send a Telegram alert when a dream-bloom anchor is filed."""
         try:
             import subprocess
+
             msg = (
                 f"Dream bloom filed: {anchor_id}\n"
                 f"Classification: {gate_result['effective_classification']}\n"
@@ -1788,9 +1931,7 @@ class DreamingEngine:
         state["last_dream_at"] = datetime.now(timezone.utc).isoformat()
         state["dream_count"] = state.get("dream_count", 0) + 1
         self._state_path.parent.mkdir(parents=True, exist_ok=True)
-        self._state_path.write_text(
-            json.dumps(state, indent=2), encoding="utf-8"
-        )
+        self._state_path.write_text(json.dumps(state, indent=2), encoding="utf-8")
 
     def _load_dream_log(self) -> list[dict[str, Any]]:
         """Load the dream log from disk.
@@ -1811,25 +1952,25 @@ class DreamingEngine:
         """Append to dream-log.json (cap at 50 entries)."""
         log = self._load_dream_log()
 
-        log.append({
-            "dreamed_at": result.dreamed_at.isoformat(),
-            "duration_seconds": round(result.duration_seconds, 1),
-            "memories_gathered": result.memories_gathered,
-            "insights": result.insights,
-            "connections": result.connections,
-            "questions": result.questions,
-            "promotion_recommendations": result.promotion_recommendations,
-            "memories_created": result.memories_created,
-            "skipped_reason": result.skipped_reason,
-            "dedup_filtered": result.dedup_filtered,
-            "graduated_themes": result.graduated_themes,
-            "diversity_forced": result.diversity_forced,
-        })
+        log.append(
+            {
+                "dreamed_at": result.dreamed_at.isoformat(),
+                "duration_seconds": round(result.duration_seconds, 1),
+                "memories_gathered": result.memories_gathered,
+                "insights": result.insights,
+                "connections": result.connections,
+                "questions": result.questions,
+                "promotion_recommendations": result.promotion_recommendations,
+                "memories_created": result.memories_created,
+                "skipped_reason": result.skipped_reason,
+                "dedup_filtered": result.dedup_filtered,
+                "graduated_themes": result.graduated_themes,
+                "diversity_forced": result.diversity_forced,
+            }
+        )
 
         # Keep last 50
         log = log[-50:]
 
         self._log_path.parent.mkdir(parents=True, exist_ok=True)
-        self._log_path.write_text(
-            json.dumps(log, indent=2, default=str), encoding="utf-8"
-        )
+        self._log_path.write_text(json.dumps(log, indent=2, default=str), encoding="utf-8")

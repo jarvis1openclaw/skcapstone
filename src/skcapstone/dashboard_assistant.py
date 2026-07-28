@@ -10,6 +10,7 @@ Read/report answers are open on the tailnet; any mutation runs through the same
 capability gate + audit trail (actor=assistant:<operator>) as the rest of the
 dashboard.
 """
+
 from __future__ import annotations
 
 import json
@@ -26,12 +27,14 @@ _ACTIONS = {"note", "move", "assign", "queue-ai"}
 # Analytics (canned reports the model narrates)
 # ---------------------------------------------------------------------------
 
+
 def board_summary(home: Path) -> dict:
     from .card import KanbanBoard
 
     kb = KanbanBoard(home)
     cards = kb.cards()
     from collections import Counter
+
     by_col = Counter(c.status.value for c in cards)
     by_lane = Counter(c.swimlane for c in cards)
     return {
@@ -52,10 +55,17 @@ def most_involved_tasks(home: Path, n: int = 5) -> list[dict]:
         events = store._read_events(card.id)
         scored.append((len(events), card))
     scored.sort(key=lambda t: t[0], reverse=True)
-    return [{
-        "id": c.id, "title": c.title, "kind": c.kind.value, "owner": c.owner,
-        "status": c.status.value, "events": n_events,
-    } for n_events, c in scored[:n]]
+    return [
+        {
+            "id": c.id,
+            "title": c.title,
+            "kind": c.kind.value,
+            "owner": c.owner,
+            "status": c.status.value,
+            "events": n_events,
+        }
+        for n_events, c in scored[:n]
+    ]
 
 
 def top_incidents(home: Path, n: int = 5) -> list[dict]:
@@ -94,15 +104,14 @@ _SYSTEM = (
     "concise and concrete; prefer short lists with ids. If the operator asks you "
     "to change something (add a note, move/assign a card, or queue an AI agent to "
     "work a ticket), do NOT describe it, instead end your reply with a single line:\n"
-    "ACTION {\"tool\": one of note|move|assign|queue-ai, \"card_id\": <id>, ...args}\n"
+    'ACTION {"tool": one of note|move|assign|queue-ai, "card_id": <id>, ...args}\n'
     "note args: text. move args: column. assign args: owner. queue-ai args: "
     "instruction, agent (lumina|opus|jarvis), mode (propose|dry-run|execute). "
     "Only emit ACTION when the operator clearly requested a change."
 )
 
 
-def stream_answer(home: Path, prompt: str, actor: str = "operator",
-                  capability_ok: bool = False):
+def stream_answer(home: Path, prompt: str, actor: str = "operator", capability_ok: bool = False):
     """Generator yielding SSE frames: streamed answer, then an action result.
 
     Yields already-formatted ``event:/data:`` SSE strings.
@@ -156,16 +165,27 @@ def _run_action(home: Path, action: dict, actor: str, capability_ok: bool) -> di
     card_id = action["card_id"]
     who = f"assistant:{actor}"
     if not capability_ok:
-        return {"tool": tool, "card_id": card_id, "ok": False,
-                "error": "capability required for assistant actions"}
+        return {
+            "tool": tool,
+            "card_id": card_id,
+            "ok": False,
+            "error": "capability required for assistant actions",
+        }
     try:
         if tool == "queue-ai":
             from . import agent_run as ar
-            r = ar.request_run(home, card_id, action.get("instruction", ""),
-                               agent=action.get("agent", "lumina"),
-                               mode=action.get("mode", "propose"), requester=who)
+
+            r = ar.request_run(
+                home,
+                card_id,
+                action.get("instruction", ""),
+                agent=action.get("agent", "lumina"),
+                mode=action.get("mode", "propose"),
+                requester=who,
+            )
             return {"tool": tool, "card_id": card_id, **r}
         from . import dashboard_kanban as dk
+
         fields = {k: v for k, v in action.items() if k not in ("tool", "card_id")}
         r = dk.apply_mutation(home, card_id, tool, who, **fields)
         return {"tool": tool, "card_id": card_id, **r}

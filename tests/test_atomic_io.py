@@ -158,9 +158,7 @@ class TestITILAtomicWrites:
         store = ITILManager(tmp_path)
         store.ensure_dirs()
 
-        entry = store.create_kedb_entry(
-            title="Known error", symptoms=["boom"], root_cause="bug"
-        )
+        entry = store.create_kedb_entry(title="Known error", symptoms=["boom"], root_cause="bug")
 
         path = store.kedb_dir / f"{entry.id}.json"
         assert json.loads(path.read_text(encoding="utf-8"))["title"] == "Known error"

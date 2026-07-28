@@ -23,9 +23,9 @@ from skcapstone.blueprints.schema import ModelTier
 logger = logging.getLogger("skcapstone.response_cache")
 
 # TTL constants (seconds)
-_TTL_FAST: float = 3600.0       # 1 hour
-_TTL_CODE: float = 86400.0      # 24 hours
-_TTL_DEFAULT: float = 3600.0    # 1 hour fallback for other tiers
+_TTL_FAST: float = 3600.0  # 1 hour
+_TTL_CODE: float = 86400.0  # 24 hours
+_TTL_DEFAULT: float = 3600.0  # 1 hour fallback for other tiers
 
 
 def _ttl_for_tier(tier: ModelTier) -> float:
@@ -138,7 +138,10 @@ class ResponseCache:
                 self._evict_locked()
         logger.debug(
             "Cached response: model=%s tier=%s ttl=%.0fs len=%d",
-            model, tier.value, ttl, len(response),
+            model,
+            tier.value,
+            ttl,
+            len(response),
         )
 
     def evict(self) -> int:

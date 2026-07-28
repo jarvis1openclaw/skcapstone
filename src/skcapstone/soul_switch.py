@@ -146,16 +146,20 @@ def load_switch_soul(home: Path, name: str) -> SoulSwitchBlueprint:
         raise ValueError(f"Invalid YAML in {blueprint_path}: {exc}") from exc
 
     if not isinstance(data, dict):
-        raise ValueError(
-            f"Expected a YAML mapping in {blueprint_path}, got {type(data).__name__}"
-        )
+        raise ValueError(f"Expected a YAML mapping in {blueprint_path}, got {type(data).__name__}")
 
     # Inject the name from filename if not present in file
     data.setdefault("name", name)
 
     # Coerce None → "" for string fields
-    for str_field in ("display_name", "agent_name", "system_prompt", "journal_tone",
-                      "category", "vibe"):
+    for str_field in (
+        "display_name",
+        "agent_name",
+        "system_prompt",
+        "journal_tone",
+        "category",
+        "vibe",
+    ):
         if data.get(str_field) is None:
             data[str_field] = ""
 

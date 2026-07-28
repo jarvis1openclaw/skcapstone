@@ -21,7 +21,7 @@ from typing import Optional
 
 import yaml
 
-from . import AGENT_HOME, agent_home, shared_home, __version__
+from . import __version__, agent_home, shared_home
 from .discovery import discover_all
 from .models import AgentConfig, AgentManifest, ConnectorInfo, PillarStatus
 
@@ -119,10 +119,7 @@ class AgentRuntime:
         self.manifest.sync = pillars["sync"]
         self.manifest.skills = pillars["skills"]
 
-        if (
-            self.manifest.identity.name
-            and self.manifest.identity.status == PillarStatus.ACTIVE
-        ):
+        if self.manifest.identity.name and self.manifest.identity.status == PillarStatus.ACTIVE:
             self.manifest.name = self.manifest.identity.name
         elif not manifest_name_loaded and self.config.agent_name:
             self.manifest.name = self.config.agent_name
@@ -178,9 +175,7 @@ class AgentRuntime:
 
     def register_connector(self, name: str, platform: str) -> ConnectorInfo:
         """Register a platform connector."""
-        existing = next(
-            (c for c in self.manifest.connectors if c.platform == platform), None
-        )
+        existing = next((c for c in self.manifest.connectors if c.platform == platform), None)
         if existing:
             existing.last_active = datetime.now(timezone.utc)
             existing.active = True
@@ -232,7 +227,9 @@ class AgentRuntime:
 
         logger.info(
             "Loaded %d skills for agent '%s' (%d tools available)",
-            loaded, agent_name, self.manifest.skills.tools_available,
+            loaded,
+            agent_name,
+            self.manifest.skills.tools_available,
         )
         return loader
 

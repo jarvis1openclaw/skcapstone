@@ -136,7 +136,5 @@ class TestIncidentAuthorityNode:
         monkeypatch.setattr(
             service_health, "_failure_class", lambda e: called.append(e) or "unknown"
         )
-        service_health._create_incident_for_down_service(
-            {"name": "skvoice", "error": "refused"}
-        )
+        service_health._create_incident_for_down_service({"name": "skvoice", "error": "refused"})
         assert called == [], "incident creation must short-circuit before doing work"

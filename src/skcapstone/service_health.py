@@ -25,10 +25,10 @@ import re
 import socket
 import time
 import urllib.error
-from pathlib import Path
 import urllib.request
-from urllib.parse import urlparse
+from pathlib import Path
 from typing import Any
+from urllib.parse import urlparse
 
 logger = logging.getLogger("skcapstone.service_health")
 

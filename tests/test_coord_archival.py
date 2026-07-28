@@ -1,4 +1,5 @@
 """Tests for coord archival + aging (Phase 2)."""
+
 from __future__ import annotations
 
 from datetime import datetime, timedelta, timezone

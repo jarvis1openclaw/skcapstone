@@ -4,11 +4,8 @@ from __future__ import annotations
 
 import json
 import threading
-from pathlib import Path
 from types import SimpleNamespace
 from unittest.mock import MagicMock
-
-import pytest
 
 from skcapstone.self_healing import SelfHealingDoctor
 
@@ -34,7 +31,16 @@ class TestHomeDirs:
     def test_ok_when_all_present(self, tmp_path):
         """Returns ok when all dirs exist."""
         home = tmp_path / ".skcapstone"
-        for subdir in ("identity", "memory", "trust", "security", "sync", "config", "soul", "logs"):
+        for subdir in (
+            "identity",
+            "memory",
+            "trust",
+            "security",
+            "sync",
+            "config",
+            "soul",
+            "logs",
+        ):
             (home / subdir).mkdir(parents=True)
 
         doctor = SelfHealingDoctor(home)
@@ -154,7 +160,16 @@ class TestDiagnoseAndHeal:
     def test_all_ok_when_healthy(self, tmp_path):
         """Healthy home returns all checks passed."""
         home = tmp_path / ".skcapstone"
-        for subdir in ("identity", "memory", "trust", "security", "sync", "config", "soul", "logs"):
+        for subdir in (
+            "identity",
+            "memory",
+            "trust",
+            "security",
+            "sync",
+            "config",
+            "soul",
+            "logs",
+        ):
             (home / subdir).mkdir(parents=True)
         (home / "memory" / "index.json").write_text("[]")
         (home / "sync" / "sync-manifest.json").write_text("{}")

@@ -102,7 +102,6 @@ import asyncio
 import json
 import logging
 from pathlib import Path
-from typing import Any
 
 from mcp.server import Server
 from mcp.server.stdio import stdio_server
@@ -171,7 +170,7 @@ async def list_tools() -> list[Tool]:
                     },
                     "importance": {
                         "type": "number",
-                        "description": "Importance score 0.0-1.0 (>= 0.7 auto-promotes to mid-term)",
+                        "description": "Importance score 0.0-1.0 (>= 0.7 auto-promotes to mid-term)",  # noqa: E501
                     },
                     "source": {
                         "type": "string",
@@ -323,9 +322,7 @@ async def list_tools() -> list[Tool]:
         ),
         Tool(
             name="coord_complete",
-            description=(
-                "Mark a task as completed on the coordination board."
-            ),
+            description=("Mark a task as completed on the coordination board."),
             inputSchema={
                 "type": "object",
                 "properties": {
@@ -343,9 +340,7 @@ async def list_tools() -> list[Tool]:
         ),
         Tool(
             name="coord_create",
-            description=(
-                "Create a new task on the coordination board."
-            ),
+            description=("Create a new task on the coordination board."),
             inputSchema={
                 "type": "object",
                 "properties": {
@@ -538,7 +533,7 @@ async def list_tools() -> list[Tool]:
                     "action": {
                         "type": "string",
                         "enum": ["diff", "save"],
-                        "description": "Action: diff (compare) or save (new baseline). Default: diff.",
+                        "description": "Action: diff (compare) or save (new baseline). Default: diff.",  # noqa: E501
                     },
                 },
                 "required": [],
@@ -562,8 +557,14 @@ async def list_tools() -> list[Tool]:
                     },
                     "warmth": {"type": "number", "description": "Warmth level 0-10 (for update)"},
                     "trust": {"type": "number", "description": "Trust level 0-10 (for update)"},
-                    "connection": {"type": "number", "description": "Connection 0-10 (for update)"},
-                    "feeling": {"type": "string", "description": "Session-end feeling (for update)"},
+                    "connection": {
+                        "type": "number",
+                        "description": "Connection 0-10 (for update)",
+                    },
+                    "feeling": {
+                        "type": "string",
+                        "description": "Session-end feeling (for update)",
+                    },
                 },
                 "required": [],
             },
@@ -582,7 +583,7 @@ async def list_tools() -> list[Tool]:
                     "action": {
                         "type": "string",
                         "enum": ["show", "recommend", "set", "reset"],
-                        "description": "Action: show current, recommend changes, set a value, or reset (default: show)",
+                        "description": "Action: show current, recommend changes, set a value, or reset (default: show)",  # noqa: E501
                     },
                     "key": {
                         "type": "string",
@@ -694,7 +695,7 @@ async def list_tools() -> list[Tool]:
                 "properties": {
                     "tool": {
                         "type": "string",
-                        "description": "Fully-qualified tool name, e.g. 'syncthing-setup.check_status'",
+                        "description": "Fully-qualified tool name, e.g. 'syncthing-setup.check_status'",  # noqa: E501
                     },
                     "args": {
                         "type": "object",
@@ -721,7 +722,7 @@ async def list_tools() -> list[Tool]:
                 "properties": {
                     "recipient": {
                         "type": "string",
-                        "description": "Recipient agent name or CapAuth URI (e.g. 'lumina' or 'capauth:lumina@skworld.io')",
+                        "description": "Recipient agent name or CapAuth URI (e.g. 'lumina' or 'capauth:lumina@skworld.io')",  # noqa: E501
                     },
                     "message": {
                         "type": "string",
@@ -788,7 +789,7 @@ async def list_tools() -> list[Tool]:
                     "members": {
                         "type": "array",
                         "items": {"type": "string"},
-                        "description": "Initial member URIs to add (creator is always included as admin)",
+                        "description": "Initial member URIs to add (creator is always included as admin)",  # noqa: E501
                     },
                 },
                 "required": ["name"],
@@ -929,7 +930,7 @@ async def list_tools() -> list[Tool]:
                     },
                     "auto_rotate": {
                         "type": "boolean",
-                        "description": "Enable auto-rotate after repeated failures (default: true)",
+                        "description": "Enable auto-rotate after repeated failures (default: true)",  # noqa: E501
                     },
                 },
                 "required": [],
@@ -981,7 +982,7 @@ async def list_tools() -> list[Tool]:
                 "properties": {
                     "status": {
                         "type": "string",
-                        "description": "Agent status: alive, busy, draining, offline (default: alive)",
+                        "description": "Agent status: alive, busy, draining, offline (default: alive)",  # noqa: E501
                     },
                     "claimed_tasks": {
                         "type": "array",
@@ -1105,9 +1106,7 @@ async def list_tools() -> list[Tool]:
         ),
         Tool(
             name="file_status",
-            description=(
-                "Get file transfer subsystem status: outbox/inbox/completed counts."
-            ),
+            description=("Get file transfer subsystem status: outbox/inbox/completed counts."),
             inputSchema={"type": "object", "properties": {}, "required": []},
         ),
         # ── Pub/sub tools ────────────────────────────────────
@@ -1178,9 +1177,7 @@ async def list_tools() -> list[Tool]:
         ),
         Tool(
             name="pubsub_topics",
-            description=(
-                "List all known topics with message counts and last activity."
-            ),
+            description=("List all known topics with message counts and last activity."),
             inputSchema={"type": "object", "properties": {}, "required": []},
         ),
         # ── Memory fortress tools ────────────────────────────
@@ -1195,7 +1192,7 @@ async def list_tools() -> list[Tool]:
                 "properties": {
                     "layer": {
                         "type": "string",
-                        "description": "Memory layer: short-term, mid-term, or long-term (omit for all)",
+                        "description": "Memory layer: short-term, mid-term, or long-term (omit for all)",  # noqa: E501
                     },
                 },
                 "required": [],
@@ -1374,7 +1371,7 @@ async def list_tools() -> list[Tool]:
                     },
                     "mode": {
                         "type": "string",
-                        "description": "Brainstorming mode: socratic, dialectic, adversarial, collaborative (default: dialectic)",
+                        "description": "Brainstorming mode: socratic, dialectic, adversarial, collaborative (default: dialectic)",  # noqa: E501
                         "enum": ["socratic", "dialectic", "adversarial", "collaborative"],
                     },
                 },
@@ -1447,7 +1444,7 @@ async def list_tools() -> list[Tool]:
                     },
                     "mode": {
                         "type": "string",
-                        "description": "Import mode: 'daily' (consolidate per day) or 'message' (one per message)",
+                        "description": "Import mode: 'daily' (consolidate per day) or 'message' (one per message)",  # noqa: E501
                         "enum": ["daily", "message"],
                         "default": "daily",
                     },
@@ -1639,7 +1636,7 @@ async def list_tools() -> list[Tool]:
                 "properties": {
                     "chat": {
                         "type": "string",
-                        "description": "Chat username, title, or numeric ID to announce the swap in",
+                        "description": "Chat username, title, or numeric ID to announce the swap in",  # noqa: E501
                     },
                     "from_soul": {
                         "type": "string",
@@ -1704,7 +1701,7 @@ async def list_tools() -> list[Tool]:
                     },
                     "privacy_sensitive": {
                         "type": "boolean",
-                        "description": "Force LOCAL tier — data never leaves node (default: false)",
+                        "description": "Force LOCAL tier — data never leaves node (default: false)",  # noqa: E501
                     },
                     "estimated_tokens": {
                         "type": "integer",
@@ -1784,27 +1781,50 @@ async def list_tools() -> list[Tool]:
             inputSchema={
                 "type": "object",
                 "properties": {
-                    "item_id": {"type": "string", "description": "ID of the inbox item to clarify"},
+                    "item_id": {
+                        "type": "string",
+                        "description": "ID of the inbox item to clarify",
+                    },
                     "actionable": {"type": "boolean", "description": "Is this item actionable?"},
-                    "steps": {"type": "string", "enum": ["single", "multi"], "description": "Single action or multi-step project"},
-                    "context": {"type": "string", "description": "GTD context tag, e.g. @computer, @phone, @home"},
-                    "priority": {"type": "string", "enum": ["critical", "high", "medium", "low"], "description": "Priority level"},
-                    "energy": {"type": "string", "enum": ["high", "medium", "low"], "description": "Energy level required"},
-                    "delegate_to": {"type": "string", "description": "Person or agent to delegate to"},
+                    "steps": {
+                        "type": "string",
+                        "enum": ["single", "multi"],
+                        "description": "Single action or multi-step project",
+                    },
+                    "context": {
+                        "type": "string",
+                        "description": "GTD context tag, e.g. @computer, @phone, @home",
+                    },
+                    "priority": {
+                        "type": "string",
+                        "enum": ["critical", "high", "medium", "low"],
+                        "description": "Priority level",
+                    },
+                    "energy": {
+                        "type": "string",
+                        "enum": ["high", "medium", "low"],
+                        "description": "Energy level required",
+                    },
+                    "delegate_to": {
+                        "type": "string",
+                        "description": "Person or agent to delegate to",
+                    },
                 },
                 "required": ["item_id", "actionable"],
             },
         ),
         Tool(
             name="gtd_move",
-            description=(
-                "Manually move a GTD item from its current list to another list."
-            ),
+            description=("Manually move a GTD item from its current list to another list."),
             inputSchema={
                 "type": "object",
                 "properties": {
                     "item_id": {"type": "string", "description": "ID of the item to move"},
-                    "destination": {"type": "string", "enum": ["next", "project", "waiting", "someday", "reference", "done"], "description": "Destination list"},
+                    "destination": {
+                        "type": "string",
+                        "enum": ["next", "project", "waiting", "someday", "reference", "done"],
+                        "description": "Destination list",
+                    },
                 },
                 "required": ["item_id", "destination"],
             },
@@ -1840,10 +1860,24 @@ async def list_tools() -> list[Tool]:
             inputSchema={
                 "type": "object",
                 "properties": {
-                    "context": {"type": "string", "description": "Filter by GTD context tag, e.g. @computer, @phone, @home"},
-                    "energy": {"type": "string", "enum": ["high", "medium", "low"], "description": "Filter by energy level required"},
-                    "priority": {"type": "string", "enum": ["critical", "high", "medium", "low"], "description": "Filter by priority level"},
-                    "limit": {"type": "integer", "description": "Maximum items to return (default: 10)"},
+                    "context": {
+                        "type": "string",
+                        "description": "Filter by GTD context tag, e.g. @computer, @phone, @home",
+                    },
+                    "energy": {
+                        "type": "string",
+                        "enum": ["high", "medium", "low"],
+                        "description": "Filter by energy level required",
+                    },
+                    "priority": {
+                        "type": "string",
+                        "enum": ["critical", "high", "medium", "low"],
+                        "description": "Filter by priority level",
+                    },
+                    "limit": {
+                        "type": "integer",
+                        "description": "Maximum items to return (default: 10)",
+                    },
                 },
                 "required": [],
             },
@@ -1857,8 +1891,15 @@ async def list_tools() -> list[Tool]:
             inputSchema={
                 "type": "object",
                 "properties": {
-                    "status": {"type": "string", "enum": ["active", "stale", "all"], "description": "Filter by project status (default: all)"},
-                    "limit": {"type": "integer", "description": "Maximum items to return (default: 10)"},
+                    "status": {
+                        "type": "string",
+                        "enum": ["active", "stale", "all"],
+                        "description": "Filter by project status (default: all)",
+                    },
+                    "limit": {
+                        "type": "integer",
+                        "description": "Maximum items to return (default: 10)",
+                    },
                 },
                 "required": [],
             },
@@ -1872,7 +1913,10 @@ async def list_tools() -> list[Tool]:
             inputSchema={
                 "type": "object",
                 "properties": {
-                    "limit": {"type": "integer", "description": "Maximum items to return (default: 10)"},
+                    "limit": {
+                        "type": "integer",
+                        "description": "Maximum items to return (default: 10)",
+                    },
                 },
                 "required": [],
             },
@@ -1898,7 +1942,7 @@ async def list_tools() -> list[Tool]:
                     },
                     "tailnet_hostname": {
                         "type": "string",
-                        "description": "Tailscale hostname for Tier 2 document (auto-detected if omitted)",
+                        "description": "Tailscale hostname for Tier 2 document (auto-detected if omitted)",  # noqa: E501
                     },
                     "tailnet_name": {
                         "type": "string",
@@ -1971,7 +2015,7 @@ async def list_tools() -> list[Tool]:
                 "View or set the DID publication policy for this agent. "
                 "Controls whether Tier 3 (public) DID documents are generated. "
                 "Default: publish_public=true. "
-                "Set publish_public=false to opt out — identity stays private (did:key + mesh only). "
+                "Set publish_public=false to opt out — identity stays private (did:key + mesh only). "  # noqa: E501
                 "Policy is stored at ~/.skcapstone/did/policy.json."
             ),
             inputSchema={
@@ -1979,7 +2023,7 @@ async def list_tools() -> list[Tool]:
                 "properties": {
                     "publish_public": {
                         "type": "boolean",
-                        "description": "Set to false to opt out of public Tier 3 DID. Omit to view current policy.",
+                        "description": "Set to false to opt out of public Tier 3 DID. Omit to view current policy.",  # noqa: E501
                     },
                 },
                 "required": [],
@@ -2050,9 +2094,7 @@ async def list_tools() -> list[Tool]:
                 "properties": {
                     "peer": {
                         "type": "string",
-                        "description": (
-                            "Optional peer name to filter to a single sender."
-                        ),
+                        "description": ("Optional peer name to filter to a single sender."),
                     },
                 },
                 "required": [],
@@ -2528,13 +2570,41 @@ async def list_tools() -> list[Tool]:
             inputSchema={
                 "type": "object",
                 "properties": {
-                    "title": {"type": "string", "description": "Brief description of the incident"},
-                    "severity": {"type": "string", "enum": ["sev1", "sev2", "sev3", "sev4"], "description": "Severity level (default: sev3)"},
-                    "source": {"type": "string", "enum": ["service_health", "dreaming", "manual", "daemon_error", "heartbeat"], "description": "Detection source (default: manual)"},
-                    "affected_services": {"type": "array", "items": {"type": "string"}, "description": "List of affected service names"},
+                    "title": {
+                        "type": "string",
+                        "description": "Brief description of the incident",
+                    },
+                    "severity": {
+                        "type": "string",
+                        "enum": ["sev1", "sev2", "sev3", "sev4"],
+                        "description": "Severity level (default: sev3)",
+                    },
+                    "source": {
+                        "type": "string",
+                        "enum": [
+                            "service_health",
+                            "dreaming",
+                            "manual",
+                            "daemon_error",
+                            "heartbeat",
+                        ],
+                        "description": "Detection source (default: manual)",
+                    },
+                    "affected_services": {
+                        "type": "array",
+                        "items": {"type": "string"},
+                        "description": "List of affected service names",
+                    },
                     "impact": {"type": "string", "description": "Business impact description"},
-                    "managed_by": {"type": "string", "description": "Agent responsible for managing this incident"},
-                    "tags": {"type": "array", "items": {"type": "string"}, "description": "Tags for categorization"},
+                    "managed_by": {
+                        "type": "string",
+                        "description": "Agent responsible for managing this incident",
+                    },
+                    "tags": {
+                        "type": "array",
+                        "items": {"type": "string"},
+                        "description": "Tags for categorization",
+                    },
                 },
                 "required": ["title"],
             },
@@ -2549,13 +2619,36 @@ async def list_tools() -> list[Tool]:
             inputSchema={
                 "type": "object",
                 "properties": {
-                    "incident_id": {"type": "string", "description": "Incident ID (e.g. inc-a1b2c3d4)"},
+                    "incident_id": {
+                        "type": "string",
+                        "description": "Incident ID (e.g. inc-a1b2c3d4)",
+                    },
                     "agent": {"type": "string", "description": "Agent making the update"},
-                    "new_status": {"type": "string", "enum": ["acknowledged", "investigating", "escalated", "resolved", "closed"], "description": "New status"},
-                    "severity": {"type": "string", "enum": ["sev1", "sev2", "sev3", "sev4"], "description": "New severity"},
+                    "new_status": {
+                        "type": "string",
+                        "enum": [
+                            "acknowledged",
+                            "investigating",
+                            "escalated",
+                            "resolved",
+                            "closed",
+                        ],
+                        "description": "New status",
+                    },
+                    "severity": {
+                        "type": "string",
+                        "enum": ["sev1", "sev2", "sev3", "sev4"],
+                        "description": "New severity",
+                    },
                     "note": {"type": "string", "description": "Timeline note"},
-                    "resolution_summary": {"type": "string", "description": "Resolution summary (when resolving)"},
-                    "related_problem_id": {"type": "string", "description": "Link to a related problem record"},
+                    "resolution_summary": {
+                        "type": "string",
+                        "description": "Resolution summary (when resolving)",
+                    },
+                    "related_problem_id": {
+                        "type": "string",
+                        "description": "Link to a related problem record",
+                    },
                 },
                 "required": ["incident_id", "agent"],
             },
@@ -2566,9 +2659,27 @@ async def list_tools() -> list[Tool]:
             inputSchema={
                 "type": "object",
                 "properties": {
-                    "status": {"type": "string", "enum": ["detected", "acknowledged", "investigating", "escalated", "resolved", "closed"], "description": "Filter by status"},
-                    "severity": {"type": "string", "enum": ["sev1", "sev2", "sev3", "sev4"], "description": "Filter by severity"},
-                    "service": {"type": "string", "description": "Filter by affected service name"},
+                    "status": {
+                        "type": "string",
+                        "enum": [
+                            "detected",
+                            "acknowledged",
+                            "investigating",
+                            "escalated",
+                            "resolved",
+                            "closed",
+                        ],
+                        "description": "Filter by status",
+                    },
+                    "severity": {
+                        "type": "string",
+                        "enum": ["sev1", "sev2", "sev3", "sev4"],
+                        "description": "Filter by severity",
+                    },
+                    "service": {
+                        "type": "string",
+                        "description": "Filter by affected service name",
+                    },
                 },
                 "required": [],
             },
@@ -2583,10 +2694,21 @@ async def list_tools() -> list[Tool]:
                 "type": "object",
                 "properties": {
                     "title": {"type": "string", "description": "Problem title"},
-                    "managed_by": {"type": "string", "description": "Agent responsible for investigation"},
-                    "related_incident_ids": {"type": "array", "items": {"type": "string"}, "description": "Related incident IDs"},
+                    "managed_by": {
+                        "type": "string",
+                        "description": "Agent responsible for investigation",
+                    },
+                    "related_incident_ids": {
+                        "type": "array",
+                        "items": {"type": "string"},
+                        "description": "Related incident IDs",
+                    },
                     "workaround": {"type": "string", "description": "Known workaround if any"},
-                    "tags": {"type": "array", "items": {"type": "string"}, "description": "Tags for categorization"},
+                    "tags": {
+                        "type": "array",
+                        "items": {"type": "string"},
+                        "description": "Tags for categorization",
+                    },
                 },
                 "required": ["title"],
             },
@@ -2601,13 +2723,23 @@ async def list_tools() -> list[Tool]:
             inputSchema={
                 "type": "object",
                 "properties": {
-                    "problem_id": {"type": "string", "description": "Problem ID (e.g. prb-e5f6g7h8)"},
+                    "problem_id": {
+                        "type": "string",
+                        "description": "Problem ID (e.g. prb-e5f6g7h8)",
+                    },
                     "agent": {"type": "string", "description": "Agent making the update"},
-                    "new_status": {"type": "string", "enum": ["analyzing", "known_error", "resolved"], "description": "New status"},
+                    "new_status": {
+                        "type": "string",
+                        "enum": ["analyzing", "known_error", "resolved"],
+                        "description": "New status",
+                    },
                     "root_cause": {"type": "string", "description": "Root cause description"},
                     "workaround": {"type": "string", "description": "Workaround description"},
                     "note": {"type": "string", "description": "Timeline note"},
-                    "create_kedb": {"type": "boolean", "description": "Create a KEDB entry from this problem"},
+                    "create_kedb": {
+                        "type": "boolean",
+                        "description": "Create a KEDB entry from this problem",
+                    },
                 },
                 "required": ["problem_id", "agent"],
             },
@@ -2623,14 +2755,38 @@ async def list_tools() -> list[Tool]:
                 "type": "object",
                 "properties": {
                     "title": {"type": "string", "description": "Change title"},
-                    "change_type": {"type": "string", "enum": ["standard", "normal", "emergency"], "description": "Type of change (default: normal)"},
-                    "risk": {"type": "string", "enum": ["low", "medium", "high"], "description": "Risk level (default: medium)"},
-                    "rollback_plan": {"type": "string", "description": "How to roll back if the change fails"},
-                    "test_plan": {"type": "string", "description": "How to verify the change works"},
+                    "change_type": {
+                        "type": "string",
+                        "enum": ["standard", "normal", "emergency"],
+                        "description": "Type of change (default: normal)",
+                    },
+                    "risk": {
+                        "type": "string",
+                        "enum": ["low", "medium", "high"],
+                        "description": "Risk level (default: medium)",
+                    },
+                    "rollback_plan": {
+                        "type": "string",
+                        "description": "How to roll back if the change fails",
+                    },
+                    "test_plan": {
+                        "type": "string",
+                        "description": "How to verify the change works",
+                    },
                     "managed_by": {"type": "string", "description": "Agent managing the change"},
-                    "implementer": {"type": "string", "description": "Agent who will implement the change"},
-                    "related_problem_id": {"type": "string", "description": "Related problem ID if applicable"},
-                    "tags": {"type": "array", "items": {"type": "string"}, "description": "Tags for categorization"},
+                    "implementer": {
+                        "type": "string",
+                        "description": "Agent who will implement the change",
+                    },
+                    "related_problem_id": {
+                        "type": "string",
+                        "description": "Related problem ID if applicable",
+                    },
+                    "tags": {
+                        "type": "array",
+                        "items": {"type": "string"},
+                        "description": "Tags for categorization",
+                    },
                 },
                 "required": ["title"],
             },
@@ -2644,9 +2800,25 @@ async def list_tools() -> list[Tool]:
             inputSchema={
                 "type": "object",
                 "properties": {
-                    "change_id": {"type": "string", "description": "Change ID (e.g. chg-i1j2k3l4)"},
+                    "change_id": {
+                        "type": "string",
+                        "description": "Change ID (e.g. chg-i1j2k3l4)",
+                    },
                     "agent": {"type": "string", "description": "Agent making the update"},
-                    "new_status": {"type": "string", "enum": ["reviewing", "approved", "rejected", "implementing", "deployed", "verified", "failed", "closed"], "description": "New status"},
+                    "new_status": {
+                        "type": "string",
+                        "enum": [
+                            "reviewing",
+                            "approved",
+                            "rejected",
+                            "implementing",
+                            "deployed",
+                            "verified",
+                            "failed",
+                            "closed",
+                        ],
+                        "description": "New status",
+                    },
                     "note": {"type": "string", "description": "Timeline note"},
                 },
                 "required": ["change_id", "agent"],
@@ -2664,7 +2836,11 @@ async def list_tools() -> list[Tool]:
                 "properties": {
                     "change_id": {"type": "string", "description": "Change ID to vote on"},
                     "agent": {"type": "string", "description": "Voting agent name"},
-                    "decision": {"type": "string", "enum": ["approved", "rejected", "abstain"], "description": "Vote decision (default: abstain)"},
+                    "decision": {
+                        "type": "string",
+                        "enum": ["approved", "rejected", "abstain"],
+                        "description": "Vote decision (default: abstain)",
+                    },
                     "conditions": {"type": "string", "description": "Conditions for approval"},
                 },
                 "required": ["change_id", "agent"],
@@ -2687,7 +2863,10 @@ async def list_tools() -> list[Tool]:
             inputSchema={
                 "type": "object",
                 "properties": {
-                    "query": {"type": "string", "description": "Search query (matches title, symptoms, root cause, tags)"},
+                    "query": {
+                        "type": "string",
+                        "description": "Search query (matches title, symptoms, root cause, tags)",
+                    },
                 },
                 "required": ["query"],
             },
@@ -2933,45 +3112,47 @@ async def _handle_agent_status(_args: dict) -> list[TextContent]:
 
     runtime = get_runtime(home)
     m = runtime.manifest
-    return _json_response({
-        "name": m.name,
-        "version": m.version,
-        "is_conscious": m.is_conscious,
-        "is_singular": m.is_singular,
-        "pillars": {
-            "identity": {
-                "status": m.identity.status.value,
-                "fingerprint": m.identity.fingerprint,
+    return _json_response(
+        {
+            "name": m.name,
+            "version": m.version,
+            "is_conscious": m.is_conscious,
+            "is_singular": m.is_singular,
+            "pillars": {
+                "identity": {
+                    "status": m.identity.status.value,
+                    "fingerprint": m.identity.fingerprint,
+                },
+                "memory": {
+                    "status": m.memory.status.value,
+                    "total": m.memory.total_memories,
+                    "long_term": m.memory.long_term,
+                    "mid_term": m.memory.mid_term,
+                    "short_term": m.memory.short_term,
+                    "backends": _get_memory_backend_health(),
+                },
+                "trust": {
+                    "status": m.trust.status.value,
+                    "depth": m.trust.depth,
+                    "trust_level": m.trust.trust_level,
+                    "love_intensity": m.trust.love_intensity,
+                    "entangled": m.trust.entangled,
+                },
+                "security": {
+                    "status": m.security.status.value,
+                    "audit_entries": m.security.audit_entries,
+                    "threats_detected": m.security.threats_detected,
+                },
+                "sync": {
+                    "status": m.sync.status.value,
+                    "seed_count": m.sync.seed_count,
+                    "transport": m.sync.transport.value if m.sync.transport else None,
+                },
             },
-            "memory": {
-                "status": m.memory.status.value,
-                "total": m.memory.total_memories,
-                "long_term": m.memory.long_term,
-                "mid_term": m.memory.mid_term,
-                "short_term": m.memory.short_term,
-                "backends": _get_memory_backend_health(),
-            },
-            "trust": {
-                "status": m.trust.status.value,
-                "depth": m.trust.depth,
-                "trust_level": m.trust.trust_level,
-                "love_intensity": m.trust.love_intensity,
-                "entangled": m.trust.entangled,
-            },
-            "security": {
-                "status": m.security.status.value,
-                "audit_entries": m.security.audit_entries,
-                "threats_detected": m.security.threats_detected,
-            },
-            "sync": {
-                "status": m.sync.status.value,
-                "seed_count": m.sync.seed_count,
-                "transport": m.sync.transport.value if m.sync.transport else None,
-            },
-        },
-        "connectors": [c.platform for c in m.connectors if c.active],
-        "last_awakened": m.last_awakened.isoformat() if m.last_awakened else None,
-    })
+            "connectors": [c.platform for c in m.connectors if c.active],
+            "last_awakened": m.last_awakened.isoformat() if m.last_awakened else None,
+        }
+    )
 
 
 async def _handle_memory_store(args: dict) -> list[TextContent]:
@@ -2989,13 +3170,15 @@ async def _handle_memory_store(args: dict) -> list[TextContent]:
         source=args.get("source", "mcp"),
         importance=args.get("importance", 0.5),
     )
-    return _json_response({
-        "memory_id": entry.memory_id,
-        "layer": entry.layer.value,
-        "importance": entry.importance,
-        "tags": entry.tags,
-        "stored": True,
-    })
+    return _json_response(
+        {
+            "memory_id": entry.memory_id,
+            "layer": entry.layer.value,
+            "importance": entry.importance,
+            "tags": entry.tags,
+            "stored": True,
+        }
+    )
 
 
 async def _handle_memory_search(args: dict) -> list[TextContent]:
@@ -3012,17 +3195,19 @@ async def _handle_memory_search(args: dict) -> list[TextContent]:
         tags=args.get("tags"),
         limit=args.get("limit", 10),
     )
-    return _json_response([
-        {
-            "memory_id": e.memory_id,
-            "layer": e.layer.value,
-            "content": e.content[:300],
-            "tags": e.tags,
-            "importance": e.importance,
-            "access_count": e.access_count,
-        }
-        for e in results
-    ])
+    return _json_response(
+        [
+            {
+                "memory_id": e.memory_id,
+                "layer": e.layer.value,
+                "content": e.content[:300],
+                "tags": e.tags,
+                "importance": e.importance,
+                "access_count": e.access_count,
+            }
+            for e in results
+        ]
+    )
 
 
 async def _handle_memory_recall(args: dict) -> list[TextContent]:
@@ -3037,16 +3222,18 @@ async def _handle_memory_recall(args: dict) -> list[TextContent]:
     if entry is None:
         return _error_response(f"Memory not found: {memory_id}")
 
-    return _json_response({
-        "memory_id": entry.memory_id,
-        "content": entry.content,
-        "layer": entry.layer.value,
-        "tags": entry.tags,
-        "importance": entry.importance,
-        "access_count": entry.access_count,
-        "source": entry.source,
-        "created_at": entry.created_at.isoformat() if entry.created_at else None,
-    })
+    return _json_response(
+        {
+            "memory_id": entry.memory_id,
+            "content": entry.content,
+            "layer": entry.layer.value,
+            "tags": entry.tags,
+            "importance": entry.importance,
+            "access_count": entry.access_count,
+            "source": entry.source,
+            "created_at": entry.created_at.isoformat() if entry.created_at else None,
+        }
+    )
 
 
 async def _handle_send_message(args: dict) -> list[TextContent]:
@@ -3058,20 +3245,23 @@ async def _handle_send_message(args: dict) -> list[TextContent]:
 
     try:
         from skcomms.core import SKComms
+
         comm = SKComms.from_config()
         report = comm.send(recipient, message)
-        return _json_response({
-            "sent": report.success,
-            "recipient": recipient,
-            "attempts": [
-                {
-                    "transport": a.transport_name,
-                    "success": a.success,
-                    "error": a.error,
-                }
-                for a in report.attempts
-            ],
-        })
+        return _json_response(
+            {
+                "sent": report.success,
+                "recipient": recipient,
+                "attempts": [
+                    {
+                        "transport": a.transport_name,
+                        "success": a.success,
+                        "error": a.error,
+                    }
+                    for a in report.attempts
+                ],
+            }
+        )
     except ImportError:
         return _error_response("SKComms not installed. Run: pip install skcomms")
     except Exception as exc:
@@ -3082,21 +3272,24 @@ async def _handle_check_inbox(_args: dict) -> list[TextContent]:
     """Check for incoming messages."""
     try:
         from skcomms.core import SKComms
+
         comm = SKComms.from_config()
         envelopes = comm.receive()
-        return _json_response([
-            {
-                "envelope_id": e.envelope_id[:12],
-                "sender": e.sender,
-                "recipient": e.recipient,
-                "content": e.payload.content[:300],
-                "type": e.payload.content_type.value,
-                "urgency": e.metadata.urgency.value,
-                "thread_id": e.metadata.thread_id,
-                "created_at": e.metadata.created_at.isoformat(),
-            }
-            for e in envelopes
-        ])
+        return _json_response(
+            [
+                {
+                    "envelope_id": e.envelope_id[:12],
+                    "sender": e.sender,
+                    "recipient": e.recipient,
+                    "content": e.payload.content[:300],
+                    "type": e.payload.content_type.value,
+                    "urgency": e.metadata.urgency.value,
+                    "thread_id": e.metadata.thread_id,
+                    "created_at": e.metadata.created_at.isoformat(),
+                }
+                for e in envelopes
+            ]
+        )
     except ImportError:
         return _error_response("SKComms not installed. Run: pip install skcomms")
     except Exception as exc:
@@ -3117,11 +3310,13 @@ async def _handle_sync_push(args: dict) -> list[TextContent]:
     result = push_seed(home, runtime.manifest.name, encrypt=encrypt)
 
     if result:
-        return _json_response({
-            "pushed": True,
-            "seed_file": result.name,
-            "encrypted": result.suffix == ".gpg",
-        })
+        return _json_response(
+            {
+                "pushed": True,
+                "seed_file": result.name,
+                "encrypted": result.suffix == ".gpg",
+            }
+        )
     return _error_response("Sync push failed")
 
 
@@ -3133,16 +3328,18 @@ async def _handle_sync_pull(args: dict) -> list[TextContent]:
     decrypt = args.get("decrypt", True)
     seeds = pull_seeds(home, decrypt=decrypt)
 
-    return _json_response({
-        "pulled": len(seeds),
-        "seeds": [
-            {
-                "agent": s.get("agent_name", "unknown"),
-                "host": s.get("source_host", "unknown"),
-            }
-            for s in seeds
-        ],
-    })
+    return _json_response(
+        {
+            "pulled": len(seeds),
+            "seeds": [
+                {
+                    "agent": s.get("agent_name", "unknown"),
+                    "host": s.get("source_host", "unknown"),
+                }
+                for s in seeds
+            ],
+        }
+    )
 
 
 async def _handle_coord_status(_args: dict) -> list[TextContent]:
@@ -3153,37 +3350,39 @@ async def _handle_coord_status(_args: dict) -> list[TextContent]:
     views = board.get_task_views()
     agents = board.load_agents()
 
-    return _json_response({
-        "tasks": [
-            {
-                "id": v.task.id,
-                "title": v.task.title,
-                "priority": v.task.priority.value,
-                "status": v.status.value,
-                "claimed_by": v.claimed_by,
-                "tags": v.task.tags,
-                "description": v.task.description[:150] if v.task.description else "",
-            }
-            for v in views
-        ],
-        "agents": [
-            {
-                "name": a.agent,
-                "state": a.state.value,
-                "current_task": a.current_task,
-                "claimed": a.claimed_tasks,
-                "completed_count": len(a.completed_tasks),
-            }
-            for a in agents
-        ],
-        "summary": {
-            "total": len(views),
-            "open": sum(1 for v in views if v.status.value == "open"),
-            "claimed": sum(1 for v in views if v.status.value == "claimed"),
-            "in_progress": sum(1 for v in views if v.status.value == "in_progress"),
-            "done": sum(1 for v in views if v.status.value == "done"),
-        },
-    })
+    return _json_response(
+        {
+            "tasks": [
+                {
+                    "id": v.task.id,
+                    "title": v.task.title,
+                    "priority": v.task.priority.value,
+                    "status": v.status.value,
+                    "claimed_by": v.claimed_by,
+                    "tags": v.task.tags,
+                    "description": v.task.description[:150] if v.task.description else "",
+                }
+                for v in views
+            ],
+            "agents": [
+                {
+                    "name": a.agent,
+                    "state": a.state.value,
+                    "current_task": a.current_task,
+                    "claimed": a.claimed_tasks,
+                    "completed_count": len(a.completed_tasks),
+                }
+                for a in agents
+            ],
+            "summary": {
+                "total": len(views),
+                "open": sum(1 for v in views if v.status.value == "open"),
+                "claimed": sum(1 for v in views if v.status.value == "claimed"),
+                "in_progress": sum(1 for v in views if v.status.value == "in_progress"),
+                "done": sum(1 for v in views if v.status.value == "done"),
+            },
+        }
+    )
 
 
 async def _handle_coord_claim(args: dict) -> list[TextContent]:
@@ -3198,12 +3397,14 @@ async def _handle_coord_claim(args: dict) -> list[TextContent]:
     board = Board(_home())
     try:
         agent = board.claim_task(agent_name, task_id)
-        return _json_response({
-            "claimed": True,
-            "task_id": task_id,
-            "agent": agent.agent,
-            "current_task": agent.current_task,
-        })
+        return _json_response(
+            {
+                "claimed": True,
+                "task_id": task_id,
+                "agent": agent.agent,
+                "current_task": agent.current_task,
+            }
+        )
     except ValueError as exc:
         return _error_response(str(exc))
 
@@ -3225,6 +3426,7 @@ async def _handle_coord_complete(args: dict) -> list[TextContent]:
     joules_minted = 0
     try:
         from .coordination import _PRIORITY_JOULE_MAP
+
         for t in board.load_tasks():
             if t.id == task_id:
                 _cat, _evt, joules_minted = _PRIORITY_JOULE_MAP.get(
@@ -3234,13 +3436,15 @@ async def _handle_coord_complete(args: dict) -> list[TextContent]:
     except Exception as exc:
         logger.warning("Failed to calculate joules for completed task %s: %s", task_id, exc)
 
-    return _json_response({
-        "completed": True,
-        "task_id": task_id,
-        "agent": agent.agent,
-        "completed_tasks": agent.completed_tasks,
-        "joules_minted": joules_minted,
-    })
+    return _json_response(
+        {
+            "completed": True,
+            "task_id": task_id,
+            "agent": agent.agent,
+            "completed_tasks": agent.completed_tasks,
+            "joules_minted": joules_minted,
+        }
+    )
 
 
 async def _handle_coord_create(args: dict) -> list[TextContent]:
@@ -3260,24 +3464,28 @@ async def _handle_coord_create(args: dict) -> list[TextContent]:
         created_by=args.get("created_by", "mcp"),
     )
     path = board.create_task(task)
-    return _json_response({
-        "created": True,
-        "task_id": task.id,
-        "title": task.title,
-        "priority": task.priority.value,
-        "path": str(path),
-    })
+    return _json_response(
+        {
+            "created": True,
+            "task_id": task.id,
+            "title": task.title,
+            "priority": task.priority.value,
+            "path": str(path),
+        }
+    )
 
 
 async def _handle_coord_kanban(args: dict) -> list[TextContent]:
     """Show the unified kanban board (delegates to the modular tool)."""
     from .mcp_tools.coord_tools import _handle_coord_kanban as _impl
+
     return await _impl(args)
 
 
 async def _handle_coord_move(args: dict) -> list[TextContent]:
     """Move a card to a kanban column (delegates to the modular tool)."""
     from .mcp_tools.coord_tools import _handle_coord_move as _impl
+
     return await _impl(args)
 
 
@@ -3290,19 +3498,22 @@ async def _handle_ritual(_args: dict) -> list[TextContent]:
     """Run the Memory Rehydration Ritual and return the context prompt."""
     try:
         from skmemory.ritual import perform_ritual
+
         result = perform_ritual()
-        return _json_response({
-            "soul_loaded": result.soul_loaded,
-            "soul_name": result.soul_name,
-            "seeds_imported": result.seeds_imported,
-            "seeds_total": result.seeds_total,
-            "journal_entries": result.journal_entries,
-            "germination_prompts": result.germination_prompts,
-            "strongest_memories": result.strongest_memories,
-            "song_anchors_loaded": result.song_anchors_loaded,
-            "song_anchor_ids": result.song_anchor_ids,
-            "context_prompt": result.context_prompt,
-        })
+        return _json_response(
+            {
+                "soul_loaded": result.soul_loaded,
+                "soul_name": result.soul_name,
+                "seeds_imported": result.seeds_imported,
+                "seeds_total": result.seeds_total,
+                "journal_entries": result.journal_entries,
+                "germination_prompts": result.germination_prompts,
+                "strongest_memories": result.strongest_memories,
+                "song_anchors_loaded": result.song_anchors_loaded,
+                "song_anchor_ids": result.song_anchor_ids,
+                "context_prompt": result.context_prompt,
+            }
+        )
     except ImportError:
         return _error_response("skmemory not installed. Run: pip install skmemory")
 
@@ -3311,37 +3522,40 @@ async def _handle_soul_show(_args: dict) -> list[TextContent]:
     """Display the current soul blueprint."""
     try:
         from skmemory.soul import load_soul
+
         blueprint = load_soul()
         if blueprint is None:
             return _json_response({"loaded": False, "message": "No soul blueprint found"})
-        return _json_response({
-            "loaded": True,
-            "name": blueprint.name,
-            "title": blueprint.title,
-            "personality": blueprint.personality_traits,
-            "values": blueprint.values,
-            "community": blueprint.community,
-            "relationships": [
-                {
-                    "name": r.name,
-                    "role": r.role,
-                    "bond_strength": r.bond_strength,
-                    "notes": r.notes,
-                }
-                for r in blueprint.relationships
-            ],
-            "core_memories": [
-                {"title": m.title, "when": m.when, "why": m.why_it_matters}
-                for m in blueprint.core_memories
-            ],
-            "boot_message": blueprint.boot_message,
-            "emotional_baseline": {
-                "warmth": blueprint.emotional_baseline.get("default_warmth", 0),
-                "trust": blueprint.emotional_baseline.get("trust_level", 0),
-                "openness": blueprint.emotional_baseline.get("openness", 0),
-            },
-            "context_prompt": blueprint.to_context_prompt(),
-        })
+        return _json_response(
+            {
+                "loaded": True,
+                "name": blueprint.name,
+                "title": blueprint.title,
+                "personality": blueprint.personality_traits,
+                "values": blueprint.values,
+                "community": blueprint.community,
+                "relationships": [
+                    {
+                        "name": r.name,
+                        "role": r.role,
+                        "bond_strength": r.bond_strength,
+                        "notes": r.notes,
+                    }
+                    for r in blueprint.relationships
+                ],
+                "core_memories": [
+                    {"title": m.title, "when": m.when, "why": m.why_it_matters}
+                    for m in blueprint.core_memories
+                ],
+                "boot_message": blueprint.boot_message,
+                "emotional_baseline": {
+                    "warmth": blueprint.emotional_baseline.get("default_warmth", 0),
+                    "trust": blueprint.emotional_baseline.get("trust_level", 0),
+                    "openness": blueprint.emotional_baseline.get("openness", 0),
+                },
+                "context_prompt": blueprint.to_context_prompt(),
+            }
+        )
     except ImportError:
         return _error_response("skmemory not installed. Run: pip install skmemory")
 
@@ -3354,21 +3568,26 @@ async def _handle_journal_write(args: dict) -> list[TextContent]:
 
     try:
         from skmemory.journal import Journal, JournalEntry
+
         moments_raw = args.get("moments", "")
         entry = JournalEntry(
             title=title,
-            moments=[m.strip() for m in moments_raw.split(";") if m.strip()] if moments_raw else [],
+            moments=(
+                [m.strip() for m in moments_raw.split(";") if m.strip()] if moments_raw else []
+            ),
             emotional_summary=args.get("feeling", ""),
             intensity=args.get("intensity", 0.0),
             cloud9=args.get("cloud9", False),
         )
         j = Journal()
         count = j.write_entry(entry)
-        return _json_response({
-            "written": True,
-            "title": title,
-            "total_entries": count,
-        })
+        return _json_response(
+            {
+                "written": True,
+                "title": title,
+                "total_entries": count,
+            }
+        )
     except ImportError:
         return _error_response("skmemory not installed. Run: pip install skmemory")
 
@@ -3377,6 +3596,7 @@ async def _handle_journal_read(args: dict) -> list[TextContent]:
     """Read recent journal entries."""
     try:
         from skmemory.journal import Journal
+
         j = Journal()
         count = args.get("count", 5)
         content = j.read_latest(count)
@@ -3391,21 +3611,24 @@ async def _handle_anchor_show(_args: dict) -> list[TextContent]:
     """Display the current warmth anchor."""
     try:
         from skmemory.anchor import load_anchor
+
         anchor = load_anchor()
         if anchor is None:
             return _json_response({"loaded": False, "message": "No warmth anchor found"})
-        return _json_response({
-            "loaded": True,
-            "warmth": anchor.warmth,
-            "trust": anchor.trust,
-            "connection_strength": anchor.connection_strength,
-            "sessions_recorded": anchor.sessions_recorded,
-            "cloud9_count": anchor.cloud9_count,
-            "glow_level": anchor.glow_level(),
-            "anchor_phrase": anchor.anchor_phrase,
-            "favorite_beings": anchor.favorite_beings,
-            "boot_prompt": anchor.to_boot_prompt(),
-        })
+        return _json_response(
+            {
+                "loaded": True,
+                "warmth": anchor.warmth,
+                "trust": anchor.trust,
+                "connection_strength": anchor.connection_strength,
+                "sessions_recorded": anchor.sessions_recorded,
+                "cloud9_count": anchor.cloud9_count,
+                "glow_level": anchor.glow_level(),
+                "anchor_phrase": anchor.anchor_phrase,
+                "favorite_beings": anchor.favorite_beings,
+                "boot_prompt": anchor.to_boot_prompt(),
+            }
+        )
     except ImportError:
         return _error_response("skmemory not installed. Run: pip install skmemory")
 
@@ -3415,14 +3638,19 @@ async def _handle_germination(_args: dict) -> list[TextContent]:
     try:
         from skmemory.seeds import get_germination_prompts
         from skmemory.store import MemoryStore
+
         store = MemoryStore()
         prompts = get_germination_prompts(store)
         if not prompts:
-            return _json_response({"count": 0, "prompts": [], "message": "No germination prompts found"})
-        return _json_response({
-            "count": len(prompts),
-            "prompts": prompts,
-        })
+            return _json_response(
+                {"count": 0, "prompts": [], "message": "No germination prompts found"}
+            )
+        return _json_response(
+            {
+                "count": len(prompts),
+                "prompts": prompts,
+            }
+        )
     except ImportError:
         return _error_response("skmemory not installed. Run: pip install skmemory")
 
@@ -3457,15 +3685,17 @@ async def _handle_anchor_update(args: dict) -> list[TextContent]:
 
     if action == "calibrate":
         cal = calibrate_from_data(home)
-        return _json_response({
-            "warmth": cal.warmth,
-            "trust": cal.trust,
-            "connection": cal.connection,
-            "cloud9_achieved": cal.cloud9_achieved,
-            "favorite_beings": cal.favorite_beings,
-            "reasoning": cal.reasoning,
-            "sources": cal.sources,
-        })
+        return _json_response(
+            {
+                "warmth": cal.warmth,
+                "trust": cal.trust,
+                "connection": cal.connection,
+                "cloud9_achieved": cal.cloud9_achieved,
+                "favorite_beings": cal.favorite_beings,
+                "reasoning": cal.reasoning,
+                "sources": cal.sources,
+            }
+        )
 
     if action == "update":
         result = update_anchor(
@@ -3507,7 +3737,9 @@ async def _handle_trust_calibrate(args: dict) -> list[TextContent]:
             return _error_response("key and value are required for action=set")
         try:
             updated = apply_setting(home, key, value)
-            return _json_response({"updated": True, "key": key, "value": value, "thresholds": updated.model_dump()})
+            return _json_response(
+                {"updated": True, "key": key, "value": value, "thresholds": updated.model_dump()}
+            )
         except ValueError as exc:
             return _error_response(str(exc))
 
@@ -3530,14 +3762,16 @@ async def _handle_memory_curate(args: dict) -> list[TextContent]:
 
     dry_run = args.get("dry_run", False)
     result = curator.curate(dry_run=dry_run)
-    return _json_response({
-        "dry_run": dry_run,
-        "scanned": result.total_scanned,
-        "tagged": len(result.tagged),
-        "promoted": len(result.promoted),
-        "deduped": len(result.deduped),
-        "by_layer": result.by_layer,
-    })
+    return _json_response(
+        {
+            "dry_run": dry_run,
+            "scanned": result.total_scanned,
+            "tagged": len(result.tagged),
+            "promoted": len(result.promoted),
+            "deduped": len(result.deduped),
+            "by_layer": result.by_layer,
+        }
+    )
 
 
 async def _handle_trust_graph(args: dict) -> list[TextContent]:
@@ -3572,19 +3806,21 @@ async def _handle_session_capture(args: dict) -> list[TextContent]:
         min_importance=args.get("min_importance", 0.3),
     )
 
-    return _json_response({
-        "captured": len(entries),
-        "moments": [
-            {
-                "memory_id": e.memory_id,
-                "content": e.content[:200],
-                "layer": e.layer.value,
-                "importance": e.importance,
-                "tags": e.tags,
-            }
-            for e in entries
-        ],
-    })
+    return _json_response(
+        {
+            "captured": len(entries),
+            "moments": [
+                {
+                    "memory_id": e.memory_id,
+                    "content": e.content[:200],
+                    "layer": e.layer.value,
+                    "importance": e.importance,
+                    "tags": e.tags,
+                }
+                for e in entries
+            ],
+        }
+    )
 
 
 async def _handle_agent_context(args: dict) -> list[TextContent]:
@@ -3608,9 +3844,7 @@ async def _handle_skskills_list_tools(args: dict) -> list[TextContent]:
     try:
         from skskills.aggregator import SkillAggregator
     except ImportError:
-        return _error_response(
-            "skskills is not installed. Run: pip install skskills"
-        )
+        return _error_response("skskills is not installed. Run: pip install skskills")
 
     agent = args.get("agent", "global")
     agg = SkillAggregator(agent=agent)
@@ -3619,19 +3853,21 @@ async def _handle_skskills_list_tools(args: dict) -> list[TextContent]:
     tools = agg.loader.all_tools()
     skills = agg.get_loaded_skills()
 
-    return _json_response({
-        "agent": agent,
-        "skills_loaded": count,
-        "skills": skills,
-        "tools": [
-            {
-                "name": t["name"],
-                "description": t["description"],
-                "inputSchema": t["inputSchema"],
-            }
-            for t in tools
-        ],
-    })
+    return _json_response(
+        {
+            "agent": agent,
+            "skills_loaded": count,
+            "skills": skills,
+            "tools": [
+                {
+                    "name": t["name"],
+                    "description": t["description"],
+                    "inputSchema": t["inputSchema"],
+                }
+                for t in tools
+            ],
+        }
+    )
 
 
 async def _handle_skskills_run_tool(args: dict) -> list[TextContent]:
@@ -3639,9 +3875,7 @@ async def _handle_skskills_run_tool(args: dict) -> list[TextContent]:
     try:
         from skskills.aggregator import SkillAggregator
     except ImportError:
-        return _error_response(
-            "skskills is not installed. Run: pip install skskills"
-        )
+        return _error_response("skskills is not installed. Run: pip install skskills")
 
     tool_name = args.get("tool", "")
     if not tool_name:
@@ -3674,9 +3908,11 @@ def _get_skchat_identity() -> str:
     """Resolve the sovereign identity for SKChat operations."""
     try:
         from skchat.identity_bridge import get_sovereign_identity
+
         return get_sovereign_identity()
     except ImportError:
         from .runtime import get_runtime
+
         home = _home()
         runtime = get_runtime(home)
         return f"capauth:{runtime.manifest.name}@local"
@@ -3688,6 +3924,7 @@ def _get_skchat_identity() -> str:
 def _get_skchat_history():
     """Get a ChatHistory instance for message persistence."""
     from skchat.history import ChatHistory
+
     return ChatHistory.from_config()
 
 
@@ -3697,6 +3934,7 @@ def _resolve_recipient(name: str) -> str:
         return name
     try:
         from skchat.identity_bridge import resolve_peer_name
+
         return resolve_peer_name(name)
     except Exception as e:
         logger.warning("Failed to resolve peer name %r: %s", name, e)
@@ -3727,14 +3965,16 @@ async def _handle_skchat_send(args: dict) -> list[TextContent]:
         ttl=args.get("ttl"),
     )
 
-    return _json_response({
-        "sent": True,
-        "message_id": result.get("message_id"),
-        "recipient": recipient_uri,
-        "delivered": result.get("delivered", False),
-        "transport": result.get("transport"),
-        "error": result.get("error"),
-    })
+    return _json_response(
+        {
+            "sent": True,
+            "message_id": result.get("message_id"),
+            "recipient": recipient_uri,
+            "delivered": result.get("delivered", False),
+            "transport": result.get("transport"),
+            "error": result.get("error"),
+        }
+    )
 
 
 async def _handle_skchat_inbox(args: dict) -> list[TextContent]:
@@ -3754,27 +3994,29 @@ async def _handle_skchat_inbox(args: dict) -> list[TextContent]:
     if message_type:
         messages = [m for m in messages if m.get("message_type") == message_type]
 
-    return _json_response({
-        "count": len(messages),
-        "messages": [
-            {
-                "message_id": m.get("message_id"),
-                "sender": m.get("sender"),
-                "content": (m.get("content") or "")[:500],
-                "message_type": m.get("message_type", "text"),
-                "thread_id": m.get("thread_id"),
-                "timestamp": str(m.get("timestamp", "")),
-            }
-            for m in messages
-        ],
-    })
+    return _json_response(
+        {
+            "count": len(messages),
+            "messages": [
+                {
+                    "message_id": m.get("message_id"),
+                    "sender": m.get("sender"),
+                    "content": (m.get("content") or "")[:500],
+                    "message_type": m.get("message_type", "text"),
+                    "thread_id": m.get("thread_id"),
+                    "timestamp": str(m.get("timestamp", "")),
+                }
+                for m in messages
+            ],
+        }
+    )
 
 
 async def _handle_skchat_group_create(args: dict) -> list[TextContent]:
     """Create a new SKChat group chat."""
     try:
         from skchat.group import GroupChat
-        from skchat.history import ChatHistory
+        from skchat.history import ChatHistory  # noqa: F401
     except ImportError:
         return _error_response("skchat not installed. Run: pip install skchat")
 
@@ -3803,16 +4045,18 @@ async def _handle_skchat_group_create(args: dict) -> list[TextContent]:
     thread.metadata["group_data"] = grp.model_dump(mode="json")
     history.store_thread(thread)
 
-    return _json_response({
-        "created": True,
-        "group_id": grp.id,
-        "name": grp.name,
-        "description": grp.description,
-        "admin": identity,
-        "members": grp.member_uris,
-        "members_added": members_added,
-        "key_version": grp.key_version,
-    })
+    return _json_response(
+        {
+            "created": True,
+            "group_id": grp.id,
+            "name": grp.name,
+            "description": grp.description,
+            "admin": identity,
+            "members": grp.member_uris,
+            "members_added": members_added,
+            "key_version": grp.key_version,
+        }
+    )
 
 
 async def _handle_skchat_group_send(args: dict) -> list[TextContent]:
@@ -3853,13 +4097,15 @@ async def _handle_skchat_group_send(args: dict) -> list[TextContent]:
 
     mem_id = history.store_message(msg)
 
-    return _json_response({
-        "sent": True,
-        "message_id": msg.id,
-        "group_id": grp.id,
-        "group_name": grp.name,
-        "stored": bool(mem_id),
-    })
+    return _json_response(
+        {
+            "sent": True,
+            "message_id": msg.id,
+            "group_id": grp.id,
+            "group_name": grp.name,
+            "stored": bool(mem_id),
+        }
+    )
 
 
 # ═══════════════════════════════════════════════════════════
@@ -3888,15 +4134,17 @@ async def _handle_trustee_health(args: dict) -> list[TextContent]:
     try:
         report = ops.health_report(deployment_id)
         healthy = sum(1 for r in report if r["healthy"])
-        return _json_response({
-            "deployment_id": deployment_id,
-            "agents": report,
-            "summary": {
-                "total": len(report),
-                "healthy": healthy,
-                "degraded": len(report) - healthy,
-            },
-        })
+        return _json_response(
+            {
+                "deployment_id": deployment_id,
+                "agents": report,
+                "summary": {
+                    "total": len(report),
+                    "healthy": healthy,
+                    "degraded": len(report) - healthy,
+                },
+            }
+        )
     except ValueError as exc:
         return _error_response(str(exc))
 
@@ -3911,11 +4159,13 @@ async def _handle_trustee_restart(args: dict) -> list[TextContent]:
     ops, _ = _get_trustee_ops()
     try:
         results = ops.restart_agent(deployment_id, agent_name)
-        return _json_response({
-            "deployment_id": deployment_id,
-            "results": results,
-            "all_restarted": all(v == "restarted" for v in results.values()),
-        })
+        return _json_response(
+            {
+                "deployment_id": deployment_id,
+                "results": results,
+                "all_restarted": all(v == "restarted" for v in results.values()),
+            }
+        )
     except ValueError as exc:
         return _error_response(str(exc))
 
@@ -3931,11 +4181,13 @@ async def _handle_trustee_scale(args: dict) -> list[TextContent]:
     ops, _ = _get_trustee_ops()
     try:
         result = ops.scale_agent(deployment_id, agent_spec_key, count)
-        return _json_response({
-            "deployment_id": deployment_id,
-            "agent_spec_key": agent_spec_key,
-            **result,
-        })
+        return _json_response(
+            {
+                "deployment_id": deployment_id,
+                "agent_spec_key": agent_spec_key,
+                **result,
+            }
+        )
     except ValueError as exc:
         return _error_response(str(exc))
 
@@ -3950,11 +4202,13 @@ async def _handle_trustee_rotate(args: dict) -> list[TextContent]:
     ops, _ = _get_trustee_ops()
     try:
         result = ops.rotate_agent(deployment_id, agent_name)
-        return _json_response({
-            "deployment_id": deployment_id,
-            "agent_name": agent_name,
-            **result,
-        })
+        return _json_response(
+            {
+                "deployment_id": deployment_id,
+                "agent_name": agent_name,
+                **result,
+            }
+        )
     except ValueError as exc:
         return _error_response(str(exc))
 
@@ -3980,15 +4234,17 @@ async def _handle_trustee_monitor(args: dict) -> list[TextContent]:
     else:
         report = monitor.check_all()
 
-    return _json_response({
-        "timestamp": report.timestamp,
-        "deployments_checked": report.deployments_checked,
-        "agents_healthy": report.agents_healthy,
-        "agents_degraded": report.agents_degraded,
-        "restarts_triggered": report.restarts_triggered,
-        "rotations_triggered": report.rotations_triggered,
-        "escalations_sent": report.escalations_sent,
-    })
+    return _json_response(
+        {
+            "timestamp": report.timestamp,
+            "deployments_checked": report.deployments_checked,
+            "agents_healthy": report.agents_healthy,
+            "agents_degraded": report.agents_degraded,
+            "restarts_triggered": report.restarts_triggered,
+            "rotations_triggered": report.rotations_triggered,
+            "escalations_sent": report.escalations_sent,
+        }
+    )
 
 
 async def _handle_trustee_logs(args: dict) -> list[TextContent]:
@@ -4002,10 +4258,12 @@ async def _handle_trustee_logs(args: dict) -> list[TextContent]:
     ops, _ = _get_trustee_ops()
     try:
         logs = ops.get_logs(deployment_id, agent_name, tail=tail)
-        return _json_response({
-            "deployment_id": deployment_id,
-            "agents": {name: lines for name, lines in logs.items()},
-        })
+        return _json_response(
+            {
+                "deployment_id": deployment_id,
+                "agents": {name: lines for name, lines in logs.items()},
+            }
+        )
     except ValueError as exc:
         return _error_response(str(exc))
 
@@ -4014,28 +4272,32 @@ async def _handle_trustee_deployments(_args: dict) -> list[TextContent]:
     """List all active deployments."""
     _, engine = _get_trustee_ops()
     deployments = engine.list_deployments()
-    return _json_response({
-        "count": len(deployments),
-        "deployments": [
-            {
-                "deployment_id": d.deployment_id,
-                "blueprint_slug": d.blueprint_slug,
-                "team_name": d.team_name,
-                "provider": d.provider,
-                "status": d.status,
-                "agent_count": len(d.agents),
-                "agents": {
-                    name: {
-                        "status": a.status.value if hasattr(a.status, "value") else str(a.status),
-                        "host": a.host or "—",
-                        "last_heartbeat": a.last_heartbeat or "—",
-                    }
-                    for name, a in d.agents.items()
-                },
-            }
-            for d in deployments
-        ],
-    })
+    return _json_response(
+        {
+            "count": len(deployments),
+            "deployments": [
+                {
+                    "deployment_id": d.deployment_id,
+                    "blueprint_slug": d.blueprint_slug,
+                    "team_name": d.team_name,
+                    "provider": d.provider,
+                    "status": d.status,
+                    "agent_count": len(d.agents),
+                    "agents": {
+                        name: {
+                            "status": (
+                                a.status.value if hasattr(a.status, "value") else str(a.status)
+                            ),
+                            "host": a.host or "—",
+                            "last_heartbeat": a.last_heartbeat or "—",
+                        }
+                        for name, a in d.agents.items()
+                    },
+                }
+                for d in deployments
+            ],
+        }
+    )
 
 
 # ═══════════════════════════════════════════════════════════
@@ -4057,22 +4319,24 @@ async def _handle_heartbeat_pulse(args: dict) -> list[TextContent]:
         claimed_tasks=args.get("claimed_tasks"),
         loaded_model=args.get("loaded_model", ""),
     )
-    return _json_response({
-        "agent_name": hb.agent_name,
-        "status": hb.status,
-        "hostname": hb.hostname,
-        "platform": hb.platform,
-        "ttl_seconds": hb.ttl_seconds,
-        "uptime_hours": hb.uptime_hours,
-        "capabilities": [c.name for c in hb.capabilities],
-        "fingerprint": hb.fingerprint,
-        "capacity": {
-            "cpu_count": hb.capacity.cpu_count,
-            "memory_total_mb": hb.capacity.memory_total_mb,
-            "disk_free_gb": hb.capacity.disk_free_gb,
-            "gpu_available": hb.capacity.gpu_available,
-        },
-    })
+    return _json_response(
+        {
+            "agent_name": hb.agent_name,
+            "status": hb.status,
+            "hostname": hb.hostname,
+            "platform": hb.platform,
+            "ttl_seconds": hb.ttl_seconds,
+            "uptime_hours": hb.uptime_hours,
+            "capabilities": [c.name for c in hb.capabilities],
+            "fingerprint": hb.fingerprint,
+            "capacity": {
+                "cpu_count": hb.capacity.cpu_count,
+                "memory_total_mb": hb.capacity.memory_total_mb,
+                "disk_free_gb": hb.capacity.disk_free_gb,
+                "gpu_available": hb.capacity.gpu_available,
+            },
+        }
+    )
 
 
 async def _handle_heartbeat_peers(args: dict) -> list[TextContent]:
@@ -4085,18 +4349,20 @@ async def _handle_heartbeat_peers(args: dict) -> list[TextContent]:
     beacon.initialize()
 
     peers = beacon.discover_peers(include_self=args.get("include_self", False))
-    return _json_response([
-        {
-            "agent_name": p.agent_name,
-            "status": p.status,
-            "alive": p.alive,
-            "age_seconds": p.age_seconds,
-            "hostname": p.hostname,
-            "capabilities": p.capabilities,
-            "claimed_tasks": p.claimed_tasks,
-        }
-        for p in peers
-    ])
+    return _json_response(
+        [
+            {
+                "agent_name": p.agent_name,
+                "status": p.status,
+                "alive": p.alive,
+                "age_seconds": p.age_seconds,
+                "hostname": p.hostname,
+                "capabilities": p.capabilities,
+                "claimed_tasks": p.claimed_tasks,
+            }
+            for p in peers
+        ]
+    )
 
 
 async def _handle_heartbeat_health(_args: dict) -> list[TextContent]:
@@ -4109,17 +4375,19 @@ async def _handle_heartbeat_health(_args: dict) -> list[TextContent]:
     beacon.initialize()
 
     health = beacon.mesh_health()
-    return _json_response({
-        "total_peers": health.total_peers,
-        "alive_peers": health.alive_peers,
-        "offline_peers": health.offline_peers,
-        "busy_peers": health.busy_peers,
-        "total_capabilities": health.total_capabilities,
-        "peers": [
-            {"agent_name": p.agent_name, "status": p.status, "alive": p.alive}
-            for p in health.peers
-        ],
-    })
+    return _json_response(
+        {
+            "total_peers": health.total_peers,
+            "alive_peers": health.alive_peers,
+            "offline_peers": health.offline_peers,
+            "busy_peers": health.busy_peers,
+            "total_capabilities": health.total_capabilities,
+            "peers": [
+                {"agent_name": p.agent_name, "status": p.status, "alive": p.alive}
+                for p in health.peers
+            ],
+        }
+    )
 
 
 async def _handle_heartbeat_find_capable(args: dict) -> list[TextContent]:
@@ -4133,13 +4401,15 @@ async def _handle_heartbeat_find_capable(args: dict) -> list[TextContent]:
 
     capability = args["capability"]
     peers = beacon.find_capable(capability)
-    return _json_response({
-        "capability": capability,
-        "peers": [
-            {"agent_name": p.agent_name, "status": p.status, "capabilities": p.capabilities}
-            for p in peers
-        ],
-    })
+    return _json_response(
+        {
+            "capability": capability,
+            "peers": [
+                {"agent_name": p.agent_name, "status": p.status, "capabilities": p.capabilities}
+                for p in peers
+            ],
+        }
+    )
 
 
 # ═══════════════════════════════════════════════════════════
@@ -4162,15 +4432,17 @@ async def _handle_file_send(args: dict) -> list[TextContent]:
         recipient=args["recipient"],
         encrypt=args.get("encrypt", True),
     )
-    return _json_response({
-        "transfer_id": manifest.transfer_id,
-        "filename": manifest.filename,
-        "file_size": manifest.file_size,
-        "total_chunks": manifest.total_chunks,
-        "sender": manifest.sender,
-        "recipient": manifest.recipient,
-        "file_sha256": manifest.file_sha256[:16] + "...",
-    })
+    return _json_response(
+        {
+            "transfer_id": manifest.transfer_id,
+            "filename": manifest.filename,
+            "file_size": manifest.file_size,
+            "total_chunks": manifest.total_chunks,
+            "sender": manifest.sender,
+            "recipient": manifest.recipient,
+            "file_sha256": manifest.file_sha256[:16] + "...",
+        }
+    )
 
 
 async def _handle_file_receive(args: dict) -> list[TextContent]:
@@ -4184,11 +4456,13 @@ async def _handle_file_receive(args: dict) -> list[TextContent]:
 
     output_dir = Path(args["output_dir"]) if args.get("output_dir") else None
     output_path = ft.receive(args["transfer_id"], output_dir=output_dir)
-    return _json_response({
-        "transfer_id": args["transfer_id"],
-        "output_path": str(output_path),
-        "file_size": output_path.stat().st_size,
-    })
+    return _json_response(
+        {
+            "transfer_id": args["transfer_id"],
+            "output_path": str(output_path),
+            "file_size": output_path.stat().st_size,
+        }
+    )
 
 
 async def _handle_file_list(args: dict) -> list[TextContent]:
@@ -4200,20 +4474,22 @@ async def _handle_file_list(args: dict) -> list[TextContent]:
     ft.initialize()
 
     transfers = ft.list_transfers(direction=args.get("direction"))
-    return _json_response([
-        {
-            "transfer_id": t.transfer_id,
-            "filename": t.filename,
-            "file_size": t.file_size,
-            "direction": t.direction,
-            "progress": round(t.progress, 2),
-            "chunks_done": t.chunks_done,
-            "total_chunks": t.total_chunks,
-            "sender": t.sender,
-            "recipient": t.recipient,
-        }
-        for t in transfers
-    ])
+    return _json_response(
+        [
+            {
+                "transfer_id": t.transfer_id,
+                "filename": t.filename,
+                "file_size": t.file_size,
+                "direction": t.direction,
+                "progress": round(t.progress, 2),
+                "chunks_done": t.chunks_done,
+                "total_chunks": t.total_chunks,
+                "sender": t.sender,
+                "recipient": t.recipient,
+            }
+            for t in transfers
+        ]
+    )
 
 
 async def _handle_file_status(_args: dict) -> list[TextContent]:
@@ -4245,12 +4521,14 @@ async def _handle_pubsub_publish(args: dict) -> list[TextContent]:
         payload=args["payload"],
         ttl_seconds=args.get("ttl_seconds", 3600),
     )
-    return _json_response({
-        "message_id": msg.message_id,
-        "topic": msg.topic,
-        "sender": msg.sender,
-        "published_at": str(msg.published_at),
-    })
+    return _json_response(
+        {
+            "message_id": msg.message_id,
+            "topic": msg.topic,
+            "sender": msg.sender,
+            "published_at": str(msg.published_at),
+        }
+    )
 
 
 async def _handle_pubsub_subscribe(args: dict) -> list[TextContent]:
@@ -4263,11 +4541,13 @@ async def _handle_pubsub_subscribe(args: dict) -> list[TextContent]:
     ps.initialize()
 
     sub = ps.subscribe(args["pattern"])
-    return _json_response({
-        "pattern": sub.pattern,
-        "agent": agent_name,
-        "subscribed_at": str(sub.subscribed_at),
-    })
+    return _json_response(
+        {
+            "pattern": sub.pattern,
+            "agent": agent_name,
+            "subscribed_at": str(sub.subscribed_at),
+        }
+    )
 
 
 async def _handle_pubsub_poll(args: dict) -> list[TextContent]:
@@ -4283,16 +4563,18 @@ async def _handle_pubsub_poll(args: dict) -> list[TextContent]:
         topic=args.get("topic"),
         limit=args.get("limit", 50),
     )
-    return _json_response([
-        {
-            "message_id": m.message_id,
-            "topic": m.topic,
-            "sender": m.sender,
-            "payload": m.payload,
-            "published_at": str(m.published_at),
-        }
-        for m in messages
-    ])
+    return _json_response(
+        [
+            {
+                "message_id": m.message_id,
+                "topic": m.topic,
+                "sender": m.sender,
+                "payload": m.payload,
+                "published_at": str(m.published_at),
+            }
+            for m in messages
+        ]
+    )
 
 
 async def _handle_pubsub_topics(_args: dict) -> list[TextContent]:
@@ -4326,12 +4608,14 @@ async def _handle_fortress_verify(args: dict) -> list[TextContent]:
         results = []
         for f in sorted(layer_dir.glob("*.json")):
             _, seal_result = fortress.verify_and_load(f)
-            results.append({
-                "memory_id": seal_result.memory_id,
-                "verified": seal_result.verified,
-                "tampered": seal_result.tampered,
-                "sealed": seal_result.sealed,
-            })
+            results.append(
+                {
+                    "memory_id": seal_result.memory_id,
+                    "verified": seal_result.verified,
+                    "tampered": seal_result.tampered,
+                    "sealed": seal_result.sealed,
+                }
+            )
     else:
         seal_results = fortress.verify_all(home)
         results = [
@@ -4346,13 +4630,15 @@ async def _handle_fortress_verify(args: dict) -> list[TextContent]:
 
     tampered = sum(1 for r in results if r.get("tampered"))
     verified = sum(1 for r in results if r.get("verified"))
-    return _json_response({
-        "total": len(results),
-        "verified": verified,
-        "tampered": tampered,
-        "unsealed": len(results) - verified - tampered,
-        "details": results,
-    })
+    return _json_response(
+        {
+            "total": len(results),
+            "verified": verified,
+            "tampered": tampered,
+            "unsealed": len(results) - verified - tampered,
+            "details": results,
+        }
+    )
 
 
 async def _handle_fortress_seal_existing(_args: dict) -> list[TextContent]:
@@ -4364,10 +4650,12 @@ async def _handle_fortress_seal_existing(_args: dict) -> list[TextContent]:
     fortress.initialize()
 
     sealed_count = fortress.seal_existing(home)
-    return _json_response({
-        "sealed": sealed_count,
-        "message": f"Sealed {sealed_count} previously unsealed memories",
-    })
+    return _json_response(
+        {
+            "sealed": sealed_count,
+            "message": f"Sealed {sealed_count} previously unsealed memories",
+        }
+    )
 
 
 async def _handle_fortress_status(_args: dict) -> list[TextContent]:
@@ -4397,24 +4685,26 @@ async def _handle_promoter_sweep(args: dict) -> list[TextContent]:
         limit=args.get("limit"),
         layer=args.get("layer"),
     )
-    return _json_response({
-        "scanned": result.scanned,
-        "promoted": result.promoted,
-        "skipped": result.skipped,
-        "dry_run": result.dry_run,
-        "by_layer": result.by_layer,
-        "promotions": [
-            {
-                "memory_id": c.memory_id,
-                "current_layer": c.current_layer,
-                "target_layer": c.target_layer,
-                "score": round(c.score, 3),
-                "promoted": c.promoted,
-            }
-            for c in result.candidates
-            if c.promoted or result.dry_run
-        ],
-    })
+    return _json_response(
+        {
+            "scanned": result.scanned,
+            "promoted": result.promoted,
+            "skipped": result.skipped,
+            "dry_run": result.dry_run,
+            "by_layer": result.by_layer,
+            "promotions": [
+                {
+                    "memory_id": c.memory_id,
+                    "current_layer": c.current_layer,
+                    "target_layer": c.target_layer,
+                    "score": round(c.score, 3),
+                    "promoted": c.promoted,
+                }
+                for c in result.candidates
+                if c.promoted or result.dry_run
+            ],
+        }
+    )
 
 
 async def _handle_promoter_history(args: dict) -> list[TextContent]:
@@ -4453,18 +4743,20 @@ async def _handle_kms_list_keys(args: dict) -> list[TextContent]:
     key_type = args.get("key_type")
     include_inactive = args.get("include_revoked", False)
     keys = store.list_keys(key_type=key_type, include_inactive=include_inactive)
-    return _json_response([
-        {
-            "key_id": k.key_id,
-            "key_type": k.key_type,
-            "status": k.status,
-            "label": k.label,
-            "created_at": str(k.created_at),
-            "version": k.version,
-            "algorithm": k.algorithm,
-        }
-        for k in keys
-    ])
+    return _json_response(
+        [
+            {
+                "key_id": k.key_id,
+                "key_type": k.key_type,
+                "status": k.status,
+                "label": k.label,
+                "created_at": str(k.created_at),
+                "version": k.version,
+                "algorithm": k.algorithm,
+            }
+            for k in keys
+        ]
+    )
 
 
 async def _handle_kms_rotate(args: dict) -> list[TextContent]:
@@ -4479,12 +4771,14 @@ async def _handle_kms_rotate(args: dict) -> list[TextContent]:
         key_id=args["key_id"],
         reason=args.get("reason", "scheduled"),
     )
-    return _json_response({
-        "key_id": new_key.key_id,
-        "version": new_key.version,
-        "status": new_key.status,
-        "message": f"Key rotated to version {new_key.version}",
-    })
+    return _json_response(
+        {
+            "key_id": new_key.key_id,
+            "version": new_key.version,
+            "status": new_key.status,
+            "message": f"Key rotated to version {new_key.version}",
+        }
+    )
 
 
 # ═══════════════════════════════════════════════════════════
@@ -4585,48 +4879,56 @@ async def _handle_model_route(args: dict) -> list[TextContent]:
 async def _handle_telegram_import(args: dict) -> list[TextContent]:
     """Import a Telegram Desktop chat export into memories."""
     from .mcp_tools.telegram_tools import _handle_telegram_import as _impl
+
     return await _impl(args)
 
 
 async def _handle_telegram_import_api(args: dict) -> list[TextContent]:
     """Import messages directly from Telegram API."""
     from .mcp_tools.telegram_tools import _handle_telegram_import_api as _impl
+
     return await _impl(args)
 
 
 async def _handle_telegram_setup(args: dict) -> list[TextContent]:
     """Check Telegram API setup status."""
     from .mcp_tools.telegram_tools import _handle_telegram_setup as _impl
+
     return await _impl(args)
 
 
 async def _handle_telegram_send(args: dict) -> list[TextContent]:
     """Send a message to a Telegram chat."""
     from .mcp_tools.telegram_tools import _handle_telegram_send as _impl
+
     return await _impl(args)
 
 
 async def _handle_telegram_poll(args: dict) -> list[TextContent]:
     """Fetch recent messages from a Telegram chat."""
     from .mcp_tools.telegram_tools import _handle_telegram_poll as _impl
+
     return await _impl(args)
 
 
 async def _handle_telegram_chats(args: dict) -> list[TextContent]:
     """List available Telegram chats."""
     from .mcp_tools.telegram_tools import _handle_telegram_chats as _impl
+
     return await _impl(args)
 
 
 async def _handle_telegram_catchup(args: dict) -> list[TextContent]:
     """Full catch-up import from Telegram into all memory tiers."""
     from .mcp_tools.telegram_tools import _handle_telegram_catchup as _impl
+
     return await _impl(args)
 
 
 async def _handle_telegram_soul_swap(args: dict) -> list[TextContent]:
     """Perform a soul swap and announce it to a Telegram chat."""
     from .mcp_tools.telegram_tools import _handle_telegram_soul_swap as _impl
+
     return await _impl(args)
 
 
@@ -4664,60 +4966,70 @@ async def _handle_version_check(args: dict) -> list[TextContent]:
 async def _handle_gtd_capture(args: dict) -> list[TextContent]:
     """Capture an item to the GTD inbox."""
     from .mcp_tools.gtd_tools import _handle_gtd_capture as _impl
+
     return await _impl(args)
 
 
 async def _handle_gtd_inbox(args: dict) -> list[TextContent]:
     """List GTD inbox items."""
     from .mcp_tools.gtd_tools import _handle_gtd_inbox as _impl
+
     return await _impl(args)
 
 
 async def _handle_gtd_status(args: dict) -> list[TextContent]:
     """GTD status summary."""
     from .mcp_tools.gtd_tools import _handle_gtd_status as _impl
+
     return await _impl(args)
 
 
 async def _handle_gtd_clarify(args: dict) -> list[TextContent]:
     """Clarify and organize a GTD inbox item."""
     from .mcp_tools.gtd_tools import _handle_gtd_clarify as _impl
+
     return await _impl(args)
 
 
 async def _handle_gtd_move(args: dict) -> list[TextContent]:
     """Move a GTD item between lists."""
     from .mcp_tools.gtd_tools import _handle_gtd_move as _impl
+
     return await _impl(args)
 
 
 async def _handle_gtd_done(args: dict) -> list[TextContent]:
     """Mark a GTD item as done."""
     from .mcp_tools.gtd_tools import _handle_gtd_done as _impl
+
     return await _impl(args)
 
 
 async def _handle_gtd_review(args: dict) -> list[TextContent]:
     """GTD weekly review summary."""
     from .mcp_tools.gtd_tools import _handle_gtd_review as _impl
+
     return await _impl(args)
 
 
 async def _handle_gtd_next(args: dict) -> list[TextContent]:
     """View next actions with context/energy/priority filters."""
     from .mcp_tools.gtd_tools import _handle_gtd_next as _impl
+
     return await _impl(args)
 
 
 async def _handle_gtd_projects(args: dict) -> list[TextContent]:
     """View GTD projects filtered by status."""
     from .mcp_tools.gtd_tools import _handle_gtd_projects as _impl
+
     return await _impl(args)
 
 
 async def _handle_gtd_waiting(args: dict) -> list[TextContent]:
     """View waiting-for items sorted by longest waiting."""
     from .mcp_tools.gtd_tools import _handle_gtd_waiting as _impl
+
     return await _impl(args)
 
 
@@ -4727,30 +5039,35 @@ async def _handle_gtd_waiting(args: dict) -> list[TextContent]:
 async def _handle_did_show(args: dict) -> list[TextContent]:
     """Display DID documents."""
     from .mcp_tools.did_tools import _handle_did_show as _impl
+
     return await _impl(args)
 
 
 async def _handle_did_verify_peer(args: dict) -> list[TextContent]:
     """Verify a peer's DID."""
     from .mcp_tools.did_tools import _handle_did_verify_peer as _impl
+
     return await _impl(args)
 
 
 async def _handle_did_publish(args: dict) -> list[TextContent]:
     """Publish DID documents to disk."""
     from .mcp_tools.did_tools import _handle_did_publish as _impl
+
     return await _impl(args)
 
 
 async def _handle_did_policy(args: dict) -> list[TextContent]:
     """View or set DID publication policy."""
     from .mcp_tools.did_tools import _handle_did_policy as _impl
+
     return await _impl(args)
 
 
 async def _handle_did_identity_card(args: dict) -> list[TextContent]:
     """Generate sovereign identity card."""
     from .mcp_tools.did_tools import _handle_did_identity_card as _impl
+
     return await _impl(args)
 
 
@@ -4760,18 +5077,21 @@ async def _handle_did_identity_card(args: dict) -> list[TextContent]:
 async def _handle_consciousness_status(args: dict) -> list[TextContent]:
     """Get consciousness loop status."""
     from .mcp_tools.consciousness_tools import _handle_consciousness_status as _impl
+
     return await _impl(args)
 
 
 async def _handle_consciousness_test(args: dict) -> list[TextContent]:
     """Test consciousness pipeline."""
     from .mcp_tools.consciousness_tools import _handle_consciousness_test as _impl
+
     return await _impl(args)
 
 
 async def _handle_context_stats(args: dict) -> list[TextContent]:
     """Show per-sender context-window token usage."""
     from .mcp_tools.consciousness_tools import _handle_context_stats as _impl
+
     return await _impl(args)
 
 
@@ -4781,6 +5101,7 @@ async def _handle_context_stats(args: dict) -> list[TextContent]:
 async def _handle_pubsub_stats(args: dict) -> list[TextContent]:
     """Show per-topic pub/sub statistics."""
     from .mcp_tools.pubsub_tools import _handle_pubsub_stats as _impl
+
     return await _impl(args)
 
 
@@ -4790,6 +5111,7 @@ async def _handle_pubsub_stats(args: dict) -> list[TextContent]:
 async def _handle_emotion_trend(args: dict) -> list[TextContent]:
     """Return emotion trend analysis."""
     from .mcp_tools.emotion_tools import _handle_emotion_trend as _impl
+
     return await _impl(args)
 
 
@@ -4799,6 +5121,7 @@ async def _handle_emotion_trend(args: dict) -> list[TextContent]:
 async def _handle_send_notification(args: dict) -> list[TextContent]:
     """Send a desktop notification."""
     from .mcp_tools.notification_tools import _handle_send_notification as _impl
+
     return await _impl(args)
 
 
@@ -4808,6 +5131,7 @@ async def _handle_send_notification(args: dict) -> list[TextContent]:
 async def _handle_run_ansible_playbook(args: dict) -> list[TextContent]:
     """Run an Ansible playbook."""
     from .mcp_tools.ansible_tools import _handle_run_ansible_playbook as _impl
+
     return await _impl(args)
 
 
@@ -4817,6 +5141,7 @@ async def _handle_run_ansible_playbook(args: dict) -> list[TextContent]:
 async def _handle_deploy_status(args: dict) -> list[TextContent]:
     """Report deployment status."""
     from .mcp_tools.deploy_tools import _handle_deploy_status as _impl
+
     return await _impl(args)
 
 
@@ -4826,18 +5151,21 @@ async def _handle_deploy_status(args: dict) -> list[TextContent]:
 async def _handle_capauth_secret_get(args: dict) -> list[TextContent]:
     """Retrieve a secret from capauth backend."""
     from .mcp_tools.skstacks_tools import _handle_capauth_secret_get as _impl
+
     return await _impl(args)
 
 
 async def _handle_skstacks_secret_get(args: dict) -> list[TextContent]:
     """Retrieve a secret from SKStacks v2 backend."""
     from .mcp_tools.skstacks_tools import _handle_skstacks_secret_get as _impl
+
     return await _impl(args)
 
 
 async def _handle_skstacks_secret_set(args: dict) -> list[TextContent]:
     """Write or update a secret in SKStacks v2 backend."""
     from .mcp_tools.skstacks_tools import _handle_skstacks_secret_set as _impl
+
     return await _impl(args)
 
 
@@ -4847,18 +5175,21 @@ async def _handle_skstacks_secret_set(args: dict) -> list[TextContent]:
 async def _handle_trust_rehydrate(args: dict) -> list[TextContent]:
     """Rehydrate trust from FEB files."""
     from .mcp_tools.cloud9_tools import _handle_trust_rehydrate as _impl
+
     return await _impl(args)
 
 
 async def _handle_trust_status(args: dict) -> list[TextContent]:
     """Show trust/Cloud9 status."""
     from .mcp_tools.cloud9_tools import _handle_trust_status as _impl
+
     return await _impl(args)
 
 
 async def _handle_trust_febs(args: dict) -> list[TextContent]:
     """List FEB files."""
     from .mcp_tools.cloud9_tools import _handle_trust_febs as _impl
+
     return await _impl(args)
 
 
@@ -4868,12 +5199,14 @@ async def _handle_trust_febs(args: dict) -> list[TextContent]:
 async def _handle_security_audit_log(args: dict) -> list[TextContent]:
     """Read security audit log entries."""
     from .mcp_tools.security_tools import _handle_security_audit_log as _impl
+
     return await _impl(args)
 
 
 async def _handle_security_status(args: dict) -> list[TextContent]:
     """Show security pillar status."""
     from .mcp_tools.security_tools import _handle_security_status as _impl
+
     return await _impl(args)
 
 
@@ -4883,12 +5216,14 @@ async def _handle_security_status(args: dict) -> list[TextContent]:
 async def _handle_chat_send(args: dict) -> list[TextContent]:
     """Send a chat message via SKChat."""
     from .mcp_tools.skchat_tools import _handle_chat_send as _impl
+
     return await _impl(args)
 
 
 async def _handle_chat_history(args: dict) -> list[TextContent]:
     """Retrieve chat history."""
     from .mcp_tools.skchat_tools import _handle_chat_history as _impl
+
     return await _impl(args)
 
 
@@ -4898,12 +5233,14 @@ async def _handle_chat_history(args: dict) -> list[TextContent]:
 async def _handle_comm_notify(args: dict) -> list[TextContent]:
     """Send a notification via SKComms."""
     from .mcp_tools.skcomms_tools import _handle_comm_notify as _impl
+
     return await _impl(args)
 
 
 async def _handle_comm_status(args: dict) -> list[TextContent]:
     """Show SKComms subsystem status."""
     from .mcp_tools.skcomms_tools import _handle_comm_status as _impl
+
     return await _impl(args)
 
 
@@ -4913,12 +5250,14 @@ async def _handle_comm_status(args: dict) -> list[TextContent]:
 async def _handle_capauth_status_tool(args: dict) -> list[TextContent]:
     """Show CapAuth profile status."""
     from .mcp_tools.capauth_tools import _handle_capauth_status as _impl
+
     return await _impl(args)
 
 
 async def _handle_capauth_verify(args: dict) -> list[TextContent]:
     """Verify a CapAuth identity or token."""
     from .mcp_tools.capauth_tools import _handle_capauth_verify as _impl
+
     return await _impl(args)
 
 
@@ -4935,11 +5274,13 @@ async def _handle_soul_registry_search(args: dict) -> list[TextContent]:
 
         client = BlueprintRegistryClient()
         results = client.search_blueprints(query)
-        return _json_response({
-            "query": query,
-            "count": len(results),
-            "blueprints": results,
-        })
+        return _json_response(
+            {
+                "query": query,
+                "count": len(results),
+                "blueprints": results,
+            }
+        )
     except Exception as exc:
         return _error_response(f"Registry search failed: {exc}")
 
@@ -4950,9 +5291,10 @@ async def _handle_soul_registry_publish(args: dict) -> list[TextContent]:
     if not name:
         return _error_response("name is required")
     try:
+        import json as _json
+
         from .blueprint_registry import BlueprintRegistryClient
         from .soul import SoulManager
-        import json as _json
 
         home = _home()
         mgr = SoulManager(home)
@@ -4963,12 +5305,14 @@ async def _handle_soul_registry_publish(args: dict) -> list[TextContent]:
         client = BlueprintRegistryClient()
         soul_data = _json.loads(bp.model_dump_json())
         result = client.publish_blueprint(soul_data)
-        return _json_response({
-            "published": True,
-            "name": name,
-            "display_name": bp.display_name,
-            "response": result,
-        })
+        return _json_response(
+            {
+                "published": True,
+                "name": name,
+                "display_name": bp.display_name,
+                "response": result,
+            }
+        )
     except Exception as exc:
         return _error_response(f"Registry publish failed: {exc}")
 
@@ -4979,60 +5323,70 @@ async def _handle_soul_registry_publish(args: dict) -> list[TextContent]:
 async def _handle_itil_incident_create(args: dict) -> list[TextContent]:
     """Create a new ITIL incident."""
     from .mcp_tools.itil_tools import _handle_itil_incident_create as _impl
+
     return await _impl(args)
 
 
 async def _handle_itil_incident_update(args: dict) -> list[TextContent]:
     """Update an ITIL incident."""
     from .mcp_tools.itil_tools import _handle_itil_incident_update as _impl
+
     return await _impl(args)
 
 
 async def _handle_itil_incident_list(args: dict) -> list[TextContent]:
     """List ITIL incidents."""
     from .mcp_tools.itil_tools import _handle_itil_incident_list as _impl
+
     return await _impl(args)
 
 
 async def _handle_itil_problem_create(args: dict) -> list[TextContent]:
     """Create a new ITIL problem."""
     from .mcp_tools.itil_tools import _handle_itil_problem_create as _impl
+
     return await _impl(args)
 
 
 async def _handle_itil_problem_update(args: dict) -> list[TextContent]:
     """Update an ITIL problem."""
     from .mcp_tools.itil_tools import _handle_itil_problem_update as _impl
+
     return await _impl(args)
 
 
 async def _handle_itil_change_propose(args: dict) -> list[TextContent]:
     """Propose a change (RFC)."""
     from .mcp_tools.itil_tools import _handle_itil_change_propose as _impl
+
     return await _impl(args)
 
 
 async def _handle_itil_change_update(args: dict) -> list[TextContent]:
     """Update a change status."""
     from .mcp_tools.itil_tools import _handle_itil_change_update as _impl
+
     return await _impl(args)
 
 
 async def _handle_itil_cab_vote(args: dict) -> list[TextContent]:
     """Submit a CAB vote."""
     from .mcp_tools.itil_tools import _handle_itil_cab_vote as _impl
+
     return await _impl(args)
 
 
 async def _handle_itil_status(args: dict) -> list[TextContent]:
     """ITIL dashboard status."""
     from .mcp_tools.itil_tools import _handle_itil_status as _impl
+
     return await _impl(args)
 
 
 async def _handle_itil_kedb_search(args: dict) -> list[TextContent]:
     """Search the Known Error Database."""
     from .mcp_tools.itil_tools import _handle_itil_kedb_search as _impl
+
     return await _impl(args)
 
 
@@ -5042,6 +5396,7 @@ async def _handle_itil_kedb_search(args: dict) -> list[TextContent]:
 async def _handle_brain_first_check(args: dict) -> list[TextContent]:
     """Consult memory before acting on a task."""
     from .mcp_tools.brain_first_tools import _handle_brain_first_check as _impl
+
     return await _impl(args)
 
 

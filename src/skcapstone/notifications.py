@@ -104,6 +104,7 @@ def _store_notification_memory(title: str, body: str, urgency: str) -> None:
     try:
         import json as _json
         import uuid
+
         from . import AGENT_HOME
 
         home = Path(AGENT_HOME).expanduser()
@@ -136,6 +137,7 @@ def _store_click_event(action: str, detail: str) -> None:
     try:
         import json as _json
         import uuid
+
         from . import AGENT_HOME
 
         home = Path(AGENT_HOME).expanduser()
@@ -306,7 +308,9 @@ class NotificationManager:
         # within the TTL window (duplicate events, retries, multi-path delivery).
         key = dedup_key if dedup_key is not None else self._compute_dedup_key(title, body, urgency)
         if self._is_duplicate(key, now):
-            logger.debug("Notification deduplicated (key=%s within %.0fs TTL)", key, self._dedup_ttl)
+            logger.debug(
+                "Notification deduplicated (key=%s within %.0fs TTL)", key, self._dedup_ttl
+            )
             return False
 
         if now - self._last_sent < self._debounce_seconds:

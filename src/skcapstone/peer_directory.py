@@ -26,7 +26,7 @@ from pathlib import Path
 from typing import Optional
 
 import yaml
-from pydantic import BaseModel, Field
+from pydantic import BaseModel
 
 from . import SHARED_ROOT
 
@@ -251,7 +251,9 @@ class PeerDirectory:
                         if ts:
                             self._entries[agent_name].last_seen = ts
                     except Exception as exc:
-                        logger.warning("Failed to update last_seen from heartbeat for %s: %s", agent_name, exc)
+                        logger.warning(
+                            "Failed to update last_seen from heartbeat for %s: %s", agent_name, exc
+                        )
                     continue
 
                 try:

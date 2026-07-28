@@ -36,6 +36,7 @@ def _by_name(checks):
 # _check_systemd_runtime: availability gate / graceful degrade
 # ---------------------------------------------------------------------------
 
+
 def test_systemd_absent_non_linux_degrades(tmp_path):
     """On a non-Linux host the family is a single informational pass."""
     with patch("skcapstone.doctor.platform.system", return_value="Darwin"):
@@ -50,8 +51,10 @@ def test_systemd_absent_non_linux_degrades(tmp_path):
 
 def test_systemd_unavailable_on_linux_degrades(tmp_path):
     """No systemctl --user session (containers/CI) degrades, does not FAIL."""
-    with patch("skcapstone.doctor.platform.system", return_value="Linux"), \
-            patch("skcapstone.systemd.systemd_available", return_value=False):
+    with (
+        patch("skcapstone.doctor.platform.system", return_value="Linux"),
+        patch("skcapstone.systemd.systemd_available", return_value=False),
+    ):
         checks = _check_systemd_runtime(tmp_path)
     assert len(checks) == 1
     assert checks[0].name == "systemd:available"
@@ -63,6 +66,7 @@ def test_systemd_unavailable_on_linux_degrades(tmp_path):
 # ---------------------------------------------------------------------------
 # _check_systemd_runtime: Linux + available
 # ---------------------------------------------------------------------------
+
 
 @pytest.fixture
 def fake_systemd(tmp_path):
@@ -80,11 +84,13 @@ def fake_systemd(tmp_path):
 def test_systemd_healthy_all_pass(fake_systemd):
     """Installed unit, no failed units, byte-identical to packaged -> all pass."""
     bundled, user_dir = fake_systemd
-    with patch("skcapstone.doctor.platform.system", return_value="Linux"), \
-            patch("skcapstone.systemd.systemd_available", return_value=True), \
-            patch("skcapstone.systemd.SYSTEMD_USER_DIR", user_dir), \
-            patch("skcapstone.systemd.BUNDLED_DIR", bundled), \
-            patch("skcapstone.doctor._failed_sk_units", return_value=([], "")):
+    with (
+        patch("skcapstone.doctor.platform.system", return_value="Linux"),
+        patch("skcapstone.systemd.systemd_available", return_value=True),
+        patch("skcapstone.systemd.SYSTEMD_USER_DIR", user_dir),
+        patch("skcapstone.systemd.BUNDLED_DIR", bundled),
+        patch("skcapstone.doctor._failed_sk_units", return_value=([], "")),
+    ):
         checks = _check_systemd_runtime(Path("/nonexistent"))
     by = _by_name(checks)
     assert by["systemd:available"].passed
@@ -98,14 +104,16 @@ def test_systemd_healthy_all_pass(fake_systemd):
 def test_systemd_failed_unit_reported(fake_systemd):
     """A failed template instance is surfaced as a failing check."""
     bundled, user_dir = fake_systemd
-    with patch("skcapstone.doctor.platform.system", return_value="Linux"), \
-            patch("skcapstone.systemd.systemd_available", return_value=True), \
-            patch("skcapstone.systemd.SYSTEMD_USER_DIR", user_dir), \
-            patch("skcapstone.systemd.BUNDLED_DIR", bundled), \
-            patch(
-                "skcapstone.doctor._failed_sk_units",
-                return_value=(["skcapstone@lumina.service"], ""),
-            ):
+    with (
+        patch("skcapstone.doctor.platform.system", return_value="Linux"),
+        patch("skcapstone.systemd.systemd_available", return_value=True),
+        patch("skcapstone.systemd.SYSTEMD_USER_DIR", user_dir),
+        patch("skcapstone.systemd.BUNDLED_DIR", bundled),
+        patch(
+            "skcapstone.doctor._failed_sk_units",
+            return_value=(["skcapstone@lumina.service"], ""),
+        ),
+    ):
         checks = _check_systemd_runtime(Path("/nonexistent"))
     failed = _by_name(checks)["systemd:failed-units"]
     assert failed.passed is False
@@ -118,11 +126,13 @@ def test_systemd_unit_drift_reported(fake_systemd):
     bundled, user_dir = fake_systemd
     # Make the installed unit drift from the packaged one.
     (user_dir / "skcapstone.service").write_bytes(b"[Unit]\nDescription=STALE\n")
-    with patch("skcapstone.doctor.platform.system", return_value="Linux"), \
-            patch("skcapstone.systemd.systemd_available", return_value=True), \
-            patch("skcapstone.systemd.SYSTEMD_USER_DIR", user_dir), \
-            patch("skcapstone.systemd.BUNDLED_DIR", bundled), \
-            patch("skcapstone.doctor._failed_sk_units", return_value=([], "")):
+    with (
+        patch("skcapstone.doctor.platform.system", return_value="Linux"),
+        patch("skcapstone.systemd.systemd_available", return_value=True),
+        patch("skcapstone.systemd.SYSTEMD_USER_DIR", user_dir),
+        patch("skcapstone.systemd.BUNDLED_DIR", bundled),
+        patch("skcapstone.doctor._failed_sk_units", return_value=([], "")),
+    ):
         checks = _check_systemd_runtime(Path("/nonexistent"))
     drift = _by_name(checks)["systemd:unit-drift"]
     assert drift.passed is False
@@ -135,11 +145,13 @@ def test_systemd_no_units_installed_is_pass(tmp_path):
     empty_user.mkdir()
     bundled = tmp_path / "bundled"
     bundled.mkdir()
-    with patch("skcapstone.doctor.platform.system", return_value="Linux"), \
-            patch("skcapstone.systemd.systemd_available", return_value=True), \
-            patch("skcapstone.systemd.SYSTEMD_USER_DIR", empty_user), \
-            patch("skcapstone.systemd.BUNDLED_DIR", bundled), \
-            patch("skcapstone.doctor._failed_sk_units", return_value=([], "")):
+    with (
+        patch("skcapstone.doctor.platform.system", return_value="Linux"),
+        patch("skcapstone.systemd.systemd_available", return_value=True),
+        patch("skcapstone.systemd.SYSTEMD_USER_DIR", empty_user),
+        patch("skcapstone.systemd.BUNDLED_DIR", bundled),
+        patch("skcapstone.doctor._failed_sk_units", return_value=([], "")),
+    ):
         checks = _check_systemd_runtime(Path("/nonexistent"))
     by = _by_name(checks)
     assert by["systemd:units-installed"].passed
@@ -167,6 +179,7 @@ def test_systemd_unit_files_missing_dir(tmp_path):
 # ---------------------------------------------------------------------------
 # _check_store_integrity
 # ---------------------------------------------------------------------------
+
 
 def _write(path: Path, text: str) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
@@ -251,11 +264,14 @@ def test_store_integrity_corrupt_itil_core(tmp_path):
 # Integration: the new categories are wired into run_diagnostics
 # ---------------------------------------------------------------------------
 
+
 def test_run_diagnostics_includes_systemd_and_store(tmp_path):
     """run_diagnostics surfaces the systemd + store categories."""
     # Force systemd unavailable so the result is deterministic in any env.
-    with patch("skcapstone.doctor.platform.system", return_value="Linux"), \
-            patch("skcapstone.systemd.systemd_available", return_value=False):
+    with (
+        patch("skcapstone.doctor.platform.system", return_value="Linux"),
+        patch("skcapstone.systemd.systemd_available", return_value=False),
+    ):
         report = run_diagnostics(tmp_path)
     categories = {c.category for c in report.checks}
     assert "systemd" in categories
@@ -265,6 +281,7 @@ def test_run_diagnostics_includes_systemd_and_store(tmp_path):
 # ---------------------------------------------------------------------------
 # preflight.PreflightChecker.check_systemd
 # ---------------------------------------------------------------------------
+
 
 def test_preflight_systemd_non_linux_ok(tmp_path):
     """check_systemd degrades to ok (non-critical) off Linux."""
@@ -276,8 +293,10 @@ def test_preflight_systemd_non_linux_ok(tmp_path):
 
 def test_preflight_systemd_unavailable_ok(tmp_path):
     """No systemctl --user session degrades to ok, never fails startup."""
-    with patch("skcapstone.preflight.platform.system", return_value="Linux"), \
-            patch("skcapstone.systemd.systemd_available", return_value=False):
+    with (
+        patch("skcapstone.preflight.platform.system", return_value="Linux"),
+        patch("skcapstone.systemd.systemd_available", return_value=False),
+    ):
         res = PreflightChecker(tmp_path).check_systemd()
     assert res.status == "ok"
     assert res.critical is False
@@ -285,14 +304,17 @@ def test_preflight_systemd_unavailable_ok(tmp_path):
 
 def test_preflight_systemd_failed_units_warn(tmp_path):
     """A failed SK* unit surfaces as a non-critical warn."""
+
     class _Proc:
         returncode = 0
         stdout = "skcapstone@lumina.service loaded failed failed Foo\n"
         stderr = ""
 
-    with patch("skcapstone.preflight.platform.system", return_value="Linux"), \
-            patch("skcapstone.systemd.systemd_available", return_value=True), \
-            patch("skcapstone.preflight.subprocess.run", return_value=_Proc()):
+    with (
+        patch("skcapstone.preflight.platform.system", return_value="Linux"),
+        patch("skcapstone.systemd.systemd_available", return_value=True),
+        patch("skcapstone.preflight.subprocess.run", return_value=_Proc()),
+    ):
         res = PreflightChecker(tmp_path).check_systemd()
     assert res.status == "warn"
     assert res.critical is False
@@ -301,13 +323,16 @@ def test_preflight_systemd_failed_units_warn(tmp_path):
 
 def test_preflight_systemd_clean_ok(tmp_path):
     """No failed SK* units -> ok."""
+
     class _Proc:
         returncode = 0
         stdout = "some-other.service loaded failed failed Bar\n"
         stderr = ""
 
-    with patch("skcapstone.preflight.platform.system", return_value="Linux"), \
-            patch("skcapstone.systemd.systemd_available", return_value=True), \
-            patch("skcapstone.preflight.subprocess.run", return_value=_Proc()):
+    with (
+        patch("skcapstone.preflight.platform.system", return_value="Linux"),
+        patch("skcapstone.systemd.systemd_available", return_value=True),
+        patch("skcapstone.preflight.subprocess.run", return_value=_Proc()),
+    ):
         res = PreflightChecker(tmp_path).check_systemd()
     assert res.status == "ok"

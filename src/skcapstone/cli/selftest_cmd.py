@@ -26,15 +26,20 @@ def register_selftest_commands(main: click.Group) -> None:
         """Automated stack self-tests (read-only health verification)."""
 
     @selftest.command("post-resume")
-    @click.option("--home", default=AGENT_HOME, type=click.Path(),
-                  help="Agent home directory.")
-    @click.option("--json-out", "json_out", is_flag=True,
-                  help="Output the structured report as JSON.")
-    @click.option("--alert/--no-alert", "alert", default=None,
-                  help="Force alerting on/off, overriding selftest.yaml. "
-                       "Alerts fire only on a critical failure.")
-    @click.option("--quiet", "-q", is_flag=True,
-                  help="Suppress the table; only set the exit code.")
+    @click.option("--home", default=AGENT_HOME, type=click.Path(), help="Agent home directory.")
+    @click.option(
+        "--json-out", "json_out", is_flag=True, help="Output the structured report as JSON."
+    )
+    @click.option(
+        "--alert/--no-alert",
+        "alert",
+        default=None,
+        help="Force alerting on/off, overriding selftest.yaml. "
+        "Alerts fire only on a critical failure.",
+    )
+    @click.option(
+        "--quiet", "-q", is_flag=True, help="Suppress the table; only set the exit code."
+    )
     def post_resume_cmd(home: str, json_out: bool, alert, quiet: bool):
         """Verify the sovereign stack is healthy after a resume.
 

@@ -20,6 +20,7 @@ Usage (programmatic, from daemon):
 
 from __future__ import annotations
 
+import asyncio
 import json
 import logging
 import os
@@ -41,16 +42,18 @@ try:
         Depends,
         FastAPI,
         HTTPException,
-        Path as FPath,
-        Query,
+        Query,  # noqa: F401
         Request,
         Security,
         WebSocket,
         WebSocketDisconnect,
         status,
     )
+    from fastapi import (
+        Path as FPath,
+    )
     from fastapi.middleware.cors import CORSMiddleware
-    from fastapi.responses import JSONResponse, PlainTextResponse, StreamingResponse
+    from fastapi.responses import JSONResponse, PlainTextResponse, StreamingResponse  # noqa: F401
     from fastapi.security import APIKeyHeader, HTTPAuthorizationCredentials, HTTPBearer
     from pydantic import BaseModel, Field
 except ImportError as _exc:
@@ -149,9 +152,7 @@ class ComponentSnapshot(BaseModel):
     """Health record for a single daemon subsystem component."""
 
     name: str = Field(..., description="Component identifier (e.g. 'poll', 'consciousness').")
-    status: str = Field(
-        ..., description="One of: pending, alive, dead, restarting, disabled."
-    )
+    status: str = Field(..., description="One of: pending, alive, dead, restarting, disabled.")
     auto_restart: bool = Field(
         ..., description="True when the watchdog will auto-restart this component."
     )
@@ -165,9 +166,7 @@ class ComponentSnapshot(BaseModel):
         None, description="Seconds since the last heartbeat."
     )
     restart_count: int = Field(0, description="Number of automatic restarts.")
-    last_error: Optional[str] = Field(
-        None, description="Last recorded error message, if any."
-    )
+    last_error: Optional[str] = Field(None, description="Last recorded error message, if any.")
 
 
 class ComponentsResponse(BaseModel):
@@ -298,12 +297,8 @@ class HouseholdAgent(BaseModel):
 
     name: str = Field(..., description="Agent directory name.")
     status: str = Field("unknown", description="Derived liveness status.")
-    identity: Optional[Dict[str, Any]] = Field(
-        None, description="Agent identity.json contents."
-    )
-    heartbeat: Optional[Dict[str, Any]] = Field(
-        None, description="Most recent heartbeat record."
-    )
+    identity: Optional[Dict[str, Any]] = Field(None, description="Agent identity.json contents.")
+    heartbeat: Optional[Dict[str, Any]] = Field(None, description="Most recent heartbeat record.")
     consciousness: Optional[Dict[str, Any]] = Field(
         None, description="Consciousness stats from the serving agent (if available)."
     )
@@ -325,9 +320,7 @@ class ConversationSummary(BaseModel):
     last_message_time: Optional[str] = Field(
         None, description="ISO-8601 timestamp of the most recent message."
     )
-    last_message_preview: str = Field(
-        "", description="First 120 characters of the last message."
-    )
+    last_message_preview: str = Field("", description="First 120 characters of the last message.")
 
 
 class ConversationsResponse(BaseModel):
@@ -447,12 +440,8 @@ class ArgoCDStatusResponse(BaseModel):
     )
     checked_at: str = Field(..., description="ISO-8601 timestamp of this response.")
     skstacks_root: str = Field("", description="Resolved path to skstacks v2 root.")
-    apps: List[ArgoCDApp] = Field(
-        default_factory=list, description="List of ArgoCD applications."
-    )
-    summary: ArgoCDSummary = Field(
-        default_factory=ArgoCDSummary, description="App count summary."
-    )
+    apps: List[ArgoCDApp] = Field(default_factory=list, description="List of ArgoCD applications.")
+    summary: ArgoCDSummary = Field(default_factory=ArgoCDSummary, description="App count summary.")
 
 
 # ── Security dependency ───────────────────────────────────────────────────────
@@ -545,8 +534,7 @@ def _check_bearer(
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail=(
-                "CapAuth bearer token required.  "
-                "Obtain a token with: skcapstone token issue"
+                "CapAuth bearer token required.  " "Obtain a token with: skcapstone token issue"
             ),
         )
     return fingerprint
@@ -652,6 +640,7 @@ app.add_middleware(
 
 
 # ── Custom OpenAPI schema: inject BearerAuth security scheme ─────────────────
+
 
 def _custom_openapi() -> Dict[str, Any]:
     """Return a customised OpenAPI schema with both security schemes registered.
@@ -851,17 +840,21 @@ async def get_dashboard(
     try:
         conv_dir = config.shared_root / "conversations"
         if conv_dir.exists():
-            for cf in sorted(conv_dir.glob("*.json"), key=lambda p: p.stat().st_mtime, reverse=True)[:5]:
+            for cf in sorted(
+                conv_dir.glob("*.json"), key=lambda p: p.stat().st_mtime, reverse=True
+            )[:5]:
                 msgs = json.loads(cf.read_text(encoding="utf-8"))
                 if isinstance(msgs, list) and msgs:
                     last = msgs[-1]
                     preview = (last.get("content") or last.get("message", ""))[:80]
-                    conversations.append({
-                        "peer": cf.stem,
-                        "count": len(msgs),
-                        "last": last.get("timestamp"),
-                        "preview": preview,
-                    })
+                    conversations.append(
+                        {
+                            "peer": cf.stem,
+                            "count": len(msgs),
+                            "last": last.get("timestamp"),
+                            "preview": preview,
+                        }
+                    )
     except Exception as exc:
         logger.warning("Failed to list recent conversations for API status: %s", exc)
 
@@ -1345,9 +1338,7 @@ async def send_message(
         )
     safe_peer = _sanitize_peer(peer)
     if not safe_peer:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid peer name."
-        )
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid peer name.")
 
     message_id = str(uuid.uuid4())
     ts = datetime.now(timezone.utc).isoformat()
@@ -1423,9 +1414,7 @@ async def delete_conversation(
         )
     safe_peer = _sanitize_peer(peer)
     if not safe_peer:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid peer name."
-        )
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid peer name.")
 
     conv_file = config.shared_root / "conversations" / f"{safe_peer}.json"
     if not conv_file.exists():
@@ -1473,7 +1462,9 @@ async def get_metrics(
         )
     try:
         raw = consciousness.metrics.to_dict()
-        return MetricsResponse(**{k: v for k, v in raw.items() if k in MetricsResponse.model_fields})
+        return MetricsResponse(
+            **{k: v for k, v in raw.items() if k in MetricsResponse.model_fields}
+        )
     except Exception:
         return MetricsResponse()
 
@@ -1511,9 +1502,7 @@ def _prom_line(name: str, value: float, labels: Optional[Dict[str, str]] = None)
         A single exposition line, without a trailing newline.
     """
     if labels:
-        label_str = ",".join(
-            f'{k}="{_prom_escape_label(str(v))}"' for k, v in labels.items()
-        )
+        label_str = ",".join(f'{k}="{_prom_escape_label(str(v))}"' for k, v in labels.items())
         head = f"{name}{{{label_str}}}"
     else:
         head = name
@@ -1556,7 +1545,9 @@ def _collect_prometheus_metrics() -> str:
             llm_errors_total = int(raw.get("errors", 0) or 0)
         except Exception as exc:  # pragma: no cover - defensive
             logger.warning("Prometheus: failed to read consciousness metrics: %s", exc)
-    lines.append("# HELP consciousness_messages_total Messages processed by the consciousness loop.")
+    lines.append(
+        "# HELP consciousness_messages_total Messages processed by the consciousness loop."
+    )
     lines.append("# TYPE consciousness_messages_total counter")
     lines.append(_prom_line("consciousness_messages_total", messages_total))
 

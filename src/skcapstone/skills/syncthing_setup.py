@@ -7,16 +7,13 @@ trust, security, coordination, and sync seeds all propagate across every
 node in the mesh automatically.
 """
 
-import json
 import os
 import platform
 import shutil
 import subprocess
-import sys
 import xml.etree.ElementTree as ET
 from pathlib import Path
 from typing import Optional
-
 
 AGENT_HOME = Path.home() / ".skcapstone"
 SYNC_DIR = AGENT_HOME / "sync"
@@ -274,7 +271,7 @@ def configure_syncthing_folder() -> bool:
         return False
 
     agent_home_str = str(AGENT_HOME)
-    old_sync_str = str(SYNC_DIR)
+    str(SYNC_DIR)
 
     for folder in root.iter("folder"):
         if folder.get("id") == SHARED_FOLDER_ID:
@@ -329,9 +326,7 @@ def start_syncthing() -> bool:
     }
     # Reason: on Windows, CREATE_NO_WINDOW prevents a console flash
     if platform.system() == "Windows":
-        popen_kwargs["creationflags"] = (
-            subprocess.CREATE_NO_WINDOW | subprocess.DETACHED_PROCESS
-        )
+        popen_kwargs["creationflags"] = subprocess.CREATE_NO_WINDOW | subprocess.DETACHED_PROCESS
 
     subprocess.Popen([st, "--no-browser", "--no-restart"], **popen_kwargs)
     return True
@@ -347,8 +342,9 @@ def generate_qr_code(device_id: str) -> Optional[str]:
         Optional[str]: ASCII QR code string, or None if qrcode not installed.
     """
     try:
-        import qrcode
         from io import StringIO
+
+        import qrcode
 
         qr = qrcode.QRCode(box_size=1, border=1)
         qr.add_data(device_id)

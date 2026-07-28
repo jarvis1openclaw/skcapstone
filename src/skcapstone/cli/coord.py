@@ -6,13 +6,12 @@ import sys
 from pathlib import Path
 
 import click
-
-from ._common import AGENT_HOME, console
-from ._validators import validate_agent_name, validate_task_id
-
 from rich.panel import Panel
 from rich.table import Table
 from rich.text import Text
+
+from ._common import AGENT_HOME, console
+from ._validators import validate_agent_name, validate_task_id
 
 
 def register_coord_commands(main: click.Group) -> None:
@@ -49,14 +48,17 @@ def register_coord_commands(main: click.Group) -> None:
         done_count = sum(1 for v in views if v.status.value == "done")
 
         console.print()
-        console.print(Panel(
-            f"[bold]Tasks:[/] {len(views)} total  "
-            f"[green]{open_count} open[/]  "
-            f"[cyan]{claimed_count} claimed[/]  "
-            f"[yellow]{progress_count} in progress[/]  "
-            f"[dim]{done_count} done[/]",
-            title="Coordination Board", border_style="bright_blue",
-        ))
+        console.print(
+            Panel(
+                f"[bold]Tasks:[/] {len(views)} total  "
+                f"[green]{open_count} open[/]  "
+                f"[cyan]{claimed_count} claimed[/]  "
+                f"[yellow]{progress_count} in progress[/]  "
+                f"[dim]{done_count} done[/]",
+                title="Coordination Board",
+                border_style="bright_blue",
+            )
+        )
 
         table = Table(show_header=True, header_style="bold", box=None, padding=(0, 2))
         table.add_column("ID", style="cyan", max_width=10)
@@ -67,7 +69,13 @@ def register_coord_commands(main: click.Group) -> None:
         table.add_column("Tags", style="dim")
 
         priority_colors = {"critical": "bold red", "high": "red", "medium": "yellow", "low": "dim"}
-        status_colors = {"open": "green", "claimed": "cyan", "in_progress": "yellow", "done": "dim", "blocked": "red"}
+        status_colors = {
+            "open": "green",
+            "claimed": "cyan",
+            "in_progress": "yellow",
+            "done": "dim",
+            "blocked": "red",
+        }
 
         for v in views:
             if v.status.value == "done":
@@ -75,15 +83,23 @@ def register_coord_commands(main: click.Group) -> None:
             t = v.task
             p_style = priority_colors.get(t.priority.value, "dim")
             s_style = status_colors.get(v.status.value, "dim")
-            table.add_row(t.id, t.title, Text(t.priority.value.upper(), style=p_style),
-                          Text(v.status.value.upper(), style=s_style), v.claimed_by or "", ", ".join(t.tags))
+            table.add_row(
+                t.id,
+                t.title,
+                Text(t.priority.value.upper(), style=p_style),
+                Text(v.status.value.upper(), style=s_style),
+                v.claimed_by or "",
+                ", ".join(t.tags),
+            )
 
         console.print(table)
 
         if agents:
             console.print()
             for ag in agents:
-                icon = {"active": "[green]ACTIVE[/]", "idle": "[yellow]IDLE[/]"}.get(ag.state.value, "[dim]OFFLINE[/]")
+                icon = {"active": "[green]ACTIVE[/]", "idle": "[yellow]IDLE[/]"}.get(
+                    ag.state.value, "[dim]OFFLINE[/]"
+                )
                 current = f" -> [cyan]{ag.current_task}[/]" if ag.current_task else ""
                 console.print(f"  {icon} [bold]{ag.agent}[/]{current}")
         console.print()
@@ -92,7 +108,9 @@ def register_coord_commands(main: click.Group) -> None:
     @click.option("--home", default=AGENT_HOME, type=click.Path())
     @click.option("--title", required=True, help="Task title.")
     @click.option("--desc", default="", help="Task description.")
-    @click.option("--priority", type=click.Choice(["critical", "high", "medium", "low"]), default="medium")
+    @click.option(
+        "--priority", type=click.Choice(["critical", "high", "medium", "low"]), default="medium"
+    )
     @click.option("--tag", multiple=True, help="Tags (repeatable).")
     @click.option("--by", default="human", help="Creator name.")
     @click.option("--criteria", multiple=True, help="Acceptance criteria (repeatable).")
@@ -107,8 +125,15 @@ def register_coord_commands(main: click.Group) -> None:
 
         home_path = Path(home).expanduser()
         board = Board(home_path)
-        task = Task(title=title, description=desc, priority=TaskPriority(priority),
-                    tags=list(tag), created_by=by, acceptance_criteria=list(criteria), dependencies=list(dep))
+        task = Task(
+            title=title,
+            description=desc,
+            priority=TaskPriority(priority),
+            tags=list(tag),
+            created_by=by,
+            acceptance_criteria=list(criteria),
+            dependencies=list(dep),
+        )
         path = board.create_task(task)
         console.print(f"\n  [green]Created:[/] [{task.id}] {task.title}")
         console.print(f"  [dim]{path}[/]\n")
@@ -167,8 +192,15 @@ def register_coord_commands(main: click.Group) -> None:
         home_path = Path(home).expanduser()
         board = Board(home_path)
         try:
-            path = board.score_task(task_id, round=round_, score=score, notes=notes,
-                                    harness=harness, phase=phase, ref=ref)
+            path = board.score_task(
+                task_id,
+                round=round_,
+                score=score,
+                notes=notes,
+                harness=harness,
+                phase=phase,
+                ref=ref,
+            )
         except FileNotFoundError as e:
             console.print(f"\n  [red]Error:[/] {e}\n")
             sys.exit(1)
@@ -190,10 +222,20 @@ def register_coord_commands(main: click.Group) -> None:
 
     @coord.command("kanban")
     @click.option("--home", default=AGENT_HOME, type=click.Path())
-    @click.option("--html", "html_out", default=None, type=click.Path(),
-                  help="Write the visual kanban board to this HTML file.")
-    @click.option("--json", "as_json", is_flag=True, default=False,
-                  help="Emit the grid as JSON instead of a text summary.")
+    @click.option(
+        "--html",
+        "html_out",
+        default=None,
+        type=click.Path(),
+        help="Write the visual kanban board to this HTML file.",
+    )
+    @click.option(
+        "--json",
+        "as_json",
+        is_flag=True,
+        default=False,
+        help="Emit the grid as JSON instead of a text summary.",
+    )
     def coord_kanban(home, html_out, as_json):
         """Unified kanban board over coord tasks and ITIL tickets.
 
@@ -233,15 +275,20 @@ def register_coord_commands(main: click.Group) -> None:
                 continue
             table.add_row(lane, *[str(n) if n else "[dim]-[/]" for n in counts])
         console.print()
-        console.print(Panel(table, title="Kanban (columns x swimlanes)",
-                            border_style="bright_blue"))
+        console.print(
+            Panel(table, title="Kanban (columns x swimlanes)", border_style="bright_blue")
+        )
         console.print("  [dim]Full board: [cyan]coord kanban --html board.html[/][/]\n")
 
     @coord.command("archive-done")
     @click.option("--home", default=AGENT_HOME, type=click.Path())
     @click.option("--days", default=14, type=int, help="Archive done tasks older than N days.")
-    @click.option("--dry-run", is_flag=True, default=False,
-                  help="Show what would be archived without writing.")
+    @click.option(
+        "--dry-run",
+        is_flag=True,
+        default=False,
+        help="Show what would be archived without writing.",
+    )
     def coord_archive_done(home, days, dry_run):
         """Age done tasks off the active board (default: older than 14 days)."""
         from ..coordination import Board
@@ -254,10 +301,15 @@ def register_coord_commands(main: click.Group) -> None:
 
     @coord.command("age-backlog")
     @click.option("--home", default=AGENT_HOME, type=click.Path())
-    @click.option("--days", default=90, type=int,
-                  help="Archive unclaimed open tasks older than N days.")
-    @click.option("--dry-run", is_flag=True, default=False,
-                  help="Show what would be archived without writing.")
+    @click.option(
+        "--days", default=90, type=int, help="Archive unclaimed open tasks older than N days."
+    )
+    @click.option(
+        "--dry-run",
+        is_flag=True,
+        default=False,
+        help="Show what would be archived without writing.",
+    )
     def coord_age_backlog(home, days, dry_run):
         """Archive ancient unclaimed open tasks (default: older than 90 days)."""
         from ..coordination import Board
@@ -270,8 +322,12 @@ def register_coord_commands(main: click.Group) -> None:
 
     @coord.command("migrate")
     @click.option("--home", default=AGENT_HOME, type=click.Path())
-    @click.option("--dry-run", is_flag=True, default=False,
-                  help="Report what would import without writing the CardStore.")
+    @click.option(
+        "--dry-run",
+        is_flag=True,
+        default=False,
+        help="Report what would import without writing the CardStore.",
+    )
     def coord_migrate(home, dry_run):
         """Import the legacy board (coord + ITIL + overlay) into the CardStore.
 
@@ -291,10 +347,18 @@ def register_coord_commands(main: click.Group) -> None:
     @coord.command("parity")
     @click.option("--home", default=AGENT_HOME, type=click.Path())
     @click.option("--show", default=10, type=int, help="Max mismatches to print.")
-    @click.option("--check", is_flag=True, default=False,
-                  help="Exit non-zero on any drift (for the soak monitor).")
-    @click.option("--open-threshold", default=None, type=int,
-                  help="Open-count drift beyond this raises the PARITY ALERT.")
+    @click.option(
+        "--check",
+        is_flag=True,
+        default=False,
+        help="Exit non-zero on any drift (for the soak monitor).",
+    )
+    @click.option(
+        "--open-threshold",
+        default=None,
+        type=int,
+        help="Open-count drift beyond this raises the PARITY ALERT.",
+    )
     def coord_parity(home, show, check, open_threshold):
         """Diff the legacy board against the CardStore fold (Phase 4 soak check)."""
         import sys
@@ -331,8 +395,13 @@ def register_coord_commands(main: click.Group) -> None:
 
     @coord.command("reconcile")
     @click.option("--home", default=AGENT_HOME, type=click.Path())
-    @click.option("--apply", "apply_", is_flag=True, default=False,
-                  help="Write corrective events (default is a dry-run report).")
+    @click.option(
+        "--apply",
+        "apply_",
+        is_flag=True,
+        default=False,
+        help="Write corrective events (default is a dry-run report).",
+    )
     def coord_reconcile(home, apply_):
         """Converge the CardStore on the authoritative legacy board.
 
@@ -354,10 +423,15 @@ def register_coord_commands(main: click.Group) -> None:
 
     @coord.command("maintain")
     @click.option("--home", default=AGENT_HOME, type=click.Path())
-    @click.option("--done-days", default=14, type=int,
-                  help="Archive done tasks older than N days.")
-    @click.option("--backlog-days", default=90, type=int,
-                  help="Archive unclaimed open tasks older than N days.")
+    @click.option(
+        "--done-days", default=14, type=int, help="Archive done tasks older than N days."
+    )
+    @click.option(
+        "--backlog-days",
+        default=90,
+        type=int,
+        help="Archive unclaimed open tasks older than N days.",
+    )
     @click.option("--dry-run", is_flag=True, default=False)
     def coord_maintain(home, done_days, backlog_days, dry_run):
         """Keep the board bounded: archive old done + ancient open tasks.
@@ -379,8 +453,7 @@ def register_coord_commands(main: click.Group) -> None:
 
     @coord.command("move")
     @click.argument("task_id")
-    @click.argument("column",
-                    type=click.Choice(["backlog", "ready", "doing", "review", "done"]))
+    @click.argument("column", type=click.Choice(["backlog", "ready", "doing", "review", "done"]))
     @click.option("--home", default=AGENT_HOME, type=click.Path())
     @click.option("--order", default=None, type=int, help="Position within the column.")
     @click.option("--agent", default=None, help="Writer name (defaults to host).")
@@ -389,8 +462,9 @@ def register_coord_commands(main: click.Group) -> None:
         from ..card import CardEvent, CardEventLog
 
         home_path = Path(home).expanduser()
-        event = CardEvent(card_id=task_id, action="move", column=column, order=order,
-                          writer=agent or "")
+        event = CardEvent(
+            card_id=task_id, action="move", column=column, order=order, writer=agent or ""
+        )
         CardEventLog(home_path).append(event)
         from ..card_store import card_store_write_enabled, mirror_coord_move
 
@@ -429,8 +503,9 @@ def register_coord_commands(main: click.Group) -> None:
 
         home_path = Path(home).expanduser()
         CardEventLog(home_path).append(
-            CardEvent(card_id=task_id, action="link", link_key=key, link_value=value,
-                      writer=agent or "")
+            CardEvent(
+                card_id=task_id, action="link", link_key=key, link_value=value, writer=agent or ""
+            )
         )
         console.print(f"\n  [green]Linked {task_id}: {key} = {value}.[/]\n")
 
@@ -456,7 +531,7 @@ def register_coord_commands(main: click.Group) -> None:
     @click.option("--format", "fmt", type=click.Choice(["text", "json"]), default="text")
     def coord_briefing(home, fmt):
         """Print the full coordination protocol for any AI agent."""
-        from ..coordination import get_briefing_text, get_briefing_json
+        from ..coordination import get_briefing_json, get_briefing_text
 
         home_path = Path(home).expanduser()
         if fmt == "json":

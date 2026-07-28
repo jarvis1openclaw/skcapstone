@@ -20,10 +20,8 @@ Usage:
 from __future__ import annotations
 
 import os
-import subprocess
 from pathlib import Path
 from typing import Optional
-
 
 SUPPORTED_SHELLS = ("bash", "zsh", "fish")
 
@@ -51,11 +49,11 @@ INSTALL_PATHS = {
 RC_MARKERS = {
     "bash": (
         Path.home() / ".bashrc",
-        '[ -f ~/.bash_completion.d/skcapstone.bash-completion ] && source ~/.bash_completion.d/skcapstone.bash-completion',
+        "[ -f ~/.bash_completion.d/skcapstone.bash-completion ] && source ~/.bash_completion.d/skcapstone.bash-completion",  # noqa: E501
     ),
     "zsh": (
         Path.home() / ".zshrc",
-        '[ -f ~/.zfunc/_skcapstone ] && source ~/.zfunc/_skcapstone',
+        "[ -f ~/.zfunc/_skcapstone ] && source ~/.zfunc/_skcapstone",
     ),
 }
 
@@ -87,8 +85,7 @@ def generate_script(shell: str) -> str:
     """
     if shell not in SUPPORTED_SHELLS:
         raise ValueError(
-            f"Unsupported shell: {shell}. "
-            f"Supported: {', '.join(SUPPORTED_SHELLS)}"
+            f"Unsupported shell: {shell}. " f"Supported: {', '.join(SUPPORTED_SHELLS)}"
         )
     return COMPLETION_SCRIPTS[shell]
 

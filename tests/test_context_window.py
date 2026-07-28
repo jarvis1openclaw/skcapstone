@@ -13,8 +13,6 @@ from __future__ import annotations
 
 from pathlib import Path
 
-import pytest
-
 from skcapstone.context_window import (
     ContextWindowManager,
     count_history_tokens,

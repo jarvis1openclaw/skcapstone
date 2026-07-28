@@ -11,7 +11,6 @@ Each group corresponds to one implementation commit:
 # ---------------------------------------------------------------------------
 # Group A — JobSpec + load_jobs
 # ---------------------------------------------------------------------------
-import warnings
 from pathlib import Path
 
 import pytest
@@ -73,8 +72,6 @@ def test_job_runs_here_match_and_miss():
 # ---------------------------------------------------------------------------
 from datetime import datetime, timedelta, timezone  # noqa: E402
 
-from skcapstone.scheduler_jobs import is_due  # noqa: E402
-
 
 def test_interval_due():
     j = JobSpec(name="x", every_seconds=300)
@@ -114,6 +111,7 @@ def test_current_host_aliases_includes_env_alias(monkeypatch):
 # _parse_duration — validation (fix 2)
 # ---------------------------------------------------------------------------
 
+
 def test_parse_duration_rejects_negative():
     with pytest.raises(ValueError):
         _parse_duration("-5m")
@@ -136,6 +134,7 @@ def test_parse_duration_valid_units():
 # load_jobs — warn on unknown keys (fix 3)
 # ---------------------------------------------------------------------------
 
+
 def test_load_jobs_warns_on_unknown_key(tmp_path):
     cfg = tmp_path / "jobs.yaml"
     cfg.write_text(
@@ -149,6 +148,7 @@ def test_load_jobs_warns_on_unknown_key(tmp_path):
 # ---------------------------------------------------------------------------
 # is_due — no-schedule never fires (fix 4)
 # ---------------------------------------------------------------------------
+
 
 def test_is_due_no_schedule_never_fires():
     j = JobSpec(name="x")

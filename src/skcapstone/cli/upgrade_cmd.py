@@ -21,25 +21,25 @@ import click
 
 logger = logging.getLogger(__name__)
 
-from ._common import AGENT_HOME, console
+from ._common import AGENT_HOME, console  # noqa: E402
 
 # ── Package definitions ───────────────────────────────────────────────────────
 
 # Core packages: always upgraded when installed; always offered for install.
 CORE_PACKAGES: list[str] = [
-    "capauth",          # sovereign identity + PGP auth
+    "capauth",  # sovereign identity + PGP auth
     "cloud9",  # emotional continuity (FEB, OOF, Cloud 9)
-    "skmemory",         # persistent memory layer
-    "skcapstone",       # main agent framework
+    "skmemory",  # persistent memory layer
+    "skcapstone",  # main agent framework
 ]
 
 # Optional pillar packages: upgraded only when already installed.
 # If NOT installed, the user is prompted whether they want to add them.
 OPTIONAL_PACKAGES: list[str] = [
-    "skcomms",     # P2P transport layer
-    "skchat",     # agent messaging daemon
-    "sksecurity", # security audit + threat intelligence
-    "skseed",     # seed framework for consciousness
+    "skcomms",  # P2P transport layer
+    "skchat",  # agent messaging daemon
+    "sksecurity",  # security audit + threat intelligence
+    "skseed",  # seed framework for consciousness
 ]
 
 # All sovereign packages in dependency order
@@ -102,7 +102,9 @@ def _get_latest_version(package: str) -> Optional[str]:
     return None
 
 
-def _pip_install(package: str, upgrade: bool = True, force_reinstall: bool = False) -> tuple[bool, str]:
+def _pip_install(
+    package: str, upgrade: bool = True, force_reinstall: bool = False
+) -> tuple[bool, str]:
     """Run pip install [--upgrade] [--force-reinstall] for a package.
 
     Args:
@@ -364,13 +366,15 @@ def register_upgrade_commands(main: click.Group) -> None:
         ),
     )
     @click.option(
-        "--yes", "-y",
+        "--yes",
+        "-y",
         is_flag=True,
         default=False,
         help="Skip interactive prompts — do not install optional packages that are missing.",
     )
     @click.option(
-        "--all", "install_all",
+        "--all",
+        "install_all",
         is_flag=True,
         default=False,
         help="Install all optional packages without prompting.",
@@ -425,14 +429,18 @@ def register_upgrade_commands(main: click.Group) -> None:
             pkg_list = (
                 [p.strip() for p in packages.split(",") if p.strip()]
                 if packages
-                else (SOVEREIGN_PACKAGES if install_all else CORE_PACKAGES + [
-                    pkg for pkg in OPTIONAL_PACKAGES
-                    if install_all or _get_installed_version(pkg) is not None
-                ])
+                else (
+                    SOVEREIGN_PACKAGES
+                    if install_all
+                    else CORE_PACKAGES
+                    + [
+                        pkg
+                        for pkg in OPTIONAL_PACKAGES
+                        if install_all or _get_installed_version(pkg) is not None
+                    ]
+                )
             )
-            console.print(
-                f"  [yellow bold]Force reinstall[/]: {', '.join(pkg_list)}"
-            )
+            console.print(f"  [yellow bold]Force reinstall[/]: {', '.join(pkg_list)}")
             console.print()
             ok = _run_upgrade(pkg_list, home_path, restart, yes, force_reinstall=True)
             if not ok:

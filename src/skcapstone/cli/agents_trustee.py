@@ -6,11 +6,10 @@ from pathlib import Path
 from typing import Optional
 
 import click
-
-from ._common import AGENT_HOME, console
-
 from rich.panel import Panel
 from rich.table import Table
+
+from ._common import AGENT_HOME, console
 
 
 def _print_monitor_report(report, iteration: int = 0):
@@ -22,10 +21,7 @@ def _print_monitor_report(report, iteration: int = 0):
         status_color = "red"
 
     total = report.agents_healthy + report.agents_degraded
-    line = (
-        f"  {prefix}"
-        f"[{status_color}]{report.agents_healthy}/{total} healthy[/]"
-    )
+    line = f"  {prefix}" f"[{status_color}]{report.agents_healthy}/{total} healthy[/]"
 
     if report.restarts_triggered:
         line += f"  [yellow]restarted: {', '.join(report.restarts_triggered)}[/]"
@@ -77,9 +73,8 @@ def _print_agent_health(result: dict) -> None:
         f"  [bold]Role:[/]        {result.get('spec_key', '?')}",
         f"  [bold]Status:[/]      {status_str}",
         f"  [bold]Deployment:[/]  {result.get('deployment_id', '?')}",
-        f"  [bold]Host:[/]        {result.get('host') or '\u2014'}",
-        f"  [bold]Last HB:[/]     "
-        f"{(result.get('last_heartbeat') or '\u2014')[:19]}",
+        f"  [bold]Host:[/]        {result.get('host') or '-'}",
+        f"  [bold]Last HB:[/]     " f"{(result.get('last_heartbeat') or '-')[:19]}",
     ]
     if result.get("error"):
         lines.append(f"  [bold red]Error:[/]       [red]{result['error'][:60]}[/]")
@@ -134,9 +129,7 @@ def register_agents_trustee_commands(agents: click.Group) -> None:
             table.add_row(name, f"[{color}]{result}[/]")
 
         console.print()
-        console.print(
-            Panel(table, title=f"Restart: {deployment_id}", border_style="bright_blue")
-        )
+        console.print(Panel(table, title=f"Restart: {deployment_id}", border_style="bright_blue"))
         console.print()
 
     @agents.command("scale")
@@ -234,9 +227,10 @@ def register_agents_trustee_commands(agents: click.Group) -> None:
     @agents.command("health")
     @click.argument("deployment_id", required=False)
     @click.option(
-        "--agent", "agent_name", default=None,
-        help="Focus on one agent by name or role (e.g. sentinel), "
-             "across all deployments.",
+        "--agent",
+        "agent_name",
+        default=None,
+        help="Focus on one agent by name or role (e.g. sentinel), " "across all deployments.",
     )
     @click.option("--home", default=AGENT_HOME, type=click.Path())
     def agents_health(deployment_id: Optional[str], agent_name: Optional[str], home: str):
@@ -261,6 +255,7 @@ def register_agents_trustee_commands(agents: click.Group) -> None:
         # without one the surface falls back to the last-known status on disk.
         try:
             from ..providers.local import LocalProvider
+
             provider = LocalProvider(home=home_path)
         except Exception:
             provider = None
@@ -386,11 +381,16 @@ def register_agents_trustee_commands(agents: click.Group) -> None:
     @agents.command("messages")
     @click.argument("deployment_id")
     @click.option(
-        "--agent", "agent_name", default=None,
+        "--agent",
+        "agent_name",
+        default=None,
         help="Show messages only for this agent (inbox + broadcast).",
     )
     @click.option(
-        "--limit", "-n", default=20, show_default=True,
+        "--limit",
+        "-n",
+        default=20,
+        show_default=True,
         help="Maximum number of archived messages to display per agent.",
     )
     @click.option("--home", default=AGENT_HOME, type=click.Path())
@@ -406,7 +406,7 @@ def register_agents_trustee_commands(agents: click.Group) -> None:
             skcapstone agents messages myteam-1740000000 --agent myteam-alpha
             skcapstone agents messages myteam-1740000000 --limit 50
         """
-        from ..team_comms import TeamChannel, _ENVELOPE_SUFFIX
+        from ..team_comms import _ENVELOPE_SUFFIX
 
         home_path = Path(home).expanduser()
         comms_root = home_path / "comms"
@@ -427,13 +427,12 @@ def register_agents_trustee_commands(agents: click.Group) -> None:
             agent_dirs = [team_dir / agent_name]
             if not agent_dirs[0].exists():
                 console.print(
-                    f"\n  [red]Agent '{agent_name}' not found in deployment '{deployment_id}'.[/]\n"
+                    f"\n  [red]Agent '{agent_name}' not found in deployment '{deployment_id}'.[/]\n"  # noqa: E501
                 )
                 return
         else:
             agent_dirs = [
-                d for d in sorted(team_dir.iterdir())
-                if d.is_dir() and d.name != "broadcast"
+                d for d in sorted(team_dir.iterdir()) if d.is_dir() and d.name != "broadcast"
             ]
 
         if not agent_dirs:
@@ -460,7 +459,10 @@ def register_agents_trustee_commands(agents: click.Group) -> None:
                 continue
 
             table = Table(
-                show_header=True, header_style="bold", box=None, padding=(0, 2),
+                show_header=True,
+                header_style="bold",
+                box=None,
+                padding=(0, 2),
             )
             table.add_column("Time", style="dim", width=12)
             table.add_column("From", style="bold cyan", width=18)
@@ -470,13 +472,12 @@ def register_agents_trustee_commands(agents: click.Group) -> None:
             for env_file in reversed(envelope_files):
                 try:
                     import json as _json
+
                     data = _json.loads(env_file.read_text(encoding="utf-8"))
                     sender = data.get("sender", "?")
                     recipient = data.get("recipient", "?")
                     content = data.get("payload", {}).get("content", "")
-                    created_at = (
-                        data.get("metadata", {}).get("created_at", "")[:19] or "\u2014"
-                    )
+                    created_at = data.get("metadata", {}).get("created_at", "")[:19] or "\u2014"
                     time_part = created_at[11:19] if len(created_at) >= 19 else created_at
 
                     table.add_row(
@@ -510,7 +511,10 @@ def register_agents_trustee_commands(agents: click.Group) -> None:
 
             if bc_files:
                 bc_table = Table(
-                    show_header=True, header_style="bold", box=None, padding=(0, 2),
+                    show_header=True,
+                    header_style="bold",
+                    box=None,
+                    padding=(0, 2),
                 )
                 bc_table.add_column("Time", style="dim", width=12)
                 bc_table.add_column("From", style="bold magenta", width=18)
@@ -519,6 +523,7 @@ def register_agents_trustee_commands(agents: click.Group) -> None:
                 for env_file in reversed(bc_files):
                     try:
                         import json as _json
+
                         data = _json.loads(env_file.read_text(encoding="utf-8"))
                         sender = data.get("sender", "?")
                         content = data.get("payload", {}).get("content", "")
@@ -562,19 +567,32 @@ def register_agents_trustee_commands(agents: click.Group) -> None:
     @agents.command("monitor")
     @click.option("--home", default=AGENT_HOME, type=click.Path())
     @click.option(
-        "--interval", "-i", type=float, default=30.0, show_default=True,
+        "--interval",
+        "-i",
+        type=float,
+        default=30.0,
+        show_default=True,
         help="Seconds between health checks.",
     )
     @click.option(
-        "--deployment", "-d", "deployment_id", default=None,
+        "--deployment",
+        "-d",
+        "deployment_id",
+        default=None,
         help="Monitor only this deployment (default: all).",
     )
     @click.option(
-        "--heartbeat-timeout", type=float, default=120.0, show_default=True,
+        "--heartbeat-timeout",
+        type=float,
+        default=120.0,
+        show_default=True,
         help="Seconds since last heartbeat before auto-restart.",
     )
     @click.option(
-        "--max-restarts", type=int, default=3, show_default=True,
+        "--max-restarts",
+        type=int,
+        default=3,
+        show_default=True,
         help="Consecutive restart failures before auto-rotate.",
     )
     @click.option("--no-restart", is_flag=True, help="Disable auto-restart.")
@@ -611,14 +629,14 @@ def register_agents_trustee_commands(agents: click.Group) -> None:
             skcapstone agents monitor --no-escalate --heartbeat-timeout 60
         """
         from ..providers.local import LocalProvider
-        from ..team_engine import TeamEngine as _TE
-        from ..trustee_ops import TrusteeOps as _TO
+        from ..team_engine import TeamEngine as _TeamEngine
         from ..trustee_monitor import MonitorConfig, TrusteeMonitor
+        from ..trustee_ops import TrusteeOps as _TrusteeOps
 
         home_path = Path(home).expanduser()
         provider = LocalProvider(home=home_path)
-        engine = _TE(home=home_path, provider=provider, comms_root=home_path / "comms")
-        ops = _TO(engine=engine, home=home_path)
+        engine = _TeamEngine(home=home_path, provider=provider, comms_root=home_path / "comms")
+        ops = _TrusteeOps(engine=engine, home=home_path)
 
         config = MonitorConfig(
             heartbeat_timeout=heartbeat_timeout,
@@ -678,15 +696,16 @@ def register_agents_trustee_commands(agents: click.Group) -> None:
                     report = monitor.check_all()
 
                 has_actions = (
-                    report.restarts_triggered or
-                    report.rotations_triggered or
-                    report.escalations_sent
+                    report.restarts_triggered
+                    or report.rotations_triggered
+                    or report.escalations_sent
                 )
 
                 if has_actions or iteration % 10 == 1:
                     _print_monitor_report(report, iteration=iteration)
 
                 import time as _time
+
                 _time.sleep(interval)
 
         except KeyboardInterrupt:

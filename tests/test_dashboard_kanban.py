@@ -1,14 +1,13 @@
 """Tests for the Phase 2 interactive kanban API (dashboard_kanban + routes)."""
-from __future__ import annotations
 
-import json
+from __future__ import annotations
 
 import pytest
 
+from skcapstone import dashboard_kanban as dk
 from skcapstone.card_store import CardStore, import_from_legacy
 from skcapstone.coordination import Board, Task, TaskPriority
 from skcapstone.dashboard import create_app
-from skcapstone import dashboard_kanban as dk
 
 
 @pytest.fixture
@@ -16,7 +15,9 @@ def home(tmp_path):
     board = Board(tmp_path)
     board.ensure_dirs()
     board.create_task(Task(id="t1", title="Open feature", created_by="opus", tags=["bug"]))
-    board.create_task(Task(id="t2", title="High one", created_by="opus", priority=TaskPriority.HIGH))
+    board.create_task(
+        Task(id="t2", title="High one", created_by="opus", priority=TaskPriority.HIGH)
+    )
     import_from_legacy(tmp_path)
     return tmp_path
 
@@ -24,7 +25,7 @@ def home(tmp_path):
 def test_get_kanban_shape(home):
     data = dk.get_kanban(home)
     assert "columns" in data and data["columns"][0] == "backlog"
-    assert "lanes" in data and any(l["key"] == "feature" for l in data["lanes"])
+    assert "lanes" in data and any(lane["key"] == "feature" for lane in data["lanes"])
     assert "wip" in data and "doing" in data["wip"]
 
 
@@ -50,9 +51,17 @@ def test_apply_move_bad_column(home):
 
 
 def test_apply_assign_and_priority_and_label_and_note(home):
-    assert dk.apply_mutation(home, "t2", "assign", "op", owner="lumina")["card"]["owner"] == "lumina"
-    assert dk.apply_mutation(home, "t2", "priority", "op", priority="critical")["card"]["priority"] == "critical"
-    assert "urgent" in dk.apply_mutation(home, "t2", "add_label", "op", label="urgent")["card"]["labels"]
+    assert (
+        dk.apply_mutation(home, "t2", "assign", "op", owner="lumina")["card"]["owner"] == "lumina"
+    )
+    assert (
+        dk.apply_mutation(home, "t2", "priority", "op", priority="critical")["card"]["priority"]
+        == "critical"
+    )
+    assert (
+        "urgent"
+        in dk.apply_mutation(home, "t2", "add_label", "op", label="urgent")["card"]["labels"]
+    )
     r = dk.apply_mutation(home, "t2", "note", "op", text="looking into it")
     comments = r["card"]["meta"].get("comments", [])
     assert comments and comments[-1]["text"] == "looking into it"
@@ -64,8 +73,10 @@ def test_apply_unknown_action(home):
 
 # ---- HTTP routes via TestClient ----
 
+
 def test_routes_kanban_card_and_mutation(home):
     from starlette.testclient import TestClient
+
     client = TestClient(create_app(home))
 
     k = client.get("/api/kanban")
@@ -74,7 +85,9 @@ def test_routes_kanban_card_and_mutation(home):
     c = client.get("/api/card/t1")
     assert c.status_code == 200 and c.json()["card"]["id"] == "t1"
 
-    m = client.post("/api/card/t1/move", json={"column": "doing"}, headers={"X-SK-Actor": "tester"})
+    m = client.post(
+        "/api/card/t1/move", json={"column": "doing"}, headers={"X-SK-Actor": "tester"}
+    )
     assert m.status_code == 200 and m.json()["card"]["status"] == "doing"
     # the mutation was attributed to the actor
     ev = client.get("/api/card/t1").json()["activity"]
@@ -83,6 +96,7 @@ def test_routes_kanban_card_and_mutation(home):
 
 def test_board_page_served(home):
     from starlette.testclient import TestClient
+
     client = TestClient(create_app(home))
     r = client.get("/board")
     assert r.status_code == 200
@@ -95,10 +109,12 @@ def test_board_page_served(home):
 
 def test_get_card_opens_itil_record(tmp_path):
     # an ITIL incident id should open into a card detail (materialized on demand)
-    from skcapstone.itil import ITILManager
     from skcapstone import dashboard_kanban as dk
-    inc = ITILManager(tmp_path).create_incident(title="skchat down", severity="sev2",
-                                                created_by="opus", affected_services=["skchat"])
+    from skcapstone.itil import ITILManager
+
+    inc = ITILManager(tmp_path).create_incident(
+        title="skchat down", severity="sev2", created_by="opus", affected_services=["skchat"]
+    )
     d = dk.get_card(tmp_path, inc.id)
     assert d["card"]["id"] == inc.id
     assert d["card"]["kind"] == "incident"

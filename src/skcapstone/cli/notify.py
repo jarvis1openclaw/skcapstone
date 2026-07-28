@@ -19,7 +19,12 @@ def register_notify_commands(main: click.Group) -> None:
 
     @notify.command("test")
     @click.option("--title", default="SKCapstone", show_default=True, help="Notification title.")
-    @click.option("--body", default="Test notification from SKCapstone.", show_default=True, help="Notification body.")
+    @click.option(
+        "--body",
+        default="Test notification from SKCapstone.",
+        show_default=True,
+        help="Notification body.",
+    )
     @click.option(
         "--urgency",
         default="normal",
@@ -74,7 +79,9 @@ def register_notify_commands(main: click.Group) -> None:
             console.print("[bold red]No agent found.[/] Run skcapstone init first.")
             sys.exit(1)
 
-        results = mem_search(home=home_path, query="notification", tags=["notification"], limit=limit)
+        results = mem_search(
+            home=home_path, query="notification", tags=["notification"], limit=limit
+        )
 
         if json_out:
             output = [
@@ -96,7 +103,9 @@ def register_notify_commands(main: click.Group) -> None:
 
         from rich.table import Table
 
-        console.print(f"\n  [bold]{len(results)}[/] notification{'s' if len(results) != 1 else ''} in history:\n")
+        console.print(
+            f"\n  [bold]{len(results)}[/] notification{'s' if len(results) != 1 else ''} in history:\n"  # noqa: E501
+        )
 
         table = Table(show_header=True, header_style="bold", box=None, padding=(0, 2))
         table.add_column("ID", style="cyan", max_width=14)

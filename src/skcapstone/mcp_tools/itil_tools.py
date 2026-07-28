@@ -32,8 +32,11 @@ TOOLS: list[Tool] = [
                 "source": {
                     "type": "string",
                     "enum": [
-                        "service_health", "dreaming", "manual",
-                        "daemon_error", "heartbeat",
+                        "service_health",
+                        "dreaming",
+                        "manual",
+                        "daemon_error",
+                        "heartbeat",
                     ],
                     "description": "Detection source (default: manual)",
                 },
@@ -81,8 +84,11 @@ TOOLS: list[Tool] = [
                 "new_status": {
                     "type": "string",
                     "enum": [
-                        "acknowledged", "investigating", "escalated",
-                        "resolved", "closed",
+                        "acknowledged",
+                        "investigating",
+                        "escalated",
+                        "resolved",
+                        "closed",
                     ],
                     "description": "New status to transition to",
                 },
@@ -109,17 +115,19 @@ TOOLS: list[Tool] = [
     ),
     Tool(
         name="itil_incident_list",
-        description=(
-            "List ITIL incidents filtered by status, severity, or affected service."
-        ),
+        description=("List ITIL incidents filtered by status, severity, or affected service."),
         inputSchema={
             "type": "object",
             "properties": {
                 "status": {
                     "type": "string",
                     "enum": [
-                        "detected", "acknowledged", "investigating",
-                        "escalated", "resolved", "closed",
+                        "detected",
+                        "acknowledged",
+                        "investigating",
+                        "escalated",
+                        "resolved",
+                        "closed",
                     ],
                     "description": "Filter by status",
                 },
@@ -287,8 +295,14 @@ TOOLS: list[Tool] = [
                 "new_status": {
                     "type": "string",
                     "enum": [
-                        "reviewing", "approved", "rejected", "implementing",
-                        "deployed", "verified", "failed", "closed",
+                        "reviewing",
+                        "approved",
+                        "rejected",
+                        "implementing",
+                        "deployed",
+                        "verified",
+                        "failed",
+                        "closed",
                     ],
                     "description": "New status to transition to",
                 },
@@ -325,7 +339,7 @@ TOOLS: list[Tool] = [
                 },
                 "conditions": {
                     "type": "string",
-                    "description": "Conditions for approval (e.g. 'deploy during maintenance window')",
+                    "description": "Conditions for approval (e.g. 'deploy during maintenance window')",  # noqa: E501
                 },
             },
             "required": ["change_id", "agent"],
@@ -382,15 +396,17 @@ async def _handle_itil_incident_create(args: dict) -> list[TextContent]:
         managed_by=args.get("managed_by", ""),
         tags=args.get("tags", []),
     )
-    return _json_response({
-        "created": True,
-        "id": incident.id,
-        "title": incident.title,
-        "severity": incident.severity.value,
-        "status": incident.status.value,
-        "managed_by": incident.managed_by,
-        "gtd_item_ids": incident.gtd_item_ids,
-    })
+    return _json_response(
+        {
+            "created": True,
+            "id": incident.id,
+            "title": incident.title,
+            "severity": incident.severity.value,
+            "status": incident.status.value,
+            "managed_by": incident.managed_by,
+            "gtd_item_ids": incident.gtd_item_ids,
+        }
+    )
 
 
 async def _handle_itil_incident_update(args: dict) -> list[TextContent]:
@@ -413,14 +429,16 @@ async def _handle_itil_incident_update(args: dict) -> list[TextContent]:
             resolution_summary=args.get("resolution_summary"),
             related_problem_id=args.get("related_problem_id"),
         )
-        return _json_response({
-            "updated": True,
-            "id": inc.id,
-            "title": inc.title,
-            "severity": inc.severity.value,
-            "status": inc.status.value,
-            "timeline_count": len(inc.timeline),
-        })
+        return _json_response(
+            {
+                "updated": True,
+                "id": inc.id,
+                "title": inc.title,
+                "severity": inc.severity.value,
+                "status": inc.status.value,
+                "timeline_count": len(inc.timeline),
+            }
+        )
     except ValueError as exc:
         return _error_response(str(exc))
 
@@ -435,22 +453,24 @@ async def _handle_itil_incident_list(args: dict) -> list[TextContent]:
         severity=args.get("severity"),
         service=args.get("service"),
     )
-    return _json_response({
-        "incidents": [
-            {
-                "id": i.id,
-                "title": i.title,
-                "severity": i.severity.value,
-                "status": i.status.value,
-                "managed_by": i.managed_by,
-                "affected_services": i.affected_services,
-                "detected_at": i.detected_at,
-                "resolved_at": i.resolved_at,
-            }
-            for i in incidents
-        ],
-        "total": len(incidents),
-    })
+    return _json_response(
+        {
+            "incidents": [
+                {
+                    "id": i.id,
+                    "title": i.title,
+                    "severity": i.severity.value,
+                    "status": i.status.value,
+                    "managed_by": i.managed_by,
+                    "affected_services": i.affected_services,
+                    "detected_at": i.detected_at,
+                    "resolved_at": i.resolved_at,
+                }
+                for i in incidents
+            ],
+            "total": len(incidents),
+        }
+    )
 
 
 async def _handle_itil_problem_create(args: dict) -> list[TextContent]:
@@ -469,14 +489,16 @@ async def _handle_itil_problem_create(args: dict) -> list[TextContent]:
         workaround=args.get("workaround", ""),
         tags=args.get("tags", []),
     )
-    return _json_response({
-        "created": True,
-        "id": problem.id,
-        "title": problem.title,
-        "status": problem.status.value,
-        "managed_by": problem.managed_by,
-        "related_incident_ids": problem.related_incident_ids,
-    })
+    return _json_response(
+        {
+            "created": True,
+            "id": problem.id,
+            "title": problem.title,
+            "status": problem.status.value,
+            "managed_by": problem.managed_by,
+            "related_incident_ids": problem.related_incident_ids,
+        }
+    )
 
 
 async def _handle_itil_problem_update(args: dict) -> list[TextContent]:
@@ -499,15 +521,17 @@ async def _handle_itil_problem_update(args: dict) -> list[TextContent]:
             note=args.get("note", ""),
             create_kedb=args.get("create_kedb", False),
         )
-        return _json_response({
-            "updated": True,
-            "id": prb.id,
-            "title": prb.title,
-            "status": prb.status.value,
-            "root_cause": prb.root_cause,
-            "kedb_id": prb.kedb_id,
-            "timeline_count": len(prb.timeline),
-        })
+        return _json_response(
+            {
+                "updated": True,
+                "id": prb.id,
+                "title": prb.title,
+                "status": prb.status.value,
+                "root_cause": prb.root_cause,
+                "kedb_id": prb.kedb_id,
+                "timeline_count": len(prb.timeline),
+            }
+        )
     except ValueError as exc:
         return _error_response(str(exc))
 
@@ -532,15 +556,17 @@ async def _handle_itil_change_propose(args: dict) -> list[TextContent]:
         related_problem_id=args.get("related_problem_id"),
         tags=args.get("tags", []),
     )
-    return _json_response({
-        "created": True,
-        "id": change.id,
-        "title": change.title,
-        "change_type": change.change_type.value,
-        "status": change.status.value,
-        "cab_required": change.cab_required,
-        "managed_by": change.managed_by,
-    })
+    return _json_response(
+        {
+            "created": True,
+            "id": change.id,
+            "title": change.title,
+            "change_type": change.change_type.value,
+            "status": change.status.value,
+            "cab_required": change.cab_required,
+            "managed_by": change.managed_by,
+        }
+    )
 
 
 async def _handle_itil_change_update(args: dict) -> list[TextContent]:
@@ -560,13 +586,15 @@ async def _handle_itil_change_update(args: dict) -> list[TextContent]:
             new_status=args.get("new_status"),
             note=args.get("note", ""),
         )
-        return _json_response({
-            "updated": True,
-            "id": chg.id,
-            "title": chg.title,
-            "status": chg.status.value,
-            "timeline_count": len(chg.timeline),
-        })
+        return _json_response(
+            {
+                "updated": True,
+                "id": chg.id,
+                "title": chg.title,
+                "status": chg.status.value,
+                "timeline_count": len(chg.timeline),
+            }
+        )
     except ValueError as exc:
         return _error_response(str(exc))
 
@@ -596,14 +624,16 @@ async def _handle_itil_cab_vote(args: dict) -> list[TextContent]:
         "abstain": sum(1 for v in all_votes if v.decision.value == "abstain"),
     }
 
-    return _json_response({
-        "voted": True,
-        "change_id": vote.change_id,
-        "agent": vote.agent,
-        "decision": vote.decision.value,
-        "conditions": vote.conditions,
-        "tally": tally,
-    })
+    return _json_response(
+        {
+            "voted": True,
+            "change_id": vote.change_id,
+            "agent": vote.agent,
+            "decision": vote.decision.value,
+            "conditions": vote.conditions,
+            "tally": tally,
+        }
+    )
 
 
 async def _handle_itil_status(_args: dict) -> list[TextContent]:
@@ -625,22 +655,24 @@ async def _handle_itil_kedb_search(args: dict) -> list[TextContent]:
 
     mgr = ITILManager(_shared_root())
     results = mgr.search_kedb(query)
-    return _json_response({
-        "results": [
-            {
-                "id": e.id,
-                "title": e.title,
-                "symptoms": e.symptoms,
-                "root_cause": e.root_cause,
-                "workaround": e.workaround,
-                "permanent_fix_change_id": e.permanent_fix_change_id,
-                "related_problem_id": e.related_problem_id,
-            }
-            for e in results
-        ],
-        "total": len(results),
-        "query": query,
-    })
+    return _json_response(
+        {
+            "results": [
+                {
+                    "id": e.id,
+                    "title": e.title,
+                    "symptoms": e.symptoms,
+                    "root_cause": e.root_cause,
+                    "workaround": e.workaround,
+                    "permanent_fix_change_id": e.permanent_fix_change_id,
+                    "related_problem_id": e.related_problem_id,
+                }
+                for e in results
+            ],
+            "total": len(results),
+            "query": query,
+        }
+    )
 
 
 HANDLERS: dict = {

@@ -96,6 +96,7 @@ all = [
 dev = [
     "pytest>=7.0",
     "pytest-cov>=4.0",
+    "pytest-asyncio>=0.23",
     "black>=24.0",
     "ruff>=0.3",
 ]
@@ -130,11 +131,22 @@ target-version = "py310"
 [tool.ruff.lint]
 select = ["E", "F", "I", "N", "W"]
 
+# These files embed multi-line HTML/JS/shell templates as Python string
+# literals; individual template lines cannot carry a trailing `# noqa`
+# comment without corrupting the served/generated content, so long lines
+# are exempted at the file level instead.
+[tool.ruff.lint.per-file-ignores]
+"src/skcapstone/card.py" = ["E501"]
+"src/skcapstone/codex_setup.py" = ["E501"]
+"src/skcapstone/dashboard.py" = ["E501"]
+
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 pythonpath = ["src"]
 addopts = "-v --tb=short"
+asyncio_mode = "strict"
 markers = [
     "integration: cross-component test requiring real services/network (excluded from default CI unit run)",
     "e2e: live end-to-end test requiring an installed skcapstone CLI / running daemon (excluded from default CI unit run)",
+    "asyncio: mark an async test to be run by pytest-asyncio (registered here so --strict-markers passes even before the plugin loads)",
 ]

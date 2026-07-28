@@ -300,9 +300,7 @@ class AgentCard(BaseModel):
             "name": self.name,
             "type": self.entity_type,
             "fp": self.fingerprint[:16],
-            "transports": [
-                {"t": t.transport, "a": t.address} for t in self.transports
-            ],
+            "transports": [{"t": t.transport, "a": t.address} for t in self.transports],
             "caps": [c.name for c in self.capabilities],
             "trust": self.trust_depth,
             "motto": self.motto,

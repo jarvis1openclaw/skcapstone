@@ -3,10 +3,9 @@
 from __future__ import annotations
 
 import click
+from rich.table import Table
 
 from ._common import AGENT_HOME, console
-
-from rich.table import Table
 
 
 def register_housekeeping_commands(main: click.Group) -> None:
@@ -34,6 +33,7 @@ def register_housekeeping_commands(main: click.Group) -> None:
             skcapstone housekeeping
         """
         from pathlib import Path
+
         from ..housekeeping import run_housekeeping
 
         results = run_housekeeping(

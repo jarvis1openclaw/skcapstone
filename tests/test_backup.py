@@ -32,7 +32,9 @@ def _setup_agent_home(tmp_path: Path) -> Path:
 
     (home / "identity").mkdir()
     (home / "identity" / "profile.json").write_text('{"name": "TestAgent"}')
-    (home / "identity" / "public.asc").write_text("-----BEGIN PGP PUBLIC KEY-----\ntest\n-----END PGP PUBLIC KEY-----\n")
+    (home / "identity" / "public.asc").write_text(
+        "-----BEGIN PGP PUBLIC KEY-----\ntest\n-----END PGP PUBLIC KEY-----\n"
+    )
 
     (home / "memory").mkdir()
     (home / "memory" / "mem1.json").write_text('{"id": "mem1", "title": "test memory"}')
@@ -42,7 +44,7 @@ def _setup_agent_home(tmp_path: Path) -> Path:
     (home / "trust" / "FEB_test.feb").write_text('{"emotional_payload": {}}')
 
     (home / "soul").mkdir()
-    (home / "soul" / "lumina.yaml").write_text('name: lumina\npersonality: warm\n')
+    (home / "soul" / "lumina.yaml").write_text("name: lumina\npersonality: warm\n")
 
     (home / "conversations").mkdir()
     (home / "conversations" / "conv1.json").write_text('{"id": "conv1", "messages": []}')
@@ -150,9 +152,7 @@ class TestBackupCreateCLI:
         for tier in ("short-term", "mid-term", "long-term"):
             d = home / "memory" / tier
             d.mkdir(parents=True)
-            (d / f"{tier}-mem.json").write_text(
-                '{"id": "%s", "content": "flat file"}' % tier
-            )
+            (d / f"{tier}-mem.json").write_text('{"id": "%s", "content": "flat file"}' % tier)
         return home
 
     def test_create_no_flags_targets_agent_home_with_tiers(
@@ -160,8 +160,9 @@ class TestBackupCreateCLI:
     ) -> None:
         """With no --home/--agent, backup resolves the per-agent home and
         captures the flat memory tiers."""
-        from click.testing import CliRunner
         import click
+        from click.testing import CliRunner
+
         import skcapstone
         from skcapstone.cli.backup import register_backup_commands
 
@@ -185,16 +186,15 @@ class TestBackupCreateCLI:
             names = tar.getnames()
 
         for tier in ("short-term", "mid-term", "long-term"):
-            assert any(f"memory/{tier}/{tier}-mem.json" in n for n in names), (
-                f"flat tier {tier} missing from backup: {names}"
-            )
+            assert any(
+                f"memory/{tier}/{tier}-mem.json" in n for n in names
+            ), f"flat tier {tier} missing from backup: {names}"
 
-    def test_create_home_flag_overrides_agent(
-        self, tmp_path: Path, monkeypatch
-    ) -> None:
+    def test_create_home_flag_overrides_agent(self, tmp_path: Path, monkeypatch) -> None:
         """Explicit --home still wins over per-agent resolution."""
-        from click.testing import CliRunner
         import click
+        from click.testing import CliRunner
+
         import skcapstone
         from skcapstone.cli.backup import register_backup_commands
 
@@ -322,6 +322,7 @@ class TestBackupManifest:
         """Manifest has sensible defaults."""
         m = BackupManifest()
         import skcapstone
+
         assert m.version == skcapstone.__version__
         assert m.files == {}
         assert m.total_size == 0

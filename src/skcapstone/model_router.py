@@ -53,15 +53,9 @@ class TaskSignal(BaseModel):
 
     description: str = Field(description="What the task is about")
     tags: List[str] = Field(default_factory=list, description="Classification tags")
-    requires_localhost: bool = Field(
-        default=False, description="Must run on the originating node"
-    )
-    privacy_sensitive: bool = Field(
-        default=False, description="Forces LOCAL tier"
-    )
-    estimated_tokens: int = Field(
-        default=0, description="Estimated token usage hint"
-    )
+    requires_localhost: bool = Field(default=False, description="Must run on the originating node")
+    privacy_sensitive: bool = Field(default=False, description="Forces LOCAL tier")
+    estimated_tokens: int = Field(default=0, description="Estimated token usage hint")
 
 
 class RouteDecision(BaseModel):
@@ -77,9 +71,7 @@ class RouteDecision(BaseModel):
     tier: ModelTier
     model_name: str
     reasoning: str
-    preferred_node: Optional[str] = Field(
-        default=None, description="Specific node if required"
-    )
+    preferred_node: Optional[str] = Field(default=None, description="Specific node if required")
 
 
 class ModelRouterConfig(BaseModel):
@@ -164,7 +156,11 @@ class ModelRouterConfig(BaseModel):
                 ),
                 TagRule(
                     keywords=[
-                        "format", "rename", "lint", "simple", "trivial",
+                        "format",
+                        "rename",
+                        "lint",
+                        "simple",
+                        "trivial",
                         # Real-caller alignment (2026-07-09 model-router audit):
                         # these are the exact tags emotion_tracker.py,
                         # context_window.py, conversation_summarizer.py, and
@@ -175,8 +171,13 @@ class ModelRouterConfig(BaseModel):
                         # the cheapest tier — this rule previously never fired
                         # for any of them, silently falling through to the
                         # token-count fallback instead.
-                        "fast", "classification", "summary", "context",
-                        "conversation", "compression", "memory",
+                        "fast",
+                        "classification",
+                        "summary",
+                        "context",
+                        "conversation",
+                        "compression",
+                        "memory",
                     ],
                     tier=ModelTier.FAST,
                     priority=10,
@@ -264,9 +265,7 @@ class ModelRouter:
 
         return self._decide(
             tier=ModelTier.FAST,
-            reasoning=(
-                "No tag rule matched and token budget is small; defaulting to FAST tier."
-            ),
+            reasoning=("No tag rule matched and token budget is small; defaulting to FAST tier."),
             preferred_node=None,
         )
 

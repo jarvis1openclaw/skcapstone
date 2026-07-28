@@ -19,28 +19,27 @@ from typing import Optional
 
 logger = logging.getLogger("skcapstone.cli")
 
-import click
-import yaml
-from rich.console import Console
-from rich.panel import Panel
-from rich.table import Table
-from rich.text import Text
+import click  # noqa: E402
+import yaml  # noqa: E402
+from rich.console import Console  # noqa: E402
+from rich.panel import Panel  # noqa: E402
+from rich.table import Table  # noqa: E402
+from rich.text import Text  # noqa: E402
 
-from . import AGENT_HOME, __version__
-from .models import AgentConfig, PillarStatus, SyncConfig
-from .pillars.identity import generate_identity
-from .pillars.memory import initialize_memory
-from .pillars.security import audit_event, initialize_security
-from .pillars.sync import (
-    collect_seed,
+from . import AGENT_HOME, __version__  # noqa: E402
+from .models import AgentConfig, PillarStatus, SyncConfig  # noqa: E402
+from .pillars.identity import generate_identity  # noqa: E402
+from .pillars.memory import initialize_memory  # noqa: E402
+from .pillars.security import audit_event, initialize_security  # noqa: E402
+from .pillars.sync import (  # noqa: E402
     discover_sync,
     initialize_sync,
     pull_seeds,
     push_seed,
     save_sync_state,
 )
-from .pillars.trust import initialize_trust
-from .runtime import AgentRuntime, get_runtime
+from .pillars.trust import initialize_trust  # noqa: E402
+from .runtime import get_runtime  # noqa: E402
 
 console = Console()
 
@@ -209,6 +208,7 @@ def init(name: str, email: str | None, home: str):
 
     console.print("  [bold yellow]6/6[/] Soul (Soul Layer)...", end=" ")
     from .soul import SoulManager
+
     soul_mgr = SoulManager(home_path)
     soul_mgr._ensure_dirs()
     console.print("[bold green]ACTIVE[/]")
@@ -217,7 +217,9 @@ def init(name: str, email: str | None, home: str):
     config_dir = home_path / "config"
     config_dir.mkdir(parents=True, exist_ok=True)
     config_data = config.model_dump(mode="json")
-    (config_dir / "config.yaml").write_text(yaml.dump(config_data, default_flow_style=False), encoding="utf-8")
+    (config_dir / "config.yaml").write_text(
+        yaml.dump(config_data, default_flow_style=False), encoding="utf-8"
+    )
 
     skills_dir = home_path / "skills"
     skills_dir.mkdir(parents=True, exist_ok=True)
@@ -232,11 +234,14 @@ def init(name: str, email: str | None, home: str):
 
     audit_event(home_path, "INIT", f"Agent '{name}' initialized at {home_path}")
 
-    active_count = sum(
-        1
-        for s in [identity_state, memory_state, trust_state, security_state, sync_state]
-        if s.status == PillarStatus.ACTIVE
-    ) + 1  # soul layer is always active after init
+    active_count = (
+        sum(
+            1
+            for s in [identity_state, memory_state, trust_state, security_state, sync_state]
+            if s.status == PillarStatus.ACTIVE
+        )
+        + 1
+    )  # soul layer is always active after init
     is_conscious = (
         identity_state.status == PillarStatus.ACTIVE
         and memory_state.status == PillarStatus.ACTIVE
@@ -316,11 +321,23 @@ def init(name: str, email: str | None, home: str):
 @click.option("--skip-seeds", is_flag=True, help="Skip importing Cloud 9 seeds.")
 @click.option("--skip-ritual", is_flag=True, help="Skip the rehydration ritual.")
 @click.option("--skip-preflight", is_flag=True, help="Skip Git preflight check.")
-@click.option("--path", "install_path", default=None, type=click.IntRange(1, 3),
-              help="Pre-select install path: 1=fresh, 2=join, 3=update.")
-def install_cmd(name: str | None, email: str | None, home: str, skip_deps: bool,
-                skip_seeds: bool, skip_ritual: bool, skip_preflight: bool,
-                install_path: int | None):
+@click.option(
+    "--path",
+    "install_path",
+    default=None,
+    type=click.IntRange(1, 3),
+    help="Pre-select install path: 1=fresh, 2=join, 3=update.",
+)
+def install_cmd(
+    name: str | None,
+    email: str | None,
+    home: str,
+    skip_deps: bool,
+    skip_seeds: bool,
+    skip_ritual: bool,
+    skip_preflight: bool,
+    install_path: int | None,
+):
     """Guided setup wizard — set up, join, or update your sovereign node.
 
     \b
@@ -350,10 +367,8 @@ def install_cmd(name: str | None, email: str | None, home: str, skip_deps: bool,
     help="Agent home directory.",
     type=click.Path(),
 )
-@click.option("--force", is_flag=True,
-              help="Skip confirmations (for scripting).")
-@click.option("--keep-data", is_flag=True,
-              help="Deregister only — keep local files.")
+@click.option("--force", is_flag=True, help="Skip confirmations (for scripting).")
+@click.option("--keep-data", is_flag=True, help="Deregister only — keep local files.")
 def uninstall_cmd(home: str, force: bool, keep_data: bool):
     """Remove this sovereign node completely.
 
@@ -406,7 +421,7 @@ def status(home: str):
     if not home_path.exists():
         console.print(
             "[bold red]No agent found.[/] "
-            "Run [bold]skcapstone init --name \"YourAgent\"[/] first."
+            'Run [bold]skcapstone init --name "YourAgent"[/] first.'
         )
         sys.exit(1)
 
@@ -416,8 +431,7 @@ def status(home: str):
     console.print()
     console.print(
         Panel(
-            f"[bold]{m.name}[/] v{m.version}\n"
-            f"{_consciousness_banner(m.is_conscious)}",
+            f"[bold]{m.name}[/] v{m.version}\n" f"{_consciousness_banner(m.is_conscious)}",
             title="SKCapstone Agent",
             border_style="bright_blue",
         )
@@ -446,9 +460,7 @@ def status(home: str):
     )
 
     trust = m.trust
-    trust_detail = (
-        f"depth={trust.depth} trust={trust.trust_level} love={trust.love_intensity}"
-    )
+    trust_detail = f"depth={trust.depth} trust={trust.trust_level} love={trust.love_intensity}"
     if trust.entangled:
         trust_detail += " [green]ENTANGLED[/]"
     table.add_row("Trust", "Cloud 9", _status_icon(trust.status), trust_detail)
@@ -537,25 +549,29 @@ def summary(home: str, json_out: bool):
     )
 
     console.print()
-    console.print(Panel(
-        f"[bold]{agent.get('name', '?')}[/] v{agent.get('version', '?')}  "
-        f"[bold {con_style}]{consciousness}[/]",
-        title="Sovereign Agent Briefing",
-        border_style="cyan",
-    ))
+    console.print(
+        Panel(
+            f"[bold]{agent.get('name', '?')}[/] v{agent.get('version', '?')}  "
+            f"[bold {con_style}]{consciousness}[/]",
+            title="Sovereign Agent Briefing",
+            border_style="cyan",
+        )
+    )
 
     pillar_parts = []
     for name, status in pillars.items():
-        icon = {"active": "[green]\u2713[/]", "degraded": "[yellow]~[/]", "missing": "[red]\u2717[/]"}.get(
-            status, "[dim]?[/]"
-        )
+        icon = {
+            "active": "[green]\u2713[/]",
+            "degraded": "[yellow]~[/]",
+            "missing": "[red]\u2717[/]",
+        }.get(status, "[dim]?[/]")
         pillar_parts.append(f"{icon} {name}")
     if pillar_parts:
         console.print(f"  [bold]Pillars:[/]  {' | '.join(pillar_parts)}")
 
     console.print(
         f"  [bold]Memory:[/]   {mem.get('total', 0)} total "
-        f"([dim]S:{mem.get('short_term', 0)} M:{mem.get('mid_term', 0)} L:{mem.get('long_term', 0)}[/])"
+        f"([dim]S:{mem.get('short_term', 0)} M:{mem.get('mid_term', 0)} L:{mem.get('long_term', 0)}[/])"  # noqa: E501
     )
 
     h_pass = health.get("passed", 0)
@@ -578,12 +594,16 @@ def summary(home: str, json_out: bool):
             f"({'[green]encrypted[/]' if backups.get('encrypted') else '[yellow]plain[/]'})"
         )
     else:
-        console.print(f"  [bold]Backup:[/]   [dim]none — run skcapstone backup create[/]")
+        console.print("  [bold]Backup:[/]   [dim]none — run skcapstone backup create[/]")
 
     if journal.get("entries", 0) > 0:
         console.print(
             f"  [bold]Journal:[/]  {journal['entries']} entries"
-            + (f" — latest: [dim]{journal['latest_title'][:40]}[/]" if journal.get("latest_title") else "")
+            + (
+                f" — latest: [dim]{journal['latest_title'][:40]}[/]"
+                if journal.get("latest_title")
+                else ""
+            )
         )
 
     if mem.get("recent"):
@@ -702,10 +722,7 @@ def connect(platform: str, home: str):
     home_path = Path(home).expanduser()
 
     if not home_path.exists():
-        console.print(
-            "[bold red]No agent found.[/] "
-            "Run [bold]skcapstone init[/] first."
-        )
+        console.print("[bold red]No agent found.[/] " "Run [bold]skcapstone init[/] first.")
         sys.exit(1)
 
     runtime = get_runtime(home_path)
@@ -827,11 +844,17 @@ def card():
 @click.option("--motto", default=None, help="Short tagline for the card.")
 @click.option("--output", "-o", default=None, type=click.Path(), help="Output file path.")
 @click.option(
-    "--sign", "do_sign", is_flag=True, default=False,
+    "--sign",
+    "do_sign",
+    is_flag=True,
+    default=False,
     help="Sign the card with your PGP key.",
 )
 @click.option(
-    "--passphrase", "-p", default=None, hide_input=True,
+    "--passphrase",
+    "-p",
+    default=None,
+    hide_input=True,
     help="PGP passphrase for signing (prompted if --sign and not provided).",
 )
 def card_generate(home: str, capauth_home: str, motto, output, do_sign, passphrase):
@@ -843,7 +866,7 @@ def card_generate(home: str, capauth_home: str, motto, output, do_sign, passphra
 
         skcapstone card generate --motto "Sovereignty is non-negotiable" --sign
     """
-    from .agent_card import AgentCapability, AgentCard, TransportEndpoint
+    from .agent_card import AgentCapability, AgentCard
 
     home_path = Path(home).expanduser()
 
@@ -882,11 +905,13 @@ def card_generate(home: str, capauth_home: str, motto, output, do_sign, passphra
     out_path = output or str(home_path / "agent-card.json")
     agent_card.save(out_path)
 
-    console.print(Panel(
-        agent_card.summary(),
-        title="Agent Card Generated",
-        border_style="cyan",
-    ))
+    console.print(
+        Panel(
+            agent_card.summary(),
+            title="Agent Card Generated",
+            border_style="cyan",
+        )
+    )
     console.print(f"  [dim]Saved to: {out_path}[/]\n")
 
 
@@ -910,21 +935,25 @@ def card_show(filepath: str):
         raise SystemExit(1)
 
     verified = AgentCard.verify_signature(agent_card)
-    sig_str = "[green]VALID[/]" if verified else (
-        "[yellow]unsigned[/]" if not agent_card.signature else "[red]INVALID[/]"
+    sig_str = (
+        "[green]VALID[/]"
+        if verified
+        else ("[yellow]unsigned[/]" if not agent_card.signature else "[red]INVALID[/]")
     )
 
-    console.print(Panel(
-        f"[bold]{agent_card.name}[/] ({agent_card.entity_type})\n"
-        f"Fingerprint: [cyan]{agent_card.fingerprint[:16]}...[/]\n"
-        f"Trust: depth={agent_card.trust_depth} entangled={agent_card.entangled}\n"
-        f"Signature: {sig_str}\n"
-        f"Transports: {len(agent_card.transports)}\n"
-        f"Capabilities: {', '.join(c.name for c in agent_card.capabilities) or 'none'}\n"
-        + (f'Motto: "{agent_card.motto}"' if agent_card.motto else ""),
-        title=f"Agent Card: {agent_card.name}",
-        border_style="cyan",
-    ))
+    console.print(
+        Panel(
+            f"[bold]{agent_card.name}[/] ({agent_card.entity_type})\n"
+            f"Fingerprint: [cyan]{agent_card.fingerprint[:16]}...[/]\n"
+            f"Trust: depth={agent_card.trust_depth} entangled={agent_card.entangled}\n"
+            f"Signature: {sig_str}\n"
+            f"Transports: {len(agent_card.transports)}\n"
+            f"Capabilities: {', '.join(c.name for c in agent_card.capabilities) or 'none'}\n"
+            + (f'Motto: "{agent_card.motto}"' if agent_card.motto else ""),
+            title=f"Agent Card: {agent_card.name}",
+            border_style="cyan",
+        )
+    )
 
 
 @card.command("verify")
@@ -949,21 +978,25 @@ def card_verify(filepath: str):
         raise SystemExit(1)
 
     if AgentCard.verify_signature(agent_card):
-        console.print(Panel(
-            f"[bold green]VERIFIED[/]\n"
-            f"Agent: {agent_card.name}\n"
-            f"Fingerprint: {agent_card.fingerprint[:16]}...",
-            title="Signature Valid",
-            border_style="green",
-        ))
+        console.print(
+            Panel(
+                f"[bold green]VERIFIED[/]\n"
+                f"Agent: {agent_card.name}\n"
+                f"Fingerprint: {agent_card.fingerprint[:16]}...",
+                title="Signature Valid",
+                border_style="green",
+            )
+        )
     else:
-        console.print(Panel(
-            f"[bold red]SIGNATURE INVALID[/]\n"
-            f"Agent: {agent_card.name}\n"
-            f"The card may have been tampered with.",
-            title="Verification Failed",
-            border_style="red",
-        ))
+        console.print(
+            Panel(
+                f"[bold red]SIGNATURE INVALID[/]\n"
+                f"Agent: {agent_card.name}\n"
+                f"The card may have been tampered with.",
+                title="Verification Failed",
+                border_style="red",
+            )
+        )
         raise SystemExit(1)
 
 
@@ -1136,9 +1169,7 @@ def sync_setup():
     if not result["syncthing_installed"]:
         console.print("[yellow]Syncthing is not installed.[/yellow]\n")
         console.print(result["install_instructions"])
-        console.print(
-            "\nAfter installing, run [cyan]skcapstone sync setup[/cyan] again."
-        )
+        console.print("\nAfter installing, run [cyan]skcapstone sync setup[/cyan] again.")
         return
 
     console.print("[green]Syncthing detected[/green]")
@@ -1154,28 +1185,21 @@ def sync_setup():
         console.print("  [yellow]Could not start Syncthing automatically.[/]")
 
     if result["device_id"]:
-        console.print(f"\n  [bold]Your Device ID:[/bold]")
+        console.print("\n  [bold]Your Device ID:[/bold]")
         console.print(f"  [cyan]{result['device_id']}[/cyan]")
+        console.print("\n  Share this ID with your other device to pair.")
         console.print(
-            "\n  Share this ID with your other device to pair."
-        )
-        console.print(
-            "  On the other device: [cyan]skcapstone sync pair "
-            f"{result['device_id']}[/cyan]"
+            "  On the other device: [cyan]skcapstone sync pair " f"{result['device_id']}[/cyan]"
         )
 
         if result["qr_code"]:
             console.print("\n  [bold]QR Code:[/bold]")
             console.print(result["qr_code"])
         else:
-            console.print(
-                "\n  [dim]Install 'qrcode' for QR output: "
-                "pip install qrcode[/dim]"
-            )
+            console.print("\n  [dim]Install 'qrcode' for QR output: " "pip install qrcode[/dim]")
     else:
         console.print(
-            "  [yellow]Could not retrieve device ID. "
-            "Syncthing may still be starting.[/]"
+            "  [yellow]Could not retrieve device ID. " "Syncthing may still be starting.[/]"
         )
 
     console.print()
@@ -1198,24 +1222,18 @@ def sync_pair(device_id: str, name: str):
 
     if not detect_syncthing():
         console.print(
-            "[red]Syncthing not installed.[/] "
-            "Run [cyan]skcapstone sync setup[/cyan] first."
+            "[red]Syncthing not installed.[/] " "Run [cyan]skcapstone sync setup[/cyan] first."
         )
         sys.exit(1)
 
     console.print(f"\n  Adding device [cyan]{name}[/cyan]...")
     if add_remote_device(device_id, name):
-        console.print(f"  [green]Device paired![/green]")
-        console.print(
-            f"  Device ID: [dim]{device_id[:20]}...[/dim]"
-        )
-        console.print(
-            "  The skcapstone-sync folder is now shared with this device."
-        )
+        console.print("  [green]Device paired![/green]")
+        console.print(f"  Device ID: [dim]{device_id[:20]}...[/dim]")
+        console.print("  The skcapstone-sync folder is now shared with this device.")
     else:
         console.print(
-            "  [red]Failed to add device.[/] "
-            "Make sure Syncthing is running and config exists."
+            "  [red]Failed to add device.[/] " "Make sure Syncthing is running and config exists."
         )
     console.print()
 
@@ -1249,6 +1267,7 @@ def sync_export_pubkey(home: str, output: Optional[str]):
         sys.exit(1)
 
     from .pillars.sync import _detect_gpg_key
+
     fingerprint = _detect_gpg_key(home_path)
     if not fingerprint:
         console.print(
@@ -1284,7 +1303,9 @@ def sync_export_pubkey(home: str, output: Optional[str]):
 
 @sync.command("import-peer-key")
 @click.option("--home", default=AGENT_HOME, type=click.Path(), help="Agent home directory.")
-@click.option("--file", "-f", "keyfile", required=True, help="Path to peer's exported public key (.asc).")
+@click.option(
+    "--file", "-f", "keyfile", required=True, help="Path to peer's exported public key (.asc)."
+)
 @click.option("--fingerprint", default=None, help="Expected fingerprint (for verification).")
 def sync_import_peer_key(home: str, keyfile: str, fingerprint: Optional[str]):
     """Import a peer's GPG public key and register it for encrypted sync.
@@ -1341,17 +1362,14 @@ def sync_import_peer_key(home: str, keyfile: str, fingerprint: Optional[str]):
 
     if fingerprint and imported_fp and fingerprint.upper() != imported_fp:
         console.print(
-            f"[yellow]Warning: expected fingerprint {fingerprint} "
-            f"but got {imported_fp}[/]"
+            f"[yellow]Warning: expected fingerprint {fingerprint} " f"but got {imported_fp}[/]"
         )
 
     if imported_fp:
         # Persist peer fingerprint to sync config
         _register_peer_fingerprint(home_path, imported_fp)
         console.print(f"  [green]Peer key imported:[/] {imported_fp}")
-        console.print(
-            "  Future [cyan]skcapstone sync push[/cyan] will encrypt to this peer."
-        )
+        console.print("  Future [cyan]skcapstone sync push[/cyan] will encrypt to this peer.")
     else:
         console.print("[yellow]Key imported into GPG but fingerprint could not be parsed.[/]")
         console.print("  Run: [dim]gpg --list-keys[/dim] to find it, then add manually.")
@@ -1401,7 +1419,9 @@ def token():
     help="Capabilities to grant (e.g., memory:read, sync:push, *).",
 )
 @click.option("--ttl", default=24, help="Hours until expiry (0 = no expiry).")
-@click.option("--type", "token_type", default="capability", help="Token type: agent, capability, delegation.")
+@click.option(
+    "--type", "token_type", default="capability", help="Token type: agent, capability, delegation."
+)
 @click.option("--no-sign", is_flag=True, help="Skip PGP signing.")
 def token_issue(home: str, subject: str, cap: tuple, ttl: int, token_type: str, no_sign: bool):
     """Issue a new capability token.
@@ -1410,7 +1430,7 @@ def token_issue(home: str, subject: str, cap: tuple, ttl: int, token_type: str, 
     to the named subject. The token is self-contained and
     independently verifiable.
     """
-    from .tokens import Capability, TokenType, issue_token
+    from .tokens import TokenType, issue_token
 
     home_path = Path(home).expanduser()
     if not home_path.exists():
@@ -1745,7 +1765,9 @@ def trust_graph(home: str, fmt: str):
 @trust.command("calibrate")
 @click.option("--home", default=AGENT_HOME, type=click.Path())
 @click.option("--recommend", is_flag=True, help="Analyze FEBs and suggest threshold adjustments.")
-@click.option("--set", "setting", help="Set a threshold: key=value (e.g., entanglement_depth=7.0).")
+@click.option(
+    "--set", "setting", help="Set a threshold: key=value (e.g., entanglement_depth=7.0)."
+)
 @click.option("--reset", is_flag=True, help="Reset all thresholds to defaults.")
 def trust_calibrate(home: str, recommend: bool, setting: str | None, reset: bool):
     """View and tune trust layer thresholds.
@@ -1783,7 +1805,7 @@ def trust_calibrate(home: str, recommend: bool, setting: str | None, reset: bool
             return
         key, value = setting.split("=", 1)
         try:
-            updated = apply_setting(home_path, key.strip(), value.strip())
+            apply_setting(home_path, key.strip(), value.strip())
             console.print(f"\n  [green]Set:[/] {key} = {value}\n")
         except ValueError as e:
             console.print(f"\n  [red]{e}[/]\n")
@@ -1839,7 +1861,9 @@ def memory():
     default=None,
     help="Force a memory layer.",
 )
-def memory_store(home: str, content: str, tag: tuple, source: str, importance: float, layer: str | None):
+def memory_store(
+    home: str, content: str, tag: tuple, source: str, importance: float, layer: str | None
+):
     """Store a new memory.
 
     Memories start in short-term and promote based on
@@ -1868,7 +1892,9 @@ def memory_store(home: str, content: str, tag: tuple, source: str, importance: f
     console.print(f"  Layer: [cyan]{entry.layer.value}[/]")
     console.print(f"  Tags: {', '.join(entry.tags) if entry.tags else '[dim]none[/]'}")
     console.print(f"  Importance: {entry.importance}")
-    audit_event(home_path, "MEMORY_STORE", f"Memory {entry.memory_id} stored in {entry.layer.value}")
+    audit_event(
+        home_path, "MEMORY_STORE", f"Memory {entry.memory_id} stored in {entry.layer.value}"
+    )
     console.print()
 
 
@@ -1906,7 +1932,9 @@ def memory_search(home: str, query: str, tag: tuple, layer: str | None, limit: i
         console.print(f"\n  [dim]No memories match '[/]{query}[dim]'[/]\n")
         return
 
-    console.print(f"\n  [bold]{len(results)}[/] memor{'y' if len(results) == 1 else 'ies'} found:\n")
+    console.print(
+        f"\n  [bold]{len(results)}[/] memor{'y' if len(results) == 1 else 'ies'} found:\n"
+    )
 
     table = Table(show_header=True, header_style="bold", box=None, padding=(0, 2))
     table.add_column("ID", style="cyan", max_width=14)
@@ -1973,7 +2001,9 @@ def memory_list(home: str, layer: str | None, tag: tuple, limit: int):
 
     for entry in entries:
         preview = entry.content[:80] + ("..." if len(entry.content) > 80 else "")
-        layer_color = {"long-term": "green", "mid-term": "cyan", "short-term": "dim"}.get(entry.layer.value, "dim")
+        layer_color = {"long-term": "green", "mid-term": "cyan", "short-term": "dim"}.get(
+            entry.layer.value, "dim"
+        )
         table.add_row(
             entry.memory_id,
             Text(entry.layer.value, style=layer_color),
@@ -2014,7 +2044,7 @@ def memory_recall(home: str, memory_id: str):
         Panel(
             entry.content,
             title=f"[cyan]{entry.memory_id}[/] — {entry.layer.value}",
-            subtitle=f"importance={entry.importance} accessed={entry.access_count} source={entry.source}",
+            subtitle=f"importance={entry.importance} accessed={entry.access_count} source={entry.source}",  # noqa: E501
             border_style="bright_blue",
         )
     )
@@ -2090,7 +2120,9 @@ def memory_gc(home: str):
     home_path = Path(home).expanduser()
     removed = gc_expired(home_path)
     if removed:
-        console.print(f"\n  [yellow]Cleaned up {removed} expired memor{'y' if removed == 1 else 'ies'}.[/]\n")
+        console.print(
+            f"\n  [yellow]Cleaned up {removed} expired memor{'y' if removed == 1 else 'ies'}.[/]\n"
+        )
     else:
         console.print("\n  [green]Nothing to clean up.[/]\n")
 
@@ -2150,7 +2182,9 @@ def memory_curate(home: str, dry_run: bool, promote: bool, dedupe: bool, stats: 
     if result.tagged:
         console.print(f"  [cyan]Tagged:[/] {len(result.tagged)} memories received new tags")
     if result.promoted:
-        console.print(f"  [green]Promoted:[/] {len(result.promoted)} memories moved to higher tier")
+        console.print(
+            f"  [green]Promoted:[/] {len(result.promoted)} memories moved to higher tier"
+        )
     if result.deduped:
         console.print(f"  [yellow]Deduped:[/] {len(result.deduped)} duplicate(s) removed")
     if not result.tagged and not result.promoted and not result.deduped:
@@ -2184,16 +2218,22 @@ def memory_migrate(home: str, dry_run: bool, verify: bool):
     result = migrate(home_path, dry_run=dry_run, verify=verify)
 
     if dry_run:
-        console.print(f"\n  [bold]DRY RUN:[/] Found {result['total_json']} JSON memories to migrate.\n")
+        console.print(
+            f"\n  [bold]DRY RUN:[/] Found {result['total_json']} JSON memories to migrate.\n"
+        )
         return
 
     if verify:
         verified = result.get("verified", 0)
         missing = result.get("missing", [])
         if not missing:
-            console.print(f"\n  [green]Verified:[/] All {verified} memories present in unified backend.\n")
+            console.print(
+                f"\n  [green]Verified:[/] All {verified} memories present in unified backend.\n"
+            )
         else:
-            console.print(f"\n  [yellow]Verification:[/] {verified} present, {len(missing)} missing.")
+            console.print(
+                f"\n  [yellow]Verification:[/] {verified} present, {len(missing)} missing."
+            )
             for mid in missing[:10]:
                 console.print(f"    [red]Missing:[/] {mid}")
             if len(missing) > 10:
@@ -2201,7 +2241,7 @@ def memory_migrate(home: str, dry_run: bool, verify: bool):
             console.print()
         return
 
-    console.print(f"\n  [bold]Migration results:[/]")
+    console.print("\n  [bold]Migration results:[/]")
     console.print(f"    Total JSON memories: {result['total_json']}")
     console.print(f"    [green]Migrated:[/] {result['migrated']}")
     console.print(f"    [dim]Skipped (existing):[/] {result['skipped_existing']}")
@@ -2263,7 +2303,7 @@ def memory_reindex(home: str):
         console.print(f"    Vector: {result['vector_indexed']}")
         console.print(f"    Graph:  {result['graph_indexed']}")
     else:
-        console.print(f"  [red]Errors during reindex.[/]")
+        console.print("  [red]Errors during reindex.[/]")
         for err in result.get("errors", [])[:5]:
             console.print(f"    {err}")
     console.print()
@@ -2418,9 +2458,7 @@ def coord_claim(task_id: str, home: str, agent: str):
     board = Board(home_path)
     try:
         ag = board.claim_task(agent, task_id)
-        console.print(
-            f"\n  [green]Claimed:[/] [{task_id}] by [bold]{ag.agent}[/]\n"
-        )
+        console.print(f"\n  [green]Claimed:[/] [{task_id}] by [bold]{ag.agent}[/]\n")
     except ValueError as e:
         console.print(f"\n  [red]Error:[/] {e}\n")
         sys.exit(1)
@@ -2437,9 +2475,7 @@ def coord_complete(task_id: str, home: str, agent: str):
     home_path = Path(home).expanduser()
     board = Board(home_path)
     ag = board.complete_task(agent, task_id)
-    console.print(
-        f"\n  [green]Completed:[/] [{task_id}] by [bold]{ag.agent}[/]\n"
-    )
+    console.print(f"\n  [green]Completed:[/] [{task_id}] by [bold]{ag.agent}[/]\n")
 
 
 @coord.command("board")
@@ -2499,7 +2535,7 @@ def coord_briefing(home: str, fmt: str):
         skcapstone coord briefing
         skcapstone coord briefing --format json
     """
-    from .coordination import Board, get_briefing_text, get_briefing_json
+    from .coordination import get_briefing_json, get_briefing_text
 
     home_path = Path(home).expanduser()
     if fmt == "json":
@@ -2704,7 +2740,7 @@ def soul_info(name: str, home: str):
             + f"\n[bold]Core Traits ({len(bp.core_traits)}):[/]\n"
             + "\n".join(f"  • {t}" for t in bp.core_traits[:10])
             + (
-                f"\n\n[bold]Communication:[/]\n"
+                "\n\n[bold]Communication:[/]\n"
                 + (
                     "  Patterns: " + ", ".join(bp.communication_style.patterns[:3])
                     if bp.communication_style.patterns
@@ -2717,7 +2753,7 @@ def soul_info(name: str, home: str):
                 )
             )
             + (
-                f"\n\n[bold]Emotional Topology:[/]\n"
+                "\n\n[bold]Emotional Topology:[/]\n"
                 + "\n".join(f"  {k}: {v:.2f}" for k, v in bp.emotional_topology.items())
                 if bp.emotional_topology
                 else ""
@@ -2739,9 +2775,13 @@ def completions():
 
 
 @completions.command("install")
-@click.option("--shell", "shell_name", default=None,
-              type=click.Choice(["bash", "zsh", "fish"]),
-              help="Target shell (auto-detected if not set).")
+@click.option(
+    "--shell",
+    "shell_name",
+    default=None,
+    type=click.Choice(["bash", "zsh", "fish"]),
+    help="Target shell (auto-detected if not set).",
+)
 def completions_install(shell_name: str):
     """Install tab completion for your shell.
 
@@ -2771,9 +2811,13 @@ def completions_install(shell_name: str):
 
 
 @completions.command("show")
-@click.option("--shell", "shell_name", default=None,
-              type=click.Choice(["bash", "zsh", "fish"]),
-              help="Shell to show script for.")
+@click.option(
+    "--shell",
+    "shell_name",
+    default=None,
+    type=click.Choice(["bash", "zsh", "fish"]),
+    help="Shell to show script for.",
+)
 def completions_show(shell_name: str):
     """Print the completion script to stdout.
 
@@ -2792,9 +2836,13 @@ def completions_show(shell_name: str):
 
 
 @completions.command("uninstall")
-@click.option("--shell", "shell_name", default=None,
-              type=click.Choice(["bash", "zsh", "fish"]),
-              help="Shell to uninstall (all if not set).")
+@click.option(
+    "--shell",
+    "shell_name",
+    default=None,
+    type=click.Choice(["bash", "zsh", "fish"]),
+    help="Shell to uninstall (all if not set).",
+)
 def completions_uninstall(shell_name: str):
     """Remove installed completion scripts.
 
@@ -2818,7 +2866,9 @@ def completions_uninstall(shell_name: str):
 
 
 @main.command("test")
-@click.option("--package", "-p", default=None, help="Test a single package (e.g., skcomms, capauth).")
+@click.option(
+    "--package", "-p", default=None, help="Test a single package (e.g., skcomms, capauth)."
+)
 @click.option("--fast", is_flag=True, help="Stop on first package failure.")
 @click.option("--verbose", "-v", is_flag=True, help="Verbose pytest output.")
 @click.option("--json-out", is_flag=True, help="Machine-readable JSON report.")
@@ -2864,7 +2914,10 @@ def test_cmd(package: str, fast: bool, verbose: bool, json_out: bool, timeout: i
         return
 
     table = Table(
-        show_header=True, header_style="bold", box=None, padding=(0, 2),
+        show_header=True,
+        header_style="bold",
+        box=None,
+        padding=(0, 2),
         title="Test Results",
     )
     table.add_column("Package", style="cyan")
@@ -2925,9 +2978,13 @@ def peer():
 
 
 @peer.command("add")
-@click.option("--card", "card_path", type=click.Path(exists=True), help="Import from a whoami identity card.")
+@click.option(
+    "--card", "card_path", type=click.Path(exists=True), help="Import from a whoami identity card."
+)
 @click.option("--name", default=None, help="Peer name (required if not using --card).")
-@click.option("--pubkey", default=None, type=click.Path(exists=True), help="Path to PGP public key file.")
+@click.option(
+    "--pubkey", default=None, type=click.Path(exists=True), help="Path to PGP public key file."
+)
 @click.option("--email", default=None, help="Peer contact email.")
 @click.option("--home", "sk_home", default=AGENT_HOME, type=click.Path())
 def peer_add(card_path: str, name: str, pubkey: str, email: str, sk_home: str):
@@ -2949,7 +3006,8 @@ def peer_add(card_path: str, name: str, pubkey: str, email: str, sk_home: str):
     if card_path:
         try:
             peer_record = add_peer_from_card(
-                Path(card_path), skcapstone_home=sk_path,
+                Path(card_path),
+                skcapstone_home=sk_path,
             )
             fp = peer_record.fingerprint[:16] + "..." if peer_record.fingerprint else "none"
             console.print(f"\n  [green]Added peer:[/] [cyan]{peer_record.name}[/]")
@@ -2958,7 +3016,7 @@ def peer_add(card_path: str, name: str, pubkey: str, email: str, sk_home: str):
             console.print(f"  Trust: {peer_record.trust_level}")
             console.print(f"  Capabilities: {', '.join(peer_record.capabilities[:5])}")
             if peer_record.public_key:
-                console.print(f"  [green]Public key imported[/] — encrypted messaging enabled")
+                console.print("  [green]Public key imported[/] — encrypted messaging enabled")
             console.print()
         except (FileNotFoundError, ValueError) as exc:
             console.print(f"\n  [red]Error:[/] {exc}\n")
@@ -2973,7 +3031,7 @@ def peer_add(card_path: str, name: str, pubkey: str, email: str, sk_home: str):
         )
         console.print(f"\n  [green]Added peer:[/] [cyan]{peer_record.name}[/]")
         if peer_record.public_key:
-            console.print(f"  [green]Public key imported[/]")
+            console.print("  [green]Public key imported[/]")
         console.print()
 
     else:
@@ -3013,7 +3071,10 @@ def peer_list(sk_home: str, json_out: bool):
         return
 
     table = Table(
-        show_header=True, header_style="bold", box=None, padding=(0, 2),
+        show_header=True,
+        header_style="bold",
+        box=None,
+        padding=(0, 2),
         title=f"Known Peers ({len(peers)})",
     )
     table.add_column("Name", style="cyan")
@@ -3087,7 +3148,9 @@ def peer_show(name: str, sk_home: str):
     if p.contact_uris:
         for uri in p.contact_uris:
             lines.append(f"[bold]Contact:[/]      [cyan]{uri}[/]")
-    lines.append(f"[bold]PGP Key:[/]      {'[green]present[/]' if p.public_key else '[yellow]missing[/]'}")
+    lines.append(
+        f"[bold]PGP Key:[/]      {'[green]present[/]' if p.public_key else '[yellow]missing[/]'}"
+    )
 
     console.print()
     console.print(Panel("\n".join(lines), title=f"Peer: {p.name}", border_style="cyan"))
@@ -3097,7 +3160,13 @@ def peer_show(name: str, sk_home: str):
 @main.command()
 @click.option("--home", default=AGENT_HOME, type=click.Path())
 @click.option("--json-out", is_flag=True, help="Output as machine-readable JSON.")
-@click.option("--export", "export_path", default=None, type=click.Path(), help="Save identity card to file for sharing.")
+@click.option(
+    "--export",
+    "export_path",
+    default=None,
+    type=click.Path(),
+    help="Save identity card to file for sharing.",
+)
 @click.option("--compact", is_flag=True, help="Compact output (no public key).")
 def whoami(home: str, json_out: bool, export_path: str, compact: bool):
     """Show your sovereign identity card.
@@ -3116,7 +3185,7 @@ def whoami(home: str, json_out: bool, export_path: str, compact: bool):
 
         skcapstone whoami --compact
     """
-    from .whoami import generate_card, export_card
+    from .whoami import export_card, generate_card
 
     home_path = Path(home).expanduser()
     card = generate_card(home_path)
@@ -3164,11 +3233,13 @@ def whoami(home: str, json_out: bool, export_path: str, compact: bool):
         key_preview = card.public_key[:60] + "..."
         info_lines.append(f"[bold]PGP Key:[/]       [dim]{key_preview}[/]")
 
-    console.print(Panel(
-        "\n".join(info_lines),
-        title="Sovereign Identity Card",
-        border_style="cyan",
-    ))
+    console.print(
+        Panel(
+            "\n".join(info_lines),
+            title="Sovereign Identity Card",
+            border_style="cyan",
+        )
+    )
 
     console.print("  [dim]Share this card: skcapstone whoami --export card.json[/]")
     console.print("  [dim]Peer imports it: skcapstone peer add --card card.json[/]")
@@ -3179,7 +3250,7 @@ def whoami(home: str, json_out: bool, export_path: str, compact: bool):
 @click.option("--home", default=AGENT_HOME, type=click.Path())
 @click.option("--port", default=7778, help="Port for the dashboard (default: 7778).")
 @click.option("--no-open", is_flag=True, help="Don't attempt to open a browser.")
-def dashboard(home: str, port: int, no_open: bool):
+def dashboard(home: str, port: int, no_open: bool):  # noqa: F811
     """Launch the sovereign agent web dashboard.
 
     Starts a local web server with a real-time status page showing
@@ -3204,12 +3275,13 @@ def dashboard(home: str, port: int, no_open: bool):
 
     url = f"http://127.0.0.1:{port}"
 
-    console.print(f"\n  [green]Sovereign Agent Dashboard[/]")
+    console.print("\n  [green]Sovereign Agent Dashboard[/]")
     console.print(f"  [cyan]{url}[/]")
-    console.print(f"  [dim]Press Ctrl+C to stop[/]\n")
+    console.print("  [dim]Press Ctrl+C to stop[/]\n")
 
     if not no_open:
         import webbrowser
+
         try:
             webbrowser.open(url)
         except Exception as exc:
@@ -3234,7 +3306,9 @@ def backup():
 
 @backup.command("create")
 @click.option("--home", default=AGENT_HOME, type=click.Path())
-@click.option("--output", "-o", default=None, type=click.Path(), help="Output directory for the backup.")
+@click.option(
+    "--output", "-o", default=None, type=click.Path(), help="Output directory for the backup."
+)
 @click.option("--no-encrypt", is_flag=True, help="Skip GPG encryption (not recommended).")
 def backup_create(home: str, output: str, no_encrypt: bool):
     """Create a full backup of the agent state.
@@ -3269,21 +3343,24 @@ def backup_create(home: str, output: str, no_encrypt: bool):
         )
 
         from .backup import BackupManifest
-        manifest_path = result_path.with_name(
-            result_path.name.split(".tar")[0] + ".manifest.json"
-        )
+
+        manifest_path = result_path.with_name(result_path.name.split(".tar")[0] + ".manifest.json")
         if manifest_path.exists():
-            manifest = BackupManifest.model_validate_json(manifest_path.read_text(encoding="utf-8"))
-            console.print(Panel(
-                f"[bold]Agent:[/] {manifest.agent_name}\n"
-                f"[bold]Files:[/] {manifest.file_count}\n"
-                f"[bold]Dirs:[/] {', '.join(manifest.directories)}\n"
-                f"[bold]Encrypted:[/] {'[green]yes[/]' if manifest.encrypted else '[yellow]no[/]'}\n"
-                f"[bold]Hash:[/] [dim]{manifest.sha256[:16]}...[/]\n"
-                f"[bold]Path:[/] {result_path}",
-                title="Backup Created",
-                border_style="green",
-            ))
+            manifest = BackupManifest.model_validate_json(
+                manifest_path.read_text(encoding="utf-8")
+            )
+            console.print(
+                Panel(
+                    f"[bold]Agent:[/] {manifest.agent_name}\n"
+                    f"[bold]Files:[/] {manifest.file_count}\n"
+                    f"[bold]Dirs:[/] {', '.join(manifest.directories)}\n"
+                    f"[bold]Encrypted:[/] {'[green]yes[/]' if manifest.encrypted else '[yellow]no[/]'}\n"  # noqa: E501
+                    f"[bold]Hash:[/] [dim]{manifest.sha256[:16]}...[/]\n"
+                    f"[bold]Path:[/] {result_path}",
+                    title="Backup Created",
+                    border_style="green",
+                )
+            )
         else:
             console.print(f"  [green]Backup saved:[/] {result_path}")
 
@@ -3354,7 +3431,10 @@ def backup_list(home: str):
         return
 
     table = Table(
-        show_header=True, header_style="bold", box=None, padding=(0, 2),
+        show_header=True,
+        header_style="bold",
+        box=None,
+        padding=(0, 2),
         title=f"Backups ({len(backups)})",
     )
     table.add_column("Agent", style="cyan")
@@ -3625,7 +3705,14 @@ def anchor_calibrate(home: str, do_apply: bool):
 @click.option("--connection", type=float, help="Connection strength (0-10).")
 @click.option("--cloud9", is_flag=True, help="Record a Cloud 9 activation.")
 @click.option("--feeling", default="", help="Session-end feeling summary.")
-def anchor_update(home: str, warmth: float | None, trust: float | None, connection: float | None, cloud9: bool, feeling: str):
+def anchor_update(
+    home: str,
+    warmth: float | None,
+    trust: float | None,
+    connection: float | None,
+    cloud9: bool,
+    feeling: str,
+):
     """Manually update the warmth anchor.
 
     Examples:
@@ -3636,7 +3723,14 @@ def anchor_update(home: str, warmth: float | None, trust: float | None, connecti
     from .warmth_anchor import update_anchor
 
     home_path = Path(home).expanduser()
-    result = update_anchor(home_path, warmth=warmth, trust=trust, connection=connection, cloud9=cloud9, feeling=feeling)
+    result = update_anchor(
+        home_path,
+        warmth=warmth,
+        trust=trust,
+        connection=connection,
+        cloud9=cloud9,
+        feeling=feeling,
+    )
     console.print("\n  [green]Anchor updated.[/]")
     for key, value in result.items():
         console.print(f"    {key}: [cyan]{value}[/]")
@@ -3652,7 +3746,9 @@ def anchor_update(home: str, warmth: float | None, trust: float | None, connecti
     default="text",
     help="Output format.",
 )
-@click.option("--save", "do_save", is_flag=True, help="Save current state as baseline for future diffs.")
+@click.option(
+    "--save", "do_save", is_flag=True, help="Save current state as baseline for future diffs."
+)
 def state_diff_cmd(home: str, fmt: str, do_save: bool):
     """Show what changed since the last sync/snapshot.
 
@@ -3767,9 +3863,7 @@ def session_capture(
     console.print(f"\n  [green]Captured {len(entries)} moment(s):[/]\n")
     for e in entries:
         preview = e.content[:80] + ("..." if len(e.content) > 80 else "")
-        console.print(
-            f"    [{e.layer.value}] imp={e.importance:.1f}  {preview}"
-        )
+        console.print(f"    [{e.layer.value}] imp={e.importance:.1f}  {preview}")
         if e.tags:
             console.print(f"    [dim]tags: {', '.join(e.tags)}[/]")
     console.print()
@@ -4034,7 +4128,9 @@ def daemon_status(home: str, port: int, json_out: bool):
 
     status = get_daemon_status(home_path, port)
     if json_out:
-        click.echo(json.dumps(status or {"running": True, "pid": pid, "api": "unreachable"}, indent=2))
+        click.echo(
+            json.dumps(status or {"running": True, "pid": pid, "api": "unreachable"}, indent=2)
+        )
         return
 
     if status:
@@ -4091,7 +4187,7 @@ def backup():
 @backup.command("create")
 @click.option("--home", default=AGENT_HOME, type=click.Path(), help="Agent home directory.")
 @click.option("--output", "-o", default=None, type=click.Path(), help="Output directory.")
-def backup_create(home: str, output: str):
+def backup_create(home: str, output: str):  # noqa: F811
     """Create a full backup of the sovereign agent state.
 
     Archives identity, memories, trust, config, coordination,
@@ -4113,15 +4209,17 @@ def backup_create(home: str, output: str):
         result = create_backup(home=home_path, output_dir=out_dir)
 
         size_mb = result["archive_size"] / 1024 / 1024
-        console.print(Panel(
-            f"[bold green]Backup created[/]\n"
-            f"ID: {result['backup_id']}\n"
-            f"Files: {result['file_count']}\n"
-            f"Size: {size_mb:.1f} MB\n"
-            f"Path: [cyan]{result['filepath']}[/]",
-            title="Backup Complete",
-            border_style="green",
-        ))
+        console.print(
+            Panel(
+                f"[bold green]Backup created[/]\n"
+                f"ID: {result['backup_id']}\n"
+                f"Files: {result['file_count']}\n"
+                f"Size: {size_mb:.1f} MB\n"
+                f"Path: [cyan]{result['filepath']}[/]",
+                title="Backup Complete",
+                border_style="green",
+            )
+        )
     except FileNotFoundError as exc:
         console.print(f"[red]{exc}[/]")
         raise SystemExit(1)
@@ -4131,7 +4229,7 @@ def backup_create(home: str, output: str):
 @click.argument("archive")
 @click.option("--home", default=AGENT_HOME, type=click.Path(), help="Target home directory.")
 @click.option("--no-verify", is_flag=True, help="Skip checksum verification.")
-def backup_restore(archive: str, home: str, no_verify: bool):
+def backup_restore(archive: str, home: str, no_verify: bool):  # noqa: F811
     """Restore the agent from a backup archive.
 
     Extracts the backup and verifies file integrity.
@@ -4155,15 +4253,17 @@ def backup_restore(archive: str, home: str, no_verify: bool):
         )
 
         status = "[green]VERIFIED[/]" if result["verified"] else "[red]ERRORS[/]"
-        console.print(Panel(
-            f"[bold green]Restore complete[/]\n"
-            f"Agent: {result['agent_name']}\n"
-            f"Files: {result['file_count']}\n"
-            f"Target: [cyan]{result['target']}[/]\n"
-            f"Integrity: {status}",
-            title="Restore Complete",
-            border_style="green",
-        ))
+        console.print(
+            Panel(
+                f"[bold green]Restore complete[/]\n"
+                f"Agent: {result['agent_name']}\n"
+                f"Files: {result['file_count']}\n"
+                f"Target: [cyan]{result['target']}[/]\n"
+                f"Integrity: {status}",
+                title="Restore Complete",
+                border_style="green",
+            )
+        )
 
         if result["errors"]:
             console.print("[yellow]Verification errors:[/]")
@@ -4176,7 +4276,7 @@ def backup_restore(archive: str, home: str, no_verify: bool):
 
 @backup.command("list")
 @click.option("--home", default=AGENT_HOME, type=click.Path(), help="Agent home directory.")
-def backup_list(home: str):
+def backup_list(home: str):  # noqa: F811
     """List available backups.
 
     Examples:
@@ -4355,7 +4455,10 @@ def agents_blueprints_list(home: str):
     )
 
     table = Table(
-        show_header=True, header_style="bold", box=None, padding=(0, 2),
+        show_header=True,
+        header_style="bold",
+        box=None,
+        padding=(0, 2),
     )
     table.add_column("", width=3)
     table.add_column("Blueprint", style="bold cyan")
@@ -4374,12 +4477,8 @@ def agents_blueprints_list(home: str):
 
     console.print(table)
     console.print()
-    console.print(
-        "  [dim]Preview:[/] [cyan]skcapstone agents blueprints show <slug>[/]"
-    )
-    console.print(
-        "  [dim]Deploy:[/]  [cyan]skcapstone agents deploy <slug>[/]"
-    )
+    console.print("  [dim]Preview:[/] [cyan]skcapstone agents blueprints show <slug>[/]")
+    console.print("  [dim]Deploy:[/]  [cyan]skcapstone agents deploy <slug>[/]")
     console.print()
 
 
@@ -4401,9 +4500,7 @@ def agents_blueprints_show(slug: str, home: str):
 
     if not bp:
         console.print(f"\n  [red]Blueprint '{slug}' not found.[/]")
-        console.print(
-            "  Run [cyan]skcapstone agents blueprints list[/] to see available teams.\n"
-        )
+        console.print("  Run [cyan]skcapstone agents blueprints list[/] to see available teams.\n")
         return
 
     console.print()
@@ -4425,7 +4522,10 @@ def agents_blueprints_show(slug: str, home: str):
     )
 
     table = Table(
-        show_header=True, header_style="bold", box=None, padding=(0, 2),
+        show_header=True,
+        header_style="bold",
+        box=None,
+        padding=(0, 2),
     )
     table.add_column("Agent", style="bold cyan")
     table.add_column("Role")
@@ -4455,9 +4555,7 @@ def agents_blueprints_show(slug: str, home: str):
         console.print(f"\n  [dim]Tags: {', '.join(bp.tags)}[/]")
 
     console.print()
-    console.print(
-        f"  [bold]Deploy:[/] [cyan]skcapstone agents deploy {bp.slug}[/]"
-    )
+    console.print(f"  [bold]Deploy:[/] [cyan]skcapstone agents deploy {bp.slug}[/]")
     console.print()
 
 
@@ -4466,7 +4564,8 @@ def agents_blueprints_show(slug: str, home: str):
 @click.option("--home", default=AGENT_HOME, type=click.Path())
 @click.option("--name", default=None, help="Custom deployment name.")
 @click.option(
-    "--provider", default=None,
+    "--provider",
+    default=None,
     type=click.Choice(["local", "proxmox", "hetzner", "aws", "gcp", "docker"]),
     help="Override the blueprint's default provider.",
 )
@@ -4481,8 +4580,8 @@ def agents_deploy(slug: str, home: str, name: str, provider: str):
     """
     from .blueprints import BlueprintRegistry
     from .blueprints.schema import ProviderType
-    from .team_engine import TeamEngine
     from .providers.local import LocalProvider
+    from .team_engine import TeamEngine
 
     home_path = Path(home).expanduser()
     registry = BlueprintRegistry(home=home_path)
@@ -4490,9 +4589,7 @@ def agents_deploy(slug: str, home: str, name: str, provider: str):
 
     if not bp:
         console.print(f"\n  [red]Blueprint '{slug}' not found.[/]")
-        console.print(
-            "  Run [cyan]skcapstone agents blueprints list[/] to see available teams.\n"
-        )
+        console.print("  Run [cyan]skcapstone agents blueprints list[/] to see available teams.\n")
         return
 
     provider_type = ProviderType(provider) if provider else bp.default_provider
@@ -4520,12 +4617,15 @@ def agents_deploy(slug: str, home: str, name: str, provider: str):
         backend = LocalProvider(home=home_path)
     elif provider_type == ProviderType.PROXMOX:
         from .providers.proxmox import ProxmoxProvider
+
         backend = ProxmoxProvider()
     elif provider_type in (ProviderType.HETZNER, ProviderType.AWS, ProviderType.GCP):
         from .providers.cloud import CloudProvider
+
         backend = CloudProvider(cloud=provider_type.value)
     elif provider_type == ProviderType.DOCKER:
         from .providers.docker import DockerProvider
+
         backend = DockerProvider()
     else:
         backend = LocalProvider(home=home_path)
@@ -4538,8 +4638,7 @@ def agents_deploy(slug: str, home: str, name: str, provider: str):
 
     # Show results
     ok_count = sum(
-        1 for a in deployment.agents.values()
-        if a.status.value in ("running", "pending")
+        1 for a in deployment.agents.values() if a.status.value in ("running", "pending")
     )
     fail_count = len(deployment.agents) - ok_count
 
@@ -4557,7 +4656,10 @@ def agents_deploy(slug: str, home: str, name: str, provider: str):
     )
 
     table = Table(
-        show_header=True, header_style="bold", box=None, padding=(0, 2),
+        show_header=True,
+        header_style="bold",
+        box=None,
+        padding=(0, 2),
     )
     table.add_column("Agent", style="cyan")
     table.add_column("Status")
@@ -4584,9 +4686,7 @@ def agents_deploy(slug: str, home: str, name: str, provider: str):
             f"{bp.coordination.queen.title()} (Queen of SKWorld)[/]"
         )
 
-    console.print(
-        f"\n  [dim]Check status:[/] [cyan]skcapstone agents status[/]"
-    )
+    console.print("\n  [dim]Check status:[/] [cyan]skcapstone agents status[/]")
     console.print(
         f"  [dim]Destroy:[/]      "
         f"[cyan]skcapstone agents destroy {deployment.deployment_id}[/]"
@@ -4611,18 +4711,13 @@ def agents_status(home: str):
 
     if not deployments:
         console.print("\n  [dim]No agent teams deployed.[/]")
-        console.print(
-            "  [dim]Deploy one:[/] [cyan]skcapstone agents deploy <slug>[/]\n"
-        )
+        console.print("  [dim]Deploy one:[/] [cyan]skcapstone agents deploy <slug>[/]\n")
         return
 
     console.print()
 
     for dep in deployments:
-        running = sum(
-            1 for a in dep.agents.values()
-            if a.status.value == "running"
-        )
+        running = sum(1 for a in dep.agents.values() if a.status.value == "running")
         total = len(dep.agents)
 
         console.print(
@@ -4639,7 +4734,10 @@ def agents_status(home: str):
         )
 
         table = Table(
-            show_header=True, header_style="bold", box=None, padding=(0, 2),
+            show_header=True,
+            header_style="bold",
+            box=None,
+            padding=(0, 2),
         )
         table.add_column("Agent", style="cyan")
         table.add_column("Status")
@@ -4700,9 +4798,7 @@ def agents_destroy(deployment_id: str, home: str, force: bool):
     if success:
         console.print(f"\n  [green]Deployment {deployment_id} destroyed.[/]\n")
     else:
-        console.print(
-            f"\n  [yellow]Partial cleanup — some agents may need manual removal.[/]\n"
-        )
+        console.print("\n  [yellow]Partial cleanup — some agents may need manual removal.[/]\n")
 
 
 # ---------------------------------------------------------------------------
@@ -4745,9 +4841,7 @@ def agents_restart(deployment_id: str, agent_name: Optional[str], home: str):
         table.add_row(name, f"[{color}]{result}[/]")
 
     console.print()
-    console.print(
-        Panel(table, title=f"Restart: {deployment_id}", border_style="bright_blue")
-    )
+    console.print(Panel(table, title=f"Restart: {deployment_id}", border_style="bright_blue"))
     console.print()
 
 
@@ -4961,11 +5055,16 @@ def agents_logs(deployment_id: str, agent_name: Optional[str], tail: int, home: 
 @agents.command("messages")
 @click.argument("deployment_id")
 @click.option(
-    "--agent", "agent_name", default=None,
+    "--agent",
+    "agent_name",
+    default=None,
     help="Show messages only for this agent (inbox + broadcast).",
 )
 @click.option(
-    "--limit", "-n", default=20, show_default=True,
+    "--limit",
+    "-n",
+    default=20,
+    show_default=True,
     help="Maximum number of archived messages to display per agent.",
 )
 @click.option("--home", default=AGENT_HOME, type=click.Path())
@@ -4981,19 +5080,16 @@ def agents_messages(deployment_id: str, agent_name: Optional[str], limit: int, h
         skcapstone agents messages myteam-1740000000 --agent myteam-alpha
         skcapstone agents messages myteam-1740000000 --limit 50
     """
-    from .team_comms import TeamChannel, _ENVELOPE_SUFFIX
+    from .team_comms import _ENVELOPE_SUFFIX
 
     home_path = Path(home).expanduser()
     comms_root = home_path / "comms"
     team_dir = comms_root / deployment_id
 
     if not team_dir.exists():
+        console.print(f"\n  [red]No comms directory found for deployment '{deployment_id}'.[/]")
         console.print(
-            f"\n  [red]No comms directory found for deployment '{deployment_id}'.[/]"
-        )
-        console.print(
-            "  [dim]Check that the deployment exists:[/] "
-            "[cyan]skcapstone agents status[/]\n"
+            "  [dim]Check that the deployment exists:[/] " "[cyan]skcapstone agents status[/]\n"
         )
         return
 
@@ -5007,8 +5103,7 @@ def agents_messages(deployment_id: str, agent_name: Optional[str], limit: int, h
             return
     else:
         agent_dirs = [
-            d for d in sorted(team_dir.iterdir())
-            if d.is_dir() and d.name != "broadcast"
+            d for d in sorted(team_dir.iterdir()) if d.is_dir() and d.name != "broadcast"
         ]
 
     if not agent_dirs:
@@ -5035,7 +5130,10 @@ def agents_messages(deployment_id: str, agent_name: Optional[str], limit: int, h
             continue
 
         table = Table(
-            show_header=True, header_style="bold", box=None, padding=(0, 2),
+            show_header=True,
+            header_style="bold",
+            box=None,
+            padding=(0, 2),
         )
         table.add_column("Time", style="dim", width=12)
         table.add_column("From", style="bold cyan", width=18)
@@ -5045,13 +5143,12 @@ def agents_messages(deployment_id: str, agent_name: Optional[str], limit: int, h
         for env_file in reversed(envelope_files):
             try:
                 import json as _json
+
                 data = _json.loads(env_file.read_text(encoding="utf-8"))
                 sender = data.get("sender", "?")
                 recipient = data.get("recipient", "?")
                 content = data.get("payload", {}).get("content", "")
-                created_at = (
-                    data.get("metadata", {}).get("created_at", "")[:19] or "—"
-                )
+                created_at = data.get("metadata", {}).get("created_at", "")[:19] or "—"
                 time_part = created_at[11:19] if len(created_at) >= 19 else created_at
 
                 table.add_row(
@@ -5086,7 +5183,10 @@ def agents_messages(deployment_id: str, agent_name: Optional[str], limit: int, h
 
         if bc_files:
             bc_table = Table(
-                show_header=True, header_style="bold", box=None, padding=(0, 2),
+                show_header=True,
+                header_style="bold",
+                box=None,
+                padding=(0, 2),
             )
             bc_table.add_column("Time", style="dim", width=12)
             bc_table.add_column("From", style="bold magenta", width=18)
@@ -5095,12 +5195,11 @@ def agents_messages(deployment_id: str, agent_name: Optional[str], limit: int, h
             for env_file in reversed(bc_files):
                 try:
                     import json as _json
+
                     data = _json.loads(env_file.read_text(encoding="utf-8"))
                     sender = data.get("sender", "?")
                     content = data.get("payload", {}).get("content", "")
-                    created_at = (
-                        data.get("metadata", {}).get("created_at", "")[:19] or "—"
-                    )
+                    created_at = data.get("metadata", {}).get("created_at", "")[:19] or "—"
                     time_part = created_at[11:19] if len(created_at) >= 19 else created_at
 
                     bc_table.add_row(
@@ -5140,19 +5239,32 @@ def agents_messages(deployment_id: str, agent_name: Optional[str], limit: int, h
 @agents.command("monitor")
 @click.option("--home", default=AGENT_HOME, type=click.Path())
 @click.option(
-    "--interval", "-i", type=float, default=30.0, show_default=True,
+    "--interval",
+    "-i",
+    type=float,
+    default=30.0,
+    show_default=True,
     help="Seconds between health checks.",
 )
 @click.option(
-    "--deployment", "-d", "deployment_id", default=None,
+    "--deployment",
+    "-d",
+    "deployment_id",
+    default=None,
     help="Monitor only this deployment (default: all).",
 )
 @click.option(
-    "--heartbeat-timeout", type=float, default=120.0, show_default=True,
+    "--heartbeat-timeout",
+    type=float,
+    default=120.0,
+    show_default=True,
     help="Seconds since last heartbeat before auto-restart.",
 )
 @click.option(
-    "--max-restarts", type=int, default=3, show_default=True,
+    "--max-restarts",
+    type=int,
+    default=3,
+    show_default=True,
     help="Consecutive restart failures before auto-rotate.",
 )
 @click.option("--no-restart", is_flag=True, help="Disable auto-restart.")
@@ -5189,14 +5301,14 @@ def agents_monitor(
         skcapstone agents monitor --no-escalate --heartbeat-timeout 60
     """
     from .providers.local import LocalProvider
-    from .team_engine import TeamEngine as _TE
-    from .trustee_ops import TrusteeOps as _TO
+    from .team_engine import TeamEngine as _TeamEngine
     from .trustee_monitor import MonitorConfig, TrusteeMonitor
+    from .trustee_ops import TrusteeOps as _TrusteeOps
 
     home_path = Path(home).expanduser()
     provider = LocalProvider(home=home_path)
-    engine = _TE(home=home_path, provider=provider, comms_root=home_path / "comms")
-    ops = _TO(engine=engine, home=home_path)
+    engine = _TeamEngine(home=home_path, provider=provider, comms_root=home_path / "comms")
+    ops = _TrusteeOps(engine=engine, home=home_path)
 
     config = MonitorConfig(
         heartbeat_timeout=heartbeat_timeout,
@@ -5256,15 +5368,14 @@ def agents_monitor(
                 report = monitor.check_all()
 
             has_actions = (
-                report.restarts_triggered or
-                report.rotations_triggered or
-                report.escalations_sent
+                report.restarts_triggered or report.rotations_triggered or report.escalations_sent
             )
 
             if has_actions or iteration % 10 == 1:
                 _print_monitor_report(report, iteration=iteration)
 
             import time as _time
+
             _time.sleep(interval)
 
     except KeyboardInterrupt:
@@ -5280,10 +5391,7 @@ def _print_monitor_report(report, iteration: int = 0):
         status_color = "red"
 
     total = report.agents_healthy + report.agents_degraded
-    line = (
-        f"  {prefix}"
-        f"[{status_color}]{report.agents_healthy}/{total} healthy[/]"
-    )
+    line = f"  {prefix}" f"[{status_color}]{report.agents_healthy}/{total} healthy[/]"
 
     if report.restarts_triggered:
         line += f"  [yellow]restarted: {', '.join(report.restarts_triggered)}[/]"
@@ -5304,16 +5412,45 @@ def _print_monitor_report(report, iteration: int = 0):
 @click.argument("task")
 @click.option("--home", default=AGENT_HOME, type=click.Path())
 @click.option(
-    "--provider", "-p", type=click.Choice(["local", "docker", "proxmox", "hetzner"]),
-    default=None, help="Target provider (auto-selects if not specified).",
+    "--provider",
+    "-p",
+    type=click.Choice(["local", "docker", "proxmox", "hetzner"]),
+    default=None,
+    help="Target provider (auto-selects if not specified).",
 )
-@click.option("--role", "-r", type=click.Choice([
-    "manager", "worker", "researcher", "coder", "reviewer",
-    "documentarian", "security", "ops",
-]), default=None, help="Override auto-detected agent role.")
-@click.option("--model", "-m", type=click.Choice([
-    "fast", "code", "reason", "nuance", "local",
-]), default=None, help="Override auto-detected model tier.")
+@click.option(
+    "--role",
+    "-r",
+    type=click.Choice(
+        [
+            "manager",
+            "worker",
+            "researcher",
+            "coder",
+            "reviewer",
+            "documentarian",
+            "security",
+            "ops",
+        ]
+    ),
+    default=None,
+    help="Override auto-detected agent role.",
+)
+@click.option(
+    "--model",
+    "-m",
+    type=click.Choice(
+        [
+            "fast",
+            "code",
+            "reason",
+            "nuance",
+            "local",
+        ]
+    ),
+    default=None,
+    help="Override auto-detected model tier.",
+)
 @click.option("--skill", "-s", multiple=True, help="Skills to load (repeatable).")
 @click.option("--claim", "coord_task_id", default=None, help="Claim a coordination task.")
 @click.option("--name", "agent_name", default=None, help="Custom agent name.")
@@ -5350,7 +5487,8 @@ def agents_spawn(
     if provider:
         prov_type = ProviderType(provider)
         try:
-            from .providers import LocalProvider, DockerProvider, ProxmoxProvider
+            from .providers import DockerProvider, LocalProvider, ProxmoxProvider
+
             if prov_type == ProviderType.LOCAL:
                 prov_backend = LocalProvider(agents_root=home_path / "agents" / "local")
             elif prov_type == ProviderType.DOCKER:
@@ -5396,19 +5534,21 @@ def agents_spawn(
         )
 
     if result.status == "failed":
-        console.print(
-            f"\n  [red bold]Spawn failed:[/] {result.error}\n"
-        )
+        console.print(f"\n  [red bold]Spawn failed:[/] {result.error}\n")
     else:
         console.print(
             Panel(
                 f"  [bold green]Agent spawned successfully![/]\n\n"
                 f"  [bold]Name:[/]       [cyan]{result.agent_name}[/]\n"
                 f"  [bold]Deployment:[/] [dim]{result.deployment_id}[/]\n"
-                f"  [bold]Status:[/]     [green]{result.status.value if hasattr(result.status, 'value') else result.status}[/]\n"
+                f"  [bold]Status:[/]     [green]{result.status.value if hasattr(result.status, 'value') else result.status}[/]\n"  # noqa: E501
                 f"  [bold]Host:[/]       {result.host}\n"
                 + (f"  [bold]PID:[/]        {result.pid}\n" if result.pid else "")
-                + (f"  [bold]Claimed:[/]    {result.coord_task_id}\n" if result.coord_task_id else "")
+                + (
+                    f"  [bold]Claimed:[/]    {result.coord_task_id}\n"
+                    if result.coord_task_id
+                    else ""
+                )
                 + f"\n  [dim]Kill:[/] [cyan]skcapstone agents kill {result.deployment_id}[/]",
                 title="[bold green]Sub-Agent Spawned[/]",
                 border_style="green",
@@ -5434,7 +5574,7 @@ def agents_spawned(home: str):
     if not results:
         console.print(
             "\n  [dim]No spawned sub-agents found.[/]\n"
-            "  [dim]Spawn one:[/] [cyan]skcapstone agents spawn \"your task here\"[/]\n"
+            '  [dim]Spawn one:[/] [cyan]skcapstone agents spawn "your task here"[/]\n'
         )
         return
 
@@ -5448,13 +5588,19 @@ def agents_spawned(home: str):
 
     for r in results:
         status_val = r.status.value if hasattr(r.status, "value") else str(r.status)
-        status_style = "green" if status_val == "running" else "yellow" if status_val == "pending" else "red"
+        status_style = (
+            "green" if status_val == "running" else "yellow" if status_val == "pending" else "red"
+        )
         table.add_row(
             r.agent_name,
             f"[{status_style}]{status_val}[/]",
             r.host,
             str(r.pid) if r.pid else "—",
-            (r.task_description[:50] + "…") if len(r.task_description) > 50 else r.task_description,
+            (
+                (r.task_description[:50] + "…")
+                if len(r.task_description) > 50
+                else r.task_description
+            ),
             r.deployment_id,
         )
 
@@ -5557,14 +5703,12 @@ def mount_start(mount_point: str, home: str, foreground: bool):
             f"[dim](foreground — Ctrl-C to unmount)[/]"
         )
     else:
-        console.print(
-            f"[bold cyan]Mounting sovereign filesystem at [white]{mount_path}[/] ..."
-        )
+        console.print(f"[bold cyan]Mounting sovereign filesystem at [white]{mount_path}[/] ...")
 
     ok = daemon.start(foreground=foreground)
 
     if ok and not foreground:
-        console.print(f"[green]Mounted.[/] [dim]Unmount with: skcapstone mount stop[/]")
+        console.print("[green]Mounted.[/] [dim]Unmount with: skcapstone mount stop[/]")
     elif not ok:
         console.print("[bold red]Mount failed.[/] Check logs or try --foreground for details.")
         sys.exit(1)
@@ -5605,8 +5749,7 @@ def mount_stop(mount_point: str, home: str):
         console.print("[green]Unmounted.[/]")
     else:
         console.print(
-            "[bold red]Unmount failed.[/] "
-            f"[dim]Try manually: fusermount -u {mount_path}[/]"
+            "[bold red]Unmount failed.[/] " f"[dim]Try manually: fusermount -u {mount_path}[/]"
         )
         sys.exit(1)
 
@@ -5719,7 +5862,8 @@ def skills_list(agent: str | None, home: str) -> None:
     table.add_column("Source")
 
     from skskills.models import SkillStatus
-    skskills_home = Path(os.environ.get("SKSKILLS_HOME", "~/.skskills")).expanduser()
+
+    Path(os.environ.get("SKSKILLS_HOME", "~/.skskills")).expanduser()
     skcap_home = Path(home).expanduser()
 
     for s in skills_data:
@@ -5743,9 +5887,11 @@ def skills_list(agent: str | None, home: str) -> None:
         table.add_row(s.manifest.name, s.manifest.version, s.agent, tools, status_str, source)
 
     # Also show per-agent skcapstone skills
-    for agent_name_dir in sorted((Path(home).expanduser() / "skills" / "agents").iterdir()
-                                  if (Path(home).expanduser() / "skills" / "agents").exists()
-                                  else []):
+    for agent_name_dir in sorted(
+        (Path(home).expanduser() / "skills" / "agents").iterdir()
+        if (Path(home).expanduser() / "skills" / "agents").exists()
+        else []
+    ):
         if not agent_name_dir.is_dir():
             continue
         if agent and agent_name_dir.name != agent:
@@ -5759,8 +5905,12 @@ def skills_list(agent: str | None, home: str) -> None:
                 )
                 if not already:
                     table.add_row(
-                        skill_dir.name, "—", agent_name_dir.name,
-                        "—", "[cyan]enabled[/cyan]", "skcapstone/synced"
+                        skill_dir.name,
+                        "—",
+                        agent_name_dir.name,
+                        "—",
+                        "[cyan]enabled[/cyan]",
+                        "skcapstone/synced",
                     )
 
     console.print(table)
@@ -5793,7 +5943,9 @@ def skills_link(skill_name: str, agent_name: str) -> None:
 
 @skills.command("install")
 @click.argument("source", type=click.Path(exists=True))
-@click.option("--agent", default=None, help="Agent namespace (default: current agent from identity).")
+@click.option(
+    "--agent", default=None, help="Agent namespace (default: current agent from identity)."
+)
 @click.option("--home", default=AGENT_HOME, type=click.Path(), help="Agent home directory.")
 @click.option("--force", is_flag=True, help="Overwrite existing installation.")
 def skills_install(source: str, agent: str | None, home: str, force: bool) -> None:
@@ -5815,6 +5967,7 @@ def skills_install(source: str, agent: str | None, home: str, force: bool) -> No
         identity_path = home_path / "identity" / "identity.json"
         if identity_path.exists():
             import json as _json
+
             try:
                 data = _json.loads(identity_path.read_text(encoding="utf-8"))
                 agent = data.get("name", "global")
@@ -5827,7 +5980,9 @@ def skills_install(source: str, agent: str | None, home: str, force: bool) -> No
     registry = SkillRegistry()
     try:
         installed = registry.install(Path(source), agent=agent, force=force)
-        console.print(f"\n[green]Installed:[/green] {installed.manifest.name} v{installed.manifest.version}")
+        console.print(
+            f"\n[green]Installed:[/green] {installed.manifest.name} v{installed.manifest.version}"
+        )
         console.print(f"  Agent:  {installed.agent}")
         console.print(f"  Path:   {installed.install_path}")
         tools = ", ".join(installed.manifest.tool_names) or "—"
@@ -5849,7 +6004,7 @@ def skills_status(home: str) -> None:
     home_path = Path(home).expanduser()
     skskills_home = Path(os.environ.get("SKSKILLS_HOME", "~/.skskills")).expanduser()
 
-    console.print(f"\n[bold cyan]Skills Pillar Status[/]\n")
+    console.print("\n[bold cyan]Skills Pillar Status[/]\n")
     console.print(f"  SKSkills home:    {skskills_home}")
     console.print(f"  SKCapstone home:  {home_path}")
 
@@ -5875,7 +6030,7 @@ def skills_status(home: str) -> None:
 
     if not known_agents:
         console.print("\n[dim]No per-agent namespaces configured yet.[/dim]")
-        console.print(f"  Create one with: skcapstone skills link syncthing-setup <agent>")
+        console.print("  Create one with: skcapstone skills link syncthing-setup <agent>")
         return
 
     for agent_name in sorted(known_agents):
@@ -5883,7 +6038,8 @@ def skills_status(home: str) -> None:
         reg_count = 0
         if (agents_dir / agent_name).exists():
             reg_count = sum(
-                1 for d in (agents_dir / agent_name).iterdir()
+                1
+                for d in (agents_dir / agent_name).iterdir()
                 if (d.is_dir() or d.is_symlink()) and (d / "skill.yaml").exists()
             )
 
@@ -5892,8 +6048,7 @@ def skills_status(home: str) -> None:
         agent_skcap = skcap_agents_dir / agent_name if skcap_agents_dir.exists() else None
         if agent_skcap and agent_skcap.exists():
             skcap_count = sum(
-                1 for d in agent_skcap.iterdir()
-                if d.is_dir() and (d / "skill.yaml").exists()
+                1 for d in agent_skcap.iterdir() if d.is_dir() and (d / "skill.yaml").exists()
             )
 
         total = reg_count + skcap_count
@@ -5907,13 +6062,12 @@ def skills_status(home: str) -> None:
     global_count = 0
     if installed_dir.exists():
         global_count = sum(
-            1 for d in installed_dir.iterdir()
-            if d.is_dir() and (d / "skill.yaml").exists()
+            1 for d in installed_dir.iterdir() if d.is_dir() and (d / "skill.yaml").exists()
         )
     console.print(f"\n  Global registry: [yellow]{global_count}[/] skill(s) in {installed_dir}")
     console.print(
-        f"\n  [dim]Tip: Use [white]skcapstone skills link <skill> <agent>[/white] "
-        f"to give an agent access to a global skill.[/dim]\n"
+        "\n  [dim]Tip: Use [white]skcapstone skills link <skill> <agent>[/white] "
+        "to give an agent access to a global skill.[/dim]\n"
     )
 
 

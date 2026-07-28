@@ -3,11 +3,9 @@
 from __future__ import annotations
 
 import json
-import os
 import threading
 import time
 import urllib.request
-from pathlib import Path
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -20,7 +18,6 @@ import pytest
 # global is a different object than the one _load_components writes to — making
 # TestHeartbeatBeaconWiring order-dependent.
 import skcapstone.dreaming_job  # noqa: F401
-
 from skcapstone.daemon import (
     DaemonConfig,
     DaemonService,
@@ -289,7 +286,7 @@ class TestHeartbeatBeaconWiring:
         assert kwargs["consciousness_active"] is True
 
     def test_health_loop_pulses_beacon_consciousness_inactive(self, daemon_home):
-        """_health_loop calls beacon.pulse(consciousness_active=False) when consciousness is None."""
+        """_health_loop calls beacon.pulse(consciousness_active=False) when consciousness is None."""  # noqa: E501
         config = DaemonConfig(home=daemon_home, port=0, health_interval=60)
         svc = DaemonService(config)
 
@@ -353,13 +350,12 @@ class TestHeartbeatBeaconWiring:
             svc._load_components()
 
         assert svc._beacon is mock_beacon_instance
-        mock_heartbeat_mod.HeartbeatBeacon.assert_called_once_with(
-            config.home, "test-agent"
-        )
+        mock_heartbeat_mod.HeartbeatBeacon.assert_called_once_with(config.home, "test-agent")
 
     def test_load_components_wires_none_consciousness_loop_when_disabled(self, daemon_home):
         """Critical constraint: --no-consciousness must still register (a None) loop ref."""
         import sys
+
         from skcapstone import dreaming_job
 
         config = DaemonConfig(home=daemon_home, port=0, consciousness_enabled=False)
@@ -391,6 +387,7 @@ class TestHeartbeatBeaconWiring:
 
     def test_load_components_wires_active_consciousness_loop_when_enabled(self, daemon_home):
         import sys
+
         from skcapstone import dreaming_job
 
         config = DaemonConfig(home=daemon_home, port=0, consciousness_enabled=True)
@@ -451,6 +448,7 @@ class TestHouseholdAPI:
 
     def _get_404(self, port, path):
         import urllib.error
+
         url = f"http://127.0.0.1:{port}{path}"
         try:
             with urllib.request.urlopen(url, timeout=2) as resp:
@@ -488,19 +486,22 @@ class TestHouseholdAPI:
 
     def test_household_agents_with_fresh_heartbeat(self, daemon_home):
         from datetime import datetime, timezone
+
         agent_dir = daemon_home / "agents" / "alivebot"
         (agent_dir / "identity").mkdir(parents=True)
-        (agent_dir / "identity" / "identity.json").write_text(
-            json.dumps({"name": "Alivebot"})
-        )
+        (agent_dir / "identity" / "identity.json").write_text(json.dumps({"name": "Alivebot"}))
         hb_dir = daemon_home / "heartbeats"
         hb_dir.mkdir(parents=True, exist_ok=True)
-        (hb_dir / "alivebot.json").write_text(json.dumps({
-            "agent_name": "Alivebot",
-            "status": "alive",
-            "timestamp": datetime.now(timezone.utc).isoformat(),
-            "ttl_seconds": 300,
-        }))
+        (hb_dir / "alivebot.json").write_text(
+            json.dumps(
+                {
+                    "agent_name": "Alivebot",
+                    "status": "alive",
+                    "timestamp": datetime.now(timezone.utc).isoformat(),
+                    "ttl_seconds": 300,
+                }
+            )
+        )
         svc = self._start_server(daemon_home)
         try:
             _, data = self._get(svc.config.port, "/api/v1/household/agents")
@@ -516,12 +517,16 @@ class TestHouseholdAPI:
         (agent_dir / "identity" / "identity.json").write_text(json.dumps({"name": "Stalebot"}))
         hb_dir = daemon_home / "heartbeats"
         hb_dir.mkdir(parents=True, exist_ok=True)
-        (hb_dir / "stalebot.json").write_text(json.dumps({
-            "agent_name": "Stalebot",
-            "status": "alive",
-            "timestamp": "2020-01-01T00:00:00+00:00",
-            "ttl_seconds": 300,
-        }))
+        (hb_dir / "stalebot.json").write_text(
+            json.dumps(
+                {
+                    "agent_name": "Stalebot",
+                    "status": "alive",
+                    "timestamp": "2020-01-01T00:00:00+00:00",
+                    "ttl_seconds": 300,
+                }
+            )
+        )
         svc = self._start_server(daemon_home)
         try:
             _, data = self._get(svc.config.port, "/api/v1/household/agents")
@@ -630,9 +635,7 @@ class TestDashboardAPI:
 
     def _start_server(self, daemon_home, shared_root=None):
         root = shared_root or daemon_home
-        config = DaemonConfig(
-            home=daemon_home, shared_root=root, port=0, poll_interval=60
-        )
+        config = DaemonConfig(home=daemon_home, shared_root=root, port=0, poll_interval=60)
         svc = DaemonService(config)
         svc.state.running = True
         with patch.object(svc, "_load_components"):
@@ -695,7 +698,13 @@ class TestDashboardAPI:
         conv_dir = daemon_home / "conversations"
         conv_dir.mkdir(parents=True)
         for i in range(7):
-            msgs = [{"role": "user", "content": f"msg{i}", "timestamp": f"2026-03-0{i % 9 + 1}T10:00:00+00:00"}]
+            msgs = [
+                {
+                    "role": "user",
+                    "content": f"msg{i}",
+                    "timestamp": f"2026-03-0{i % 9 + 1}T10:00:00+00:00",
+                }
+            ]
             (conv_dir / f"peer{i}.json").write_text(json.dumps(msgs))
 
         svc = self._start_server(daemon_home, shared_root=daemon_home)
@@ -748,7 +757,7 @@ class TestDashboardAPI:
             _, body, _ = self._get(svc.config.port, "/")
             html = body.decode("utf-8")
             assert 'http-equiv="refresh"' in html
-            assert "content=\"30\"" in html
+            assert 'content="30"' in html
         finally:
             svc.stop()
 
@@ -811,6 +820,7 @@ class TestCORSHeaders:
 
     def _request(self, port, path, method="GET"):
         import urllib.error
+
         url = f"http://127.0.0.1:{port}{path}"
         req = urllib.request.Request(url, method=method)
         try:
@@ -872,6 +882,7 @@ class TestCORSHeaders:
 def _find_free_port() -> int:
     """Find an available port for testing."""
     import socket
+
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
         s.bind(("127.0.0.1", 0))
         return s.getsockname()[1]

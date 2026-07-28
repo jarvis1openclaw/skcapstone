@@ -52,9 +52,7 @@ class AuctionBid(BaseModel):
     agent: str
     claimed_tasks_count: int = 0
     cpu_percent: float = 0.0
-    bid_at: str = Field(
-        default_factory=lambda: datetime.now(timezone.utc).isoformat()
-    )
+    bid_at: str = Field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
 
 
 class AuctionRecord(BaseModel):
@@ -62,9 +60,7 @@ class AuctionRecord(BaseModel):
 
     task_id: str
     task_title: str
-    started_at: str = Field(
-        default_factory=lambda: datetime.now(timezone.utc).isoformat()
-    )
+    started_at: str = Field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
     resolved_at: Optional[str] = None
     winner: Optional[str] = None
     bids: list[AuctionBid] = Field(default_factory=list)
@@ -156,9 +152,7 @@ class AuctionManager:
         if not path.exists():
             return None
         try:
-            return AuctionRecord.model_validate(
-                json.loads(path.read_text(encoding="utf-8"))
-            )
+            return AuctionRecord.model_validate(json.loads(path.read_text(encoding="utf-8")))
         except Exception as exc:
             logger.warning("Failed to load auction record %s: %s", task_id, exc)
             return None
@@ -173,9 +167,7 @@ class AuctionManager:
     # Public API
     # ------------------------------------------------------------------
 
-    def start_auction(
-        self, task_id: str, task_title: str, pubsub: Any
-    ) -> AuctionRecord:
+    def start_auction(self, task_id: str, task_title: str, pubsub: Any) -> AuctionRecord:
         """Open a new auction and broadcast it on coord.auction.
 
         Args:
@@ -244,9 +236,7 @@ class AuctionManager:
         record = self._load_record(task_id)
         return record is not None and record.status == "pending"
 
-    async def resolve_auction(
-        self, task_id: str, pubsub: Any
-    ) -> Optional[str]:
+    async def resolve_auction(self, task_id: str, pubsub: Any) -> Optional[str]:
         """Wait for the bid window then assign the lowest-load bidder.
 
         Sleeps for AUCTION_WINDOW_SECS, then reads all accumulated bids
@@ -285,7 +275,9 @@ class AuctionManager:
                     tags=["auction", "no_bidders"],
                 )
             except Exception as exc:
-                logger.warning("Failed to publish auction_no_bidders event for %s: %s", task_id, exc)
+                logger.warning(
+                    "Failed to publish auction_no_bidders event for %s: %s", task_id, exc
+                )
             return None
 
         winner_bid = min(record.bids, key=_load_score)
@@ -304,9 +296,7 @@ class AuctionManager:
                 _load_score(winner_bid),
             )
         except Exception as exc:
-            logger.warning(
-                "Auction %s: claim failed for %s: %s", task_id, winner, exc
-            )
+            logger.warning("Auction %s: claim failed for %s: %s", task_id, winner, exc)
             # Still record the result even if claim failed
             winner = None
 
@@ -369,9 +359,7 @@ class AuctionManager:
         for path in paths:
             try:
                 records.append(
-                    AuctionRecord.model_validate(
-                        json.loads(path.read_text(encoding="utf-8"))
-                    )
+                    AuctionRecord.model_validate(json.loads(path.read_text(encoding="utf-8")))
                 )
             except Exception as e:
                 logger.warning("auction.py: %s", e)

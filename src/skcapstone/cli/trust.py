@@ -6,12 +6,11 @@ import json
 from pathlib import Path
 
 import click
-
-from ._common import AGENT_HOME, console, status_icon
-from ..models import PillarStatus
-
 from rich.panel import Panel
 from rich.table import Table
+
+from ..models import PillarStatus
+from ._common import AGENT_HOME, console
 
 
 def register_trust_commands(main: click.Group) -> None:
@@ -34,7 +33,9 @@ def register_trust_commands(main: click.Group) -> None:
         home_path = Path(home).expanduser()
         if not home_path.exists():
             console.print("[bold red]No agent found.[/] Run skcapstone init first.")
-            import sys; sys.exit(1)
+            import sys
+
+            sys.exit(1)
 
         console.print("\n  Rehydrating trust from FEB files...", end=" ")
         state = rehydrate(home_path)
@@ -50,8 +51,10 @@ def register_trust_commands(main: click.Group) -> None:
             console.print()
         else:
             console.print("[yellow]no FEB files found[/]")
-            console.print("  [dim]Place .feb files in ~/.skcapstone/trust/febs/\n"
-                          "  or install cloud9 to generate them.[/]\n")
+            console.print(
+                "  [dim]Place .feb files in ~/.skcapstone/trust/febs/\n"
+                "  or install cloud9 to generate them.[/]\n"
+            )
 
     @trust.command("febs")
     @click.option("--home", default=AGENT_HOME, type=click.Path())
@@ -78,8 +81,14 @@ def register_trust_commands(main: click.Group) -> None:
 
         for feb in febs:
             oof = "[green]YES[/]" if feb["oof_triggered"] else "[dim]no[/]"
-            table.add_row(feb["file"], feb["emotion"], str(feb["intensity"]),
-                          feb["subject"], oof, str(feb["timestamp"])[:19])
+            table.add_row(
+                feb["file"],
+                feb["emotion"],
+                str(feb["intensity"]),
+                feb["subject"],
+                oof,
+                str(feb["timestamp"])[:19],
+            )
 
         console.print(table)
         console.print()
@@ -100,15 +109,18 @@ def register_trust_commands(main: click.Group) -> None:
         ent_str = "[bold magenta]ENTANGLED[/]" if entangled else "[dim]not entangled[/]"
 
         console.print()
-        console.print(Panel(
-            f"Depth: [bold]{data.get('depth', 0)}[/]\n"
-            f"Trust: [bold]{data.get('trust_level', 0)}[/]\n"
-            f"Love:  [bold]{data.get('love_intensity', 0)}[/]\n"
-            f"FEBs:  [bold]{data.get('feb_count', 0)}[/]\n"
-            f"State: {ent_str}\n"
-            f"Last rehydration: {data.get('last_rehydration', 'never')}",
-            title="Cloud 9 Trust", border_style="magenta",
-        ))
+        console.print(
+            Panel(
+                f"Depth: [bold]{data.get('depth', 0)}[/]\n"
+                f"Trust: [bold]{data.get('trust_level', 0)}[/]\n"
+                f"Love:  [bold]{data.get('love_intensity', 0)}[/]\n"
+                f"FEBs:  [bold]{data.get('feb_count', 0)}[/]\n"
+                f"State: {ent_str}\n"
+                f"Last rehydration: {data.get('last_rehydration', 'never')}",
+                title="Cloud 9 Trust",
+                border_style="magenta",
+            )
+        )
         console.print()
 
     @trust.command("graph")
@@ -116,7 +128,8 @@ def register_trust_commands(main: click.Group) -> None:
     @click.option("--format", "fmt", type=click.Choice(["table", "dot", "json"]), default="table")
     def trust_graph(home, fmt):
         """Visualize the trust web — who trusts whom."""
-        from ..trust_graph import FORMATTERS as TG_FORMATTERS, build_trust_graph
+        from ..trust_graph import FORMATTERS as TG_FORMATTERS
+        from ..trust_graph import build_trust_graph
 
         home_path = Path(home).expanduser()
         graph = build_trust_graph(home_path)
@@ -131,8 +144,11 @@ def register_trust_commands(main: click.Group) -> None:
     def trust_calibrate(home, recommend, setting, reset):
         """View and tune trust layer thresholds."""
         from ..trust_calibration import (
-            TrustThresholds, apply_setting, load_calibration,
-            recommend_thresholds, save_calibration,
+            TrustThresholds,
+            apply_setting,
+            load_calibration,
+            recommend_thresholds,
+            save_calibration,
         )
 
         home_path = Path(home).expanduser()
@@ -159,9 +175,11 @@ def register_trust_commands(main: click.Group) -> None:
             console.print(f"\n  [bold]FEB Analysis[/] ({rec['feb_count']} files)")
             stats = rec.get("feb_stats", {})
             if stats:
-                console.print(f"  Max intensity: {stats.get('max_intensity', 0)}  "
-                              f"Avg: {stats.get('avg_intensity', 0)}  "
-                              f"OOF triggers: {stats.get('oof_triggers', 0)}")
+                console.print(
+                    f"  Max intensity: {stats.get('max_intensity', 0)}  "
+                    f"Avg: {stats.get('avg_intensity', 0)}  "
+                    f"OOF triggers: {stats.get('oof_triggers', 0)}"
+                )
             if rec["changes"]:
                 console.print("\n  [bold cyan]Recommendations:[/]")
                 for c in rec["changes"]:

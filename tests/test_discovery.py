@@ -7,7 +7,7 @@ import os
 from pathlib import Path
 from unittest.mock import patch
 
-from skcapstone.discovery import discover_all, discover_identity, discover_memory, discover_skills
+from skcapstone.discovery import discover_all, discover_identity, discover_skills
 from skcapstone.models import PillarStatus
 
 
@@ -100,9 +100,7 @@ class TestDiscoverSkills:
         for skill_name in ("syncthing-setup", "pgp-identity"):
             skill_dir = installed / skill_name
             skill_dir.mkdir(parents=True)
-            (skill_dir / "skill.yaml").write_text(
-                f"name: {skill_name}\nversion: '0.1.0'\n"
-            )
+            (skill_dir / "skill.yaml").write_text(f"name: {skill_name}\nversion: '0.1.0'\n")
 
         with patch.dict(os.environ, {"SKSKILLS_HOME": str(skskills_home)}):
             state = discover_skills(tmp_agent_home)
@@ -142,14 +140,18 @@ class TestDiscoverSkillsRemoteRegistry:
 
         nonexistent = tmp_path / "no-skskills"
         with patch.dict(os.environ, {"SKSKILLS_HOME": str(nonexistent)}):
-            with patch.object(registry_client, "get_registry_client", lambda registry_url=None: None):
+            with patch.object(
+                registry_client, "get_registry_client", lambda registry_url=None: None
+            ):
                 state = discover_skills(tmp_agent_home)
         # Remote fields have safe defaults
         assert state.registry_available is False
         assert state.remote_skill_count == 0
         # registry_url may or may not be set depending on skskills availability
 
-    def test_remote_registry_probed_when_skskills_available(self, tmp_path: Path, tmp_agent_home: Path):
+    def test_remote_registry_probed_when_skskills_available(
+        self, tmp_path: Path, tmp_agent_home: Path
+    ):
         """When a registry client is available, remote registry fields are populated.
 
         discover_skills probes via skcapstone.registry_client.get_registry_client
@@ -177,22 +179,32 @@ class TestDiscoverSkillsRemoteRegistry:
         assert state.registry_available is True
         assert state.remote_skill_count == 2
 
-    def test_remote_registry_unreachable_degrades_gracefully(self, tmp_path: Path, tmp_agent_home: Path):
+    def test_remote_registry_unreachable_degrades_gracefully(
+        self, tmp_path: Path, tmp_agent_home: Path
+    ):
         """When remote registry is unreachable, discovery still works."""
         skskills_home = tmp_path / "skskills"
         installed = skskills_home / "installed" / "local-skill"
         installed.mkdir(parents=True)
         (installed / "skill.yaml").write_text("name: local-skill\nversion: '0.1.0'\n")
 
-        mock_remote_cls = type("MockRemoteRegistry", (), {
-            "__init__": lambda self, **kw: None,
-            "fetch_index": lambda self: (_ for _ in ()).throw(ConnectionError("offline")),
-        })
+        mock_remote_cls = type(
+            "MockRemoteRegistry",
+            (),
+            {
+                "__init__": lambda self, **kw: None,
+                "fetch_index": lambda self: (_ for _ in ()).throw(ConnectionError("offline")),
+            },
+        )
 
-        mock_module = type("MockModule", (), {
-            "RemoteRegistry": mock_remote_cls,
-            "DEFAULT_REGISTRY_URL": "https://skills.smilintux.org/api",
-        })()
+        mock_module = type(
+            "MockModule",
+            (),
+            {
+                "RemoteRegistry": mock_remote_cls,
+                "DEFAULT_REGISTRY_URL": "https://skills.smilintux.org/api",
+            },
+        )()
 
         with patch.dict(os.environ, {"SKSKILLS_HOME": str(skskills_home)}):
             with patch.dict("sys.modules", {"skskills.remote": mock_module}):
@@ -216,21 +228,32 @@ class TestDiscoverSkillsRemoteRegistry:
         def mock_init(self, **kw):
             captured_url["url"] = kw.get("registry_url", "")
 
-        mock_remote_cls = type("MockRemoteRegistry", (), {
-            "__init__": mock_init,
-            "fetch_index": lambda self: type("I", (), {"skills": []})(),
-        })
+        mock_remote_cls = type(
+            "MockRemoteRegistry",
+            (),
+            {
+                "__init__": mock_init,
+                "fetch_index": lambda self: type("I", (), {"skills": []})(),
+            },
+        )
 
-        mock_module = type("MockModule", (), {
-            "RemoteRegistry": mock_remote_cls,
-            "DEFAULT_REGISTRY_URL": "https://skills.smilintux.org/api",
-        })()
+        mock_module = type(
+            "MockModule",
+            (),
+            {
+                "RemoteRegistry": mock_remote_cls,
+                "DEFAULT_REGISTRY_URL": "https://skills.smilintux.org/api",
+            },
+        )()
 
         custom_url = "https://custom-registry.example.com/api"
-        with patch.dict(os.environ, {
-            "SKSKILLS_HOME": str(skskills_home),
-            "SKSKILLS_REGISTRY_URL": custom_url,
-        }):
+        with patch.dict(
+            os.environ,
+            {
+                "SKSKILLS_HOME": str(skskills_home),
+                "SKSKILLS_REGISTRY_URL": custom_url,
+            },
+        ):
             with patch.dict("sys.modules", {"skskills.remote": mock_module}):
                 state = discover_skills(tmp_agent_home)
 

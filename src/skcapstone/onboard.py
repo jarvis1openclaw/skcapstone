@@ -31,14 +31,13 @@ from typing import Optional
 import click
 
 logger = logging.getLogger(__name__)
-from rich.console import Console
-from rich.panel import Panel
-from rich.prompt import Confirm, Prompt
-from rich.status import Status
-from rich.table import Table
-from rich.text import Text
+from rich.console import Console  # noqa: E402
+from rich.panel import Panel  # noqa: E402
+from rich.prompt import Confirm, Prompt  # noqa: E402
+from rich.status import Status  # noqa: E402
+from rich.table import Table  # noqa: E402
 
-from . import AGENT_HOME, __version__
+from . import AGENT_HOME, __version__  # noqa: E402
 
 console = Console()
 
@@ -88,13 +87,11 @@ def _step_identity(home_path: Path, name: str, email: str | None) -> tuple[str, 
         (fingerprint, status_label)
     """
     import yaml
-    from .pillars.identity import generate_identity
-    from .pillars.security import audit_event, initialize_security
-    from .pillars.memory import initialize_memory
-    from .pillars.sync import initialize_sync
+
     from .models import AgentConfig, SyncConfig
     from .operator_link import build_agent_manifest, discover_human_operator
-    from .soul import SoulManager
+    from .pillars.identity import generate_identity
+    from .pillars.security import audit_event
 
     with Status("  Generating PGP identity…", console=console, spinner="dots") as s:
         home_path.mkdir(parents=True, exist_ok=True)
@@ -164,9 +161,7 @@ def _step_identity(home_path: Path, name: str, email: str | None) -> tuple[str, 
             __version__,
             operator=discover_human_operator(),
         )
-        (home_path / "manifest.json").write_text(
-            json.dumps(manifest, indent=2), encoding="utf-8"
-        )
+        (home_path / "manifest.json").write_text(json.dumps(manifest, indent=2), encoding="utf-8")
 
         audit_event(home_path, "INIT", f"Agent '{name}' initialized via onboard wizard")
 
@@ -241,7 +236,7 @@ def _step_memory(home_path: Path) -> int:
     imported = 0
     with Status("  Initializing memory store…", console=console, spinner="dots") as s:
         try:
-            from skmemory.seeds import import_seeds, DEFAULT_SEED_DIR
+            from skmemory.seeds import DEFAULT_SEED_DIR, import_seeds
             from skmemory.store import MemoryStore
 
             store = MemoryStore()
@@ -276,11 +271,13 @@ def _step_ritual(home_path: Path) -> None:
             result = perform_ritual()
             s.stop()
             _ok("Ritual complete")
-            _summary_table([
-                ("Soul", result.soul_name or "none"),
-                ("Seeds", str(result.seeds_total)),
-                ("Memories", str(result.strongest_memories)),
-            ])
+            _summary_table(
+                [
+                    ("Soul", result.soul_name or "none"),
+                    ("Seeds", str(result.seeds_total)),
+                    ("Memories", str(result.strongest_memories)),
+                ]
+            )
         except ImportError:
             s.stop()
             _warn("skmemory not installed — skipping ritual")
@@ -292,7 +289,7 @@ def _step_ritual(home_path: Path) -> None:
 def _step_trust(home_path: Path) -> str:
     """Verify trust chain from FEB files. Returns status label."""
     with Status("  Verifying trust chain…", console=console, spinner="dots") as s:
-        from .pillars.trust import rehydrate, list_febs, initialize_trust
+        from .pillars.trust import initialize_trust, list_febs, rehydrate
 
         # Ensure trust dir exists
         trust_state = initialize_trust(home_path)
@@ -352,12 +349,15 @@ def _step_heartbeat(home_path: Path, agent_name: str, fingerprint: str) -> bool:
     """Publish the first heartbeat beacon. Returns True on success."""
     with Status("  Publishing first heartbeat…", console=console, spinner="dots") as s:
         try:
-            from .heartbeat import HeartbeatBeacon, AgentCapability
+            from .heartbeat import AgentCapability, HeartbeatBeacon
 
             beacon = HeartbeatBeacon(home=home_path, agent_name=agent_name)
             hb = beacon.pulse(
                 status="alive",
-                capabilities=[AgentCapability(name="sovereign"), AgentCapability(name="onboarding")],
+                capabilities=[
+                    AgentCapability(name="sovereign"),
+                    AgentCapability(name="onboarding"),
+                ],
                 metadata={"onboarded_at": datetime.now(timezone.utc).isoformat()},
             )
             s.stop()
@@ -375,7 +375,7 @@ def _step_heartbeat(home_path: Path, agent_name: str, fingerprint: str) -> bool:
 
 def _step_crush(home_path: Path) -> bool:
     """Configure Crush terminal AI client with skcapstone MCP. Returns True on success."""
-    from .crush_integration import is_crush_installed, get_install_hint, setup_crush
+    from .crush_integration import setup_crush
 
     with Status("  Configuring Crush terminal AI client…", console=console, spinner="dots") as s:
         result = setup_crush(overwrite=False)
@@ -398,7 +398,7 @@ def _step_crush(home_path: Path) -> bool:
 def _step_board(home_path: Path, agent_name: str) -> int:
     """Register on the coordination board. Returns count of open tasks."""
     with Status("  Registering on coordination board…", console=console, spinner="dots") as s:
-        from .coordination import Board, AgentFile, AgentState
+        from .coordination import AgentFile, AgentState, Board
 
         board = Board(home_path)
         board.ensure_dirs()
@@ -456,7 +456,9 @@ def _step_prereqs() -> dict:
     if pip_ok:
         click.echo(click.style("  ✓ ", fg="green") + "pip available")
     else:
-        click.echo(click.style("  ⚠ ", fg="yellow") + "pip not found — install Python package manager")
+        click.echo(
+            click.style("  ⚠ ", fg="yellow") + "pip not found — install Python package manager"
+        )
     results["pip"] = pip_ok
 
     # Ollama
@@ -465,7 +467,9 @@ def _step_prereqs() -> dict:
         try:
             r = subprocess.run(
                 ["ollama", "--version"],
-                capture_output=True, text=True, timeout=5,
+                capture_output=True,
+                text=True,
+                timeout=5,
             )
             ver_line = r.stdout.strip().split("\n")[0][:60] if r.returncode == 0 else "installed"
         except Exception:
@@ -474,7 +478,10 @@ def _step_prereqs() -> dict:
         results["ollama"] = True
     else:
         click.echo(click.style("  ⚠ ", fg="yellow") + "Ollama not found — local LLM unavailable")
-        click.echo(click.style("    ", fg="bright_black") + "Install: curl -fsSL https://ollama.ai/install.sh | sh")
+        click.echo(
+            click.style("    ", fg="bright_black")
+            + "Install: curl -fsSL https://ollama.ai/install.sh | sh"
+        )
 
     return results
 
@@ -509,7 +516,10 @@ def _step_install_pillars() -> dict:
             click.echo(click.style("  ✓ ", fg="green") + f"{pip_name} — {description}")
             results[pip_name] = True
         except ImportError:
-            click.echo(click.style("  ✗ ", fg="red") + f"{pip_name} — {description} [bold red](missing)[/]")
+            click.echo(
+                click.style("  ✗ ", fg="red")
+                + f"{pip_name} — {description} [bold red](missing)[/]"
+            )
             missing.append((import_name, pip_name, description))
             results[pip_name] = False
 
@@ -551,6 +561,7 @@ def _step_install_pillars() -> dict:
 
     # Determine pip command — prefer ~/.skenv if it exists, else use current Python
     import os as _os
+
     skenv_pip = Path(_os.path.expanduser("~/.skenv/bin/pip"))
     if skenv_pip.exists():
         pip_cmd = [str(skenv_pip), "install"]
@@ -562,14 +573,21 @@ def _step_install_pillars() -> dict:
         try:
             r = subprocess.run(
                 [*pip_cmd, pip_name, "-q"],
-                capture_output=True, text=True, timeout=120,
+                capture_output=True,
+                text=True,
+                timeout=120,
             )
             if r.returncode == 0:
                 click.echo(click.style("  ✓ ", fg="green") + f"{pip_name} installed")
                 results[pip_name] = True
             else:
-                click.echo(click.style("  ✗ ", fg="red") + f"{pip_name} failed: {r.stderr.strip()[:100]}")
-                click.echo(click.style("    ", fg="bright_black") + f"Try manually: pip install {pip_name}")
+                click.echo(
+                    click.style("  ✗ ", fg="red") + f"{pip_name} failed: {r.stderr.strip()[:100]}"
+                )
+                click.echo(
+                    click.style("    ", fg="bright_black")
+                    + f"Try manually: pip install {pip_name}"
+                )
         except subprocess.TimeoutExpired:
             click.echo(click.style("  ⚠ ", fg="yellow") + f"{pip_name} timed out")
         except Exception as exc:
@@ -617,19 +635,21 @@ def _detect_import_sources(home_path: Path) -> list[dict]:
             agent_souls = list(oc_agents.rglob("SOUL.md"))
             if agent_souls:
                 items.append(f"{len(agent_souls)} agent soul(s)")
-        sources.append({
-            "id": "openclaw",
-            "name": "OpenClaw (Jarvis)",
-            "available": True,
-            "detail": ", ".join(items) if items else "workspace found",
-            "paths": {
-                "memory": oc_memory,
-                "soul": oc_soul,
-                "identity": oc_identity,
-                "agents": oc_agents,
-                "workspace": oc_workspace,
-            },
-        })
+        sources.append(
+            {
+                "id": "openclaw",
+                "name": "OpenClaw (Jarvis)",
+                "available": True,
+                "detail": ", ".join(items) if items else "workspace found",
+                "paths": {
+                    "memory": oc_memory,
+                    "soul": oc_soul,
+                    "identity": oc_identity,
+                    "agents": oc_agents,
+                    "workspace": oc_workspace,
+                },
+            }
+        )
 
     # --- Claude Code ---
     claude_dir = Path.home() / ".claude"
@@ -649,17 +669,20 @@ def _detect_import_sources(home_path: Path) -> list[dict]:
                 if memory_md.exists():
                     items.append(f"MEMORY.md in {proj_dir.name}")
         if items:
-            sources.append({
-                "id": "claude",
-                "name": "Claude Code",
-                "available": True,
-                "detail": ", ".join(items),
-                "paths": {"memory": claude_memory, "projects": projects},
-            })
+            sources.append(
+                {
+                    "id": "claude",
+                    "name": "Claude Code",
+                    "available": True,
+                    "detail": ", ".join(items),
+                    "paths": {"memory": claude_memory, "projects": projects},
+                }
+            )
 
     # --- Cloud 9 FEB Templates ---
     try:
         import cloud9
+
         c9_pkg = Path(cloud9.__file__).parent
         feb_files = list(c9_pkg.rglob("*.feb"))
         # Also check skcapstone defaults
@@ -667,17 +690,22 @@ def _detect_import_sources(home_path: Path) -> list[dict]:
         if defaults_dir.exists():
             feb_files.extend(defaults_dir.rglob("*.feb"))
         # Check user cloud9 dirs
-        for cloud9_dir in [Path.home() / ".cloud9" / "febs", Path.home() / ".cloud9" / "feb-backups"]:
+        for cloud9_dir in [
+            Path.home() / ".cloud9" / "febs",
+            Path.home() / ".cloud9" / "feb-backups",
+        ]:
             if cloud9_dir.exists():
                 feb_files.extend(cloud9_dir.glob("*.feb"))
         if feb_files:
-            sources.append({
-                "id": "cloud9",
-                "name": "Cloud 9 FEB Templates",
-                "available": True,
-                "detail": f"{len(feb_files)} FEB file(s)",
-                "paths": {"febs": feb_files},
-            })
+            sources.append(
+                {
+                    "id": "cloud9",
+                    "name": "Cloud 9 FEB Templates",
+                    "available": True,
+                    "detail": f"{len(feb_files)} FEB file(s)",
+                    "paths": {"febs": feb_files},
+                }
+            )
     except ImportError:
         pass
 
@@ -701,14 +729,15 @@ def _step_import_sources(home_path: Path) -> dict:
     sources = _detect_import_sources(home_path)
 
     if not sources:
-        click.echo(click.style("  ℹ ", fg="cyan") + "No existing agent data found — starting fresh")
+        click.echo(
+            click.style("  ℹ ", fg="cyan") + "No existing agent data found — starting fresh"
+        )
         return result
 
     click.echo()
     for i, src in enumerate(sources, 1):
         click.echo(
-            click.style(f"    {i}. ", fg="cyan")
-            + f"[bold]{src['name']}[/] — {src['detail']}"
+            click.style(f"    {i}. ", fg="cyan") + f"[bold]{src['name']}[/] — {src['detail']}"
         )
     click.echo()
 
@@ -750,7 +779,10 @@ def _step_import_sources(home_path: Path) -> dict:
                 for f in mem_src.glob("*.md"):
                     _shutil.copy2(f, mem_dest / f.name)
                     count += 1
-                click.echo(click.style("  ✓ ", fg="green") + f"Imported {count} memory files from OpenClaw")
+                click.echo(
+                    click.style("  ✓ ", fg="green")
+                    + f"Imported {count} memory files from OpenClaw"
+                )
 
             # Import soul/identity
             for doc_name in ("soul", "identity"):
@@ -760,7 +792,9 @@ def _step_import_sources(home_path: Path) -> dict:
                     dest.parent.mkdir(parents=True, exist_ok=True)
                     _shutil.copy2(doc_path, dest)
                     count += 1
-                    click.echo(click.style("  ✓ ", fg="green") + f"Imported {doc_path.name} from OpenClaw")
+                    click.echo(
+                        click.style("  ✓ ", fg="green") + f"Imported {doc_path.name} from OpenClaw"
+                    )
 
             # Import agent souls
             agents_dir = paths.get("agents")
@@ -777,7 +811,9 @@ def _step_import_sources(home_path: Path) -> dict:
                     target = agent_dest / f"{agent_name}-MEMORY.md"
                     _shutil.copy2(mem_file, target)
                     count += 1
-                click.echo(click.style("  ✓ ", fg="green") + f"Imported agent souls/memories from OpenClaw")
+                click.echo(
+                    click.style("  ✓ ", fg="green") + "Imported agent souls/memories from OpenClaw"
+                )
 
         elif sid == "claude":
             # Import Claude memory files
@@ -796,7 +832,10 @@ def _step_import_sources(home_path: Path) -> dict:
                         _shutil.copy2(memory_md, claude_dest / f"{proj_dir.name}-MEMORY.md")
                         count += 1
                 if count:
-                    click.echo(click.style("  ✓ ", fg="green") + f"Imported {count} files from Claude Code")
+                    click.echo(
+                        click.style("  ✓ ", fg="green")
+                        + f"Imported {count} files from Claude Code"
+                    )
 
         elif sid == "cloud9":
             # Import FEB files into trust/febs
@@ -808,7 +847,10 @@ def _step_import_sources(home_path: Path) -> dict:
                     if isinstance(feb_path, Path) and feb_path.exists():
                         _shutil.copy2(feb_path, febs_dest / feb_path.name)
                         count += 1
-                click.echo(click.style("  ✓ ", fg="green") + f"Imported {count} FEB file(s) into trust chain")
+                click.echo(
+                    click.style("  ✓ ", fg="green")
+                    + f"Imported {count} FEB file(s) into trust chain"
+                )
 
         result["imported_count"] += count
         if count > 0:
@@ -817,9 +859,12 @@ def _step_import_sources(home_path: Path) -> dict:
     click.echo()
     click.echo(
         click.style("  ✓ ", fg="green")
-        + f"Total: {result['imported_count']} file(s) imported from {len(result['sources'])} source(s)"
+        + f"Total: {result['imported_count']} file(s) imported from {len(result['sources'])} source(s)"  # noqa: E501
     )
-    click.echo(click.style("    ", fg="bright_black") + f"Imported data: {home_path / 'memory' / 'imported'}")
+    click.echo(
+        click.style("    ", fg="bright_black")
+        + f"Imported data: {home_path / 'memory' / 'imported'}"
+    )
 
     return result
 
@@ -835,19 +880,24 @@ def _step_ollama_models(prereqs: dict) -> dict:
     """
     import subprocess
 
-    DEFAULT_MODEL = "llama3.2"
-    DEFAULT_HOST = "http://localhost:11434"
+    DEFAULT_MODEL = "llama3.2"  # noqa: N806
+    DEFAULT_HOST = "http://localhost:11434"  # noqa: N806
 
     result = {"ok": False, "model": DEFAULT_MODEL, "host": DEFAULT_HOST}
 
     if not prereqs.get("ollama"):
         click.echo(click.style("  ⚠ ", fg="yellow") + "Ollama not available — skipping model pull")
-        click.echo(click.style("    ", fg="bright_black") + "Install: curl -fsSL https://ollama.ai/install.sh | sh")
-        click.echo(click.style("    ", fg="bright_black") + f"Pull later: ollama pull {DEFAULT_MODEL}")
+        click.echo(
+            click.style("    ", fg="bright_black")
+            + "Install: curl -fsSL https://ollama.ai/install.sh | sh"
+        )
+        click.echo(
+            click.style("    ", fg="bright_black") + f"Pull later: ollama pull {DEFAULT_MODEL}"
+        )
         return result
 
     # --- Ollama Host ---
-    click.echo(click.style("  ℹ ", fg="cyan") + f"Ollama is used for local/private LLM inference.")
+    click.echo(click.style("  ℹ ", fg="cyan") + "Ollama is used for local/private LLM inference.")
     click.echo(click.style("    ", fg="bright_black") + f"Default: {DEFAULT_HOST}")
     custom_host = click.prompt(
         "  Ollama host URL",
@@ -867,7 +917,10 @@ def _step_ollama_models(prereqs: dict) -> dict:
     try:
         r = subprocess.run(
             ["ollama", "list"],
-            capture_output=True, text=True, timeout=10, env=env,
+            capture_output=True,
+            text=True,
+            timeout=10,
+            env=env,
         )
         if r.returncode == 0 and r.stdout.strip():
             lines = r.stdout.strip().split("\n")[1:]  # skip header
@@ -885,7 +938,10 @@ def _step_ollama_models(prereqs: dict) -> dict:
 
     # --- Choose model ---
     click.echo()
-    click.echo(click.style("  ℹ ", fg="cyan") + "Popular models: llama3.2 (~2GB), qwen3:14b (~9GB), deepseek-r1:14b (~9GB)")
+    click.echo(
+        click.style("  ℹ ", fg="cyan")
+        + "Popular models: llama3.2 (~2GB), qwen3:14b (~9GB), deepseek-r1:14b (~9GB)"
+    )
     chosen = click.prompt(
         "  Model to use",
         default=DEFAULT_MODEL,
@@ -901,21 +957,26 @@ def _step_ollama_models(prereqs: dict) -> dict:
 
     # --- Pull ---
     if not click.confirm(f"  Pull {chosen}? (this may take a few minutes)", default=True):
-        click.echo(click.style("  ↷ ", fg="bright_black") + f"Skipped — pull later: ollama pull {chosen}")
+        click.echo(
+            click.style("  ↷ ", fg="bright_black") + f"Skipped — pull later: ollama pull {chosen}"
+        )
         return result
 
     click.echo(click.style("  ↓ ", fg="cyan") + f"Pulling {chosen}…")
     try:
         pull_result = subprocess.run(
             ["ollama", "pull", chosen],
-            timeout=600, env=env,
+            timeout=600,
+            env=env,
         )
         if pull_result.returncode == 0:
             click.echo(click.style("  ✓ ", fg="green") + f"{chosen} ready")
             result["ok"] = True
             return result
         else:
-            click.echo(click.style("  ✗ ", fg="red") + f"Pull failed (exit {pull_result.returncode})")
+            click.echo(
+                click.style("  ✗ ", fg="red") + f"Pull failed (exit {pull_result.returncode})"
+            )
             click.echo(click.style("    ", fg="bright_black") + f"Retry: ollama pull {chosen}")
             return result
     except subprocess.TimeoutExpired:
@@ -950,7 +1011,6 @@ def _step_config_files(home_path: Path, ollama_config: dict | None = None) -> tu
     else:
         try:
             from .consciousness_config import write_default_config
-            from .consciousness_loop import ConsciousnessConfig
 
             # If user configured a custom Ollama host/model, patch the defaults
             overrides = {}
@@ -961,7 +1021,7 @@ def _step_config_files(home_path: Path, ollama_config: dict | None = None) -> tu
                     overrides["ollama_model"] = ollama_config["model"]
 
             config_path = write_default_config(home_path, **overrides)
-            click.echo(click.style("  ✓ ", fg="green") + f"consciousness.yaml written")
+            click.echo(click.style("  ✓ ", fg="green") + "consciousness.yaml written")
             click.echo(click.style("    ", fg="bright_black") + str(config_path))
             consciousness_ok = True
         except Exception as exc:
@@ -985,7 +1045,8 @@ def _step_config_files(home_path: Path, ollama_config: dict | None = None) -> tu
                 click.echo(click.style("  ⚠ ", fg="yellow") + f"model_profiles.yaml: {exc}")
         else:
             click.echo(
-                click.style("  ⚠ ", fg="yellow") + "Bundled model_profiles.yaml not found — skipping"
+                click.style("  ⚠ ", fg="yellow")
+                + "Bundled model_profiles.yaml not found — skipping"
             )
 
     return consciousness_ok, profiles_ok
@@ -1047,9 +1108,11 @@ def _step_systemd_service_linux(agent_name: str = "sovereign") -> bool:
 
         result = install_service(agent_name=agent_name, enable=True, start=False)
         if result.get("installed"):
-            click.echo(click.style("  ✓ ", fg="green") + f"Systemd service installed")
+            click.echo(click.style("  ✓ ", fg="green") + "Systemd service installed")
             if result.get("enabled"):
-                click.echo(click.style("  ✓ ", fg="green") + f"Service enabled — auto-starts at login")
+                click.echo(
+                    click.style("  ✓ ", fg="green") + "Service enabled — auto-starts at login"
+                )
             click.echo(
                 click.style("    ", fg="bright_black")
                 + f"Start now: systemctl --user start {service_name}"
@@ -1057,7 +1120,9 @@ def _step_systemd_service_linux(agent_name: str = "sovereign") -> bool:
             return True
         else:
             click.echo(click.style("  ✗ ", fg="red") + "Service install failed")
-            click.echo(click.style("    ", fg="bright_black") + "Run manually: skcapstone daemon install")
+            click.echo(
+                click.style("    ", fg="bright_black") + "Run manually: skcapstone daemon install"
+            )
             return False
     except Exception as exc:
         click.echo(click.style("  ⚠ ", fg="yellow") + f"Systemd: {exc}")
@@ -1087,8 +1152,8 @@ def _step_launchd_service_macos(agent_name: str) -> bool:
 
     # Show available services
     available = list_available_services(agent_name)
-    core_services = [s for s in available if s["available"] and not s["suffix"].startswith("sk")]
-    optional_services = [s for s in available if s["available"] and s["suffix"].startswith("sk")]
+    [s for s in available if s["available"] and not s["suffix"].startswith("sk")]
+    [s for s in available if s["available"] and s["suffix"].startswith("sk")]
 
     click.echo("  Available services:")
     all_available = [s for s in available if s["available"]]
@@ -1118,13 +1183,16 @@ def _step_launchd_service_macos(agent_name: str) -> bool:
         try:
             indices = [int(x.strip()) - 1 for x in raw.split(",")]
             selected_suffixes = [
-                all_available[i]["suffix"]
-                for i in indices
-                if 0 <= i < len(all_available)
+                all_available[i]["suffix"] for i in indices if 0 <= i < len(all_available)
             ]
         except (ValueError, IndexError):
-            click.echo(click.style("  ⚠ ", fg="yellow") + "Invalid selection — installing core services only")
-            selected_suffixes = [s["suffix"] for s in all_available if not s["suffix"].startswith("sk")]
+            click.echo(
+                click.style("  ⚠ ", fg="yellow")
+                + "Invalid selection — installing core services only"
+            )
+            selected_suffixes = [
+                s["suffix"] for s in all_available if not s["suffix"].startswith("sk")
+            ]
 
     if not selected_suffixes:
         click.echo(click.style("  ↷ ", fg="bright_black") + "No services selected")
@@ -1147,8 +1215,12 @@ def _step_launchd_service_macos(agent_name: str) -> bool:
 
             click.echo()
             click.echo(click.style("    ", fg="bright_black") + "Manage services:")
-            click.echo(click.style("    ", fg="bright_black") + "  launchctl list | grep skcapstone")
-            click.echo(click.style("    ", fg="bright_black") + "  launchctl start com.skcapstone.daemon")
+            click.echo(
+                click.style("    ", fg="bright_black") + "  launchctl list | grep skcapstone"
+            )
+            click.echo(
+                click.style("    ", fg="bright_black") + "  launchctl start com.skcapstone.daemon"
+            )
             click.echo(click.style("    ", fg="bright_black") + "  skcapstone daemon uninstall")
             return True
         else:
@@ -1160,9 +1232,7 @@ def _step_launchd_service_macos(agent_name: str) -> bool:
         return False
 
 
-def _step_shell_profile(
-    home_path: Path, agent_name: str, agent_slug: str
-) -> bool:
+def _step_shell_profile(home_path: Path, agent_name: str, agent_slug: str) -> bool:
     """Write SKCAPSTONE profile environment variables to ~/.bashrc.
 
     Asks the user whether to set this agent as the default profile.
@@ -1318,6 +1388,7 @@ def _step_test_consciousness(home_path: Path) -> bool:
     # Load config to discover which backend/model was configured
     try:
         from .consciousness_config import load_consciousness_config
+
         config = load_consciousness_config(home_path)
     except Exception:
         # Fall back to defaults
@@ -1345,12 +1416,17 @@ def _step_test_consciousness(home_path: Path) -> bool:
             click.echo(click.style("    ", fg="bright_black") + f"Response: {preview!r}")
             return True
         else:
-            click.echo(click.style("  ⚠ ", fg="yellow") + "Empty response — model may still be loading")
+            click.echo(
+                click.style("  ⚠ ", fg="yellow") + "Empty response — model may still be loading"
+            )
             click.echo(click.style("    ", fg="bright_black") + f"Try: ollama run {ollama_model}")
             return False
     except Exception as exc:
         click.echo(click.style("  ⚠ ", fg="yellow") + f"Test failed: {exc}")
-        click.echo(click.style("    ", fg="bright_black") + f"Check: ollama serve && ollama run {ollama_model}")
+        click.echo(
+            click.style("    ", fg="bright_black")
+            + f"Check: ollama serve && ollama run {ollama_model}"
+        )
         return False
 
 
@@ -1434,7 +1510,8 @@ def run_onboard(home: Optional[str] = None) -> None:
     operator_name = None
     operator_fingerprint = None
     try:
-        from capauth.profile import load_profile, init_profile as capauth_init
+        from capauth.profile import init_profile as capauth_init
+        from capauth.profile import load_profile
 
         try:
             profile = load_profile()
@@ -1469,9 +1546,12 @@ def run_onboard(home: Optional[str] = None) -> None:
             op_email = Prompt.ask("  Operator email", default="")
             console.print()
 
-            with Status("  Generating operator PGP identity…", console=console, spinner="dots") as s:
+            with Status(
+                "  Generating operator PGP identity…", console=console, spinner="dots"
+            ) as s:
                 try:
                     import shutil as _shutil_capauth
+
                     capauth_home = Path.home() / ".capauth"
                     if capauth_home.exists():
                         # Back up and recreate
@@ -1504,6 +1584,7 @@ def run_onboard(home: Optional[str] = None) -> None:
     console.print()
     # Derive agent name from --agent flag (SKCAPSTONE_AGENT env) or ask
     import os as _os
+
     agent_flag = _os.environ.get("SKCAPSTONE_AGENT", "").strip()
     if agent_flag and agent_flag not in ("lumina",):
         # Agent name was specified via --agent flag — use it as default
@@ -1525,7 +1606,7 @@ def run_onboard(home: Optional[str] = None) -> None:
 
     # --- Offer CapAuth Syncthing sync (non-blocking) ---
     try:
-        from capauth.sync import is_syncthing_available, is_sync_configured, setup_syncthing_sync
+        from capauth.sync import is_sync_configured, is_syncthing_available, setup_syncthing_sync
 
         if is_syncthing_available() and not is_sync_configured():
             console.print()
@@ -1628,13 +1709,13 @@ def run_onboard(home: Optional[str] = None) -> None:
     # -----------------------------------------------------------------------
     # Post-wizard: Doctor Diagnostics (non-fatal)
     # -----------------------------------------------------------------------
-    console.print(f"\n  [bold cyan]Doctor Diagnostics[/]\n")
+    console.print("\n  [bold cyan]Doctor Diagnostics[/]\n")
     doctor_report = _step_doctor_check(home_path)
 
     # -----------------------------------------------------------------------
     # Post-wizard: Consciousness Test (optional, defaults to skip)
     # -----------------------------------------------------------------------
-    console.print(f"\n  [bold cyan]Consciousness Test[/]\n")
+    console.print("\n  [bold cyan]Consciousness Test[/]\n")
     consciousness_test_ok = _step_test_consciousness(home_path)
 
     # -----------------------------------------------------------------------
@@ -1643,6 +1724,7 @@ def run_onboard(home: Optional[str] = None) -> None:
     boot_message = f"You are {name}. You are sovereign. staycuriousANDkeepsmilin."
     try:
         from skmemory.soul import load_soul
+
         soul = load_soul()
         if soul and soul.boot_message:
             boot_message = soul.boot_message
@@ -1655,6 +1737,7 @@ def run_onboard(home: Optional[str] = None) -> None:
     # Write global CLAUDE.md from bundled skeleton template
     try:
         from .cli.setup import _write_global_claude_md
+
         _write_global_claude_md(home_path, name)
         _ok("~/.claude/CLAUDE.md written")
     except Exception as exc:
@@ -1663,6 +1746,7 @@ def run_onboard(home: Optional[str] = None) -> None:
     # Write ~/.claude/settings.json with SK hooks (merge with existing)
     try:
         from .cli.setup import _write_claude_settings
+
         settings_path = _write_claude_settings(merge=True)
         if settings_path:
             _ok(f"~/.claude/settings.json updated ({settings_path})")
@@ -1674,6 +1758,7 @@ def run_onboard(home: Optional[str] = None) -> None:
     # Register Claude Code hooks via skmemory (adds any hooks not yet in settings.json)
     try:
         from skmemory.register import register_hooks
+
         actions = register_hooks()
         _ok(f"Claude Code hooks registered ({', '.join(f'{k}={v}' for k, v in actions.items())})")
     except ImportError:
@@ -1700,24 +1785,42 @@ def run_onboard(home: Optional[str] = None) -> None:
     pillars_total = len(pillar_results)
     summary.add_row(
         "Pillar Packages",
-        "[green]ALL[/]" if pillars_installed == pillars_total else f"[yellow]{pillars_installed}/{pillars_total}[/]",
+        (
+            "[green]ALL[/]"
+            if pillars_installed == pillars_total
+            else f"[yellow]{pillars_installed}/{pillars_total}[/]"
+        ),
         f"{pillars_installed}/{pillars_total} installed",
     )
     if operator_name:
         summary.add_row(
             "Operator",
             "[green]ACTIVE[/]",
-            f"{operator_name} ({operator_fingerprint[:16]}…)" if operator_fingerprint else operator_name,
+            (
+                f"{operator_name} ({operator_fingerprint[:16]}…)"
+                if operator_fingerprint
+                else operator_name
+            ),
         )
-    summary.add_row("Identity", identity_status, f"{name} — {fingerprint[:16]}…" if len(fingerprint) > 16 else fingerprint)
+    summary.add_row(
+        "Identity",
+        identity_status,
+        f"{name} — {fingerprint[:16]}…" if len(fingerprint) > 16 else fingerprint,
+    )
     ollama_model_name = ollama_result.get("model", "llama3.2")
     ollama_host_display = ollama_result.get("host", "http://localhost:11434")
     summary.add_row(
         "Ollama Models",
         "[green]READY[/]" if ollama_ok else "[yellow]SKIPPED[/]",
-        f"{ollama_model_name} @ {ollama_host_display}" if ollama_ok else f"pull later: ollama pull {ollama_model_name}",
+        (
+            f"{ollama_model_name} @ {ollama_host_display}"
+            if ollama_ok
+            else f"pull later: ollama pull {ollama_model_name}"
+        ),
     )
-    config_status = "[green]ACTIVE[/]" if (consciousness_ok and profiles_ok) else "[yellow]PARTIAL[/]"
+    config_status = (
+        "[green]ACTIVE[/]" if (consciousness_ok and profiles_ok) else "[yellow]PARTIAL[/]"
+    )
     summary.add_row("Config Files", config_status, "consciousness.yaml + model_profiles.yaml")
     summary.add_row("Soul", "[green]ACTIVE[/]", title)
     summary.add_row("Memory", "[green]ACTIVE[/]", f"{seed_count} seed(s)")
@@ -1733,24 +1836,43 @@ def run_onboard(home: Optional[str] = None) -> None:
         summary.add_row("Import Sources", "[dim]SKIPPED[/]", "starting fresh")
     summary.add_row("Ritual", "[green]DONE[/]", "rehydration complete")
     summary.add_row("Trust", trust_status, "FEB chain verified")
-    summary.add_row("Mesh", "[green]ACTIVE[/]" if mesh_ok else "[yellow]MISSING[/]", "syncthing" if mesh_ok else "install syncthing")
-    summary.add_row("Heartbeat", "[green]ACTIVE[/]" if hb_ok else "[yellow]FAILED[/]", f"{agent_slug}.json" if hb_ok else "see above")
-    summary.add_row("Crush AI", "[green]READY[/]" if crush_ok else "[yellow]CONFIG ONLY[/]", "~/.config/crush/crush.json")
+    summary.add_row(
+        "Mesh",
+        "[green]ACTIVE[/]" if mesh_ok else "[yellow]MISSING[/]",
+        "syncthing" if mesh_ok else "install syncthing",
+    )
+    summary.add_row(
+        "Heartbeat",
+        "[green]ACTIVE[/]" if hb_ok else "[yellow]FAILED[/]",
+        f"{agent_slug}.json" if hb_ok else "see above",
+    )
+    summary.add_row(
+        "Crush AI",
+        "[green]READY[/]" if crush_ok else "[yellow]CONFIG ONLY[/]",
+        "~/.config/crush/crush.json",
+    )
     summary.add_row("Board", "[green]ACTIVE[/]", f"{open_task_count} open tasks")
     import platform as _plat
+
     _svc_type = "launchd" if _plat.system() == "Darwin" else "systemd"
     summary.add_row(
         "Auto-Start",
         "[green]INSTALLED[/]" if service_ok else "[dim]OPTIONAL[/]",
-        f"{_svc_type} services" if service_ok else f"skcapstone daemon install",
+        f"{_svc_type} services" if service_ok else "skcapstone daemon install",
     )
     summary.add_row(
         "Shell Profile",
         "[green]ACTIVE[/]" if profile_ok else "[dim]SKIPPED[/]",
         f"SKCAPSTONE_AGENT={agent_slug}" if profile_ok else "set manually in ~/.bashrc",
     )
-    doctor_status = "[green]ALL PASSED[/]" if doctor_report.all_passed else f"[yellow]{doctor_report.failed_count} failed[/]"
-    summary.add_row("Doctor", doctor_status, f"{doctor_report.passed_count}/{doctor_report.total_count} checks")
+    doctor_status = (
+        "[green]ALL PASSED[/]"
+        if doctor_report.all_passed
+        else f"[yellow]{doctor_report.failed_count} failed[/]"
+    )
+    summary.add_row(
+        "Doctor", doctor_status, f"{doctor_report.passed_count}/{doctor_report.total_count} checks"
+    )
     summary.add_row(
         "Consciousness Test",
         "[green]ACTIVE[/]" if consciousness_test_ok else "[dim]SKIPPED[/]",

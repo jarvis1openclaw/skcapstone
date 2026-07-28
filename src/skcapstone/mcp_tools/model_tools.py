@@ -38,7 +38,7 @@ TOOLS: list[Tool] = [
                 },
                 "privacy_sensitive": {
                     "type": "boolean",
-                    "description": "Force LOCAL tier \u2014 data never leaves node (default: false)",
+                    "description": "Force LOCAL tier \u2014 data never leaves node (default: false)",  # noqa: E501
                 },
                 "estimated_tokens": {
                     "type": "integer",

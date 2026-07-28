@@ -65,24 +65,26 @@ async def _handle_promoter_sweep(args: dict) -> list[TextContent]:
         limit=args.get("limit"),
         layer=args.get("layer"),
     )
-    return _json_response({
-        "scanned": result.scanned,
-        "promoted": result.promoted,
-        "skipped": result.skipped,
-        "dry_run": result.dry_run,
-        "by_layer": result.by_layer,
-        "promotions": [
-            {
-                "memory_id": c.memory_id,
-                "current_layer": c.current_layer,
-                "target_layer": c.target_layer,
-                "score": round(c.score, 3),
-                "promoted": c.promoted,
-            }
-            for c in result.candidates
-            if c.promoted or result.dry_run
-        ],
-    })
+    return _json_response(
+        {
+            "scanned": result.scanned,
+            "promoted": result.promoted,
+            "skipped": result.skipped,
+            "dry_run": result.dry_run,
+            "by_layer": result.by_layer,
+            "promotions": [
+                {
+                    "memory_id": c.memory_id,
+                    "current_layer": c.current_layer,
+                    "target_layer": c.target_layer,
+                    "score": round(c.score, 3),
+                    "promoted": c.promoted,
+                }
+                for c in result.candidates
+                if c.promoted or result.dry_run
+            ],
+        }
+    )
 
 
 async def _handle_promoter_history(args: dict) -> list[TextContent]:

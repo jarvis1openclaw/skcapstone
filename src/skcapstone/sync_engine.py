@@ -320,9 +320,7 @@ def write_outbox_envelope(
             logger.warning("PGP signing failed — writing unsigned envelope: %s", exc)
 
     envelope_id = (
-        envelope.get("envelope_id")
-        or envelope.get("message_id")
-        or str(int(time.time() * 1000))
+        envelope.get("envelope_id") or envelope.get("message_id") or str(int(time.time() * 1000))
     )
     filename = f"{envelope_id}{ENVELOPE_SUFFIX}"
     target = outbox_peer / filename

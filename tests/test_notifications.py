@@ -3,15 +3,15 @@
 from __future__ import annotations
 
 import time
-from unittest.mock import MagicMock, call, patch
+from unittest.mock import MagicMock, patch
 
 import pytest
 
 from skcapstone.notifications import (
     NotificationManager,
     desktop_notifications_enabled,
-    notify,
     get_manager,
+    notify,
 )
 
 

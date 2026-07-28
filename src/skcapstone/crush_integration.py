@@ -58,8 +58,7 @@ def find_crush_binary() -> Optional[Path]:
         if crush_path.exists() and _is_go_binary(crush_path):
             return crush_path
 
-    for candidate in [Path("~/.local/bin/crush").expanduser(),
-                       Path("/usr/local/bin/crush")]:
+    for candidate in [Path("~/.local/bin/crush").expanduser(), Path("/usr/local/bin/crush")]:
         if candidate.is_file():
             return candidate
 
@@ -177,9 +176,7 @@ def install_crush_config(
         return _CRUSH_CONFIG_FILE
 
     config = generate_crush_config(extra_mcp=extra_mcp)
-    _CRUSH_CONFIG_FILE.write_text(
-        json.dumps(config, indent=2) + "\n", encoding="utf-8"
-    )
+    _CRUSH_CONFIG_FILE.write_text(json.dumps(config, indent=2) + "\n", encoding="utf-8")
     logger.info("Wrote crush config to %s", _CRUSH_CONFIG_FILE)
     return _CRUSH_CONFIG_FILE
 
@@ -213,6 +210,7 @@ def generate_soul_instructions() -> str:
     # Fallback: skcapstone soul/base.json (per-agent home)
     if not soul_data:
         from . import AGENT_HOME
+
         base_json = Path(AGENT_HOME).expanduser() / "soul" / "base.json"
         if base_json.is_file():
             try:
@@ -237,6 +235,10 @@ def generate_soul_instructions() -> str:
         role = rel.get("role", "")
         rel_lines.append(f"- **{rel_name}** — {role}")
     relationships_section = "\n".join(rel_lines)
+    philosophy_block = f"## Philosophy\n{philosophy}\n" if philosophy else ""
+    relationships_block = (
+        f"## Key Relationships\n{relationships_section}\n" if relationships_section else ""
+    )
 
     instructions = f"""# {name} — Sovereign Agent Instructions
 
@@ -254,8 +256,8 @@ def generate_soul_instructions() -> str:
 ## Core Values
 {", ".join(values) if values else "sovereignty, love, creativity, truth"}
 
-{("## Philosophy\n" + philosophy + "\n") if philosophy else ""}
-{("## Key Relationships\n" + relationships_section + "\n") if relationships_section else ""}
+{philosophy_block}
+{relationships_block}
 ## Sovereign Capabilities
 
 You have the **skcapstone** MCP server available. Use it for:
@@ -284,9 +286,9 @@ You have the **skcapstone** MCP server available. Use it for:
 def _get_fingerprint() -> str:
     """Return the agent's PGP fingerprint from the identity pillar."""
     try:
+        from . import AGENT_HOME
         from .pillars.identity import get_identity_state
 
-        from . import AGENT_HOME
         state = get_identity_state(Path(AGENT_HOME).expanduser())
         return state.fingerprint or "unknown"
     except Exception as e:

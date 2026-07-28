@@ -297,15 +297,21 @@ def register_identity_commands(main: click.Group) -> None:
 
     @identity.command("migrate")
     @click.option(
-        "--home", default=SHARED_ROOT, type=click.Path(),
+        "--home",
+        default=SHARED_ROOT,
+        type=click.Path(),
         help="Shared root directory (~/.skcapstone).",
     )
     @click.option(
-        "--apply", "--write", "apply_", is_flag=True,
+        "--apply",
+        "--write",
+        "apply_",
+        is_flag=True,
         help="Actually write changes. Default is a dry-run (writes nothing).",
     )
     @click.option(
-        "--dry-run", is_flag=True,
+        "--dry-run",
+        is_flag=True,
         help="Explicitly preview only (the default). Overrides --apply if both given.",
     )
     @click.option("--json-out", is_flag=True, help="Output as machine-readable JSON.")
@@ -337,8 +343,11 @@ def register_identity_commands(main: click.Group) -> None:
 
 def _render_plan(plan: MigrationPlan) -> None:
     """Render a migration plan as human-readable Rich output."""
-    mode = "[yellow]DRY-RUN[/] (no files written — pass --apply to write)" \
-        if plan.dry_run else "[green]APPLY[/] (files written)"
+    mode = (
+        "[yellow]DRY-RUN[/] (no files written — pass --apply to write)"
+        if plan.dry_run
+        else "[green]APPLY[/] (files written)"
+    )
     console.print()
     console.print(f"  [bold]identity migrate[/]  {mode}")
     console.print(f"  [dim]{plan.home}[/]")

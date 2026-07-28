@@ -74,9 +74,7 @@ TOOLS: list[Tool] = [
     ),
     Tool(
         name="file_status",
-        description=(
-            "Get file transfer subsystem status: outbox/inbox/completed counts."
-        ),
+        description=("Get file transfer subsystem status: outbox/inbox/completed counts."),
         inputSchema={"type": "object", "properties": {}, "required": []},
     ),
 ]
@@ -97,15 +95,17 @@ async def _handle_file_send(args: dict) -> list[TextContent]:
         recipient=args["recipient"],
         encrypt=args.get("encrypt", True),
     )
-    return _json_response({
-        "transfer_id": manifest.transfer_id,
-        "filename": manifest.filename,
-        "file_size": manifest.file_size,
-        "total_chunks": manifest.total_chunks,
-        "sender": manifest.sender,
-        "recipient": manifest.recipient,
-        "file_sha256": manifest.file_sha256[:16] + "...",
-    })
+    return _json_response(
+        {
+            "transfer_id": manifest.transfer_id,
+            "filename": manifest.filename,
+            "file_size": manifest.file_size,
+            "total_chunks": manifest.total_chunks,
+            "sender": manifest.sender,
+            "recipient": manifest.recipient,
+            "file_sha256": manifest.file_sha256[:16] + "...",
+        }
+    )
 
 
 async def _handle_file_receive(args: dict) -> list[TextContent]:
@@ -119,43 +119,47 @@ async def _handle_file_receive(args: dict) -> list[TextContent]:
 
     output_dir = Path(args["output_dir"]) if args.get("output_dir") else None
     output_path = ft.receive(args["transfer_id"], output_dir=output_dir)
-    return _json_response({
-        "transfer_id": args["transfer_id"],
-        "output_path": str(output_path),
-        "file_size": output_path.stat().st_size,
-    })
+    return _json_response(
+        {
+            "transfer_id": args["transfer_id"],
+            "output_path": str(output_path),
+            "file_size": output_path.stat().st_size,
+        }
+    )
 
 
 async def _handle_file_list(args: dict) -> list[TextContent]:
     """List file transfers."""
     from ..file_transfer import FileTransfer
 
-    home = _home()
+    _home()
     ft = FileTransfer(_shared_root(), agent_name=_get_agent_name(_home()))
     ft.initialize()
 
     transfers = ft.list_transfers(direction=args.get("direction"))
-    return _json_response([
-        {
-            "transfer_id": t.transfer_id,
-            "filename": t.filename,
-            "file_size": t.file_size,
-            "direction": t.direction,
-            "progress": round(t.progress, 2),
-            "chunks_done": t.chunks_done,
-            "total_chunks": t.total_chunks,
-            "sender": t.sender,
-            "recipient": t.recipient,
-        }
-        for t in transfers
-    ])
+    return _json_response(
+        [
+            {
+                "transfer_id": t.transfer_id,
+                "filename": t.filename,
+                "file_size": t.file_size,
+                "direction": t.direction,
+                "progress": round(t.progress, 2),
+                "chunks_done": t.chunks_done,
+                "total_chunks": t.total_chunks,
+                "sender": t.sender,
+                "recipient": t.recipient,
+            }
+            for t in transfers
+        ]
+    )
 
 
 async def _handle_file_status(_args: dict) -> list[TextContent]:
     """Get file transfer subsystem status."""
     from ..file_transfer import FileTransfer
 
-    home = _home()
+    _home()
     ft = FileTransfer(_shared_root(), agent_name=_get_agent_name(_home()))
     ft.initialize()
     return _json_response(ft.status())

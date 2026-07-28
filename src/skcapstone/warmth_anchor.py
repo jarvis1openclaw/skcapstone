@@ -19,7 +19,6 @@ from __future__ import annotations
 import json
 import logging
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Optional
 
@@ -63,6 +62,7 @@ def get_anchor(home: Path) -> dict[str, Any]:
     """
     try:
         from skmemory.anchor import load_anchor
+
         anchor = load_anchor()
         if anchor is not None:
             return anchor.model_dump()
@@ -83,6 +83,7 @@ def get_boot_prompt(home: Path) -> str:
     """
     try:
         from skmemory.anchor import load_anchor
+
         anchor = load_anchor()
         if anchor is not None:
             return anchor.to_boot_prompt()
@@ -161,6 +162,7 @@ def update_anchor(
     """
     try:
         from skmemory.anchor import get_or_create_anchor, save_anchor
+
         anchor = get_or_create_anchor()
         anchor.update_from_session(
             warmth=warmth,
@@ -258,7 +260,7 @@ def _calibrate_from_febs(home: Path, cal: AnchorCalibration) -> None:
 
     oof_count = sum(1 for f in febs if f.get("oof_triggered"))
     intensities = [f.get("intensity", 0) for f in febs]
-    max_intensity = max(intensities) if intensities else 0
+    max(intensities) if intensities else 0
     avg_intensity = sum(intensities) / len(intensities) if intensities else 0
 
     if oof_count > 0:
@@ -302,7 +304,9 @@ def _calibrate_from_memories(home: Path, cal: AnchorCalibration) -> None:
         cal.reasoning.append(f"{high_importance} high-importance memories — strong engagement")
 
     if avg_importance >= 0.6:
-        cal.reasoning.append(f"Avg memory importance {avg_importance:.2f} — meaningful conversations")
+        cal.reasoning.append(
+            f"Avg memory importance {avg_importance:.2f} — meaningful conversations"
+        )
 
     cal.sources.append(f"memories ({len(memories)} recent)")
 

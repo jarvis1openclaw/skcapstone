@@ -42,7 +42,7 @@ TOOLS: list[Tool] = [
                 },
                 "tailnet_hostname": {
                     "type": "string",
-                    "description": "Tailscale hostname for Tier 2 document (auto-detected if omitted)",
+                    "description": "Tailscale hostname for Tier 2 document (auto-detected if omitted)",  # noqa: E501
                 },
                 "tailnet_name": {
                     "type": "string",
@@ -123,7 +123,7 @@ TOOLS: list[Tool] = [
             "properties": {
                 "publish_public": {
                     "type": "boolean",
-                    "description": "Set to false to opt out of public Tier 3 DID. Omit to view current policy.",
+                    "description": "Set to false to opt out of public Tier 3 DID. Omit to view current policy.",  # noqa: E501
                 },
             },
             "required": [],
@@ -176,6 +176,7 @@ def _load_policy() -> dict:
 def _save_policy(policy: dict) -> None:
     """Persist publication policy to disk."""
     from datetime import datetime, timezone
+
     p = _policy_path()
     p.parent.mkdir(parents=True, exist_ok=True)
     policy["updated_at"] = datetime.now(timezone.utc).isoformat()
@@ -271,12 +272,14 @@ async def _handle_did_verify_peer(args: dict) -> list[TextContent]:
 
     pub_armor = peer_data.get("public_key") or peer_data.get("public_key_armor")
     if not pub_armor:
-        return _json_response({
-            "name": name,
-            "verified": False,
-            "cached_did_key": peer_data.get("did_key"),
-            "detail": "No public_key in peer file — cannot compute did:key",
-        })
+        return _json_response(
+            {
+                "name": name,
+                "verified": False,
+                "cached_did_key": peer_data.get("did_key"),
+                "detail": "No public_key in peer file — cannot compute did:key",
+            }
+        )
 
     try:
         from capauth.did import (  # type: ignore[import]
@@ -284,6 +287,7 @@ async def _handle_did_verify_peer(args: dict) -> list[TextContent]:
             _pgp_armor_to_rsa_numbers,
             _rsa_numbers_to_der,
         )
+
         n, e = _pgp_armor_to_rsa_numbers(pub_armor)
         computed = _compute_did_key(_rsa_numbers_to_der(n, e))
     except Exception as exc:
@@ -303,18 +307,20 @@ async def _handle_did_verify_peer(args: dict) -> list[TextContent]:
         except Exception as exc:
             logger.warning("Failed to cache did:key back to peer file %s: %s", peer_file, exc)
 
-    return _json_response({
-        "name": name,
-        "fingerprint": peer_data.get("fingerprint"),
-        "computed_did_key": computed,
-        "cached_did_key": cached,
-        "match": match,
-        "verified": True,
-        "detail": (
-            "did:key computed from public key"
-            + (" (matches cached)" if match else " (cache updated)")
-        ),
-    })
+    return _json_response(
+        {
+            "name": name,
+            "fingerprint": peer_data.get("fingerprint"),
+            "computed_did_key": computed,
+            "cached_did_key": cached,
+            "match": match,
+            "verified": True,
+            "detail": (
+                "did:key computed from public key"
+                + (" (matches cached)" if match else " (cache updated)")
+            ),
+        }
+    )
 
 
 async def _handle_did_publish(args: dict) -> list[TextContent]:
@@ -379,19 +385,22 @@ async def _handle_did_publish(args: dict) -> list[TextContent]:
     else:
         skipped.append(str(did_dir / "public.json"))
 
-    return _json_response({
-        "published": not errors,
-        "publish_public": publish_public,
-        "did_key": gen._ctx.did_key_id,
-        "fingerprint": gen._ctx.fingerprint,
-        "written": written,
-        "skipped": skipped,
-        "errors": errors,
-        "note": (
-            None if publish_public
-            else "Tier 3 (public) skipped — opt-out active. Run did_publish(publish_public=true) to enable."
-        ),
-    })
+    return _json_response(
+        {
+            "published": not errors,
+            "publish_public": publish_public,
+            "did_key": gen._ctx.did_key_id,
+            "fingerprint": gen._ctx.fingerprint,
+            "written": written,
+            "skipped": skipped,
+            "errors": errors,
+            "note": (
+                None
+                if publish_public
+                else "Tier 3 (public) skipped — opt-out active. Run did_publish(publish_public=true) to enable."  # noqa: E501
+            ),
+        }
+    )
 
 
 async def _handle_did_policy(args: dict) -> list[TextContent]:
@@ -407,21 +416,23 @@ async def _handle_did_policy(args: dict) -> list[TextContent]:
 
     publish_public = bool(policy.get("publish_public", True))
 
-    return _json_response({
-        "action": action,
-        "publish_public": publish_public,
-        "policy_file": str(_policy_path()),
-        "privacy_level": (
-            "public — Tier 1 (did:key) + Tier 2 (mesh) + Tier 3 (skworld.io)"
-            if publish_public
-            else "private — Tier 1 (did:key) + Tier 2 (mesh) only; no public internet exposure"
-        ),
-        "note": (
-            "Default. To opt out: did_policy(publish_public=false)"
-            if publish_public
-            else "Opted out of public publishing. To opt back in: did_policy(publish_public=true)"
-        ),
-    })
+    return _json_response(
+        {
+            "action": action,
+            "publish_public": publish_public,
+            "policy_file": str(_policy_path()),
+            "privacy_level": (
+                "public — Tier 1 (did:key) + Tier 2 (mesh) + Tier 3 (skworld.io)"
+                if publish_public
+                else "private — Tier 1 (did:key) + Tier 2 (mesh) only; no public internet exposure"
+            ),
+            "note": (
+                "Default. To opt out: did_policy(publish_public=false)"
+                if publish_public
+                else "Opted out of public publishing. To opt back in: did_policy(publish_public=true)"  # noqa: E501
+            ),
+        }
+    )
 
 
 async def _handle_did_identity_card(args: dict) -> list[TextContent]:

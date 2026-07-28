@@ -218,7 +218,8 @@ class AgentManifest(BaseModel):
         has_memory = self.memory.status == PillarStatus.ACTIVE
         has_trust = self.trust.status in (PillarStatus.ACTIVE, PillarStatus.DEGRADED)
         has_consciousness = self.consciousness.status in (
-            PillarStatus.ACTIVE, PillarStatus.DEGRADED
+            PillarStatus.ACTIVE,
+            PillarStatus.DEGRADED,
         )
         return has_identity and has_memory and has_trust and has_consciousness
 

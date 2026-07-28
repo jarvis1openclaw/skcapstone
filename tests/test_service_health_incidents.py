@@ -1,4 +1,5 @@
 """service_health incident behavior — no recurring-note churn (prb-7810b08e)."""
+
 from pathlib import Path
 
 import pytest

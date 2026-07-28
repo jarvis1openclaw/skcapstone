@@ -151,11 +151,7 @@ def _check_sync_conflicts(home: Path) -> list[Check]:
     """
     conflicts: list[Path] = []
     if home.exists():
-        conflicts = [
-            p
-            for p in home.rglob("*.sync-conflict-*")
-            if ".stversions" not in p.parts
-        ]
+        conflicts = [p for p in home.rglob("*.sync-conflict-*") if ".stversions" not in p.parts]
     if not conflicts:
         return [
             Check(
@@ -294,10 +290,18 @@ def _failed_sk_units() -> tuple[Optional[list[str]], str]:
     try:
         proc = subprocess.run(
             [
-                "systemctl", "--user", "list-units", "--all",
-                "--state=failed", "--no-legend", "--plain", "--no-pager",
+                "systemctl",
+                "--user",
+                "list-units",
+                "--all",
+                "--state=failed",
+                "--no-legend",
+                "--plain",
+                "--no-pager",
             ],
-            capture_output=True, text=True, timeout=15,
+            capture_output=True,
+            text=True,
+            timeout=15,
         )
     except (OSError, subprocess.SubprocessError) as exc:
         return None, str(exc)
@@ -379,9 +383,7 @@ def _check_systemd_runtime(home: Path) -> list[Check]:
                 else "none installed (daemon not managed by systemd, optional)"
             ),
             fix=(
-                ""
-                if installed
-                else "Install the daemon service with: skcapstone daemon install"
+                "" if installed else "Install the daemon service with: skcapstone daemon install"
             ),
             category="systemd",
         )
@@ -462,9 +464,7 @@ def _check_systemd_runtime(home: Path) -> list[Check]:
     return checks
 
 
-def _scan_json_store(
-    files: list[Path], *, jsonl: bool
-) -> tuple[int, list[str]]:
+def _scan_json_store(files: list[Path], *, jsonl: bool) -> tuple[int, list[str]]:
     """Parse a set of store files, returning (scanned, unreadable descriptions).
 
     Args:
@@ -574,7 +574,11 @@ def _check_store_integrity(home: Path) -> list[Check]:
                 if not gtd_problems
                 else f"{len(gtd_problems)} corrupt: {'; '.join(gtd_problems[:3])}"
             ),
-            fix="" if not gtd_problems else "Fix the corrupt JSON in ~/.skcapstone/coordination/gtd/",
+            fix=(
+                ""
+                if not gtd_problems
+                else "Fix the corrupt JSON in ~/.skcapstone/coordination/gtd/"
+            ),
             category="store",
         )
     )
@@ -756,7 +760,7 @@ def _check_agent_home(home: Path) -> list[Check]:
                 description=f"{dirname}/ directory",
                 passed=dirpath.exists(),
                 detail=str(dirpath) if dirpath.exists() else "missing",
-                fix=f"skcapstone init --name YourAgent" if not dirpath.exists() else "",
+                fix="skcapstone init --name YourAgent" if not dirpath.exists() else "",
                 category="agent",
             )
         )
@@ -816,7 +820,7 @@ def _check_identity(home: Path) -> list[Check]:
                     name="identity:profile",
                     description="Agent identity",
                     passed=True,
-                    detail=f"Fingerprint: {fp[:16]}... ({'CapAuth' if managed else 'placeholder'})",
+                    detail=f"Fingerprint: {fp[:16]}... ({'CapAuth' if managed else 'placeholder'})",  # noqa: E501
                     category="identity",
                 )
             )
@@ -965,6 +969,7 @@ def _check_identity_consistency(home: Path) -> list[Check]:
     resolver = None
     try:
         from capauth import resolve_agent_identity as resolver  # type: ignore
+
         checks.append(
             Check(
                 name="identity:resolver",
@@ -1045,7 +1050,7 @@ def _check_identity_consistency(home: Path) -> list[Check]:
             fix=(
                 ""
                 if operator_ok
-                else "Set \"role\": \"operator\" on ~/.skcapstone/identity/identity.json "
+                else 'Set "role": "operator" on ~/.skcapstone/identity/identity.json '
                 "(shared file is the operator; agents resolve per-agent)"
             ),
             category="identity",
@@ -1059,7 +1064,11 @@ def _check_identity_consistency(home: Path) -> list[Check]:
             name="identity:no-placeholder",
             description="No @capauth.local placeholder identities",
             passed=not placeholders,
-            detail="clean" if not placeholders else f"{len(placeholders)} file(s): {', '.join(placeholders)}",
+            detail=(
+                "clean"
+                if not placeholders
+                else f"{len(placeholders)} file(s): {', '.join(placeholders)}"
+            ),
             fix=(
                 ""
                 if not placeholders
@@ -1073,8 +1082,7 @@ def _check_identity_consistency(home: Path) -> list[Check]:
     # 5. Every provisioned agent carries a per-agent identity.json.
     provisioned = _provisioned_agents(home)
     missing = [
-        a for a in provisioned
-        if not (home / "agents" / a / "identity" / "identity.json").exists()
+        a for a in provisioned if not (home / "agents" / a / "identity" / "identity.json").exists()
     ]
     if not provisioned:
         checks.append(
@@ -1303,7 +1311,7 @@ def _check_sync(home: Path) -> list[Check]:
                     description="Sync backends",
                     passed=len(backends) > 0,
                     detail=(
-                        f"{len(backends)} backend(s): {', '.join(b.get('type', '?') for b in backends)}"
+                        f"{len(backends)} backend(s): {', '.join(b.get('type', '?') for b in backends)}"  # noqa: E501
                         if backends
                         else "none configured"
                     ),
@@ -1436,11 +1444,7 @@ def _expected_mcp_servers() -> dict[str, dict]:
     """
     from . import DEFAULT_AGENT
 
-    agent = (
-        os.environ.get("SKAGENT")
-        or os.environ.get("SKCAPSTONE_AGENT")
-        or DEFAULT_AGENT
-    )
+    agent = os.environ.get("SKAGENT") or os.environ.get("SKCAPSTONE_AGENT") or DEFAULT_AGENT
     sk_home = os.environ.get("SKCAPSTONE_HOME") or str(Path("~/.skcapstone").expanduser())
     return {
         "skmemory": {
@@ -1530,13 +1534,15 @@ def _check_harness_env(home: Path) -> list[Check]:
     checks: list[Check] = []
 
     if not Path("~/.claude.json").expanduser().exists():
-        checks.append(Check(
-            name="harness:claude-code",
-            description="Claude Code config (~/.claude.json)",
-            passed=True,
-            detail="not detected — skipping harness checks",
-            category="harness",
-        ))
+        checks.append(
+            Check(
+                name="harness:claude-code",
+                description="Claude Code config (~/.claude.json)",
+                passed=True,
+                detail="not detected — skipping harness checks",
+                category="harness",
+            )
+        )
         return checks
 
     registered = _registered_mcp_servers()
@@ -1544,13 +1550,15 @@ def _check_harness_env(home: Path) -> list[Check]:
 
     for name, spec in _expected_mcp_servers().items():
         if name in registered:
-            checks.append(Check(
-                name=f"harness:mcp:{name}",
-                description=f"MCP server '{name}' registered with Claude Code",
-                passed=True,
-                detail="present in a config Claude Code reads",
-                category="harness",
-            ))
+            checks.append(
+                Check(
+                    name=f"harness:mcp:{name}",
+                    description=f"MCP server '{name}' registered with Claude Code",
+                    passed=True,
+                    detail="present in a config Claude Code reads",
+                    category="harness",
+                )
+            )
             continue
 
         if name in dead:
@@ -1566,14 +1574,16 @@ def _check_harness_env(home: Path) -> list[Check]:
                 f"claude mcp add {name} --scope user -e SKCHAT_IDENTITY=<your-identity> "
                 f"-- {binary}  # identity is account-specific"
             )
-        checks.append(Check(
-            name=f"harness:mcp:{name}",
-            description=f"MCP server '{name}' registered with Claude Code",
-            passed=False,
-            detail=detail,
-            fix=fix,
-            category="harness",
-        ))
+        checks.append(
+            Check(
+                name=f"harness:mcp:{name}",
+                description=f"MCP server '{name}' registered with Claude Code",
+                passed=False,
+                detail=detail,
+                fix=fix,
+                category="harness",
+            )
+        )
 
     # SessionStart hook must reference an existing skcapstone binary.
     settings = _load_json_safe(_claude_config_home() / "settings.json")
@@ -1605,50 +1615,58 @@ def _check_harness_env(home: Path) -> list[Check]:
                 break
 
         if missing:
-            checks.append(Check(
-                name="harness:hook:sessionstart",
-                description="SessionStart hook skcapstone binary",
-                passed=False,
-                detail=f"hook references missing binary: {missing}",
-                fix=f"Repoint the hook at {live or 'the live skcapstone'} (skcapstone doctor --fix)",
-                category="harness",
-            ))
+            checks.append(
+                Check(
+                    name="harness:hook:sessionstart",
+                    description="SessionStart hook skcapstone binary",
+                    passed=False,
+                    detail=f"hook references missing binary: {missing}",
+                    fix=f"Repoint the hook at {live or 'the live skcapstone'} (skcapstone doctor --fix)",  # noqa: E501
+                    category="harness",
+                )
+            )
         elif stale:
-            checks.append(Check(
-                name="harness:hook:sessionstart",
-                description="SessionStart hook skcapstone binary",
-                passed=False,
-                detail=f"hook uses {stale}, but PATH skcapstone is {live} (possible stale install)",
-                fix=f"Repoint the hook at {live} (skcapstone doctor --fix)",
-                category="harness",
-            ))
+            checks.append(
+                Check(
+                    name="harness:hook:sessionstart",
+                    description="SessionStart hook skcapstone binary",
+                    passed=False,
+                    detail=f"hook uses {stale}, but PATH skcapstone is {live} (possible stale install)",  # noqa: E501
+                    fix=f"Repoint the hook at {live} (skcapstone doctor --fix)",
+                    category="harness",
+                )
+            )
         else:
-            checks.append(Check(
-                name="harness:hook:sessionstart",
-                description="SessionStart hook skcapstone binary",
-                passed=True,
-                detail=hook_binary,
-                category="harness",
-            ))
+            checks.append(
+                Check(
+                    name="harness:hook:sessionstart",
+                    description="SessionStart hook skcapstone binary",
+                    passed=True,
+                    detail=hook_binary,
+                    category="harness",
+                )
+            )
 
     checks.extend(_check_yolo())
 
     # skwhisper CLI shim — only required when this agent uses the whisper layer.
     if (home / "skwhisper").exists():
         wpath = shutil.which("skwhisper")
-        checks.append(Check(
-            name="harness:skwhisper",
-            description="skwhisper CLI on PATH",
-            passed=bool(wpath),
-            detail=wpath or "not found (whisper layer present but no CLI shim)",
-            fix=(
-                ""
-                if wpath
-                else "Add a shim on PATH that runs `python -m skwhisper` "
-                "with the skwhisper repo on PYTHONPATH"
-            ),
-            category="harness",
-        ))
+        checks.append(
+            Check(
+                name="harness:skwhisper",
+                description="skwhisper CLI on PATH",
+                passed=bool(wpath),
+                detail=wpath or "not found (whisper layer present but no CLI shim)",
+                fix=(
+                    ""
+                    if wpath
+                    else "Add a shim on PATH that runs `python -m skwhisper` "
+                    "with the skwhisper repo on PYTHONPATH"
+                ),
+                category="harness",
+            )
+        )
 
     return checks
 
@@ -1703,39 +1721,47 @@ def _check_yolo() -> list[Check]:
             continue
         any_active = True
         if env_on and persisted:
-            checks.append(Check(
-                name=f"harness:yolo:{tool}",
-                description=f"{tool} permission bypass ({var})",
-                passed=True,
-                detail=f"ENABLED globally — adds {flag}",
-                category="harness",
-            ))
+            checks.append(
+                Check(
+                    name=f"harness:yolo:{tool}",
+                    description=f"{tool} permission bypass ({var})",
+                    passed=True,
+                    detail=f"ENABLED globally — adds {flag}",
+                    category="harness",
+                )
+            )
         elif env_on and not persisted:
-            checks.append(Check(
-                name=f"harness:yolo:{tool}",
-                description=f"{tool} permission bypass ({var})",
-                passed=False,
-                detail="active in this shell but NOT persisted in any rc file",
-                fix=f"Add `export {var}=1` to ~/.bashrc to make it permanent",
-                category="harness",
-            ))
+            checks.append(
+                Check(
+                    name=f"harness:yolo:{tool}",
+                    description=f"{tool} permission bypass ({var})",
+                    passed=False,
+                    detail="active in this shell but NOT persisted in any rc file",
+                    fix=f"Add `export {var}=1` to ~/.bashrc to make it permanent",
+                    category="harness",
+                )
+            )
         else:  # persisted but not in current env (stale shell / rc not sourced)
-            checks.append(Check(
-                name=f"harness:yolo:{tool}",
-                description=f"{tool} permission bypass ({var})",
-                passed=True,
-                detail="persisted in rc file (re-source the shell to activate)",
-                category="harness",
-            ))
+            checks.append(
+                Check(
+                    name=f"harness:yolo:{tool}",
+                    description=f"{tool} permission bypass ({var})",
+                    passed=True,
+                    detail="persisted in rc file (re-source the shell to activate)",
+                    category="harness",
+                )
+            )
 
     if not any_active:
-        checks.append(Check(
-            name="harness:yolo",
-            description="AI-harness permission bypass (SK_*_YOLO)",
-            passed=True,
-            detail="disabled — wrappers run with permission prompts (safe default)",
-            category="harness",
-        ))
+        checks.append(
+            Check(
+                name="harness:yolo",
+                description="AI-harness permission bypass (SK_*_YOLO)",
+                passed=True,
+                detail="disabled — wrappers run with permission prompts (safe default)",
+                category="harness",
+            )
+        )
 
     return checks
 
@@ -1777,17 +1803,21 @@ def run_fixes(report: DiagnosticReport, home: Path) -> list[FixResult]:
         if check.name == "home:exists":
             try:
                 home.mkdir(parents=True, exist_ok=True)
-                results.append(FixResult(
-                    check_name=check.name,
-                    success=True,
-                    action=f"Created agent home directory {home}",
-                ))
+                results.append(
+                    FixResult(
+                        check_name=check.name,
+                        success=True,
+                        action=f"Created agent home directory {home}",
+                    )
+                )
             except OSError as exc:
-                results.append(FixResult(
-                    check_name=check.name,
-                    success=False,
-                    error=str(exc),
-                ))
+                results.append(
+                    FixResult(
+                        check_name=check.name,
+                        success=False,
+                        error=str(exc),
+                    )
+                )
 
         # Fix missing directories
         elif check.name.startswith("home:") and check.name != "home:manifest":
@@ -1795,24 +1825,30 @@ def run_fixes(report: DiagnosticReport, home: Path) -> list[FixResult]:
             dirpath = home / dirname
             try:
                 dirpath.mkdir(parents=True, exist_ok=True)
-                results.append(FixResult(
-                    check_name=check.name,
-                    success=True,
-                    action=f"Created directory {dirpath}",
-                ))
+                results.append(
+                    FixResult(
+                        check_name=check.name,
+                        success=True,
+                        action=f"Created directory {dirpath}",
+                    )
+                )
             except OSError as exc:
-                results.append(FixResult(
-                    check_name=check.name,
-                    success=False,
-                    error=str(exc),
-                ))
+                results.append(
+                    FixResult(
+                        check_name=check.name,
+                        success=False,
+                        error=str(exc),
+                    )
+                )
 
         # Fix missing manifest
         elif check.name == "home:manifest":
             manifest_path = home / "manifest.json"
             try:
                 if manifest_path.exists():
-                    raise FileExistsError(f"Refusing to overwrite existing manifest: {manifest_path}")
+                    raise FileExistsError(
+                        f"Refusing to overwrite existing manifest: {manifest_path}"
+                    )
                 data = {
                     "name": os.environ.get("SKCAPSTONE_AGENT", "sovereign"),
                     "version": "0.0.0",
@@ -1820,17 +1856,21 @@ def run_fixes(report: DiagnosticReport, home: Path) -> list[FixResult]:
                     "connectors": [],
                 }
                 manifest_path.write_text(json.dumps(data, indent=2), encoding="utf-8")
-                results.append(FixResult(
-                    check_name=check.name,
-                    success=True,
-                    action=f"Created default manifest at {manifest_path}",
-                ))
+                results.append(
+                    FixResult(
+                        check_name=check.name,
+                        success=True,
+                        action=f"Created default manifest at {manifest_path}",
+                    )
+                )
             except (OSError, FileExistsError) as exc:
-                results.append(FixResult(
-                    check_name=check.name,
-                    success=False,
-                    error=str(exc),
-                ))
+                results.append(
+                    FixResult(
+                        check_name=check.name,
+                        success=False,
+                        error=str(exc),
+                    )
+                )
 
         # Fix missing memory store
         elif check.name == "memory:store":
@@ -1838,17 +1878,21 @@ def run_fixes(report: DiagnosticReport, home: Path) -> list[FixResult]:
             try:
                 for layer in ("short-term", "mid-term", "long-term"):
                     (memory_dir / layer).mkdir(parents=True, exist_ok=True)
-                results.append(FixResult(
-                    check_name=check.name,
-                    success=True,
-                    action=f"Created memory directories at {memory_dir}",
-                ))
+                results.append(
+                    FixResult(
+                        check_name=check.name,
+                        success=True,
+                        action=f"Created memory directories at {memory_dir}",
+                    )
+                )
             except OSError as exc:
-                results.append(FixResult(
-                    check_name=check.name,
-                    success=False,
-                    error=str(exc),
-                ))
+                results.append(
+                    FixResult(
+                        check_name=check.name,
+                        success=False,
+                        error=str(exc),
+                    )
+                )
 
         # Rebuild missing memory index
         elif check.name == "memory:index":
@@ -1865,7 +1909,9 @@ def run_fixes(report: DiagnosticReport, home: Path) -> list[FixResult]:
                             payload = json.loads(memory_file.read_text(encoding="utf-8"))
                         except (OSError, json.JSONDecodeError):
                             continue
-                        memory_id = payload.get("memory_id") or payload.get("id") or memory_file.stem
+                        memory_id = (
+                            payload.get("memory_id") or payload.get("id") or memory_file.stem
+                        )
                         index_data[memory_id] = {
                             "layer": layer,
                             "tags": payload.get("tags", []),
@@ -1874,17 +1920,21 @@ def run_fixes(report: DiagnosticReport, home: Path) -> list[FixResult]:
                         }
                 memory_dir.mkdir(parents=True, exist_ok=True)
                 index_path.write_text(json.dumps(index_data, indent=2), encoding="utf-8")
-                results.append(FixResult(
-                    check_name=check.name,
-                    success=True,
-                    action=f"Rebuilt memory index at {index_path}",
-                ))
+                results.append(
+                    FixResult(
+                        check_name=check.name,
+                        success=True,
+                        action=f"Rebuilt memory index at {index_path}",
+                    )
+                )
             except OSError as exc:
-                results.append(FixResult(
-                    check_name=check.name,
-                    success=False,
-                    error=str(exc),
-                ))
+                results.append(
+                    FixResult(
+                        check_name=check.name,
+                        success=False,
+                        error=str(exc),
+                    )
+                )
 
         # Fix missing sync directory
         elif check.name == "sync:dir":
@@ -1892,17 +1942,21 @@ def run_fixes(report: DiagnosticReport, home: Path) -> list[FixResult]:
             try:
                 for subdir in ("outbox", "inbox", "archive"):
                     (sync_dir / subdir).mkdir(parents=True, exist_ok=True)
-                results.append(FixResult(
-                    check_name=check.name,
-                    success=True,
-                    action=f"Created sync directories at {sync_dir}",
-                ))
+                results.append(
+                    FixResult(
+                        check_name=check.name,
+                        success=True,
+                        action=f"Created sync directories at {sync_dir}",
+                    )
+                )
             except OSError as exc:
-                results.append(FixResult(
-                    check_name=check.name,
-                    success=False,
-                    error=str(exc),
-                ))
+                results.append(
+                    FixResult(
+                        check_name=check.name,
+                        success=False,
+                        error=str(exc),
+                    )
+                )
 
         # Fix Codex global SK agent context bootstrap
         elif check.name == "codex:agent_context":
@@ -1910,34 +1964,44 @@ def run_fixes(report: DiagnosticReport, home: Path) -> list[FixResult]:
                 from .codex_setup import ensure_codex_setup
 
                 actions = ensure_codex_setup()
-                results.append(FixResult(
-                    check_name=check.name,
-                    success=True,
-                    action=", ".join(actions) if actions else "Codex bootstrap already configured",
-                ))
+                results.append(
+                    FixResult(
+                        check_name=check.name,
+                        success=True,
+                        action=(
+                            ", ".join(actions) if actions else "Codex bootstrap already configured"
+                        ),
+                    )
+                )
             except OSError as exc:
-                results.append(FixResult(
-                    check_name=check.name,
-                    success=False,
-                    error=str(exc),
-                ))
+                results.append(
+                    FixResult(
+                        check_name=check.name,
+                        success=False,
+                        error=str(exc),
+                    )
+                )
 
         # Register a missing MCP server with Claude Code (user scope).
         elif check.name.startswith("harness:mcp:"):
             name = check.name.split(":", 2)[2]
             spec = _expected_mcp_servers().get(name)
             if not spec or not spec.get("autofix"):
-                results.append(FixResult(
-                    check_name=check.name,
-                    success=False,
-                    error="manual fix required (identity is account-specific) — see hint",
-                ))
+                results.append(
+                    FixResult(
+                        check_name=check.name,
+                        success=False,
+                        error="manual fix required (identity is account-specific) — see hint",
+                    )
+                )
             elif not shutil.which("claude"):
-                results.append(FixResult(
-                    check_name=check.name,
-                    success=False,
-                    error="claude CLI not found on PATH",
-                ))
+                results.append(
+                    FixResult(
+                        check_name=check.name,
+                        success=False,
+                        error="claude CLI not found on PATH",
+                    )
+                )
             else:
                 binary = shutil.which(spec["binary"]) or spec["binary"]
                 cmd = ["claude", "mcp", "add", name, "--scope", "user"]
@@ -1947,34 +2011,42 @@ def run_fixes(report: DiagnosticReport, home: Path) -> list[FixResult]:
                 try:
                     proc = subprocess.run(cmd, capture_output=True, text=True, timeout=30)
                     if proc.returncode == 0:
-                        results.append(FixResult(
-                            check_name=check.name,
-                            success=True,
-                            action=f"Registered MCP server '{name}' (user scope)",
-                        ))
+                        results.append(
+                            FixResult(
+                                check_name=check.name,
+                                success=True,
+                                action=f"Registered MCP server '{name}' (user scope)",
+                            )
+                        )
                     else:
-                        results.append(FixResult(
+                        results.append(
+                            FixResult(
+                                check_name=check.name,
+                                success=False,
+                                error=(proc.stderr or proc.stdout).strip()[:200],
+                            )
+                        )
+                except (subprocess.SubprocessError, OSError) as exc:
+                    results.append(
+                        FixResult(
                             check_name=check.name,
                             success=False,
-                            error=(proc.stderr or proc.stdout).strip()[:200],
-                        ))
-                except (subprocess.SubprocessError, OSError) as exc:
-                    results.append(FixResult(
-                        check_name=check.name,
-                        success=False,
-                        error=str(exc),
-                    ))
+                            error=str(exc),
+                        )
+                    )
 
         # Repoint a stale SessionStart hook at the live skcapstone binary.
         elif check.name == "harness:hook:sessionstart":
             live = shutil.which("skcapstone")
             settings_path = _claude_config_home() / "settings.json"
             if not live:
-                results.append(FixResult(
-                    check_name=check.name,
-                    success=False,
-                    error="live skcapstone not found on PATH",
-                ))
+                results.append(
+                    FixResult(
+                        check_name=check.name,
+                        success=False,
+                        error="live skcapstone not found on PATH",
+                    )
+                )
             else:
                 try:
                     data = json.loads(settings_path.read_text(encoding="utf-8"))
@@ -1996,23 +2068,29 @@ def run_fixes(report: DiagnosticReport, home: Path) -> list[FixResult]:
                         settings_path.write_text(
                             json.dumps(data, indent=2) + "\n", encoding="utf-8"
                         )
-                        results.append(FixResult(
-                            check_name=check.name,
-                            success=True,
-                            action=f"Repointed SessionStart hook to {live}",
-                        ))
+                        results.append(
+                            FixResult(
+                                check_name=check.name,
+                                success=True,
+                                action=f"Repointed SessionStart hook to {live}",
+                            )
+                        )
                     else:
-                        results.append(FixResult(
+                        results.append(
+                            FixResult(
+                                check_name=check.name,
+                                success=False,
+                                error="no stale skcapstone hook command found to repair",
+                            )
+                        )
+                except (OSError, json.JSONDecodeError) as exc:
+                    results.append(
+                        FixResult(
                             check_name=check.name,
                             success=False,
-                            error="no stale skcapstone hook command found to repair",
-                        ))
-                except (OSError, json.JSONDecodeError) as exc:
-                    results.append(FixResult(
-                        check_name=check.name,
-                        success=False,
-                        error=str(exc),
-                    ))
+                            error=str(exc),
+                        )
+                    )
 
     return results
 

@@ -14,8 +14,7 @@ def register_preflight_commands(main: click.Group) -> None:
     """Register the preflight command."""
 
     @main.command("preflight")
-    @click.option("--home", default=AGENT_HOME, type=click.Path(),
-                  help="Agent home directory.")
+    @click.option("--home", default=AGENT_HOME, type=click.Path(), help="Agent home directory.")
     @click.option("--json-out", is_flag=True, help="Output as JSON.")
     def preflight_cmd(home: str, json_out: bool):
         """Run daemon preflight checks.
@@ -33,6 +32,7 @@ def register_preflight_commands(main: click.Group) -> None:
             skcapstone preflight --json-out
         """
         import json
+
         from .. import ensure_skeleton
         from ..preflight import PreflightChecker
 

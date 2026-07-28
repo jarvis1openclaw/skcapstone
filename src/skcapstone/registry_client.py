@@ -22,7 +22,6 @@ from __future__ import annotations
 
 import logging
 import os
-from pathlib import Path
 from typing import Any, Optional
 
 logger = logging.getLogger(__name__)
@@ -44,9 +43,7 @@ class RegistryClient:
     def __init__(self, registry_url: Optional[str] = None) -> None:
         from skskills.remote import RemoteRegistry
 
-        self._url = registry_url or os.environ.get(
-            "SKSKILLS_REGISTRY_URL", DEFAULT_REGISTRY_URL
-        )
+        self._url = registry_url or os.environ.get("SKSKILLS_REGISTRY_URL", DEFAULT_REGISTRY_URL)
         self._remote = RemoteRegistry(registry_url=self._url)
 
     @property

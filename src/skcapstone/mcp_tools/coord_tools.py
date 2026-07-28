@@ -6,7 +6,7 @@ import logging
 
 from mcp.types import TextContent, Tool
 
-from ._helpers import _error_response, _home, _json_response, _shared_root
+from ._helpers import _error_response, _json_response, _shared_root
 
 logger = logging.getLogger(__name__)
 
@@ -42,9 +42,7 @@ TOOLS: list[Tool] = [
     ),
     Tool(
         name="coord_complete",
-        description=(
-            "Mark a task as completed on the coordination board."
-        ),
+        description=("Mark a task as completed on the coordination board."),
         inputSchema={
             "type": "object",
             "properties": {
@@ -62,9 +60,7 @@ TOOLS: list[Tool] = [
     ),
     Tool(
         name="coord_create",
-        description=(
-            "Create a new task on the coordination board."
-        ),
+        description=("Create a new task on the coordination board."),
         inputSchema={
             "type": "object",
             "properties": {
@@ -157,37 +153,39 @@ async def _handle_coord_status(_args: dict) -> list[TextContent]:
     views = board.get_task_views()
     agents = board.load_agents()
 
-    return _json_response({
-        "tasks": [
-            {
-                "id": v.task.id,
-                "title": v.task.title,
-                "priority": v.task.priority.value,
-                "status": v.status.value,
-                "claimed_by": v.claimed_by,
-                "tags": v.task.tags,
-                "description": v.task.description[:150] if v.task.description else "",
-            }
-            for v in views
-        ],
-        "agents": [
-            {
-                "name": a.agent,
-                "state": a.state.value,
-                "current_task": a.current_task,
-                "claimed": a.claimed_tasks,
-                "completed_count": len(a.completed_tasks),
-            }
-            for a in agents
-        ],
-        "summary": {
-            "total": len(views),
-            "open": sum(1 for v in views if v.status.value == "open"),
-            "claimed": sum(1 for v in views if v.status.value == "claimed"),
-            "in_progress": sum(1 for v in views if v.status.value == "in_progress"),
-            "done": sum(1 for v in views if v.status.value == "done"),
-        },
-    })
+    return _json_response(
+        {
+            "tasks": [
+                {
+                    "id": v.task.id,
+                    "title": v.task.title,
+                    "priority": v.task.priority.value,
+                    "status": v.status.value,
+                    "claimed_by": v.claimed_by,
+                    "tags": v.task.tags,
+                    "description": v.task.description[:150] if v.task.description else "",
+                }
+                for v in views
+            ],
+            "agents": [
+                {
+                    "name": a.agent,
+                    "state": a.state.value,
+                    "current_task": a.current_task,
+                    "claimed": a.claimed_tasks,
+                    "completed_count": len(a.completed_tasks),
+                }
+                for a in agents
+            ],
+            "summary": {
+                "total": len(views),
+                "open": sum(1 for v in views if v.status.value == "open"),
+                "claimed": sum(1 for v in views if v.status.value == "claimed"),
+                "in_progress": sum(1 for v in views if v.status.value == "in_progress"),
+                "done": sum(1 for v in views if v.status.value == "done"),
+            },
+        }
+    )
 
 
 async def _handle_coord_claim(args: dict) -> list[TextContent]:
@@ -204,15 +202,18 @@ async def _handle_coord_claim(args: dict) -> list[TextContent]:
         agent = board.claim_task(agent_name, task_id)
         try:
             from .. import activity
+
             activity.push("task.claimed", {"task_id": task_id, "agent": agent_name})
         except Exception as exc:
             logger.warning("Failed to push task.claimed activity for %s: %s", task_id, exc)
-        return _json_response({
-            "claimed": True,
-            "task_id": task_id,
-            "agent": agent.agent,
-            "current_task": agent.current_task,
-        })
+        return _json_response(
+            {
+                "claimed": True,
+                "task_id": task_id,
+                "agent": agent.agent,
+                "current_task": agent.current_task,
+            }
+        )
     except ValueError as exc:
         return _error_response(str(exc))
 
@@ -230,15 +231,18 @@ async def _handle_coord_complete(args: dict) -> list[TextContent]:
     agent = board.complete_task(agent_name, task_id)
     try:
         from .. import activity
+
         activity.push("task.completed", {"task_id": task_id, "agent": agent_name})
     except Exception as exc:
         logger.warning("Failed to push task.completed activity for %s: %s", task_id, exc)
-    return _json_response({
-        "completed": True,
-        "task_id": task_id,
-        "agent": agent.agent,
-        "completed_tasks": agent.completed_tasks,
-    })
+    return _json_response(
+        {
+            "completed": True,
+            "task_id": task_id,
+            "agent": agent.agent,
+            "completed_tasks": agent.completed_tasks,
+        }
+    )
 
 
 async def _handle_coord_create(args: dict) -> list[TextContent]:
@@ -258,13 +262,15 @@ async def _handle_coord_create(args: dict) -> list[TextContent]:
         created_by=args.get("created_by", "mcp"),
     )
     path = board.create_task(task)
-    return _json_response({
-        "created": True,
-        "task_id": task.id,
-        "title": task.title,
-        "priority": task.priority.value,
-        "path": str(path),
-    })
+    return _json_response(
+        {
+            "created": True,
+            "task_id": task.id,
+            "title": task.title,
+            "priority": task.priority.value,
+            "path": str(path),
+        }
+    )
 
 
 async def _handle_coord_score(args: dict) -> list[TextContent]:
@@ -288,13 +294,15 @@ async def _handle_coord_score(args: dict) -> list[TextContent]:
         )
     except FileNotFoundError as exc:
         return _error_response(str(exc))
-    return _json_response({
-        "scored": True,
-        "task_id": task_id,
-        "round": int(args["round"]),
-        "score": int(args["score"]),
-        "path": str(path),
-    })
+    return _json_response(
+        {
+            "scored": True,
+            "task_id": task_id,
+            "round": int(args["round"]),
+            "score": int(args["score"]),
+            "path": str(path),
+        }
+    )
 
 
 async def _handle_coord_kanban(_args: dict) -> list[TextContent]:
@@ -323,15 +331,17 @@ async def _handle_coord_kanban(_args: dict) -> list[TextContent]:
         for c in grid[lane][col]
     ]
     all_cards = kb.cards()
-    return _json_response({
-        "counts": counts,
-        "wip": kb.wip_report(),
-        "active": active,
-        "totals": {
-            "active": len(all_cards),
-            "itil": sum(1 for c in all_cards if c.source == "itil"),
-        },
-    })
+    return _json_response(
+        {
+            "counts": counts,
+            "wip": kb.wip_report(),
+            "active": active,
+            "totals": {
+                "active": len(all_cards),
+                "itil": sum(1 for c in all_cards if c.source == "itil"),
+            },
+        }
+    )
 
 
 async def _handle_coord_move(args: dict) -> list[TextContent]:
@@ -359,8 +369,9 @@ async def _handle_coord_move(args: dict) -> list[TextContent]:
         from ..card_store import card_store_write_enabled, mirror_coord_move
 
         if card_store_write_enabled():
-            mirror_coord_move(root, task_id, column, args.get("agent", "") or "",
-                              order=args.get("order"))
+            mirror_coord_move(
+                root, task_id, column, args.get("agent", "") or "", order=args.get("order")
+            )
     except Exception:  # noqa: BLE001
         pass
     return _json_response({"moved": True, "task_id": task_id, "column": column})

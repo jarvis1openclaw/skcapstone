@@ -59,9 +59,7 @@ class SoulBlueprint(BaseModel):
     philosophy: str = ""
     emoji: Optional[str] = None
     core_traits: list[str] = Field(default_factory=list)
-    communication_style: CommunicationStyle = Field(
-        default_factory=CommunicationStyle
-    )
+    communication_style: CommunicationStyle = Field(default_factory=CommunicationStyle)
     decision_framework: Optional[str] = None
     emotional_topology: dict[str, float] = Field(default_factory=dict)
 
@@ -78,9 +76,7 @@ class SoulState(BaseModel):
 class SoulSwapEvent(BaseModel):
     """Audit trail entry for soul swaps."""
 
-    timestamp: str = Field(
-        default_factory=lambda: datetime.now(timezone.utc).isoformat()
-    )
+    timestamp: str = Field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
     from_soul: Optional[str] = None
     to_soul: Optional[str] = None
     reason: str = ""
@@ -142,9 +138,7 @@ def _extract_bold_value(block: str, key: str) -> str:
 
 def _extract_blockquote_value(text: str, key: str) -> str:
     """Extract value from > **Key**: Value blockquote pattern."""
-    pattern = re.compile(
-        rf">\s*\*\*{re.escape(key)}\*\*\s*[:：]\s*(.+)", re.IGNORECASE
-    )
+    pattern = re.compile(rf">\s*\*\*{re.escape(key)}\*\*\s*[:：]\s*(.+)", re.IGNORECASE)
     m = pattern.search(text)
     return m.group(1).strip() if m else ""
 
@@ -194,9 +188,7 @@ def _derive_topology(traits: list[str], vibe: str) -> dict[str, float]:
     return topology
 
 
-def _parse_professional(
-    sections: dict[str, str], raw: str, path: Path
-) -> SoulBlueprint:
+def _parse_professional(sections: dict[str, str], raw: str, path: Path) -> SoulBlueprint:
     """Parse a professional-format blueprint."""
     identity_block = ""
     for key, body in sections.items():
@@ -260,9 +252,7 @@ def _parse_professional(
     )
 
 
-def _parse_comedy(
-    sections: dict[str, str], raw: str, path: Path
-) -> SoulBlueprint:
+def _parse_comedy(sections: dict[str, str], raw: str, path: Path) -> SoulBlueprint:
     """Parse a comedy-format blueprint."""
     identity = _extract_blockquote_value(raw, "Identity")
     display_name = identity or path.stem.replace("_", " ").title()
@@ -279,9 +269,7 @@ def _parse_comedy(
         if "key traits" in key.lower():
             traits_block = body
             break
-    core_traits = _extract_numbered_items(traits_block) or _extract_dash_items(
-        traits_block
-    )
+    core_traits = _extract_numbered_items(traits_block) or _extract_dash_items(traits_block)
 
     comm_block = ""
     for key, body in sections.items():
@@ -329,9 +317,7 @@ def _parse_comedy(
     )
 
 
-def _parse_authentic_connection(
-    sections: dict[str, str], raw: str, path: Path
-) -> SoulBlueprint:
+def _parse_authentic_connection(sections: dict[str, str], raw: str, path: Path) -> SoulBlueprint:
     """Parse an authentic-connection-format blueprint."""
     title_match = re.match(r"^#\s+(.+)", raw)
     title_raw = title_match.group(1).strip() if title_match else path.stem
@@ -340,7 +326,7 @@ def _parse_authentic_connection(
     header = raw.split("---")[0] if "---" in raw else raw[:500]
     category = _extract_bold_value(header, "Category") or "authentic-connection"
     energy = _extract_bold_value(header, "Energy")
-    tags_raw = _extract_bold_value(header, "Tags")
+    _extract_bold_value(header, "Tags")
 
     quick_block = ""
     for key, body in sections.items():
@@ -546,8 +532,8 @@ class SoulManager:
         if not (self.soul_dir / "active.json").exists():
             state = SoulState()
             (self.soul_dir / "active.json").write_text(
-                state.model_dump_json(indent=2)
-            , encoding="utf-8")
+                state.model_dump_json(indent=2), encoding="utf-8"
+            )
         if not (self.soul_dir / "base.json").exists():
             base = SoulBlueprint(
                 name="base",
@@ -556,8 +542,8 @@ class SoulManager:
                 vibe="Authentic self",
             )
             (self.soul_dir / "base.json").write_text(
-                base.model_dump_json(indent=2)
-            , encoding="utf-8")
+                base.model_dump_json(indent=2), encoding="utf-8"
+            )
 
     def install(self, path: Path) -> SoulBlueprint:
         """Parse a blueprint markdown file and install it.
@@ -744,9 +730,7 @@ class SoulManager:
         """
         self._ensure_dirs()
         installed_dir = self.soul_dir / "installed"
-        return sorted(
-            p.stem for p in installed_dir.glob("*.json")
-        )
+        return sorted(p.stem for p in installed_dir.glob("*.json"))
 
     def list_available(
         self,

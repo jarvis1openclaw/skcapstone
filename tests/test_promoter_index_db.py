@@ -79,7 +79,7 @@ def test_remove_from_index_no_db_is_noop(home: Path) -> None:
 
 
 def test_archive_old_memories_prunes_sqlite_index(home: Path) -> None:
-    old = _write_memory(home, "old-mem", age_days=90)
+    _write_memory(home, "old-mem", age_days=90)
     _write_memory(home, "young-mem", age_days=1)
     db = _make_index_db(home, ["old-mem", "young-mem"])
 

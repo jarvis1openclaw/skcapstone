@@ -1,4 +1,5 @@
 """Tests for the Phase 6 CMDB / asset management (cmdb + dashboard_cmdb)."""
+
 from __future__ import annotations
 
 import pytest
@@ -53,19 +54,23 @@ def test_impact_analysis(home):
 
 def test_impact_links_incidents(home):
     from skcapstone.itil import ITILManager
+
     mgr = CMDBManager(home)
     svc = mgr.create_ci("skchat", "service")
     itil = ITILManager(home)
-    itil.create_incident(title="skchat down", severity="sev2", created_by="opus",
-                         affected_services=["skchat"])
+    itil.create_incident(
+        title="skchat down", severity="sev2", created_by="opus", affected_services=["skchat"]
+    )
     impact = mgr.impact_analysis(svc.id)
     assert impact["open_incidents"] and impact["open_incidents"][0]["severity"] == "sev2"
 
 
 def test_seed_from_inventory(home):
     from skcapstone.itil import ITILManager
-    ITILManager(home).create_incident(title="skmem-pg down", severity="sev1",
-                                      created_by="lumina", affected_services=["skmem-pg"])
+
+    ITILManager(home).create_incident(
+        title="skmem-pg down", severity="sev1", created_by="lumina", affected_services=["skmem-pg"]
+    )
     mgr = CMDBManager(home)
     res = mgr.seed_from_inventory()
     assert res["cis"] >= 4  # hosts + agents + the service
@@ -89,7 +94,9 @@ def test_dashboard_cmdb_overview_and_detail(home):
 
 def test_dashboard_cmdb_routes(home):
     from starlette.testclient import TestClient
+
     from skcapstone.dashboard import create_app
+
     client = TestClient(create_app(home))
     assert client.post("/api/cmdb/seed").json()["cis"] >= 4
     assert "types" in client.get("/api/cmdb/overview").json()
