@@ -73,6 +73,19 @@ def _writer_block(writer: Writer) -> dict:
     }
 
 
+def _maybe_sign(payload: dict, signer) -> dict:
+    """Fill writer.signature via the given or default signer (Card 3.5)."""
+    from .signing import canonical_bytes, default_signer
+
+    sign = signer if signer is not None else default_signer()
+    if sign is not None:
+        try:
+            payload["writer"]["signature"] = sign(canonical_bytes(payload))
+        except Exception:
+            payload["writer"]["signature"] = None
+    return payload
+
+
 def write_spec(
     paths: FleetPaths,
     kind: str,
@@ -81,6 +94,7 @@ def write_spec(
     *,
     writer: Writer,
     labels: dict | None = None,
+    signer=None,
 ) -> dict:
     """Write desired state for one object, bumping its generation.
 
@@ -106,6 +120,7 @@ def write_spec(
         "writer": _writer_block(writer),
         "updatedAt": _now_iso(),
     }
+    payload = _maybe_sign(payload, signer)
     _dump(path, payload)
     return payload
 
@@ -276,6 +291,7 @@ def write_placement(
     node: str,
     reason: str,
     writer: Writer,
+    signer=None,
 ) -> tuple[dict, bool]:
     """Write the scheduler's decision for one object (write-on-change).
 
@@ -306,6 +322,7 @@ def write_placement(
         "writer": _writer_block(writer),
         "updatedAt": _now_iso(),
     }
+    payload = _maybe_sign(payload, signer)
     _dump(path, payload)
     return payload, True
 

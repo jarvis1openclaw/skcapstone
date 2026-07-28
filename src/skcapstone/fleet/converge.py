@@ -11,7 +11,7 @@ import socket
 import time
 from typing import Callable
 
-from . import actuation, alerts, backoff, events, store
+from . import actuation, alerts, backoff, events, signing, store
 from .paths import FleetPaths
 from .services import ServiceSpecError, normalize_service_spec
 
@@ -58,6 +58,32 @@ def local_services(paths: FleetPaths, node: str) -> list[dict]:
             }
         )
     return out
+
+
+def verify_desired(
+    spec_payload: dict,
+    placement: dict | None,
+    verifier,
+) -> tuple[bool, str]:
+    """Classify the pair of files actuation consumes (Card 3.5).
+
+    Both the service spec and its placement must verify. A missing
+    verifier (no roster, capauth absent) is unverified by definition:
+    under enforce that refuses NEW actuation and never touches running
+    services (fail safe at the trust boundary).
+    """
+    if verifier is None:
+        return (False, "no verifier available (empty roster or capauth missing)")
+    failures: list[str] = []
+    for label, payload in (("spec", spec_payload), ("placement", placement)):
+        if payload is None:
+            continue
+        status, detail = signing.verify_payload(payload, verifier)
+        if status != "verified":
+            failures.append(f"{label} {status}: {detail}")
+    if failures:
+        return (False, "; ".join(failures))
+    return (True, "spec and placement verified")
 
 
 def _cond(type: str, active: bool, reason: str, message: str, now_iso: str) -> dict:
@@ -160,6 +186,8 @@ def converge_service(
     prober: Callable[[dict], bool],
     mode: str,
     now: float,
+    sig_mode: str = "off",
+    verification: tuple[bool, str] = (True, ""),
 ) -> dict:
     """Converge one locally placed service. Returns a summary dict."""
     now_iso = _now_iso(now)
@@ -194,6 +222,23 @@ def converge_service(
 
     state = actuation.state_of(spec, runner=runner)
     track = backoff.tracker(node, name)
+    verified_ok, verify_detail = verification
+    if sig_mode != "off" and not verified_ok:
+        if events.emit(
+            paths,
+            writer,
+            kind="service",
+            name=name,
+            type="Trust",
+            reason="SpecUnverified",
+            message=verify_detail,
+            now=now,
+        ):
+            if sig_mode == "enforce":
+                alerts.send_alert(
+                    f"fleet: service {name} on {node} REFUSED actuation: {verify_detail}",
+                    level="error",
+                )
     probe_ok = True
     if spec["healthCheck"] is not None and state.state == "active":
         probe_ok = prober(spec["healthCheck"])
@@ -205,6 +250,7 @@ def converge_service(
     unhealthy_unit = state.state in {"failed", "inactive", "missing"}
     may_heal = (
         mode == "actuate"
+        and not (sig_mode == "enforce" and not verified_ok)
         and not spec["paused"]
         and spec["restartPolicy"] == "on-failure"
         and unhealthy_unit
@@ -232,6 +278,8 @@ def converge_service(
             acted = "healed"
         else:
             acted = "backoff-wait"
+    if mode == "actuate" and sig_mode == "enforce" and not verified_ok:
+        acted = "unverified"
 
     if healthy:
         ready = _cond("Ready", True, "UnitActive", f"unit {spec['unit']} active", now_iso)
@@ -274,6 +322,19 @@ def converge_service(
             f"attempts={track['attempts']}",
             now_iso,
         ),
+        *(
+            [
+                _cond(
+                    "SpecUnverified",
+                    not verified_ok,
+                    "SignatureInvalid" if not verified_ok else "SignatureOk",
+                    verify_detail,
+                    now_iso,
+                )
+            ]
+            if sig_mode != "off"
+            else []
+        ),
     ]
     generation = int(spec_payload.get("generation", 0))
     _write_service_status(paths, writer, name, state, spec, generation, conds, track)
@@ -287,11 +348,15 @@ def converge_once(
     runner: actuation.Runner | None = None,
     prober: Callable[[dict], bool] | None = None,
     now: float | None = None,
+    verifier=None,
 ) -> dict:
     """One actuation pass for this node (spec section 6, steps 2-4)."""
     runner = actuation.default_runner if runner is None else runner
     prober = tcp_probe if prober is None else prober
     now = time.time() if now is None else now
+    sig_mode = signing.signing_mode()
+    if sig_mode != "off" and verifier is None:
+        verifier = signing.capauth_verifier()
     try:
         if not store.actuation_allowed(paths):
             mode = "frozen"
@@ -305,6 +370,9 @@ def converge_once(
     writer = store.Writer(role="sknoded", node=node, identity=store.writer_identity())
     results: dict[str, dict] = {}
     for entry in entries:
+        verification = (True, "")
+        if sig_mode != "off" and entry["spec_payload"] is not None:
+            verification = verify_desired(entry["spec_payload"], entry["placement"], verifier)
         results[entry["name"]] = converge_service(
             paths,
             node,
@@ -315,5 +383,7 @@ def converge_once(
             prober=prober,
             mode=mode,
             now=now,
+            sig_mode=sig_mode,
+            verification=verification,
         )
     return {"mode": mode, "services": results}
