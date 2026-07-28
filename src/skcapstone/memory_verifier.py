@@ -111,6 +111,24 @@ def verify_before_promotion(home: Path, entry) -> VerificationResult:
     coherence: float = float(collider.get("coherence_score", 1.0))
     grade: str = str(collider.get("truth_grade", "ungraded"))
 
+    # Fail-open on an UNGRADED result. An ungraded collider outcome means the
+    # check could not actually be performed (typically no embedding backend is
+    # reachable), in which case coherence defaults to a blocking 0.0. A
+    # verification we could not run must not block promotion - only a confidently
+    # graded contradiction does. This keeps memory promotion working when the
+    # embedding server is down (e.g. CI), consistent with the fail-open paths above.
+    if "ungraded" in grade.lower():
+        logger.debug(
+            "Memory %s truth-check ungraded (coherence=%.2f) - fail-open, promotion allowed",
+            entry.memory_id,
+            coherence,
+        )
+        return VerificationResult(
+            should_promote=True,
+            coherence_score=coherence,
+            truth_grade=grade,
+        )
+
     contradiction_found = (not is_aligned) or bool(fragments)
 
     if not contradiction_found:

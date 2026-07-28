@@ -78,6 +78,21 @@ def _contradicting_result(
     }
 
 
+def _ungraded_result() -> dict:
+    """Simulate truth_check that could not verify (no embedding backend reachable):
+    coherence defaults to a blocking 0.0 and the grade is ungraded."""
+    return {
+        "is_aligned": False,
+        "collider_result": {
+            "coherence_score": 0.0,
+            "truth_grade": "ungraded",
+            "collision_fragments": [],
+        },
+        "alignment_record": {},
+        "belief": {},
+    }
+
+
 @pytest.fixture
 def home(tmp_path: Path) -> Path:
     """Minimal agent home directory."""
@@ -93,7 +108,6 @@ def home(tmp_path: Path) -> Path:
 
 
 class TestVerifyBeforePromotion:
-
     def test_fail_open_when_skseed_missing(self, home: Path) -> None:
         """Should allow promotion when skseed cannot be imported."""
         entry = _make_entry()
@@ -112,6 +126,20 @@ class TestVerifyBeforePromotion:
         with patch.dict(sys.modules, {"skseed": MagicMock(), "skseed.skill": skill_mock}):
             result = mv.verify_before_promotion(home, entry)
         assert result.should_promote is True
+
+    def test_fail_open_when_ungraded_no_embedding_backend(self, home: Path) -> None:
+        """An ungraded truth-check (embedding backend unreachable, coherence 0.0)
+        must fail open, not block. Regression: CI had every promotion blocked
+        because skvector was installed but no embedding server was reachable."""
+        import skcapstone.memory_verifier as mv
+
+        entry = _make_entry()
+        skill_mock = MagicMock()
+        skill_mock.truth_check = MagicMock(return_value=_ungraded_result())
+        with patch.dict(sys.modules, {"skseed": MagicMock(), "skseed.skill": skill_mock}):
+            result = mv.verify_before_promotion(home, entry)
+        assert result.should_promote is True
+        assert result.is_conflicting is False
 
     def test_skip_gate_for_mid_term_entries(self, home: Path) -> None:
         """Gate only fires for SHORT_TERM; mid-term entries pass through."""
@@ -275,7 +303,6 @@ class TestVerifyBeforePromotion:
 
 
 class TestMemoryEnginePromoteGate:
-
     def test_engine_promote_short_term_blocked(self, home: Path) -> None:
         """_promote() in memory_engine stays in short-term when gate says no."""
         from skcapstone import memory_engine
@@ -358,7 +385,6 @@ class TestMemoryEnginePromoteGate:
 
 
 class TestPromotionEngineGate:
-
     def test_promoter_sweep_blocked_counts_as_skipped(self, home: Path) -> None:
         """A truth-check-blocked candidate is not in result.promoted."""
         from datetime import timedelta

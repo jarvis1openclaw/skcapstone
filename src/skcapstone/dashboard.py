@@ -635,7 +635,7 @@ def create_app(home: Path):
                 while True:
                     try:
                         msg = await asyncio.wait_for(q.get(), timeout=20)
-                        yield f"event: {msg.get('type','message')}\ndata: {json.dumps(msg)}\n\n"
+                        yield f"event: {msg.get('type', 'message')}\ndata: {json.dumps(msg)}\n\n"
                     except asyncio.TimeoutError:
                         yield ": keep-alive\n\n"
             finally:
@@ -689,11 +689,21 @@ def create_app(home: Path):
     if static_dir.exists():
         routes.append(Mount("/static", StaticFiles(directory=str(static_dir))))
 
-    app = Starlette(routes=routes)
+    from contextlib import asynccontextmanager
 
-    @app.on_event("startup")
-    async def _start_poll():
+    @asynccontextmanager
+    async def _lifespan(app):
+        # Starlette removed on_event in 0.36; the lifespan context is the
+        # supported replacement for startup/shutdown work.
         app.state.poll_task = asyncio.create_task(dk.poll_event_store(home))
+        try:
+            yield
+        finally:
+            task = getattr(app.state, "poll_task", None)
+            if task is not None:
+                task.cancel()
+
+    app = Starlette(routes=routes, lifespan=_lifespan)
 
     return app
 

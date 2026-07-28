@@ -131,7 +131,12 @@ class SyncthingBackend(SyncBackend):
         return dest
 
     def available(self) -> bool:
-        return shutil.which("syncthing") is not None
+        # The push is a filesystem drop into the Syncthing-watched outbox; it does
+        # not invoke the `syncthing` binary (a separately-running daemon, possibly
+        # on another node, syncs the folder). Availability therefore depends on the
+        # outbox being usable, not on a local binary being installed - otherwise a
+        # perfectly good drop is skipped on hosts without syncthing on PATH (e.g. CI).
+        return self.outbox.is_dir()
 
 
 class GitBackend(SyncBackend):
@@ -202,7 +207,7 @@ class GitBackend(SyncBackend):
                     "git",
                     "commit",
                     "-m",
-                    f"vault: {vault_path.name} " f"[{datetime.now(timezone.utc).isoformat()}]",
+                    f"vault: {vault_path.name} [{datetime.now(timezone.utc).isoformat()}]",
                 ],
                 ["git", "push", "origin", self.config.branch],
             ]
@@ -349,15 +354,14 @@ class GDriveBackend(SyncBackend):
             from googleapiclient.discovery import build  # type: ignore
         except ImportError:
             logger.error(
-                "google-api-python-client not installed. " "Run: pip install skcapstone[gdrive]"
+                "google-api-python-client not installed. Run: pip install skcapstone[gdrive]"
             )
             return None
 
         creds_path = self._creds_path()
         if not creds_path:
             logger.error(
-                "No GDrive credentials found. Set %s env var or place "
-                "service account JSON at %s",
+                "No GDrive credentials found. Set %s env var or place service account JSON at %s",
                 self._CREDS_ENV,
                 self._DEFAULT_CREDS,
             )
@@ -385,9 +389,7 @@ class GDriveBackend(SyncBackend):
         )
 
         # Avoid duplicates: update the file if one with the same name exists.
-        query = (
-            f"name = '{local_path.name}' " f"and '{folder_id}' in parents " "and trashed = false"
-        )
+        query = f"name = '{local_path.name}' and '{folder_id}' in parents and trashed = false"
         existing = (
             service.files().list(q=query, fields="files(id, name)", spaces="drive").execute()
         )
@@ -450,9 +452,7 @@ class GDriveBackend(SyncBackend):
             return None
 
         try:
-            query = (
-                f"name contains 'vault-' " f"and '{folder_id}' in parents " "and trashed = false"
-            )
+            query = f"name contains 'vault-' and '{folder_id}' in parents and trashed = false"
             results = (
                 service.files()
                 .list(
