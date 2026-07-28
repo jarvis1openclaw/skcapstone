@@ -1,9 +1,11 @@
-"""Scheduler v1: filter + least-loaded placement (spec section 7).
+"""Scheduler: filter + preference scoring + least-loaded placement.
 
 Stateless and idempotent: every pass recomputes from Node views and a
-workload's requirements, and placement writes are write-on-change. No
-preference or affinity scoring in v1 (deferred, gated Card 2.1b); a
-PreferNoSchedule taint is advisory only, recorded in the placement reason.
+workload's requirements, and placement writes are write-on-change. On top
+of the v1 filter+least-loaded (spec section 7), select() soft-avoids
+untolerated PreferNoSchedule nodes (Card 2.1b): they are used only when no
+untainted candidate is feasible. feasible() itself is untouched; a
+PreferNoSchedule taint never excludes a node, it only deprioritizes it.
 The scheduler writes ONLY placements: never status, never spec.
 """
 
@@ -97,11 +99,30 @@ def _headroom_key(view: NodeView) -> tuple:
     )
 
 
-def select(views: list[NodeView], workload: Workload) -> Decision:
-    """Filter (feasible) then pick the least-loaded survivor (spec 7 step 2).
+def _soft_avoid(view: NodeView, workload: Workload) -> bool:
+    """True when an untolerated PreferNoSchedule taint should deprioritize this node."""
+    for taint in view.taints:
+        if taint.get("effect") == "PreferNoSchedule" and not _tolerated(
+            taint, workload.tolerations
+        ):
+            return True
+    return False
 
-    v1 has no preference scoring: a PreferNoSchedule taint on the chosen
-    node is recorded in the reason, never acted on.
+
+def _score_key(view: NodeView, workload: Workload) -> tuple:
+    """Rank key: soft-avoided nodes sort after every non-avoided node, then least-loaded."""
+    return (_soft_avoid(view, workload), *_headroom_key(view))
+
+
+def select(views: list[NodeView], workload: Workload) -> Decision:
+    """Filter (feasible), soft-avoid, then pick the least-loaded survivor (spec 7).
+
+    Preference scoring (Card 2.1b): among feasible candidates, a node with an
+    untolerated PreferNoSchedule taint is deprioritized and picked only when
+    no non-avoided candidate is feasible. Within each group the existing
+    least-loaded tiebreak (RAM, then cores, then name) applies unchanged, so
+    a workload with no PreferNoSchedule interaction picks the same node v1
+    would.
     """
     excluded: dict = {}
     candidates: list[NodeView] = []
@@ -114,19 +135,35 @@ def select(views: list[NodeView], workload: Workload) -> Decision:
     if not candidates:
         detail = "; ".join(f"{n}: {w}" for n, w in sorted(excluded.items()))
         return Decision(node=None, reason=f"unschedulable ({detail})", excluded=excluded)
-    chosen = sorted(candidates, key=_headroom_key)[0]
+    chosen = sorted(candidates, key=lambda v: _score_key(v, workload))[0]
     reason = (
         f"least-loaded: {chosen.name} allocatable "
         f"ram={chosen.allocatable.get('ram_gb')}GB "
         f"cores={chosen.allocatable.get('cores')} "
         f"of {len(candidates)} candidate(s)"
     )
+    avoided_names = {v.name for v in candidates if _soft_avoid(v, workload)}
     for taint in chosen.taints:
-        if taint.get("effect") == "PreferNoSchedule":
-            reason += (
-                f"; advisory: PreferNoSchedule taint "
-                f"{taint.get('key')}={taint.get('value')} not scored in v1"
-            )
+        if taint.get("effect") != "PreferNoSchedule":
+            continue
+        note = f"; advisory: PreferNoSchedule taint {taint.get('key')}={taint.get('value')}"
+        if chosen.name in avoided_names:
+            note += " (soft-avoided, chosen because no non-avoided candidate was feasible)"
+        else:
+            note += " (tolerated, not scored)"
+        reason += note
+    if avoided_names and chosen.name not in avoided_names:
+        details = []
+        for view in sorted(candidates, key=lambda v: v.name):
+            if view.name not in avoided_names:
+                continue
+            for taint in view.taints:
+                if taint.get("effect") == "PreferNoSchedule" and not _tolerated(
+                    taint, workload.tolerations
+                ):
+                    details.append(f"{view.name} ({taint.get('key')}={taint.get('value')})")
+                    break
+        reason += f"; soft-avoid: deprioritized {', '.join(details)}"
     return Decision(node=chosen.name, reason=reason, excluded=excluded)
 
 
