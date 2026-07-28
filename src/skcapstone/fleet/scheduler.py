@@ -6,6 +6,7 @@ preference or affinity scoring in v1 (deferred, gated Card 2.1b); a
 PreferNoSchedule taint is advisory only, recorded in the placement reason.
 The scheduler writes ONLY placements: never status, never spec.
 """
+
 from __future__ import annotations
 
 from dataclasses import dataclass, field
