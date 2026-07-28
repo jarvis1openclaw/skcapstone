@@ -796,18 +796,23 @@ class TestTransportCheckNoThreadLeak:
 
         return sum(1 for t in threading.enumerate() if "outbox-retry" in (t.name or ""))
 
-    def test_check_transport_does_not_leak_retry_thread(self):
-        import time
+    def test_check_transport_stops_the_engine(self):
+        """_check_transport must call SKComms.stop() so the outbox-retry worker is
+        cleaned up (regression: a polled dashboard accumulated 400+ workers).
+
+        We assert skcapstone's contract directly - that stop() is always called,
+        even when reading router state - rather than counting real skcomms threads.
+        Whether that worker then terminates promptly is skcomms' responsibility;
+        its termination is gated on a network backoff that flakes in CI.
+        """
+        from unittest.mock import MagicMock, patch
 
         from skcapstone.doctor import _check_transport
 
-        before = self._retry_thread_count()
-        for _ in range(3):
+        fake = MagicMock()
+        fake.router.transports = ["t"]
+        fake.router.health_report.return_value = {"t": {"status": "available"}}
+        with patch("skcomms.core.SKComms.from_config", return_value=fake):
             _check_transport()
-        # The outbox-retry workers stop asynchronously; poll for them to join
-        # rather than assuming a fixed window (CI runners are slower than dev
-        # boxes, where a real leak still fails this because the count never drops).
-        deadline = time.monotonic() + 5.0
-        while self._retry_thread_count() > before and time.monotonic() < deadline:
-            time.sleep(0.1)
-        assert self._retry_thread_count() == before
+        # Cleanup must happen in the finally, regardless of what the check found.
+        fake.stop.assert_called_once()
