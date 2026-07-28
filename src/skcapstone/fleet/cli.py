@@ -138,8 +138,9 @@ def sknoded_cmd(once: bool, interval: int, actuation_interval: int | None) -> No
 
 
 @fleet.command("apply")
-@click.option("-f", "--file", "file_path", required=True,
-              type=click.Path(exists=True, dir_okay=False))
+@click.option(
+    "-f", "--file", "file_path", required=True, type=click.Path(exists=True, dir_okay=False)
+)
 def apply_cmd(file_path: str) -> None:
     """Write one object spec from a JSON doc {kind, name, labels?, spec}."""
     from pathlib import Path
@@ -158,8 +159,9 @@ def apply_cmd(file_path: str) -> None:
         except services_mod.ServiceSpecError as exc:
             raise click.ClickException(f"invalid service spec: {exc}") from exc
     try:
-        payload = store.write_spec(default_paths(), kind, name, spec,
-                                   writer=_operator(), labels=doc.get("labels"))
+        payload = store.write_spec(
+            default_paths(), kind, name, spec, writer=_operator(), labels=doc.get("labels")
+        )
     except store.OwnershipError as exc:
         raise click.ClickException(str(exc)) from exc
     click.echo(f"applied {kind}/{name} (generation {payload['generation']})")
@@ -174,28 +176,34 @@ def services_cmd() -> None:
         return
     for r in rows:
         flags = "".join([" PAUSED" if r.paused else "", " STALE" if r.stale else ""])
-        click.echo(f"{r.name}\t-> {r.node or 'unplaced'}\t"
-                   f"state={r.state}\tready={r.ready}{flags}")
+        click.echo(
+            f"{r.name}\t-> {r.node or 'unplaced'}\t" f"state={r.state}\tready={r.ready}{flags}"
+        )
 
 
 @fleet.command("reconcile")
 def reconcile_cmd() -> None:
     """One ServiceController pass (place-once + failover watch)."""
     out = service_controller.reconcile_once(default_paths(), node=self_node_name())
-    click.echo(f"placed={len(out['placed'])} kept={len(out['kept'])} "
-               f"failovers={len(out['failovers'])} alerted={len(out['alerted'])} "
-               f"skipped={len(out['skipped'])}")
+    click.echo(
+        f"placed={len(out['placed'])} kept={len(out['kept'])} "
+        f"failovers={len(out['failovers'])} alerted={len(out['alerted'])} "
+        f"skipped={len(out['skipped'])}"
+    )
 
 
 @fleet.command("actuation")
 @click.argument("name")
-@click.option("--enable/--disable", "enabled", required=True,
-              help="Opt this node in or out of actuation (default is report-only).")
+@click.option(
+    "--enable/--disable",
+    "enabled",
+    required=True,
+    help="Opt this node in or out of actuation (default is report-only).",
+)
 def actuation_cmd(name: str, enabled: bool) -> None:
     """Toggle sknoded actuation for one node (report-only by default)."""
     try:
-        node_controller.set_actuation(default_paths(), name, enabled,
-                                      writer=_operator())
+        node_controller.set_actuation(default_paths(), name, enabled, writer=_operator())
     except LookupError as exc:
         raise click.ClickException(str(exc)) from exc
     click.echo(f"{name} actuation {'ENABLED' if enabled else 'disabled (report-only)'}")

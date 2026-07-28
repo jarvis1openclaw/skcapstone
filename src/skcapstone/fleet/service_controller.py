@@ -51,8 +51,11 @@ def service_rows(paths: FleetPaths) -> list[ServiceRow]:
             if target is None or st.get("node") == target:
                 status = st
                 break
-        state = "unobserved" if status is None else str(
-            status.get("status", {}).get("state", "unknown"))
+        state = (
+            "unobserved"
+            if status is None
+            else str(status.get("status", {}).get("state", "unknown"))
+        )
         if status is not None and status.get("stale"):
             state = "unobserved" if state == "unobserved" else state
         rows.append(
@@ -94,8 +97,15 @@ def reconcile_once(
         try:
             spec = normalize_service_spec(payload.get("spec", {}))
         except ServiceSpecError as exc:
-            events.emit(paths, ctrl, kind="service", name=name, type="Config",
-                        reason="SpecInvalid", message=str(exc))
+            events.emit(
+                paths,
+                ctrl,
+                kind="service",
+                name=name,
+                type="Config",
+                reason="SpecInvalid",
+                message=str(exc),
+            )
             out["skipped"].append(name)
             continue
         if spec["deleted"]:
@@ -119,11 +129,20 @@ def reconcile_once(
             else:
                 out["kept"].append(name)
             continue
-        message = (f"service {name} is placed on {existing.get('node')} which is "
-                   f"Dead; failover=manual, no automatic re-place (move it with "
-                   f"skfleet or set failover: auto)")
-        if events.emit(paths, ctrl, kind="service", name=name, type="Failover",
-                       reason="NodeDead", message=message):
+        message = (
+            f"service {name} is placed on {existing.get('node')} which is "
+            f"Dead; failover=manual, no automatic re-place (move it with "
+            f"skfleet or set failover: auto)"
+        )
+        if events.emit(
+            paths,
+            ctrl,
+            kind="service",
+            name=name,
+            type="Failover",
+            reason="NodeDead",
+            message=message,
+        ):
             alert(f"fleet: {message}", level="error")
         out["alerted"].append(name)
     return out

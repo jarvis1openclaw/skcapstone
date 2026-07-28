@@ -94,9 +94,7 @@ def cordon(paths: FleetPaths, name: str, cordoned: bool, *, writer: store.Writer
     )
 
 
-def set_actuation(
-    paths: FleetPaths, name: str, enabled: bool, *, writer: store.Writer
-) -> dict:
+def set_actuation(paths: FleetPaths, name: str, enabled: bool, *, writer: store.Writer) -> dict:
     """Toggle the per-node actuation opt-in (operator action, spec R4).
 
     Every node is born report-only; this is the single explicit lever that
