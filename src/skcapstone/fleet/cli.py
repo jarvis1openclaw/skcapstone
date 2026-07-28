@@ -51,8 +51,7 @@ def describe_cmd(kind: str, name: str) -> None:
 
 
 @fleet.command("placements")
-@click.option("--kind", "kind", default=None,
-              help="Filter by kind (e.g. job, service).")
+@click.option("--kind", "kind", default=None, help="Filter by kind (e.g. job, service).")
 @click.option("--json", "as_json", is_flag=True, help="Machine-readable output.")
 def placements_cmd(kind: str | None, as_json: bool) -> None:
     """Show current placements with the scheduler's reason for each decision."""
@@ -64,8 +63,10 @@ def placements_cmd(kind: str | None, as_json: bool) -> None:
         click.echo("no placements")
         return
     for r in records:
-        click.echo(f"{r['kind'].lower()}/{r['name']}\t-> {r['node']}\t"
-                   f"gen={r['placementGeneration']}\t{r['reason']}")
+        click.echo(
+            f"{r['kind'].lower()}/{r['name']}\t-> {r['node']}\t"
+            f"gen={r['placementGeneration']}\t{r['reason']}"
+        )
 
 
 @fleet.command("cordon")
