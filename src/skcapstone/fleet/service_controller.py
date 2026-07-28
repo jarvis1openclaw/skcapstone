@@ -146,3 +146,27 @@ def reconcile_once(
             alert(f"fleet: {message}", level="error")
         out["alerted"].append(name)
     return out
+
+
+def node_residents(paths: FleetPaths, node: str) -> list[dict]:
+    """Services placed on or observed on one node (the drain inventory).
+
+    Placements are desired state; observed statuses catch legacy residents
+    that predate fleet management. Deduped by name, placement wins.
+    """
+    residents: dict[str, dict] = {}
+    service_dir = paths.node_status_dir(node) / "service"
+    if service_dir.exists():
+        for status_file in sorted(service_dir.glob("*.json")):
+            name = status_file.stem
+            st = store.read_status(paths, "service", name, node)
+            state = str((st or {}).get("status", {}).get("state", "unknown"))
+            residents[name] = {"name": name, "via": "status", "state": state}
+    for placement in store.list_placements(paths, "service"):
+        if placement.get("node") != node:
+            continue
+        name = placement["name"]
+        st = store.read_status(paths, "service", name, node)
+        state = str((st or {}).get("status", {}).get("state", "unobserved"))
+        residents[name] = {"name": name, "via": "placement", "state": state}
+    return [residents[k] for k in sorted(residents)]
