@@ -44,7 +44,7 @@ import os
 import time
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any, Callable, Optional, Union
+from typing import Any, Callable, Optional
 
 from .scheduler_jobs import _parse_duration
 
@@ -374,9 +374,7 @@ class TriggerEngine:
         ref = rule.callback or ""
         mod_name, _, fn_name = ref.partition(":")
         if not mod_name or not fn_name:
-            logger.error(
-                "trigger %r callback %r invalid - expected 'module:fn'", rule.name, ref
-            )
+            logger.error("trigger %r callback %r invalid - expected 'module:fn'", rule.name, ref)
             return False
         module = importlib.import_module(mod_name)
         fn = getattr(module, fn_name)
@@ -678,9 +676,7 @@ def run_standalone(
         home=Path(home) if home is not None else Path("~/.skcapstone").expanduser(),
         stop_event=stop_event,
     )
-    register_with_scheduler(
-        scheduler, engine, context_provider, interval_seconds=interval_seconds
-    )
+    register_with_scheduler(scheduler, engine, context_provider, interval_seconds=interval_seconds)
 
     def _handle_signal(signum, _frame) -> None:
         logger.info("proactive trigger daemon: signal %s, shutting down", signum)

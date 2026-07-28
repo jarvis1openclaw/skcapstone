@@ -23,14 +23,11 @@ import hashlib
 import re
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Optional
 
 from .memory_engine import (
     _entry_path,
-    _find_by_id,
     _save_entry,
     list_memories,
-    search,
 )
 from .models import MemoryEntry, MemoryLayer
 
@@ -142,7 +139,6 @@ class MemoryCurator:
             if not entry.should_promote:
                 continue
 
-            old_layer = entry.layer
             if not dry_run:
                 old_path = _entry_path(self.home, entry)
                 if entry.layer == MemoryLayer.SHORT_TERM:

@@ -5,9 +5,6 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-import pytest
-
-from skcapstone.models import PillarStatus
 from skcapstone.pillars.security import (
     AUDIT_LOG_NAME,
     AuditEntry,
@@ -56,7 +53,7 @@ class TestInitializeSecurity:
         initialize_security(tmp_agent_home)
         initialize_security(tmp_agent_home)
         log_path = tmp_agent_home / "security" / AUDIT_LOG_NAME
-        lines = [l for l in log_path.read_text().splitlines() if l.strip()]
+        lines = [ln for ln in log_path.read_text().splitlines() if ln.strip()]
         assert len(lines) == 1
 
 

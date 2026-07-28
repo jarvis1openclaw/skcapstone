@@ -1,4 +1,5 @@
 """Dashboard CMDB view: Configuration Items by type + health, CI detail + impact."""
+
 from __future__ import annotations
 
 from pathlib import Path
@@ -6,6 +7,7 @@ from pathlib import Path
 
 def _mgr(home: Path):
     from .cmdb import CMDBManager
+
     return CMDBManager(Path(home).expanduser())
 
 
@@ -17,10 +19,15 @@ def get_overview(home: Path) -> dict:
     cis = mgr.list_cis()
     groups: dict[str, list] = {}
     for ci in cis:
-        groups.setdefault(ci.ci_type, []).append({
-            "id": ci.id, "name": ci.name, "status": ci.status,
-            "node": ci.node, "rels": len(ci.relationships),
-        })
+        groups.setdefault(ci.ci_type, []).append(
+            {
+                "id": ci.id,
+                "name": ci.name,
+                "status": ci.status,
+                "node": ci.node,
+                "rels": len(ci.relationships),
+            }
+        )
     health = Counter(ci.status for ci in cis)
     for lst in groups.values():
         lst.sort(key=lambda c: c["name"])
@@ -42,8 +49,13 @@ def get_ci(home: Path, ci_id: str) -> dict:
     rels = []
     for r in ci.get("relationships", []):
         target = mgr.get_ci(r["target"])
-        rels.append({"rel_type": r["rel_type"], "target": r["target"],
-                     "target_name": target.name if target else r["target"]})
+        rels.append(
+            {
+                "rel_type": r["rel_type"],
+                "target": r["target"],
+                "target_name": target.name if target else r["target"],
+            }
+        )
     return {
         "ci": ci,
         "relationships": rels,

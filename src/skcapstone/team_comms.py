@@ -301,7 +301,7 @@ def send_to_teammate(
 
     envelope = _build_envelope(from_agent, to_agent, message, thread_id)
     inbox = channel.inbox_for(to_agent)
-    path = _write_envelope(inbox, envelope)
+    _write_envelope(inbox, envelope)
 
     logger.info(
         "Agent '%s' -> '%s': %s (envelope %s)",
@@ -344,8 +344,7 @@ def broadcast_to_team(
     """
     if channel.queen and from_agent != channel.queen:
         raise PermissionError(
-            f"Only the queen agent ('{channel.queen}') may broadcast. "
-            f"Got: '{from_agent}'"
+            f"Only the queen agent ('{channel.queen}') may broadcast. " f"Got: '{from_agent}'"
         )
 
     # Write to broadcast audit log
@@ -397,9 +396,7 @@ def receive_messages(
     envelopes = _drain_inbox(agent_name, channel)
 
     if envelopes:
-        logger.debug(
-            "Agent '%s' received %d message(s)", agent_name, len(envelopes)
-        )
+        logger.debug("Agent '%s' received %d message(s)", agent_name, len(envelopes))
         if board is not None:
             senders = {e.get("sender", "unknown") for e in envelopes}
             _log_to_board(

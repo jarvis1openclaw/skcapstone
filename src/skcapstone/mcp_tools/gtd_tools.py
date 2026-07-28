@@ -497,46 +497,54 @@ async def _handle_gtd_capture(args: dict) -> list[TextContent]:
     source_ref = (args.get("source_ref") or "").strip()
 
     if _HAVE_SKOS_SINK:
-        new_id = _skos_capture(_GtdCapture(
-            text=text,
-            source=source,
-            source_ref=source_ref,
-            context=context,
-            privacy=privacy,
-            status="inbox",
-        ))
+        new_id = _skos_capture(
+            _GtdCapture(
+                text=text,
+                source=source,
+                source_ref=source_ref,
+                context=context,
+                privacy=privacy,
+                status="inbox",
+            )
+        )
         inbox = _load_list("inbox")
         if new_id is None:  # duplicate (source, source_ref) already in store
-            return _json_response({
-                "captured": False,
-                "duplicate": True,
-                "source": source,
-                "source_ref": source_ref,
-                "inbox_count": len(inbox),
-            })
+            return _json_response(
+                {
+                    "captured": False,
+                    "duplicate": True,
+                    "source": source,
+                    "source_ref": source_ref,
+                    "inbox_count": len(inbox),
+                }
+            )
         item = next((it for it in inbox if it.get("id") == new_id), {})
-        return _json_response({
-            "captured": True,
-            "id": new_id,
-            "text": item.get("text") or text,
-            "source": item.get("source", source),
-            "privacy": item.get("privacy", privacy),
-            "context": item.get("context", context),
-            "created_at": item.get("created_at", ""),
-            "inbox_count": len(inbox),
-        })
+        return _json_response(
+            {
+                "captured": True,
+                "id": new_id,
+                "text": item.get("text") or text,
+                "source": item.get("source", source),
+                "privacy": item.get("privacy", privacy),
+                "context": item.get("context", context),
+                "created_at": item.get("created_at", ""),
+                "inbox_count": len(inbox),
+            }
+        )
 
     # Fallback: skos not installed. Local locked, atomic, deduped write.
     with _store_lock():
         if source_ref and (source, source_ref) in _seen_refs():
             inbox = _load_list("inbox")
-            return _json_response({
-                "captured": False,
-                "duplicate": True,
-                "source": source,
-                "source_ref": source_ref,
-                "inbox_count": len(inbox),
-            })
+            return _json_response(
+                {
+                    "captured": False,
+                    "duplicate": True,
+                    "source": source,
+                    "source_ref": source_ref,
+                    "inbox_count": len(inbox),
+                }
+            )
         item = _make_item(text=text, source=source, privacy=privacy, context=context)
         if source_ref:
             item["source_ref"] = source_ref
@@ -544,16 +552,18 @@ async def _handle_gtd_capture(args: dict) -> list[TextContent]:
         inbox.append(item)
         _save_list("inbox", inbox)
 
-    return _json_response({
-        "captured": True,
-        "id": item["id"],
-        "text": item.get("text") or item.get("title") or "",
-        "source": item["source"],
-        "privacy": item["privacy"],
-        "context": item["context"],
-        "created_at": item["created_at"],
-        "inbox_count": len(inbox),
-    })
+    return _json_response(
+        {
+            "captured": True,
+            "id": item["id"],
+            "text": item.get("text") or item.get("title") or "",
+            "source": item["source"],
+            "privacy": item["privacy"],
+            "context": item["context"],
+            "created_at": item["created_at"],
+            "inbox_count": len(inbox),
+        }
+    )
 
 
 async def _handle_gtd_inbox(args: dict) -> list[TextContent]:
@@ -567,11 +577,13 @@ async def _handle_gtd_inbox(args: dict) -> list[TextContent]:
     inbox.sort(key=lambda x: x.get("created_at", ""), reverse=True)
     items = inbox[:limit]
 
-    return _json_response({
-        "items": items,
-        "total": len(inbox),
-        "showing": len(items),
-    })
+    return _json_response(
+        {
+            "items": items,
+            "total": len(inbox),
+            "showing": len(items),
+        }
+    )
 
 
 async def _handle_gtd_status(_args: dict) -> list[TextContent]:
@@ -581,11 +593,13 @@ async def _handle_gtd_status(_args: dict) -> list[TextContent]:
         items = _load_list(list_name)
         counts[list_name] = len(items)
 
-    return _json_response({
-        "counts": counts,
-        "total": sum(counts.values()),
-        "gtd_dir": str(_gtd_dir()),
-    })
+    return _json_response(
+        {
+            "counts": counts,
+            "total": sum(counts.values()),
+            "gtd_dir": str(_gtd_dir()),
+        }
+    )
 
 
 async def _handle_gtd_clarify(args: dict) -> list[TextContent]:
@@ -663,17 +677,19 @@ async def _handle_gtd_clarify(args: dict) -> list[TextContent]:
         # Save updated inbox (item removed)
         _save_list("inbox", inbox)
 
-    return _json_response({
-        "clarified": True,
-        "id": item["id"],
-        "text": item.get("text") or item.get("title") or "",
-        "destination": dest_name,
-        "status": item["status"],
-        "priority": item.get("priority"),
-        "energy": item.get("energy"),
-        "context": item.get("context"),
-        "delegate_to": item.get("delegate_to"),
-    })
+    return _json_response(
+        {
+            "clarified": True,
+            "id": item["id"],
+            "text": item.get("text") or item.get("title") or "",
+            "destination": dest_name,
+            "status": item["status"],
+            "priority": item.get("priority"),
+            "energy": item.get("energy"),
+            "context": item.get("context"),
+            "delegate_to": item.get("delegate_to"),
+        }
+    )
 
 
 async def _handle_gtd_move(args: dict) -> list[TextContent]:
@@ -718,14 +734,16 @@ async def _handle_gtd_move(args: dict) -> list[TextContent]:
             _save_list(dest_key, dest_list)
             dest_name = dest_key
 
-    return _json_response({
-        "moved": True,
-        "id": item["id"],
-        "text": item.get("text") or item.get("title") or "",
-        "from": source_list,
-        "to": dest_name,
-        "status": item["status"],
-    })
+    return _json_response(
+        {
+            "moved": True,
+            "id": item["id"],
+            "text": item.get("text") or item.get("title") or "",
+            "from": source_list,
+            "to": dest_name,
+            "status": item["status"],
+        }
+    )
 
 
 async def _handle_gtd_done(args: dict) -> list[TextContent]:
@@ -753,14 +771,16 @@ async def _handle_gtd_done(args: dict) -> list[TextContent]:
         archive.append(item)
         _save_archive(archive)
 
-    return _json_response({
-        "done": True,
-        "id": item["id"],
-        "text": item.get("text") or item.get("title") or "",
-        "from": source_list,
-        "completed_at": item["completed_at"],
-        "archive_count": len(archive),
-    })
+    return _json_response(
+        {
+            "done": True,
+            "id": item["id"],
+            "text": item.get("text") or item.get("title") or "",
+            "from": source_list,
+            "completed_at": item["completed_at"],
+            "archive_count": len(archive),
+        }
+    )
 
 
 async def _handle_gtd_review(_args: dict) -> list[TextContent]:
@@ -788,8 +808,12 @@ async def _handle_gtd_review(_args: dict) -> list[TextContent]:
 
     every_item.sort(key=lambda x: x.get("created_at", ""))
     review["oldest_items"] = [
-        {"id": it["id"], "text": it.get("text", "")[:60], "list": it["_list"],
-         "created_at": it.get("created_at", "")}
+        {
+            "id": it["id"],
+            "text": it.get("text", "")[:60],
+            "list": it["_list"],
+            "created_at": it.get("created_at", ""),
+        }
         for it in every_item[:5]
     ]
 
@@ -797,9 +821,12 @@ async def _handle_gtd_review(_args: dict) -> list[TextContent]:
     waiting = all_items.get("waiting-for", [])
     waiting_sorted = sorted(waiting, key=lambda x: x.get("created_at", ""))
     review["longest_waiting"] = [
-        {"id": it["id"], "text": it.get("text", "")[:60],
-         "delegate_to": it.get("delegate_to", ""),
-         "created_at": it.get("created_at", "")}
+        {
+            "id": it["id"],
+            "text": it.get("text", "")[:60],
+            "delegate_to": it.get("delegate_to", ""),
+            "created_at": it.get("created_at", ""),
+        }
         for it in waiting_sorted[:5]
     ]
 
@@ -813,11 +840,13 @@ async def _handle_gtd_review(_args: dict) -> list[TextContent]:
                 ts = datetime.fromisoformat(last_touch.replace("Z", "+00:00"))
                 age_days = (now - ts).days
                 if age_days >= 7:
-                    stale.append({
-                        "id": proj["id"],
-                        "text": proj.get("text", "")[:60],
-                        "days_stale": age_days,
-                    })
+                    stale.append(
+                        {
+                            "id": proj["id"],
+                            "text": proj.get("text", "")[:60],
+                            "days_stale": age_days,
+                        }
+                    )
             except (ValueError, TypeError):
                 pass
     stale.sort(key=lambda x: x["days_stale"], reverse=True)
@@ -855,29 +884,33 @@ async def _handle_gtd_next(args: dict) -> list[TextContent]:
     if priority_filter:
         if priority_filter not in _VALID_PRIORITIES:
             return _error_response(
-                f"Invalid priority '{priority_filter}'. Valid: {', '.join(sorted(_VALID_PRIORITIES))}"
+                f"Invalid priority '{priority_filter}'. Valid: {', '.join(sorted(_VALID_PRIORITIES))}"  # noqa: E501
             )
         items = [it for it in items if it.get("priority") == priority_filter]
 
     # Sort: priority (critical > high > medium > low), then oldest first
-    items.sort(key=lambda x: (
-        _PRIORITY_ORDER.get(x.get("priority", "low"), 3),
-        x.get("created_at", ""),
-    ))
+    items.sort(
+        key=lambda x: (
+            _PRIORITY_ORDER.get(x.get("priority", "low"), 3),
+            x.get("created_at", ""),
+        )
+    )
 
     total = len(items)
     items = items[:limit]
 
-    return _json_response({
-        "items": items,
-        "total": total,
-        "showing": len(items),
-        "filters": {
-            "context": context_filter,
-            "energy": energy_filter,
-            "priority": priority_filter,
-        },
-    })
+    return _json_response(
+        {
+            "items": items,
+            "total": total,
+            "showing": len(items),
+            "filters": {
+                "context": context_filter,
+                "energy": energy_filter,
+                "priority": priority_filter,
+            },
+        }
+    )
 
 
 async def _handle_gtd_projects(args: dict) -> list[TextContent]:
@@ -894,11 +927,7 @@ async def _handle_gtd_projects(args: dict) -> list[TextContent]:
 
     result_items = []
     for proj in projects:
-        last_touch = (
-            proj.get("moved_at")
-            or proj.get("clarified_at")
-            or proj.get("created_at", "")
-        )
+        last_touch = proj.get("moved_at") or proj.get("clarified_at") or proj.get("created_at", "")
         days_since = None
         is_stale = False
         if last_touch:
@@ -914,27 +943,31 @@ async def _handle_gtd_projects(args: dict) -> list[TextContent]:
         if status_filter != "all" and proj_status != status_filter:
             continue
 
-        result_items.append({
-            "id": proj.get("id", ""),
-            "text": proj.get("text", ""),
-            "status": proj_status,
-            "priority": proj.get("priority"),
-            "energy": proj.get("energy"),
-            "context": proj.get("context"),
-            "days_since_activity": days_since,
-            "created_at": proj.get("created_at", ""),
-            "next_action": proj.get("text", "")[:60],
-        })
+        result_items.append(
+            {
+                "id": proj.get("id", ""),
+                "text": proj.get("text", ""),
+                "status": proj_status,
+                "priority": proj.get("priority"),
+                "energy": proj.get("energy"),
+                "context": proj.get("context"),
+                "days_since_activity": days_since,
+                "created_at": proj.get("created_at", ""),
+                "next_action": proj.get("text", "")[:60],
+            }
+        )
 
     total = len(result_items)
     result_items = result_items[:limit]
 
-    return _json_response({
-        "projects": result_items,
-        "total": total,
-        "showing": len(result_items),
-        "filter": status_filter,
-    })
+    return _json_response(
+        {
+            "projects": result_items,
+            "total": total,
+            "showing": len(result_items),
+            "filter": status_filter,
+        }
+    )
 
 
 async def _handle_gtd_waiting(args: dict) -> list[TextContent]:
@@ -960,25 +993,31 @@ async def _handle_gtd_waiting(args: dict) -> list[TextContent]:
             except (ValueError, TypeError):
                 pass
 
-        result_items.append({
-            "id": it.get("id", ""),
-            "text": it.get("text", ""),
-            "delegate_to": it.get("delegate_to", ""),
-            "context": it.get("context"),
-            "priority": it.get("priority"),
-            "created_at": created,
-            "waiting_days": waiting_days,
-            "waiting_since": f"{waiting_days} day(s)" if waiting_days is not None else "unknown",
-        })
+        result_items.append(
+            {
+                "id": it.get("id", ""),
+                "text": it.get("text", ""),
+                "delegate_to": it.get("delegate_to", ""),
+                "context": it.get("context"),
+                "priority": it.get("priority"),
+                "created_at": created,
+                "waiting_days": waiting_days,
+                "waiting_since": (
+                    f"{waiting_days} day(s)" if waiting_days is not None else "unknown"
+                ),
+            }
+        )
 
     total = len(result_items)
     result_items = result_items[:limit]
 
-    return _json_response({
-        "items": result_items,
-        "total": total,
-        "showing": len(result_items),
-    })
+    return _json_response(
+        {
+            "items": result_items,
+            "total": total,
+            "showing": len(result_items),
+        }
+    )
 
 
 HANDLERS: dict = {

@@ -69,14 +69,10 @@ def startup_health_check(
     """
     degraded = degraded_pillars(manifest)
     if not degraded:
-        logger.debug(
-            "Startup health check: all pillars healthy for '%s'", manifest.name
-        )
+        logger.debug("Startup health check: all pillars healthy for '%s'", manifest.name)
         return degraded
 
-    detail = ", ".join(
-        f"{name} ({status.value})" for name, status in sorted(degraded.items())
-    )
+    detail = ", ".join(f"{name} ({status.value})" for name, status in sorted(degraded.items()))
     logger.warning(
         "Startup health check: %d degraded pillar(s) for '%s' — %s",
         len(degraded),

@@ -15,10 +15,9 @@ from __future__ import annotations
 
 import os
 from pathlib import Path
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch
 
 import pytest
-
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -307,7 +306,6 @@ class TestDaemonConfigMultiAgent:
         assert opus_cfg.home != jarvis_cfg.home
         assert opus_cfg.port != jarvis_cfg.port
 
-
     def test_log_files_are_in_respective_homes(self, tmp_path: Path):
         """Each agent's log file lives under its own home."""
         from skcapstone.daemon import DaemonConfig
@@ -337,10 +335,13 @@ class TestAgentHomeEnvVar:
         monkeypatch.setenv("SKCAPSTONE_HOME", "/tmp/sk")
 
         import skcapstone as pkg
+
         importlib.reload(pkg)
 
         assert pkg.AGENT_HOME == "/tmp/sk"
-        assert "agents/opus" in str(pkg.agent_home("opus")) or "agents\\opus" in str(pkg.agent_home("opus"))
+        assert "agents/opus" in str(pkg.agent_home("opus")) or "agents\\opus" in str(
+            pkg.agent_home("opus")
+        )
 
     def test_no_env_var_uses_root_directly(self, monkeypatch):
         """Without SKCAPSTONE_AGENT, AGENT_HOME stays at the shared root."""
@@ -350,6 +351,7 @@ class TestAgentHomeEnvVar:
         monkeypatch.setenv("SKCAPSTONE_HOME", "/tmp/sk")
 
         import skcapstone as pkg
+
         importlib.reload(pkg)
 
         assert pkg.AGENT_HOME == pkg.SHARED_ROOT
@@ -375,12 +377,16 @@ class TestHashedAgentPort:
 
     def test_stable_not_process_salted(self):
         """Must NOT depend on Python's per-process-salted hash()."""
-        from skcapstone import hashed_agent_port
-
         # Known SHA-256-derived value: recompute the expected port independently.
         import hashlib
 
-        from skcapstone import AGENT_PORTS, DYNAMIC_PORT_BASE, DYNAMIC_PORT_SPAN, FLEET_RESERVED_PORTS
+        from skcapstone import (
+            AGENT_PORTS,
+            DYNAMIC_PORT_BASE,
+            DYNAMIC_PORT_SPAN,
+            FLEET_RESERVED_PORTS,
+            hashed_agent_port,
+        )
 
         agent = "scholar"
         digest = hashlib.sha256(agent.encode("utf-8")).digest()

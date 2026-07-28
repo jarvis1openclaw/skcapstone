@@ -216,7 +216,7 @@ def _store_conflict_report(
             content=report_content,
             tags=["conflicting", "truth-check", "promotion-blocked"],
             source="memory_verifier",
-            importance=0.6,   # below 0.7: stays in short-term until conflict resolved
+            importance=0.6,  # below 0.7: stays in short-term until conflict resolved
             layer=MemoryLayer.SHORT_TERM,
         )
         logger.info(

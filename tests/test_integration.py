@@ -11,8 +11,6 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-import pytest
-
 from skcapstone.coordination import Board, Task, TaskStatus
 from skcapstone.discovery import discover_all
 from skcapstone.memory_engine import delete, recall, search, store
@@ -27,8 +25,7 @@ from skcapstone.pillars.sync import (
     pull_seeds,
 )
 from skcapstone.pillars.trust import initialize_trust, record_trust_state
-from skcapstone.runtime import AgentRuntime
-from skcapstone.tokens import issue_token, is_revoked, list_tokens, revoke_token
+from skcapstone.tokens import is_revoked, issue_token, list_tokens, revoke_token
 
 
 class TestInitToMemoryLifecycle:
@@ -275,9 +272,9 @@ class TestFullSovereignLifecycle:
         """A complete sovereign agent lifecycle from init to sync."""
         identity = generate_identity(tmp_agent_home, "sovereign")
         memory = initialize_memory(tmp_agent_home)
-        trust = initialize_trust(tmp_agent_home)
-        security = initialize_security(tmp_agent_home)
-        sync = initialize_sync(tmp_agent_home)
+        initialize_trust(tmp_agent_home)
+        initialize_security(tmp_agent_home)
+        initialize_sync(tmp_agent_home)
 
         assert identity.status in (PillarStatus.ACTIVE, PillarStatus.DEGRADED)
         assert memory.status == PillarStatus.ACTIVE
@@ -295,7 +292,7 @@ class TestFullSovereignLifecycle:
             tmp_agent_home, depth=10.0, trust_level=1.0, love_intensity=1.0, entangled=True
         )
 
-        token = issue_token(
+        issue_token(
             tmp_agent_home,
             subject="mesh-peer",
             capabilities=["sync.push", "sync.pull"],

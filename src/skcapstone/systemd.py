@@ -19,7 +19,7 @@ import logging
 import platform
 import shutil
 import subprocess
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from pathlib import Path
 from typing import Optional
 
@@ -29,9 +29,8 @@ logger = logging.getLogger("skcapstone.systemd")
 def _require_linux() -> None:
     """Raise RuntimeError if not running on Linux."""
     if platform.system() != "Linux":
-        raise RuntimeError(
-            "systemd is only available on Linux. Use launchd on macOS."
-        )
+        raise RuntimeError("systemd is only available on Linux. Use launchd on macOS.")
+
 
 SERVICE_NAME = "skcapstone.service"
 TEMPLATE_NAME = "skcapstone@.service"
@@ -102,7 +101,11 @@ def _run(cmd: list[str], check: bool = False) -> subprocess.CompletedProcess:
         CompletedProcess with stdout/stderr.
     """
     return subprocess.run(
-        cmd, capture_output=True, text=True, timeout=30, check=check,
+        cmd,
+        capture_output=True,
+        text=True,
+        timeout=30,
+        check=check,
     )
 
 
@@ -298,8 +301,11 @@ def service_status() -> ServiceStatus:
     r = _systemctl("is-active", SERVICE_NAME)
     status.active = r.stdout.strip() == "active"
 
-    r = _systemctl("show", SERVICE_NAME,
-                    "--property=MainPID,ActiveEnterTimestamp,MemoryCurrent,ExecMainStatus")
+    r = _systemctl(
+        "show",
+        SERVICE_NAME,
+        "--property=MainPID,ActiveEnterTimestamp,MemoryCurrent,ExecMainStatus",
+    )
     for line in r.stdout.strip().splitlines():
         if "=" not in line:
             continue

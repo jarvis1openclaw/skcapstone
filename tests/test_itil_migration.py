@@ -18,7 +18,7 @@ from pathlib import Path
 
 import pytest
 
-from skcapstone.itil import Change, Incident, ITILManager, Problem
+from skcapstone.itil import Incident, ITILManager
 
 _MIG_PATH = Path(__file__).resolve().parent.parent / "scripts" / "itil_migrate_events.py"
 

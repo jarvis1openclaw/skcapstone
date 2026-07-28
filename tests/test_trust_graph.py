@@ -5,7 +5,6 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-import pytest
 import yaml
 
 from skcapstone.coordination import Board, Task
@@ -34,7 +33,12 @@ def _init_agent(home: Path, name: str = "graph-test") -> None:
     initialize_trust(home)
     initialize_security(home)
     initialize_sync(home)
-    manifest = {"name": name, "version": "0.1.0", "created_at": "2026-01-01T00:00:00Z", "connectors": []}
+    manifest = {
+        "name": name,
+        "version": "0.1.0",
+        "created_at": "2026-01-01T00:00:00Z",
+        "connectors": [],
+    }
     (home / "manifest.json").write_text(json.dumps(manifest))
     (home / "config").mkdir(exist_ok=True)
     (home / "config" / "config.yaml").write_text(yaml.dump({"agent_name": name}))

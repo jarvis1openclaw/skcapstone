@@ -9,12 +9,11 @@ from __future__ import annotations
 import json
 import os
 import time
-from typing import Optional
 
 import click
 from rich.table import Table
 
-from ._common import AGENT_HOME, console
+from ._common import console
 
 # Ordered list of all known backends (matches consciousness_loop.py fallback_chain)
 BACKENDS: list[str] = ["ollama", "grok", "kimi", "nvidia", "anthropic", "openai", "passthrough"]
@@ -91,7 +90,13 @@ class BenchmarkRunner:
         for name in BACKENDS:
             if not available.get(name, False):
                 results.append(
-                    {"backend": name, "status": "unavailable", "ms": None, "model": None, "error": None}
+                    {
+                        "backend": name,
+                        "status": "unavailable",
+                        "ms": None,
+                        "model": None,
+                        "error": None,
+                    }
                 )
                 continue
             results.append(self.run_backend(name))
@@ -140,9 +145,7 @@ class BenchmarkRunner:
 
         host = os.environ.get("OLLAMA_HOST", "http://localhost:11434")
         model = os.environ.get("OLLAMA_MODEL", "llama3.2")
-        payload = json.dumps(
-            {"model": model, "prompt": self.prompt, "stream": False}
-        ).encode()
+        payload = json.dumps({"model": model, "prompt": self.prompt, "stream": False}).encode()
         req = urllib.request.Request(
             f"{host}/api/generate",
             data=payload,
@@ -317,15 +320,21 @@ def register_benchmark_commands(main: click.Group) -> None:
 
     @main.command("benchmark")
     @click.option(
-        "--prompt", default="Hello", show_default=True,
+        "--prompt",
+        default="Hello",
+        show_default=True,
         help="Prompt to send to each backend.",
     )
     @click.option(
-        "--timeout", default=30.0, show_default=True, type=float,
+        "--timeout",
+        default=30.0,
+        show_default=True,
+        type=float,
         help="Per-backend timeout in seconds.",
     )
     @click.option(
-        "--include-unavailable", is_flag=True,
+        "--include-unavailable",
+        is_flag=True,
         help="Include unavailable backends in output (they will show as 'unavailable').",
     )
     @click.option("--json-out", is_flag=True, help="Output raw JSON instead of a table.")

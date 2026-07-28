@@ -10,14 +10,12 @@ Covers:
 from __future__ import annotations
 
 import json
-from pathlib import Path
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch
 
 import pytest
 from click.testing import CliRunner
 
 from skcapstone.conversation_store import ConversationStore, _sanitize_peer_name
-
 
 # ---------------------------------------------------------------------------
 # Fixtures
@@ -51,6 +49,7 @@ def agent_home(tmp_path):
     (home / "identity" / "identity.json").write_text(json.dumps(identity))
     (home / "manifest.json").write_text(json.dumps({"name": "TestAgent", "version": "0.1.0"}))
     import yaml
+
     (home / "config" / "config.yaml").write_text(yaml.dump({"agent_name": "TestAgent"}))
     return home
 
@@ -302,6 +301,7 @@ class TestChatHistoryCLI:
     @patch("skcapstone.cli.chat.get_runtime")
     def test_history_help(self, _mock_rt):
         from skcapstone.cli import main
+
         runner = CliRunner()
         result = runner.invoke(main, ["chat", "history", "--help"])
         assert result.exit_code == 0
@@ -311,10 +311,9 @@ class TestChatHistoryCLI:
     def test_history_empty(self, _mock_rt, agent_home):
         """No conversation → 'No conversation history' message."""
         from skcapstone.cli import main
+
         runner = CliRunner()
-        result = runner.invoke(
-            main, ["chat", "history", "nobody", "--home", str(agent_home)]
-        )
+        result = runner.invoke(main, ["chat", "history", "nobody", "--home", str(agent_home)])
         assert result.exit_code == 0
         assert "No conversation history" in result.output
 
@@ -329,9 +328,7 @@ class TestChatHistoryCLI:
         store.append("lumina", "assistant", "Hello! How can I help?")
 
         runner = CliRunner()
-        result = runner.invoke(
-            main, ["chat", "history", "lumina", "--home", str(agent_home)]
-        )
+        result = runner.invoke(main, ["chat", "history", "lumina", "--home", str(agent_home)])
         assert result.exit_code == 0
         assert "Hello Lumina!" in result.output
         assert "Hello! How can I help?" in result.output
@@ -383,9 +380,7 @@ class TestChatHistoryCLI:
         store.append("jarvis", "assistant", "all systems nominal")
 
         runner = CliRunner()
-        result = runner.invoke(
-            main, ["chat", "history", "jarvis", "--home", str(agent_home)]
-        )
+        result = runner.invoke(main, ["chat", "history", "jarvis", "--home", str(agent_home)])
         assert result.exit_code == 0
         assert "user" in result.output
         assert "assistant" in result.output

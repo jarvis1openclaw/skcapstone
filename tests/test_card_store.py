@@ -1,4 +1,5 @@
 """Tests for the event-sourced CardStore engine (Phase 4a)."""
+
 from __future__ import annotations
 
 from skcapstone.card import Column, Kind
@@ -88,14 +89,22 @@ def test_fold_deterministic_across_writers(tmp_path):
 
 
 def test_import_and_parity_roundtrip(tmp_path):
-    from skcapstone.card_store import import_from_legacy, parity_check
     from skcapstone.card import CardEvent, CardEventLog
+    from skcapstone.card_store import import_from_legacy, parity_check
     from skcapstone.coordination import AgentFile, Board, Task, TaskPriority
+
     board = Board(tmp_path)
     board.ensure_dirs()
     board.create_task(Task(id="p1", title="open feature", created_by="opus"))
-    board.create_task(Task(id="p2", title="claimed high", created_by="opus",
-                           priority=TaskPriority.HIGH, tags=["bug"]))
+    board.create_task(
+        Task(
+            id="p2",
+            title="claimed high",
+            created_by="opus",
+            priority=TaskPriority.HIGH,
+            tags=["bug"],
+        )
+    )
     board.save_agent(AgentFile(agent="lumina", current_task="p2", claimed_tasks=["p2"]))
     board.create_task(Task(id="p3", title="done old", created_by="opus"))
     board.save_agent(AgentFile(agent="opus", completed_tasks=["p3"]))
@@ -115,6 +124,7 @@ def test_import_and_parity_roundtrip(tmp_path):
 def test_import_is_idempotent(tmp_path):
     from skcapstone.card_store import import_from_legacy
     from skcapstone.coordination import Board, Task
+
     board = Board(tmp_path)
     board.ensure_dirs()
     board.create_task(Task(id="i1", title="x", created_by="o"))
@@ -129,6 +139,7 @@ def test_flag_gated_read_serves_from_card_store(tmp_path, monkeypatch):
     from skcapstone.card import KanbanBoard
     from skcapstone.card_store import import_from_legacy
     from skcapstone.coordination import Board, Task
+
     board = Board(tmp_path)
     board.ensure_dirs()
     board.create_task(Task(id="fr1", title="flagged", created_by="opus"))
@@ -139,9 +150,10 @@ def test_flag_gated_read_serves_from_card_store(tmp_path, monkeypatch):
 
 
 def test_dual_write_mirrors_create_claim_complete(tmp_path, monkeypatch):
-    from skcapstone.card_store import CardStore
     from skcapstone.card import Column
+    from skcapstone.card_store import CardStore
     from skcapstone.coordination import Board, Task
+
     monkeypatch.setenv("SKCOORD_CARD_STORE", "dual")
     board = Board(tmp_path)
     board.ensure_dirs()
@@ -158,6 +170,7 @@ def test_dual_write_mirrors_create_claim_complete(tmp_path, monkeypatch):
 def test_dual_write_disabled_by_default(tmp_path):
     from skcapstone.card_store import CardStore
     from skcapstone.coordination import Board, Task
+
     board = Board(tmp_path)
     board.ensure_dirs()
     board.create_task(Task(id="nd1", title="not mirrored", created_by="o"))
@@ -167,6 +180,7 @@ def test_dual_write_disabled_by_default(tmp_path):
 def test_dual_write_mirrors_archive(tmp_path, monkeypatch):
     from skcapstone.card_store import CardStore
     from skcapstone.coordination import Board, Task
+
     monkeypatch.setenv("SKCOORD_CARD_STORE", "dual")
     board = Board(tmp_path)
     board.ensure_dirs()
@@ -179,11 +193,15 @@ def test_dual_write_mirrors_archive(tmp_path, monkeypatch):
 def test_get_task_views_from_store_matches_legacy(tmp_path, monkeypatch):
     from skcapstone.card_store import import_from_legacy
     from skcapstone.coordination import AgentFile, Board, Task, TaskPriority
+
     board = Board(tmp_path)
     board.ensure_dirs()
     board.create_task(Task(id="v1", title="open", created_by="o"))
-    board.create_task(Task(id="v2", title="inprog high", created_by="o",
-                           priority=TaskPriority.HIGH, tags=["bug"]))
+    board.create_task(
+        Task(
+            id="v2", title="inprog high", created_by="o", priority=TaskPriority.HIGH, tags=["bug"]
+        )
+    )
     board.save_agent(AgentFile(agent="lumina", current_task="v2", claimed_tasks=["v2"]))
     board.create_task(Task(id="v3", title="done", created_by="o"))
     board.save_agent(AgentFile(agent="opus", completed_tasks=["v3"]))
@@ -198,6 +216,7 @@ def test_get_task_views_from_store_matches_legacy(tmp_path, monkeypatch):
 def test_read_cutover_falls_back_when_store_empty(tmp_path, monkeypatch):
     # flag=1 but no cards imported: reconstruct returns empty, must not crash.
     from skcapstone.coordination import Board, Task
+
     board = Board(tmp_path)
     board.ensure_dirs()
     board.create_task(Task(id="fb1", title="legacy only", created_by="o"))
@@ -209,6 +228,7 @@ def test_read_cutover_falls_back_when_store_empty(tmp_path, monkeypatch):
 def test_parity_forces_legacy_read_even_at_flag_1(tmp_path, monkeypatch):
     from skcapstone.card_store import import_from_legacy, parity_check
     from skcapstone.coordination import Board, Task
+
     board = Board(tmp_path)
     board.ensure_dirs()
     board.create_task(Task(id="pf1", title="x", created_by="o"))
@@ -224,6 +244,7 @@ def test_parity_forces_legacy_read_even_at_flag_1(tmp_path, monkeypatch):
 def test_complete_clears_owner_matches_legacy(tmp_path, monkeypatch):
     from skcapstone.card_store import CardStore
     from skcapstone.coordination import Board, Task
+
     monkeypatch.setenv("SKCOORD_CARD_STORE", "dual")
     board = Board(tmp_path)
     board.ensure_dirs()
@@ -238,15 +259,16 @@ def test_complete_clears_owner_matches_legacy(tmp_path, monkeypatch):
 def test_claim_demotes_bumped_task(tmp_path, monkeypatch):
     from skcapstone.card_store import CardStore, parity_check
     from skcapstone.coordination import Board, Task
+
     monkeypatch.setenv("SKCOORD_CARD_STORE", "dual")
     board = Board(tmp_path)
     board.ensure_dirs()
     board.create_task(Task(id="bmp_a", title="a", created_by="o"))
     board.create_task(Task(id="bmp_b", title="b", created_by="o"))
-    board.claim_task("opus", "bmp_a")   # a is current -> doing
-    board.claim_task("opus", "bmp_b")   # b current, a bumped -> claimed/ready
+    board.claim_task("opus", "bmp_a")  # a is current -> doing
+    board.claim_task("opus", "bmp_b")  # b current, a bumped -> claimed/ready
     store = CardStore(tmp_path)
-    assert store.fold("bmp_a").status.value == "ready"   # demoted
+    assert store.fold("bmp_a").status.value == "ready"  # demoted
     assert store.fold("bmp_b").status.value == "doing"
     # and parity with legacy holds
     par = parity_check(tmp_path)
@@ -290,9 +312,7 @@ def test_overlay_move_on_preexisting_card_folds_to_done(tmp_path):
     board.ensure_dirs()
     board.create_task(Task(id="07c78c7f", title="completed via overlay", created_by="o"))
     import_from_legacy(tmp_path)
-    CardEventLog(tmp_path).append(
-        CardEvent(card_id="07c78c7f", action="move", column="done")
-    )
+    CardEventLog(tmp_path).append(CardEvent(card_id="07c78c7f", action="move", column="done"))
     assert CardStore(tmp_path).fold("07c78c7f").status == Column.DONE
 
 
@@ -348,8 +368,7 @@ def test_store_event_after_overlay_wins_by_timestamp(tmp_path):
     store = CardStore(tmp_path)
     store.create(CardCore(id="mix1", title="merge order"))
     CardEventLog(tmp_path).append(
-        CardEvent(card_id="mix1", action="move", column="doing",
-                  ts="2026-07-01T00:00:00+00:00")
+        CardEvent(card_id="mix1", action="move", column="doing", ts="2026-07-01T00:00:00+00:00")
     )
     store.append_event("mix1", "move", "opus", column="review")  # ts=now, later
     assert store.fold("mix1").status == Column.REVIEW
@@ -428,7 +447,10 @@ def test_reconcile_repairs_agent_file_claim_drift(tmp_path):
     """One-time reconcile: a claim/complete recorded only in agents/*.json
     (pre-mirror) is repaired by appending corrective store events."""
     from skcapstone.card_store import (
-        CardStore, import_from_legacy, parity_check, reconcile_from_legacy,
+        CardStore,
+        import_from_legacy,
+        parity_check,
+        reconcile_from_legacy,
     )
     from skcapstone.coordination import AgentFile, Board, Task
 
@@ -438,8 +460,11 @@ def test_reconcile_repairs_agent_file_claim_drift(tmp_path):
     board.create_task(Task(id="rc2", title="done post-import", created_by="o"))
     import_from_legacy(tmp_path)
     # legacy-only mutations: agent file claims/completes, never mirrored
-    board.save_agent(AgentFile(agent="lumina", current_task="rc1",
-                               claimed_tasks=["rc1"], completed_tasks=["rc2"]))
+    board.save_agent(
+        AgentFile(
+            agent="lumina", current_task="rc1", claimed_tasks=["rc1"], completed_tasks=["rc2"]
+        )
+    )
     pre = parity_check(tmp_path)
     assert pre["mismatches"], "fixture must drift before reconcile"
 

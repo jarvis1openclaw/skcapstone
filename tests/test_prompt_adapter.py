@@ -4,19 +4,15 @@ from __future__ import annotations
 
 import json
 import re
-from pathlib import Path
 from unittest.mock import MagicMock, patch
 
 import pytest
 
 from skcapstone.blueprints.schema import ModelTier
 from skcapstone.prompt_adapter import (
-    AdaptedPrompt,
     ModelProfile,
     PromptAdapter,
-    _GENERIC_PROFILE,
 )
-
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -191,8 +187,10 @@ class TestAdapt:
     def test_devstral_code_temperature(self, adapter):
         """Devstral gets 0.15 temperature for CODE tier."""
         result = adapter.adapt(
-            "System", "Write a function",
-            "devstral-2506", ModelTier.CODE,
+            "System",
+            "Write a function",
+            "devstral-2506",
+            ModelTier.CODE,
         )
         assert result.temperature == 0.15
         assert "set_temp_0.15" in result.adaptations_applied
@@ -200,16 +198,20 @@ class TestAdapt:
     def test_nemotron_reasoning_temperature(self, adapter):
         """Nemotron gets 1.0 temperature for REASON tier."""
         result = adapter.adapt(
-            "System", "Analyze this",
-            "nemotron-49b", ModelTier.REASON,
+            "System",
+            "Analyze this",
+            "nemotron-49b",
+            ModelTier.REASON,
         )
         assert result.temperature == 1.0
 
     def test_claude_thinking_config(self, adapter):
         """Claude gets thinking budget in extra_params."""
         result = adapter.adapt(
-            "System", "Think deeply",
-            "claude-opus-4-5", ModelTier.REASON,
+            "System",
+            "Think deeply",
+            "claude-opus-4-5",
+            ModelTier.REASON,
         )
         assert "thinking" in result.extra_params
         assert result.extra_params["thinking"]["type"] == "enabled"
@@ -255,7 +257,9 @@ class TestDetectModel:
 
     def test_detect_llama_returns_profile(self, adapter):
         """Successful Ollama response for a llama model yields a valid profile."""
-        with patch("urllib.request.urlopen", return_value=_make_ollama_resp("llama", "7B", "Q4_0")):
+        with patch(
+            "urllib.request.urlopen", return_value=_make_ollama_resp("llama", "7B", "Q4_0")
+        ):
             profile = adapter.detect_model("custom-llama:7b")
 
         assert profile is not None
@@ -267,7 +271,9 @@ class TestDetectModel:
 
     def test_detect_qwen_enables_thinking(self, adapter):
         """Qwen family auto-detection sets thinking_enabled and toggle mode."""
-        with patch("urllib.request.urlopen", return_value=_make_ollama_resp("qwen", "14B", "Q8_0")):
+        with patch(
+            "urllib.request.urlopen", return_value=_make_ollama_resp("qwen", "14B", "Q8_0")
+        ):
             profile = adapter.detect_model("qwen3-custom:14b")
 
         assert profile is not None
@@ -277,7 +283,9 @@ class TestDetectModel:
 
     def test_detect_nemotron_reasoning_temp(self, adapter):
         """Nemotron auto-detection sets reasoning_temperature=1.0."""
-        with patch("urllib.request.urlopen", return_value=_make_ollama_resp("nemotron", "49B", "Q4_K_M")):
+        with patch(
+            "urllib.request.urlopen", return_value=_make_ollama_resp("nemotron", "49B", "Q4_K_M")
+        ):
             profile = adapter.detect_model("nemotron-custom:49b")
 
         assert profile is not None
@@ -287,7 +295,10 @@ class TestDetectModel:
     def test_detect_model_ollama_unreachable_returns_none(self, adapter):
         """When Ollama is unreachable detect_model returns None."""
         import urllib.error
-        with patch("urllib.request.urlopen", side_effect=urllib.error.URLError("connection refused")):
+
+        with patch(
+            "urllib.request.urlopen", side_effect=urllib.error.URLError("connection refused")
+        ):
             profile = adapter.detect_model("mystery-model:latest")
 
         assert profile is None
@@ -308,7 +319,9 @@ class TestDetectModel:
 
     def test_resolve_profile_falls_back_to_detect(self, adapter):
         """Unknown model triggers detect_model via resolve_profile."""
-        with patch("urllib.request.urlopen", return_value=_make_ollama_resp("llama", "3B", "Q4_0")):
+        with patch(
+            "urllib.request.urlopen", return_value=_make_ollama_resp("llama", "3B", "Q4_0")
+        ):
             profile = adapter.resolve_profile("orca-mini:3b")
 
         assert profile.family == "ollama-llama"

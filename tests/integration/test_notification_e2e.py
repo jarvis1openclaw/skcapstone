@@ -190,12 +190,13 @@ class TestMessageToPopupE2E:
 
         # The desktop popup fired via notify-send with the response title/body.
         notify_send_calls = [
-            c for c in mock_run.call_args_list
+            c
+            for c in mock_run.call_args_list
             if c.args and c.args[0] and c.args[0][0] == "notify-send"
         ]
-        assert notify_send_calls, (
-            f"notify-send was not invoked. subprocess.run calls: {mock_run.call_args_list}"
-        )
+        assert (
+            notify_send_calls
+        ), f"notify-send was not invoked. subprocess.run calls: {mock_run.call_args_list}"
         argv = notify_send_calls[0].args[0]
         assert "Agent response" in argv, f"Popup title missing 'Agent response': {argv}"
         # Body is the first 120 chars of the reply.
@@ -214,12 +215,12 @@ class TestMessageToPopupE2E:
 
         assert mock_store.called, "Interaction was not recorded via memory_engine.store"
         kwargs = mock_store.call_args.kwargs
-        assert "conversation" in kwargs.get("tags", []), (
-            f"Interaction memory missing 'conversation' tag: {kwargs.get('tags')}"
-        )
-        assert "peer:mem-peer" in kwargs.get("tags", []), (
-            f"Interaction memory missing sender tag: {kwargs.get('tags')}"
-        )
+        assert "conversation" in kwargs.get(
+            "tags", []
+        ), f"Interaction memory missing 'conversation' tag: {kwargs.get('tags')}"
+        assert "peer:mem-peer" in kwargs.get(
+            "tags", []
+        ), f"Interaction memory missing sender tag: {kwargs.get('tags')}"
         # Both the incoming message and the reply are captured in the summary.
         assert "remember this" in kwargs.get("content", "")
         assert reply in kwargs.get("content", "")
@@ -248,9 +249,10 @@ class TestMessageToPopupE2E:
 
         assert result == "silent reply", "Pipeline still produces a reply when gate is off"
         notify_send_calls = [
-            c for c in mock_run.call_args_list
+            c
+            for c in mock_run.call_args_list
             if c.args and c.args[0] and c.args[0][0] == "notify-send"
         ]
-        assert not notify_send_calls, (
-            f"notify-send fired despite the gate being disabled: {notify_send_calls}"
-        )
+        assert (
+            not notify_send_calls
+        ), f"notify-send fired despite the gate being disabled: {notify_send_calls}"

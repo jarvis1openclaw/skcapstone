@@ -1,11 +1,12 @@
 """Tests for the trust-graph dashboard panel (dashboard + trust_graph fold-in)."""
+
 from __future__ import annotations
 
 import json
 
 import pytest
 
-from skcapstone.dashboard import create_app, _trust_graph_dict
+from skcapstone.dashboard import _trust_graph_dict, create_app
 
 
 @pytest.fixture
@@ -22,10 +23,12 @@ def home(tmp_path):
         encoding="utf-8",
     )
     (tmp_path / "manifest.json").write_text(
-        json.dumps({
-            "name": "lumina",
-            "operator": {"name": "Chef", "fingerprint": "OP-1", "entity_type": "human"},
-        }),
+        json.dumps(
+            {
+                "name": "lumina",
+                "operator": {"name": "Chef", "fingerprint": "OP-1", "entity_type": "human"},
+            }
+        ),
         encoding="utf-8",
     )
     agents = tmp_path / "coordination" / "agents"
@@ -75,8 +78,10 @@ def test_build_failure_degrades_gracefully(tmp_path, monkeypatch):
 
 # ---- HTTP routes ----
 
+
 def test_api_trust_graph_route(home):
     from starlette.testclient import TestClient
+
     client = TestClient(create_app(home))
     r = client.get("/api/trust/graph")
     assert r.status_code == 200
@@ -87,6 +92,7 @@ def test_api_trust_graph_route(home):
 
 def test_trust_page_serves_html(home):
     from starlette.testclient import TestClient
+
     client = TestClient(create_app(home))
     r = client.get("/trust")
     assert r.status_code == 200
@@ -96,6 +102,7 @@ def test_trust_page_serves_html(home):
 
 def test_empty_home_route_ok(tmp_path):
     from starlette.testclient import TestClient
+
     client = TestClient(create_app(tmp_path))
     r = client.get("/api/trust/graph")
     assert r.status_code == 200

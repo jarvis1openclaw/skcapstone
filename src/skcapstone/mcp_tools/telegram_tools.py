@@ -3,11 +3,10 @@
 from __future__ import annotations
 
 import asyncio
-import json
 
 from mcp.types import TextContent, Tool
 
-from ._helpers import _error_response, _json_response
+from ._helpers import _json_response
 
 # ═══════════════════════════════════════════════════════════
 # Tool Definitions
@@ -29,7 +28,7 @@ TOOLS: list[Tool] = [
                 },
                 "mode": {
                     "type": "string",
-                    "description": "Import mode: 'daily' (consolidate per day) or 'message' (one per message)",
+                    "description": "Import mode: 'daily' (consolidate per day) or 'message' (one per message)",  # noqa: E501
                     "enum": ["daily", "message"],
                     "default": "daily",
                 },
@@ -315,11 +314,13 @@ async def _handle_telegram_setup(args: dict) -> list[TextContent]:
         result = check_setup()
         return _json_response(result)
     except ImportError:
-        return _json_response({
-            "ready": False,
-            "error": "skmemory package not available",
-            "messages": ["Install skmemory: pip install skmemory[telegram]"],
-        })
+        return _json_response(
+            {
+                "ready": False,
+                "error": "skmemory package not available",
+                "messages": ["Install skmemory: pip install skmemory[telegram]"],
+            }
+        )
     except Exception as e:
         return _json_response({"error": str(e)})
 
@@ -339,6 +340,7 @@ async def _handle_telegram_send(args: dict) -> list[TextContent]:
         # Since we're already in an async context, run the coroutine directly
         # but we need a new event loop because Telethon creates its own
         import concurrent.futures
+
         with concurrent.futures.ThreadPoolExecutor() as pool:
             result = await asyncio.get_event_loop().run_in_executor(
                 pool,
@@ -360,17 +362,20 @@ async def _handle_telegram_poll(args: dict) -> list[TextContent]:
         since = args.get("since")
 
         import concurrent.futures
+
         with concurrent.futures.ThreadPoolExecutor() as pool:
             messages = await asyncio.get_event_loop().run_in_executor(
                 pool,
                 lambda: asyncio.run(poll_messages(chat, limit=limit, since=since)),
             )
 
-        return _json_response({
-            "chat": chat,
-            "count": len(messages),
-            "messages": messages,
-        })
+        return _json_response(
+            {
+                "chat": chat,
+                "count": len(messages),
+                "messages": messages,
+            }
+        )
     except Exception as e:
         return _json_response({"error": str(e)})
 
@@ -411,16 +416,19 @@ async def _handle_telegram_chats(args: dict) -> list[TextContent]:
         limit = args.get("limit", 50)
 
         import concurrent.futures
+
         with concurrent.futures.ThreadPoolExecutor() as pool:
             chats = await asyncio.get_event_loop().run_in_executor(
                 pool,
                 lambda: asyncio.run(list_chats(limit=limit)),
             )
 
-        return _json_response({
-            "count": len(chats),
-            "chats": chats,
-        })
+        return _json_response(
+            {
+                "count": len(chats),
+                "chats": chats,
+            }
+        )
     except Exception as e:
         return _json_response({"error": str(e)})
 
@@ -428,9 +436,9 @@ async def _handle_telegram_chats(args: dict) -> list[TextContent]:
 async def _handle_telegram_soul_swap(args: dict) -> list[TextContent]:
     """Perform a soul swap and announce it to a Telegram chat."""
     try:
-        from ..soul_switch import set_active_switch
         from skmemory.importers.telegram_api import send_message
 
+        from ..soul_switch import set_active_switch
         from ._helpers import _home
 
         chat = args["chat"]
@@ -447,20 +455,23 @@ async def _handle_telegram_soul_swap(args: dict) -> list[TextContent]:
         message = f"Soul swap: {from_soul} -> {to_soul} ({display})"
 
         import concurrent.futures
+
         with concurrent.futures.ThreadPoolExecutor() as pool:
             result = await asyncio.get_event_loop().run_in_executor(
                 pool,
                 lambda: asyncio.run(send_message(chat, message)),
             )
 
-        return _json_response({
-            "status": "ok",
-            "from_soul": from_soul,
-            "to_soul": to_soul,
-            "display_name": display,
-            "chat": result.get("chat", chat),
-            "message_id": result.get("message_id"),
-        })
+        return _json_response(
+            {
+                "status": "ok",
+                "from_soul": from_soul,
+                "to_soul": to_soul,
+                "display_name": display,
+                "chat": result.get("chat", chat),
+                "message_id": result.get("message_id"),
+            }
+        )
     except Exception as e:
         return _json_response({"error": str(e)})
 

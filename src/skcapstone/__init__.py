@@ -129,20 +129,22 @@ SKCAPSTONE_ROOT = os.environ.get("SKCAPSTONE_ROOT", AGENT_HOME)
 #     (see hashed_agent_port) that never overlaps the fleet band.
 AGENT_PORTS: dict[str, int] = {
     "lumina": 9383,  # documented in docs/PORTS.md as skcapstone@lumina; keep stable
-    "opus": 9389,    # free slot between skchat-opus (9388) and signaling (9390)
+    "opus": 9389,  # free slot between skchat-opus (9388) and signaling (9390)
     "jarvis": 9391,  # above the signaling broker; clear of jarvis-heartbeat (9387)
 }
 
 # Ports owned by *other* fleet services on this host. Auto-assignment must never
 # land on one of these. Source of truth: docs/PORTS.md.
-FLEET_RESERVED_PORTS: frozenset[int] = frozenset({
-    9384,  # skcomms federation S2S API
-    9385,  # skchat daemon (lumina) health/metrics
-    9386,  # sk-access MCP (tailnet)
-    9387,  # jarvis-heartbeat
-    9388,  # skchat daemon (opus) health/metrics
-    9390,  # skcomms signaling broker
-})
+FLEET_RESERVED_PORTS: frozenset[int] = frozenset(
+    {
+        9384,  # skcomms federation S2S API
+        9385,  # skchat daemon (lumina) health/metrics
+        9386,  # sk-access MCP (tailnet)
+        9387,  # jarvis-heartbeat
+        9388,  # skchat daemon (opus) health/metrics
+        9390,  # skcomms signaling broker
+    }
+)
 
 # Dedicated range for auto-assigned (unregistered) agent daemon API ports.
 # Chosen above the crowded 938x/939x fleet band so a hashed port never shadows

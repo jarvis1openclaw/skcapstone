@@ -16,7 +16,7 @@ from typing import Optional
 
 import click
 
-from ._common import AGENT_HOME, console
+from ._common import console
 
 
 def register_register_commands(main: click.Group) -> None:
@@ -59,6 +59,7 @@ def register_register_commands(main: click.Group) -> None:
           skcapstone register --env claude-code # target Claude Code only
         """
         from skmemory.register import detect_environments
+
         from skcapstone.register import register_all
 
         workspace_path = Path(workspace).expanduser() if workspace else None
@@ -72,12 +73,16 @@ def register_register_commands(main: click.Group) -> None:
         detected = detect_environments()
         console.print("  [bold]Detected environments:[/]")
         for env in detected:
-            marker = "[green]●[/]" if (environments is None or env in environments) else "[dim]○[/]"
+            marker = (
+                "[green]●[/]" if (environments is None or env in environments) else "[dim]○[/]"
+            )
             console.print(f"    {marker} {env}")
         if not detected:
             console.print("    [dim]None detected[/]")
             console.print()
-            console.print("  [yellow]Tip:[/] Install OpenClaw, Claude Code, or Cursor to enable registration.")
+            console.print(
+                "  [yellow]Tip:[/] Install OpenClaw, Claude Code, or Cursor to enable registration."  # noqa: E501
+            )
         console.print()
 
         if dry_run:
@@ -95,6 +100,7 @@ def register_register_commands(main: click.Group) -> None:
         if not dry_run:
             try:
                 from skmemory.register import register_hooks
+
                 register_hooks(install_hooks=True)
             except ImportError:
                 pass

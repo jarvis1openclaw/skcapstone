@@ -210,15 +210,17 @@ async def _handle_trustee_health(args: dict) -> list[TextContent]:
     try:
         report = ops.health_report(deployment_id)
         healthy = sum(1 for r in report if r["healthy"])
-        return _json_response({
-            "deployment_id": deployment_id,
-            "agents": report,
-            "summary": {
-                "total": len(report),
-                "healthy": healthy,
-                "degraded": len(report) - healthy,
-            },
-        })
+        return _json_response(
+            {
+                "deployment_id": deployment_id,
+                "agents": report,
+                "summary": {
+                    "total": len(report),
+                    "healthy": healthy,
+                    "degraded": len(report) - healthy,
+                },
+            }
+        )
     except ValueError as exc:
         return _error_response(str(exc))
 
@@ -233,11 +235,13 @@ async def _handle_trustee_restart(args: dict) -> list[TextContent]:
     ops, _ = _get_trustee_ops()
     try:
         results = ops.restart_agent(deployment_id, agent_name)
-        return _json_response({
-            "deployment_id": deployment_id,
-            "results": results,
-            "all_restarted": all(v == "restarted" for v in results.values()),
-        })
+        return _json_response(
+            {
+                "deployment_id": deployment_id,
+                "results": results,
+                "all_restarted": all(v == "restarted" for v in results.values()),
+            }
+        )
     except ValueError as exc:
         return _error_response(str(exc))
 
@@ -253,11 +257,13 @@ async def _handle_trustee_scale(args: dict) -> list[TextContent]:
     ops, _ = _get_trustee_ops()
     try:
         result = ops.scale_agent(deployment_id, agent_spec_key, count)
-        return _json_response({
-            "deployment_id": deployment_id,
-            "agent_spec_key": agent_spec_key,
-            **result,
-        })
+        return _json_response(
+            {
+                "deployment_id": deployment_id,
+                "agent_spec_key": agent_spec_key,
+                **result,
+            }
+        )
     except ValueError as exc:
         return _error_response(str(exc))
 
@@ -272,11 +278,13 @@ async def _handle_trustee_rotate(args: dict) -> list[TextContent]:
     ops, _ = _get_trustee_ops()
     try:
         result = ops.rotate_agent(deployment_id, agent_name)
-        return _json_response({
-            "deployment_id": deployment_id,
-            "agent_name": agent_name,
-            **result,
-        })
+        return _json_response(
+            {
+                "deployment_id": deployment_id,
+                "agent_name": agent_name,
+                **result,
+            }
+        )
     except ValueError as exc:
         return _error_response(str(exc))
 
@@ -302,15 +310,17 @@ async def _handle_trustee_monitor(args: dict) -> list[TextContent]:
     else:
         report = monitor.check_all()
 
-    return _json_response({
-        "timestamp": report.timestamp,
-        "deployments_checked": report.deployments_checked,
-        "agents_healthy": report.agents_healthy,
-        "agents_degraded": report.agents_degraded,
-        "restarts_triggered": report.restarts_triggered,
-        "rotations_triggered": report.rotations_triggered,
-        "escalations_sent": report.escalations_sent,
-    })
+    return _json_response(
+        {
+            "timestamp": report.timestamp,
+            "deployments_checked": report.deployments_checked,
+            "agents_healthy": report.agents_healthy,
+            "agents_degraded": report.agents_degraded,
+            "restarts_triggered": report.restarts_triggered,
+            "rotations_triggered": report.rotations_triggered,
+            "escalations_sent": report.escalations_sent,
+        }
+    )
 
 
 async def _handle_trustee_logs(args: dict) -> list[TextContent]:
@@ -324,10 +334,12 @@ async def _handle_trustee_logs(args: dict) -> list[TextContent]:
     ops, _ = _get_trustee_ops()
     try:
         logs = ops.get_logs(deployment_id, agent_name, tail=tail)
-        return _json_response({
-            "deployment_id": deployment_id,
-            "agents": {name: lines for name, lines in logs.items()},
-        })
+        return _json_response(
+            {
+                "deployment_id": deployment_id,
+                "agents": {name: lines for name, lines in logs.items()},
+            }
+        )
     except ValueError as exc:
         return _error_response(str(exc))
 
@@ -336,28 +348,32 @@ async def _handle_trustee_deployments(_args: dict) -> list[TextContent]:
     """List all active deployments."""
     _, engine = _get_trustee_ops()
     deployments = engine.list_deployments()
-    return _json_response({
-        "count": len(deployments),
-        "deployments": [
-            {
-                "deployment_id": d.deployment_id,
-                "blueprint_slug": d.blueprint_slug,
-                "team_name": d.team_name,
-                "provider": d.provider,
-                "status": d.status,
-                "agent_count": len(d.agents),
-                "agents": {
-                    name: {
-                        "status": a.status.value if hasattr(a.status, "value") else str(a.status),
-                        "host": a.host or "\u2014",
-                        "last_heartbeat": a.last_heartbeat or "\u2014",
-                    }
-                    for name, a in d.agents.items()
-                },
-            }
-            for d in deployments
-        ],
-    })
+    return _json_response(
+        {
+            "count": len(deployments),
+            "deployments": [
+                {
+                    "deployment_id": d.deployment_id,
+                    "blueprint_slug": d.blueprint_slug,
+                    "team_name": d.team_name,
+                    "provider": d.provider,
+                    "status": d.status,
+                    "agent_count": len(d.agents),
+                    "agents": {
+                        name: {
+                            "status": (
+                                a.status.value if hasattr(a.status, "value") else str(a.status)
+                            ),
+                            "host": a.host or "\u2014",
+                            "last_heartbeat": a.last_heartbeat or "\u2014",
+                        }
+                        for name, a in d.agents.items()
+                    },
+                }
+                for d in deployments
+            ],
+        }
+    )
 
 
 HANDLERS: dict = {

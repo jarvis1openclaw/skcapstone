@@ -10,19 +10,16 @@ from typing import Optional
 
 import click
 import yaml
-
-from ._common import AGENT_HOME, console
-from ..registry_client import get_registry_client
-
 from rich.panel import Panel
 from rich.table import Table
+
+from ..registry_client import get_registry_client
+from ._common import console
 
 logger = logging.getLogger(__name__)
 
 # Raw catalog.yaml from the skskills GitHub repo (always fresh)
-_GITHUB_CATALOG_URL = (
-    "https://raw.githubusercontent.com/smilinTux/skskills/main/catalog.yaml"
-)
+_GITHUB_CATALOG_URL = "https://raw.githubusercontent.com/smilinTux/skskills/main/catalog.yaml"
 
 
 def _fetch_github_catalog(query: str = "") -> Optional[list[dict]]:
@@ -46,21 +43,19 @@ def _fetch_github_catalog(query: str = "") -> Optional[list[dict]]:
         desc = item.get("description", "").strip()
         tags = item.get("tags", [])
 
-        if q and not (
-            q in name.lower()
-            or q in desc.lower()
-            or any(q in t.lower() for t in tags)
-        ):
+        if q and not (q in name.lower() or q in desc.lower() or any(q in t.lower() for t in tags)):
             continue
 
-        entries.append({
-            "name": name,
-            "description": desc,
-            "tags": tags,
-            "category": item.get("category", ""),
-            "pip": item.get("pip", ""),
-            "git": item.get("git", ""),
-        })
+        entries.append(
+            {
+                "name": name,
+                "description": desc,
+                "tags": tags,
+                "category": item.get("category", ""),
+                "pip": item.get("pip", ""),
+                "git": item.get("git", ""),
+            }
+        )
 
     return entries
 
@@ -229,17 +224,12 @@ def register_skills_commands(main: click.Group) -> None:
         """
         client = get_registry_client(registry)
         if client is None:
-            console.print(
-                "[bold red]skskills not installed.[/] "
-                "Run: pip install skskills"
-            )
+            console.print("[bold red]skskills not installed.[/] " "Run: pip install skskills")
             sys.exit(1)
 
         ver_label = f" @{version}" if version else ""
         agent_label = f" (agent: {agent})" if agent != "global" else ""
-        console.print(
-            f"\n  Installing [cyan]{name}[/][dim]{ver_label}{agent_label}[/] ...\n"
-        )
+        console.print(f"\n  Installing [cyan]{name}[/][dim]{ver_label}{agent_label}[/] ...\n")
 
         try:
             result = client.install(name, version=version, agent=agent, force=force)
@@ -257,8 +247,6 @@ def register_skills_commands(main: click.Group) -> None:
             console.print(f"[bold red]Error:[/] {exc}\n")
             sys.exit(1)
 
-        console.print(
-            f"  [green]Installed:[/] [bold]{result['name']}[/] v{result['version']}"
-        )
+        console.print(f"  [green]Installed:[/] [bold]{result['name']}[/] v{result['version']}")
         console.print(f"  [dim]Path:  {result['install_path']}[/]")
         console.print(f"  [dim]Agent: {result['agent']}[/]\n")

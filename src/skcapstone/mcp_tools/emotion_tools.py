@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from mcp.types import TextContent, Tool
 
-from ._helpers import _home, _json_response, _error_response
+from ._helpers import _error_response, _home, _json_response
 
 TOOLS: list[Tool] = [
     Tool(

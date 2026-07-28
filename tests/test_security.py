@@ -11,10 +11,8 @@ These map to the findings from the sprint-14 security audit.
 from __future__ import annotations
 
 import json
-import os
-import tempfile
 from pathlib import Path
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock
 
 import pytest
 
@@ -24,7 +22,6 @@ from skcapstone.consciousness_loop import (
     SystemPromptBuilder,
     _sanitize_peer_name,
 )
-
 
 # ---------------------------------------------------------------------------
 # _sanitize_peer_name unit tests
@@ -187,7 +184,6 @@ class TestLargeMessageRejected:
         inbox_file.write_text(payload, encoding="utf-8")
 
         submitted = []
-        original_submit = loop._executor.submit
 
         def capture_submit(fn, *a, **kw):
             submitted.append((fn, a))

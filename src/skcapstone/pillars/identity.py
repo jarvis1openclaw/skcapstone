@@ -10,8 +10,8 @@ from __future__ import annotations
 import json
 import logging
 from datetime import datetime, timezone
-from shutil import copyfile
 from pathlib import Path
+from shutil import copyfile
 from typing import Optional
 
 from ..models import IdentityState, PillarStatus
@@ -91,7 +91,9 @@ def generate_identity(
             )
             identity_manifest["operator_attested_by"] = payload.get("operator_fingerprint")
 
-    (identity_dir / "identity.json").write_text(json.dumps(identity_manifest, indent=2), encoding="utf-8")
+    (identity_dir / "identity.json").write_text(
+        json.dumps(identity_manifest, indent=2), encoding="utf-8"
+    )
 
     return state
 

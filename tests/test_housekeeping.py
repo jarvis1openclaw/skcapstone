@@ -1,7 +1,6 @@
 """Tests for skcapstone.housekeeping — storage pruning."""
 
 import time
-from pathlib import Path
 
 import pytest
 
@@ -52,6 +51,7 @@ class TestPruneAcks:
             f = acks_dir / f"ack-{i}.json"
             f.write_text("{}")
             import os
+
             os.utime(f, (old_time, old_time))
 
         # Create 3 fresh files
@@ -71,6 +71,7 @@ class TestPruneAcks:
         f = acks_dir / "recent.json"
         f.write_text("{}")
         import os
+
         os.utime(f, (time.time() - 3600, time.time() - 3600))
 
         assert prune_acks(skcomms_home, max_age_hours=2) == 0
@@ -98,6 +99,7 @@ class TestPruneCommsOutbox:
             f = agent_dir / f"env-{i}.json"
             f.write_text("{}")
             import os
+
             os.utime(f, (old_time, old_time))
 
         f = agent_dir / "fresh.json"
@@ -124,6 +126,7 @@ class TestPruneSeeds:
             f = seed_dir / f"opus-170900000{i:01d}.json.gpg"
             f.write_text("{}")
             import os
+
             os.utime(f, (time.time() - (15 - i) * 300, time.time() - (15 - i) * 300))
 
         deleted = prune_seeds(seed_dir, keep_per_agent=10)
@@ -161,6 +164,7 @@ class TestRunHousekeeping:
             f = acks_dir / f"old-{i}.json"
             f.write_text("{}")
             import os
+
             os.utime(f, (time.time() - 48 * 3600, time.time() - 48 * 3600))
 
         results = run_housekeeping(
@@ -182,6 +186,7 @@ class TestRunHousekeeping:
             f = acks_dir / f"old-{i}.json"
             f.write_text("{}")
             import os
+
             os.utime(f, (time.time() - 48 * 3600, time.time() - 48 * 3600))
 
         results = run_housekeeping(

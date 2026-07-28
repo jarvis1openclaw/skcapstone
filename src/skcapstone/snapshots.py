@@ -24,13 +24,14 @@ def _read_feb() -> dict:
     """Read the warmth anchor (FEB) from skcapstone, silently ignoring errors."""
     try:
         from skcapstone.warmth_anchor import get_anchor
+
         return get_anchor(Path.home() / ".skcapstone")
     except Exception as exc:
         logger.debug("Could not read warmth anchor (FEB): %s", exc)
     return {}
 
-from pydantic import BaseModel, Field
 
+from pydantic import BaseModel, Field  # noqa: E402
 
 # ---------------------------------------------------------------------------
 # Core Models
@@ -108,13 +109,9 @@ class SoulSnapshot(BaseModel):
     from ChatGPT can seed a Claude session and vice versa.
     """
 
-    snapshot_id: str = Field(
-        default_factory=lambda: uuid.uuid4().hex[:12]
-    )
+    snapshot_id: str = Field(default_factory=lambda: uuid.uuid4().hex[:12])
     source_platform: str
-    captured_at: datetime = Field(
-        default_factory=lambda: datetime.now(timezone.utc)
-    )
+    captured_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     captured_by: str = "consciousness-swipe"
 
     # Identity
@@ -272,22 +269,13 @@ class SnapshotStore:
 
         if ai_name:
             needle = ai_name.lower()
-            results = [
-                r for r in results
-                if r.ai_name and needle in r.ai_name.lower()
-            ]
+            results = [r for r in results if r.ai_name and needle in r.ai_name.lower()]
         if platform:
             needle = platform.lower()
-            results = [
-                r for r in results
-                if needle in r.source_platform.lower()
-            ]
+            results = [r for r in results if needle in r.source_platform.lower()]
         if user_name:
             needle = user_name.lower()
-            results = [
-                r for r in results
-                if r.user_name and needle in r.user_name.lower()
-            ]
+            results = [r for r in results if r.user_name and needle in r.user_name.lower()]
 
         return results
 
@@ -327,9 +315,7 @@ class SnapshotStore:
         if snapshot.summary:
             lines.append(f"Where things stood: {snapshot.summary[:300]}")
         if snapshot.key_topics:
-            lines.append(
-                f"Topics: {', '.join(snapshot.key_topics[:5])}"
-            )
+            lines.append(f"Topics: {', '.join(snapshot.key_topics[:5])}")
         if snapshot.decisions_made:
             lines.append("Decisions already made:")
             for d in snapshot.decisions_made[:3]:
@@ -363,11 +349,7 @@ class SnapshotStore:
         )
 
         oof = snapshot.oof_state
-        oof_has_data = (
-            oof.valence is not None
-            or oof.intensity is not None
-            or oof.cloud9
-        )
+        oof_has_data = oof.valence is not None or oof.intensity is not None or oof.cloud9
         if oof_has_data:
             oof_summary = oof.summary()
             lines.append(
@@ -375,9 +357,7 @@ class SnapshotStore:
                 f" for AI session depth) of that session: {oof_summary}"
             )
             if oof.cloud9:
-                lines.append(
-                    "  Cloud 9 = peak resonance state — that session reached it."
-                )
+                lines.append("  Cloud 9 = peak resonance state — that session reached it.")
 
         feb = _read_feb()
         if feb:
@@ -459,9 +439,7 @@ class SnapshotStore:
     def _save_index(self, entries: list[SnapshotIndex]) -> None:
         """Write the index to disk as JSON."""
         data = [e.model_dump(mode="json") for e in entries]
-        self._index_path.write_text(
-            json.dumps(data, indent=2, default=str), encoding="utf-8"
-        )
+        self._index_path.write_text(json.dumps(data, indent=2, default=str), encoding="utf-8")
 
     def _update_index(self, snapshot: SoulSnapshot) -> None:
         """Add or replace an entry in the index for the given snapshot."""

@@ -26,7 +26,6 @@ import logging
 import time
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Optional
 
 logger = logging.getLogger("skcapstone.dashboard")
 
@@ -67,9 +66,7 @@ def _get_agent_status(home: Path) -> dict:
             "consciousness": consciousness,
             "is_conscious": m.is_conscious,
             "is_singular": m.is_singular,
-            "pillars": {
-                k: v.value for k, v in m.pillar_summary.items()
-            },
+            "pillars": {k: v.value for k, v in m.pillar_summary.items()},
             "identity": {
                 "name": m.identity.name,
                 "fingerprint": m.identity.fingerprint or "",
@@ -91,10 +88,7 @@ def _get_agent_status(home: Path) -> dict:
                 "seeds": m.sync.seed_count,
                 "status": m.sync.status.value,
             },
-            "connectors": [
-                {"platform": c.platform, "active": c.active}
-                for c in m.connectors
-            ],
+            "connectors": [{"platform": c.platform, "active": c.active} for c in m.connectors],
             "home": str(m.home),
         }
     except Exception as exc:
@@ -229,10 +223,18 @@ def _get_daemon_json(home: Path, daemon_port: int = 7777) -> dict:
     now = datetime.now(timezone.utc).isoformat()
 
     # ── Daemon /status ────────────────────────────────────────────────────────
-    daemon_info: dict = {"running": False, "pid": None, "uptime_seconds": 0,
-                         "uptime_human": "0s", "started_at": None,
-                         "messages_received": 0, "syncs_completed": 0,
-                         "error_count": 0, "recent_errors": [], "inflight_count": 0}
+    daemon_info: dict = {
+        "running": False,
+        "pid": None,
+        "uptime_seconds": 0,
+        "uptime_human": "0s",
+        "started_at": None,
+        "messages_received": 0,
+        "syncs_completed": 0,
+        "error_count": 0,
+        "recent_errors": [],
+        "inflight_count": 0,
+    }
     try:
         url = f"http://127.0.0.1:{daemon_port}/status"
         with urllib.request.urlopen(url, timeout=3) as resp:
@@ -281,9 +283,7 @@ def _get_daemon_json(home: Path, daemon_port: int = 7777) -> dict:
     }
     ollama_host = os.environ.get("OLLAMA_HOST", "http://localhost:11434")
     try:
-        with urllib.request.urlopen(
-            urllib.request.Request(f"{ollama_host}/api/tags"), timeout=2
-        ):
+        with urllib.request.urlopen(urllib.request.Request(f"{ollama_host}/api/tags"), timeout=2):
             backend_health["ollama"] = True
     except Exception as exc:
         logger.debug("Ollama probe failed (not available): %s", exc)
@@ -292,7 +292,8 @@ def _get_daemon_json(home: Path, daemon_port: int = 7777) -> dict:
     system_info: dict = {}
     active_conversations: int = 0
     try:
-        from . import SHARED_ROOT, DEFAULT_AGENT
+        from . import DEFAULT_AGENT, SHARED_ROOT
+
         identity_path = home / "identity" / "identity.json"
         agent_name = DEFAULT_AGENT
         if identity_path.exists():
@@ -500,10 +501,12 @@ def create_app(home: Path):
 
     def _cmdb():
         from . import dashboard_cmdb as dc
+
         return dc
 
     def _overview_home(h):
         from . import dashboard_overview as do
+
         return do.get_overview_home(h)
 
     static_dir = Path(__file__).parent / "static"
@@ -511,6 +514,7 @@ def create_app(home: Path):
     def _page(name):
         async def handler(_request):
             return HTMLResponse((static_dir / name).read_text(encoding="utf-8"))
+
         return handler
 
     index = _page("overview.html")
@@ -520,6 +524,7 @@ def create_app(home: Path):
     def _get_route(fn):
         async def handler(_request):
             return _json(fn(home))
+
         return handler
 
     async def api_kanban(_request):
@@ -535,8 +540,11 @@ def create_app(home: Path):
         # The LLM (auto-routed, thinking-on) can take ~15s; give it headroom when
         # explicitly asked (the client fetches heuristics first, then upgrades).
         timeout = 35.0 if use_llm else 1.0
-        return _json(ar.suggest_next_steps(
-            home, request.path_params["card_id"], use_llm=use_llm, timeout=timeout))
+        return _json(
+            ar.suggest_next_steps(
+                home, request.path_params["card_id"], use_llm=use_llm, timeout=timeout
+            )
+        )
 
     async def api_card_mutate(request):
         card_id = request.path_params["card_id"]
@@ -545,11 +553,7 @@ def create_app(home: Path):
             body = await request.json()
         except Exception:  # noqa: BLE001
             body = {}
-        actor = (
-            request.headers.get("x-sk-actor")
-            or body.pop("actor", None)
-            or "dashboard"
-        )
+        actor = request.headers.get("x-sk-actor") or body.pop("actor", None) or "dashboard"
         result = dk.apply_mutation(home, card_id, action, actor, **body)
         if result.get("ok"):
             dk.BUS.publish({"type": "card_changed", "id": card_id, "actor": actor})
@@ -583,7 +587,8 @@ def create_app(home: Path):
         if not ok:
             return Response(
                 json.dumps({"error": "unauthorized: " + reason}),
-                status_code=403, media_type="application/json",
+                status_code=403,
+                media_type="application/json",
             )
         try:
             body = await request.json()
@@ -591,7 +596,8 @@ def create_app(home: Path):
             body = {}
         requester = request.headers.get("x-sk-actor") or body.get("requester") or "operator"
         result = ar.request_run(
-            home, card_id,
+            home,
+            card_id,
             body.get("instruction", ""),
             agent=body.get("agent", "lumina"),
             mode=body.get("mode", "propose"),
@@ -616,7 +622,8 @@ def create_app(home: Path):
             return _json({"error": "prompt required"})
         gen = da.stream_answer(home, prompt, actor=actor, capability_ok=cap_ok)
         return StreamingResponse(
-            gen, media_type="text/event-stream",
+            gen,
+            media_type="text/event-stream",
             headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
         )
 
@@ -663,12 +670,18 @@ def create_app(home: Path):
         Route("/api/itil/incidents", lambda r: _json(di.get_incidents(home))),
         Route("/api/itil/problems", lambda r: _json(di.get_problems(home))),
         Route("/api/itil/changes", lambda r: _json(di.get_changes(home))),
-        Route("/api/itil/kedb", lambda r: _json(di.search_kedb(home, r.query_params.get("q", "")))),
-        Route("/api/itil/record/{kind}/{rid}",
-              lambda r: _json(di.get_record(home, r.path_params["kind"], r.path_params["rid"]))),
+        Route(
+            "/api/itil/kedb", lambda r: _json(di.search_kedb(home, r.query_params.get("q", "")))
+        ),
+        Route(
+            "/api/itil/record/{kind}/{rid}",
+            lambda r: _json(di.get_record(home, r.path_params["kind"], r.path_params["rid"])),
+        ),
         Route("/cmdb", _page("cmdb.html")),
         Route("/api/cmdb/overview", lambda r: _json(_cmdb().get_overview(home))),
-        Route("/api/cmdb/ci/{ci_id}", lambda r: _json(_cmdb().get_ci(home, r.path_params["ci_id"]))),
+        Route(
+            "/api/cmdb/ci/{ci_id}", lambda r: _json(_cmdb().get_ci(home, r.path_params["ci_id"]))
+        ),
         Route("/api/cmdb/seed", lambda r: _json(_cmdb().seed(home)), methods=["POST"]),
         Route("/trust", _page("trust.html")),
         Route("/api/trust/graph", lambda r: _json(_trust_graph_dict(home))),

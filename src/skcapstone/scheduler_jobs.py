@@ -28,7 +28,6 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Optional, Union
 
-
 # ---------------------------------------------------------------------------
 # Internal helpers
 # ---------------------------------------------------------------------------
@@ -73,6 +72,7 @@ def _parse_duration(value: Union[str, int, float]) -> float:
 # Group A — JobSpec dataclass + load_jobs
 # ---------------------------------------------------------------------------
 
+
 @dataclass
 class JobSpec:
     """Describes a single scheduled job as loaded from ``jobs.yaml``.
@@ -103,12 +103,12 @@ class JobSpec:
     timeout: float = 900.0
     enabled: bool = True
     # --- reliability / fleet / observability (added 2026-06-09) ---
-    retries: int = 0                 # extra attempts on failure (0 = run once)
-    retry_backoff: float = 0.0       # seconds between attempts (linear)
-    jitter: float = 0.0              # max random splay (s) before dispatch — avoids
-                                     #   fleet thundering-herd on shared cron slots
-    notify: str = "off"              # off | on_failure | on_success | always (sk-alert hook)
-    notify_level: str = "warn"       # sk-alert level for failure notifications
+    retries: int = 0  # extra attempts on failure (0 = run once)
+    retry_backoff: float = 0.0  # seconds between attempts (linear)
+    jitter: float = 0.0  # max random splay (s) before dispatch — avoids
+    #   fleet thundering-herd on shared cron slots
+    notify: str = "off"  # off | on_failure | on_success | always (sk-alert hook)
+    notify_level: str = "warn"  # sk-alert level for failure notifications
 
 
 def load_jobs(config_path: Path) -> list[JobSpec]:
@@ -141,10 +141,22 @@ def load_jobs(config_path: Path) -> list[JobSpec]:
     jobs_raw: dict = (data or {}).get("jobs") or {}
     result: list[JobSpec] = []
 
-    _KNOWN_KEYS = {
-        "type", "schedule", "every", "nodes", "agent", "prompt",
-        "command", "callback", "timeout", "enabled",
-        "retries", "retry_backoff", "jitter", "notify", "notify_level",
+    _KNOWN_KEYS = {  # noqa: N806
+        "type",
+        "schedule",
+        "every",
+        "nodes",
+        "agent",
+        "prompt",
+        "command",
+        "callback",
+        "timeout",
+        "enabled",
+        "retries",
+        "retry_backoff",
+        "jitter",
+        "notify",
+        "notify_level",
     }
 
     for name, raw in jobs_raw.items():
@@ -193,6 +205,7 @@ def load_jobs(config_path: Path) -> list[JobSpec]:
 # ---------------------------------------------------------------------------
 # Group A2 — jobs.d/ drop-in registration (added 2026-06-09)
 # ---------------------------------------------------------------------------
+
 
 def load_jobs_with_dropins(config_path: Path) -> list[JobSpec]:
     """Load jobs from ``jobs.yaml`` plus every ``jobs.d/*.yaml`` drop-in.
@@ -289,9 +302,7 @@ def register_job(spec: dict, home: Optional[Path] = None) -> Path:
     if not name:
         raise ValueError("register_job: spec must include a 'name'")
     if "schedule" not in spec and "every" not in spec:
-        raise ValueError(
-            f"register_job: job {name!r} must define 'schedule' or 'every'"
-        )
+        raise ValueError(f"register_job: job {name!r} must define 'schedule' or 'every'")
 
     dropin = _dropin_dir(home)
     dropin.mkdir(parents=True, exist_ok=True)
@@ -327,6 +338,7 @@ def unregister_job(name: str, home: Optional[Path] = None) -> bool:
 # Group B — node affinity
 # ---------------------------------------------------------------------------
 
+
 def job_runs_here(job: JobSpec, host_aliases: set[str]) -> bool:
     """Return ``True`` if *job* should fire on the current node.
 
@@ -354,6 +366,7 @@ def job_runs_here(job: JobSpec, host_aliases: set[str]) -> bool:
 # ---------------------------------------------------------------------------
 # Group C — due-check cron + interval with misfire catch-up
 # ---------------------------------------------------------------------------
+
 
 def is_due(
     job: JobSpec,
@@ -429,6 +442,7 @@ def is_due(
 # ---------------------------------------------------------------------------
 # Group D — host alias discovery
 # ---------------------------------------------------------------------------
+
 
 def current_host_aliases() -> set[str]:
     """Return the set of aliases that identify the current host.

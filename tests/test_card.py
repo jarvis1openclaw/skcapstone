@@ -1,4 +1,5 @@
 """Tests for the unified kanban Card projection (Phase 1)."""
+
 from __future__ import annotations
 
 from skcapstone.card import (
@@ -15,12 +16,13 @@ from skcapstone.card import (
 )
 from skcapstone.coordination import Board, Task, TaskPriority, TaskStatus, TaskView
 
-
 # ---- Task 1: model ----
 
+
 def test_card_defaults_and_roundtrip():
-    c = Card(id="abc123", kind=Kind.TASK, title="Do the thing", status=Column.READY,
-             swimlane="feature")
+    c = Card(
+        id="abc123", kind=Kind.TASK, title="Do the thing", status=Column.READY, swimlane="feature"
+    )
     assert c.priority == "medium"
     assert c.archived is False
     assert c.source == "coord"
@@ -32,9 +34,15 @@ def test_card_defaults_and_roundtrip():
 
 # ---- Task 2: coord TaskView adapter ----
 
+
 def test_card_from_taskview_maps_status_and_swimlane():
-    t = Task(id="t1", title="Fix login", priority=TaskPriority.HIGH,
-             created_by="opus", tags=["bug", "auth"])
+    t = Task(
+        id="t1",
+        title="Fix login",
+        priority=TaskPriority.HIGH,
+        created_by="opus",
+        tags=["bug", "auth"],
+    )
     view = TaskView(task=t, status=TaskStatus.IN_PROGRESS, claimed_by="lumina")
     c = card_from_taskview(view)
     assert c.status.value == "doing"
@@ -62,11 +70,16 @@ def test_card_from_taskview_epic_kind():
 
 # ---- Task 3: ITIL adapters ----
 
+
 def test_card_from_incident_is_expedite_lane():
     from skcapstone.itil import Incident, IncidentStatus, Severity
 
-    inc = Incident(id="inc-1", title="skmem-pg down", severity=Severity.SEV2,
-                   status=IncidentStatus.INVESTIGATING)
+    inc = Incident(
+        id="inc-1",
+        title="skmem-pg down",
+        severity=Severity.SEV2,
+        status=IncidentStatus.INVESTIGATING,
+    )
     c = card_from_incident(inc)
     assert c.kind.value == "incident"
     assert c.swimlane == "expedite"
@@ -78,8 +91,9 @@ def test_card_from_incident_is_expedite_lane():
 def test_card_from_incident_resolved_to_review():
     from skcapstone.itil import Incident, IncidentStatus, Severity
 
-    inc = Incident(id="inc-2", title="resolved one", severity=Severity.SEV3,
-                   status=IncidentStatus.RESOLVED)
+    inc = Incident(
+        id="inc-2", title="resolved one", severity=Severity.SEV3, status=IncidentStatus.RESOLVED
+    )
     assert card_from_incident(inc).status == Column.REVIEW
 
 
@@ -98,6 +112,7 @@ def test_card_from_problem_and_change_lanes():
 
 
 # ---- Task 4: KanbanBoard grid ----
+
 
 def test_kanban_grid_groups_by_lane_and_column(tmp_path):
     board = Board(tmp_path)

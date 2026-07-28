@@ -7,7 +7,7 @@ click.testing.CliRunner. External I/O (disk, memory engine) is mocked.
 from __future__ import annotations
 
 from pathlib import Path
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch
 
 import pytest
 from click.testing import CliRunner
@@ -43,14 +43,10 @@ class TestMemoryStoreArgs:
         assert result.exit_code != 0
         assert "Missing argument" in result.output or result.exit_code == 2
 
-    def test_store_exits_when_no_agent_home(
-        self, runner: CliRunner, tmp_path: Path
-    ) -> None:
+    def test_store_exits_when_no_agent_home(self, runner: CliRunner, tmp_path: Path) -> None:
         """Expected: exits with error when agent home does not exist."""
         nonexistent = str(tmp_path / "no_such_agent")
-        result = runner.invoke(
-            main, ["memory", "store", "--home", nonexistent, "some memory"]
-        )
+        result = runner.invoke(main, ["memory", "store", "--home", nonexistent, "some memory"])
         assert result.exit_code != 0
         assert "No agent found" in result.output
 
@@ -61,10 +57,12 @@ class TestMemoryStoreArgs:
         agent_home = tmp_path / ".skcapstone"
         agent_home.mkdir()
 
-        with patch("skcapstone._cli_monolith.mem_store", create=True), patch(
-            "skcapstone.memory_engine.store", return_value=fake_entry
-        ) as mock_store, patch("skcapstone.pillars.security.audit_event"):
-            result = runner.invoke(
+        with (
+            patch("skcapstone._cli_monolith.mem_store", create=True),
+            patch("skcapstone.memory_engine.store", return_value=fake_entry) as mock_store,
+            patch("skcapstone.pillars.security.audit_event"),
+        ):
+            runner.invoke(
                 main,
                 ["memory", "store", "--home", str(agent_home), "hello world"],
             )
@@ -86,8 +84,9 @@ class TestMemoryStoreArgs:
             captured_tags.append(kwargs.get("tags", []))
             return fake_entry
 
-        with patch("skcapstone.memory_engine.store", side_effect=fake_store), patch(
-            "skcapstone.pillars.security.audit_event"
+        with (
+            patch("skcapstone.memory_engine.store", side_effect=fake_store),
+            patch("skcapstone.pillars.security.audit_event"),
         ):
             runner.invoke(
                 main,
@@ -107,9 +106,7 @@ class TestMemoryStoreArgs:
                 assert "alpha" in captured_tags[0]
                 assert "beta" in captured_tags[0]
 
-    def test_store_layer_choice_validation(
-        self, runner: CliRunner, tmp_path: Path
-    ) -> None:
+    def test_store_layer_choice_validation(self, runner: CliRunner, tmp_path: Path) -> None:
         """Edge case: invalid layer value is rejected by click."""
         agent_home = tmp_path / ".skcapstone"
         agent_home.mkdir()
@@ -136,20 +133,14 @@ class TestMemorySearchArgs:
         result = runner.invoke(main, ["memory", "search"])
         assert result.exit_code != 0
 
-    def test_search_exits_when_no_agent_home(
-        self, runner: CliRunner, tmp_path: Path
-    ) -> None:
+    def test_search_exits_when_no_agent_home(self, runner: CliRunner, tmp_path: Path) -> None:
         """Expected: exits with error when agent home does not exist."""
         nonexistent = str(tmp_path / "no_such_agent")
-        result = runner.invoke(
-            main, ["memory", "search", "--home", nonexistent, "my query"]
-        )
+        result = runner.invoke(main, ["memory", "search", "--home", nonexistent, "my query"])
         assert result.exit_code != 0
         assert "No agent found" in result.output
 
-    def test_search_no_results(
-        self, runner: CliRunner, tmp_path: Path
-    ) -> None:
+    def test_search_no_results(self, runner: CliRunner, tmp_path: Path) -> None:
         """Expected: prints 'no memories' message when search returns empty."""
         agent_home = tmp_path / ".skcapstone"
         agent_home.mkdir()
@@ -163,9 +154,7 @@ class TestMemorySearchArgs:
             assert result.exit_code == 0
             assert "No memories" in result.output or "no memories" in result.output.lower()
 
-    def test_search_default_limit(
-        self, runner: CliRunner, tmp_path: Path
-    ) -> None:
+    def test_search_default_limit(self, runner: CliRunner, tmp_path: Path) -> None:
         """Expected: limit defaults to 20 when not specified."""
         agent_home = tmp_path / ".skcapstone"
         agent_home.mkdir()

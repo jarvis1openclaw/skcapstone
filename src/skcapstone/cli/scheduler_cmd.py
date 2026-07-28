@@ -1,4 +1,5 @@
 """`skcapstone scheduler` — manage the unified job scheduler."""
+
 from __future__ import annotations
 
 import json
@@ -10,10 +11,9 @@ import click
 
 from .. import AGENT_HOME
 from ..scheduler_jobs import (
-    load_jobs,
-    load_jobs_with_dropins,
     current_host_aliases,
     job_runs_here,
+    load_jobs_with_dropins,
 )
 from ..scheduler_runner import JobRunner
 from ..scheduler_state import SchedulerState
@@ -104,9 +104,12 @@ def register_scheduler_commands(main: click.Group) -> None:
         # Record state + fire the job's notify policy so a manual run is observable in
         # `scheduler status` and exercises the sk-alert hook (same as the scheduled path).
         from datetime import datetime, timezone
+
         from ..scheduled_tasks import TaskScheduler
+
         SchedulerState(_home(), socket.gethostname()).record_run(
-            job.name, now=datetime.now(timezone.utc), ok=result.ok, error=result.error)
+            job.name, now=datetime.now(timezone.utc), ok=result.ok, error=result.error
+        )
         TaskScheduler._maybe_notify(job, result, attempts=1)
         if result.output:
             click.echo(result.output.strip())

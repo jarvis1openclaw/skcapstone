@@ -15,6 +15,7 @@ Typical usage::
         if acquired:
             result = runner.run(job)
 """
+
 from __future__ import annotations
 
 import contextlib

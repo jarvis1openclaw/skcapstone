@@ -4,16 +4,12 @@ from __future__ import annotations
 
 import json
 from datetime import date, timedelta
-from pathlib import Path
 from unittest.mock import MagicMock, patch
 
-import pytest
-import yaml
 from click.testing import CliRunner
 
 from skcapstone.cli import main
 from skcapstone.prompt_adapter import ModelProfile
-
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -282,13 +278,16 @@ class TestParseLastUpdated:
 
     def test_valid_date(self):
         from skcapstone.cli.profile_cmd import _parse_last_updated
+
         result = _parse_last_updated("2026-03-02")
         assert result == date(2026, 3, 2)
 
     def test_empty_string_returns_none(self):
         from skcapstone.cli.profile_cmd import _parse_last_updated
+
         assert _parse_last_updated("") is None
 
     def test_invalid_format_returns_none(self):
         from skcapstone.cli.profile_cmd import _parse_last_updated
+
         assert _parse_last_updated("not-a-date") is None

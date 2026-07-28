@@ -42,6 +42,7 @@ _SYSTEM_PROMPT = (
 
 # ── Data classes ────────────────────────────────────────────────────────────
 
+
 @dataclass
 class CompressionGroup:
     """A set of long-term memories sharing a common tag.
@@ -77,6 +78,7 @@ class CompressionResult:
 
 
 # ── Core class ──────────────────────────────────────────────────────────────
+
 
 class MemoryCompressor:
     """Compress aged long-term memories with LLM synthesis.
@@ -131,8 +133,7 @@ class MemoryCompressor:
 
         if not eligible:
             logger.info(
-                "Found %d candidate memories but no tag group reached the "
-                "minimum size of %d.",
+                "Found %d candidate memories but no tag group reached the " "minimum size of %d.",
                 len(candidates),
                 self.min_group_size,
             )
@@ -257,9 +258,7 @@ class MemoryCompressor:
             return None
 
         # Merge all original tags (union) and add the compressed marker.
-        merged_tags: list[str] = sorted(
-            {t for e in entries for t in e.tags} | {COMPRESSED_TAG}
-        )
+        merged_tags: list[str] = sorted({t for e in entries for t in e.tags} | {COMPRESSED_TAG})
 
         # Take the highest importance from the group.
         max_importance = max(e.importance for e in entries)
@@ -352,6 +351,7 @@ class MemoryCompressor:
         """
         try:
             from .model_router import TaskSignal
+
             signal = TaskSignal(
                 description=f"Compress {n} memories tagged '{tag}'",
                 tags=["compression", "memory", tag],
@@ -370,6 +370,7 @@ class MemoryCompressor:
         """
         try:
             from .consciousness_loop import ConsciousnessConfig, LLMBridge
+
             config = ConsciousnessConfig()
             return LLMBridge(config)
         except ImportError as exc:

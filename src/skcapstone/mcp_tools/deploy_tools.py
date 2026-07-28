@@ -147,9 +147,14 @@ def _argocd_sync_status(v2_root: Path) -> Optional[dict]:
     try:
         result = subprocess.run(
             [
-                "kubectl", "get", "application", "app-of-apps",
-                "-n", "argocd",
-                "-o", "jsonpath={.status.sync.status} {.status.health.status}",
+                "kubectl",
+                "get",
+                "application",
+                "app-of-apps",
+                "-n",
+                "argocd",
+                "-o",
+                "jsonpath={.status.sync.status} {.status.health.status}",
             ],
             capture_output=True,
             text=True,
@@ -176,25 +181,28 @@ async def _handle_deploy_status(args: dict) -> list[TextContent]:
     repo_root = _git_root()
 
     if v2_root is None:
-        return _json_response({
-            "platforms": ["unknown"],
-            "skstacks_v2": None,
+        return _json_response(
+            {
+                "platforms": ["unknown"],
+                "skstacks_v2": None,
+                "secrets_backend": _active_secrets_backend(),
+                "last_deploy": _last_deploy_commit(repo_root),
+                "argocd": None,
+                "warning": (
+                    "skstacks/v2/ not found; " "set SKSTACKS_V2_ROOT or run from repo root"
+                ),
+            }
+        )
+
+    return _json_response(
+        {
+            "platforms": _detect_platforms(v2_root),
+            "skstacks_v2": str(v2_root),
             "secrets_backend": _active_secrets_backend(),
             "last_deploy": _last_deploy_commit(repo_root),
-            "argocd": None,
-            "warning": (
-                "skstacks/v2/ not found; "
-                "set SKSTACKS_V2_ROOT or run from repo root"
-            ),
-        })
-
-    return _json_response({
-        "platforms": _detect_platforms(v2_root),
-        "skstacks_v2": str(v2_root),
-        "secrets_backend": _active_secrets_backend(),
-        "last_deploy": _last_deploy_commit(repo_root),
-        "argocd": _argocd_sync_status(v2_root),
-    })
+            "argocd": _argocd_sync_status(v2_root),
+        }
+    )
 
 
 HANDLERS: dict = {

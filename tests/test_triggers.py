@@ -23,7 +23,6 @@ from skcapstone.triggers import (
     unregister_condition,
 )
 
-
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
@@ -149,9 +148,7 @@ class TestTick:
     def test_cooldown_suppresses_repeat_fires(self):
         sink = RecordingSink()
         clock = FakeClock()
-        engine = TriggerEngine(
-            [_threshold_rule(cooldown=300.0)], action_sink=sink, clock=clock
-        )
+        engine = TriggerEngine([_threshold_rule(cooldown=300.0)], action_sink=sink, clock=clock)
         ctx = {"disk_free_pct": 5.0}
 
         assert engine.tick(ctx) == ["disk-low"]  # first fire
@@ -164,9 +161,7 @@ class TestTick:
     def test_fires_again_after_cooldown_lapses(self):
         sink = RecordingSink()
         clock = FakeClock()
-        engine = TriggerEngine(
-            [_threshold_rule(cooldown=300.0)], action_sink=sink, clock=clock
-        )
+        engine = TriggerEngine([_threshold_rule(cooldown=300.0)], action_sink=sink, clock=clock)
         ctx = {"disk_free_pct": 5.0}
 
         assert engine.tick(ctx) == ["disk-low"]
@@ -384,9 +379,7 @@ class TestSchedulerIntegration:
         sched = _FakeScheduler()
 
         state = {"disk_free_pct": 5.0}
-        register_with_scheduler(
-            sched, engine, context_provider=lambda: state, interval_seconds=15
-        )
+        register_with_scheduler(sched, engine, context_provider=lambda: state, interval_seconds=15)
 
         assert len(sched.registered) == 1
         name, interval, cb = sched.registered[0]

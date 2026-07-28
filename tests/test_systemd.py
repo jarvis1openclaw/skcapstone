@@ -132,7 +132,10 @@ class TestInstallService:
         target = tmp_path / "target"
 
         result = install_service(
-            unit_dir=target, source_dir=source, enable=True, start=True,
+            unit_dir=target,
+            source_dir=source,
+            enable=True,
+            start=True,
         )
 
         assert result["installed"] is True
@@ -150,7 +153,8 @@ class TestInstallService:
         (source / SERVICE_NAME).write_text("[Unit]\n")
 
         result = install_service(
-            unit_dir=tmp_path / "tgt", source_dir=source,
+            unit_dir=tmp_path / "tgt",
+            source_dir=source,
         )
 
         assert result["enabled"] is True
@@ -166,6 +170,7 @@ class TestInstallService:
     def test_install_copies_alert_template(self, mock_ctl: MagicMock, tmp_path: Path) -> None:
         """Install copies the OnFailure alert template so the hook resolves."""
         from skcapstone.systemd import ALERT_TEMPLATE
+
         mock_ctl.return_value = subprocess.CompletedProcess([], 0)
 
         source = tmp_path / "source"
@@ -231,8 +236,9 @@ class TestServiceStatus:
                 return subprocess.CompletedProcess([], 0, stdout="active\n")
             if cmd == "show":
                 return subprocess.CompletedProcess(
-                    [], 0,
-                    stdout="MainPID=12345\nActiveEnterTimestamp=Mon 2026-02-24 05:00:00 UTC\nMemoryCurrent=52428800\nExecMainStatus=0\n",
+                    [],
+                    0,
+                    stdout="MainPID=12345\nActiveEnterTimestamp=Mon 2026-02-24 05:00:00 UTC\nMemoryCurrent=52428800\nExecMainStatus=0\n",  # noqa: E501
                 )
             return subprocess.CompletedProcess([], 0, stdout="")
 
@@ -287,31 +293,37 @@ class TestUnitConstants:
     def test_bundled_service_file_exists(self) -> None:
         """The bundled skcapstone.service file exists."""
         from skcapstone.systemd import BUNDLED_DIR
+
         assert (BUNDLED_DIR / SERVICE_NAME).exists()
 
     def test_bundled_heartbeat_timer_exists(self) -> None:
         """The bundled heartbeat timer file exists."""
         from skcapstone.systemd import BUNDLED_DIR
+
         assert (BUNDLED_DIR / HEARTBEAT_TIMER).exists()
 
     def test_bundled_queue_drain_timer_exists(self) -> None:
         """The bundled queue drain timer file exists."""
         from skcapstone.systemd import BUNDLED_DIR
+
         assert (BUNDLED_DIR / QUEUE_DRAIN_TIMER).exists()
 
     def test_bundled_heartbeat_service_exists(self) -> None:
         """The bundled heartbeat service file exists."""
         from skcapstone.systemd import BUNDLED_DIR
+
         assert (BUNDLED_DIR / HEARTBEAT_SERVICE).exists()
 
     def test_bundled_queue_drain_service_exists(self) -> None:
         """The bundled queue drain service file exists."""
         from skcapstone.systemd import BUNDLED_DIR
+
         assert (BUNDLED_DIR / QUEUE_DRAIN_SERVICE).exists()
 
     def test_bundled_alert_template_exists(self) -> None:
         """The bundled OnFailure alert template exists."""
         from skcapstone.systemd import ALERT_TEMPLATE, BUNDLED_DIR
+
         assert (BUNDLED_DIR / ALERT_TEMPLATE).exists()
 
 
@@ -320,6 +332,7 @@ class TestUnitHardening:
 
     def _read(self, name: str) -> str:
         from skcapstone.systemd import BUNDLED_DIR
+
         return (BUNDLED_DIR / name).read_text()
 
     def test_template_unit_has_memory_caps(self) -> None:
@@ -392,8 +405,7 @@ class TestTimerInstall:
         install_service(unit_dir=tmp_path / "tgt", source_dir=source)
 
         enable_calls = [
-            c.args[0] for c in mock_ctl.call_args_list
-            if len(c.args) > 0 and c.args[0] == "enable"
+            c.args[0] for c in mock_ctl.call_args_list if len(c.args) > 0 and c.args[0] == "enable"
         ]
         assert len(enable_calls) >= 3
 
@@ -412,7 +424,9 @@ class TestTimerInstall:
             assert not (tmp_path / name).exists(), f"{name} not removed"
 
     @patch("skcapstone.systemd._systemctl")
-    def test_uninstall_stops_timers_before_service(self, mock_ctl: MagicMock, tmp_path: Path) -> None:
+    def test_uninstall_stops_timers_before_service(
+        self, mock_ctl: MagicMock, tmp_path: Path
+    ) -> None:
         """Uninstall stops timers before stopping the main service."""
         calls: list[tuple] = []
 
@@ -452,6 +466,7 @@ class TestUnitTreeSingleSourceOfTruth:
 
     def _packaged_dir(self) -> Path:
         from skcapstone.systemd import BUNDLED_DIR
+
         return BUNDLED_DIR
 
     def _units(self, directory: Path) -> dict[str, Path]:

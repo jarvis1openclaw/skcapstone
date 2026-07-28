@@ -8,7 +8,6 @@ from pathlib import Path
 import pytest
 
 from skcapstone.trust_calibration import (
-    DEFAULT_THRESHOLDS,
     TrustThresholds,
     apply_setting,
     load_calibration,
@@ -197,8 +196,8 @@ class TestDeriveTrustWithCalibration:
         }
         (febs_dir / "FEB_ent.feb").write_text(json.dumps(feb))
 
-        save_calibration(tmp_agent_home, TrustThresholds(
-            entanglement_depth=7.0, entanglement_trust=0.8
-        ))
+        save_calibration(
+            tmp_agent_home, TrustThresholds(entanglement_depth=7.0, entanglement_trust=0.8)
+        )
         state = _derive_trust_from_febs(tmp_agent_home, list(febs_dir.glob("*.feb")))
         assert state.entangled is True

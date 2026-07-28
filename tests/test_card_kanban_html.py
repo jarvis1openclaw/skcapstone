@@ -1,4 +1,5 @@
 """Tests for the kanban HTML render (Phase 1, Task 5)."""
+
 from __future__ import annotations
 
 from skcapstone.card import KanbanBoard, render_html
@@ -32,6 +33,6 @@ def test_render_html_both_themes_present(tmp_path):
     board.ensure_dirs()
     board.create_task(Task(id="h3", title="theme card", created_by="o"))
     html_out = render_html(KanbanBoard(tmp_path))
-    assert 'prefers-color-scheme:dark' in html_out
+    assert "prefers-color-scheme:dark" in html_out
     assert 'data-theme="dark"' in html_out
     assert 'data-theme="light"' in html_out

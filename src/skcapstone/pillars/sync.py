@@ -192,10 +192,17 @@ def gpg_encrypt(
     try:
         subprocess.run(
             [
-                "gpg", "--batch", "--yes", "--trust-model", "always",
-                "--armor", "--encrypt",
+                "gpg",
+                "--batch",
+                "--yes",
+                "--trust-model",
+                "always",
+                "--armor",
+                "--encrypt",
                 *recipient_args,
-                "--output", str(encrypted_path), str(seed_path),
+                "--output",
+                str(encrypted_path),
+                str(seed_path),
             ],
             capture_output=True,
             text=True,
@@ -204,7 +211,9 @@ def gpg_encrypt(
         )
         logger.info(
             "Encrypted: %s -> %s (recipients: %d)",
-            seed_path.name, encrypted_path.name, len(all_recipients),
+            seed_path.name,
+            encrypted_path.name,
+            len(all_recipients),
         )
         return encrypted_path
     except (subprocess.CalledProcessError, subprocess.TimeoutExpired) as exc:
@@ -290,6 +299,7 @@ def _load_peer_fingerprints(home: Path) -> list[str]:
         return []
     try:
         import yaml as _yaml
+
         data = _yaml.safe_load(config_file.read_text(encoding="utf-8")) or {}
         sync_data = data.get("sync", {})
         peers = sync_data.get("peer_fingerprints", [])
@@ -346,9 +356,13 @@ def pull_seeds(home: Path, decrypt: bool = True) -> list[dict]:
 
                         imported = import_from_seed(home, data["memory_entries"])
                         if imported:
-                            logger.info("Imported %d memories from seed %s", imported, seed_path.name)
+                            logger.info(
+                                "Imported %d memories from seed %s", imported, seed_path.name
+                            )
                     except Exception as exc:
-                        logger.warning("Could not import memories from seed %s: %s", seed_path.name, exc)
+                        logger.warning(
+                            "Could not import memories from seed %s: %s", seed_path.name, exc
+                        )
 
                 if "febs" in data:
                     try:
@@ -356,9 +370,13 @@ def pull_seeds(home: Path, decrypt: bool = True) -> list[dict]:
 
                         feb_imported = import_febs_from_seed(home, data["febs"])
                         if feb_imported:
-                            logger.info("Imported %d FEB(s) from seed %s", feb_imported, seed_path.name)
+                            logger.info(
+                                "Imported %d FEB(s) from seed %s", feb_imported, seed_path.name
+                            )
                     except Exception as exc:
-                        logger.warning("Could not import FEBs from seed %s: %s", seed_path.name, exc)
+                        logger.warning(
+                            "Could not import FEBs from seed %s: %s", seed_path.name, exc
+                        )
 
                 archive.mkdir(exist_ok=True)
                 seed_path.rename(archive / seed_path.name)
@@ -496,9 +514,7 @@ def _count_seeds(sync_dir: Path, home: Optional[Path] = None) -> int:
     if home is not None:
         seeds_dir = home / "seeds"
         if seeds_dir.is_dir():
-            count += sum(
-                1 for f in seeds_dir.iterdir() if f.name.endswith(SEED_EXTENSION)
-            )
+            count += sum(1 for f in seeds_dir.iterdir() if f.name.endswith(SEED_EXTENSION))
     return count
 
 

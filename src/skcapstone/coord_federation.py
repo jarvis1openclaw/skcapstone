@@ -229,9 +229,7 @@ class CoordFederationWatcher:
             # Conflict is newer — replace canonical
             try:
                 conflict_path.replace(canonical_path)
-                logger.info(
-                    "Conflict newer — replaced canonical: %s", canonical_path.name
-                )
+                logger.info("Conflict newer — replaced canonical: %s", canonical_path.name)
                 await self._announce(canonical_path, event="conflict_resolved")
             except OSError as exc:
                 logger.warning("Could not replace canonical with conflict: %s", exc)

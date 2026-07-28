@@ -1,4 +1,5 @@
 """Tests for the coord_kanban + coord_move MCP tools."""
+
 from __future__ import annotations
 
 import json
@@ -40,13 +41,12 @@ async def test_coord_move_handler_moves_card(tmp_path, monkeypatch):
     board = Board(tmp_path)
     board.ensure_dirs()
     board.create_task(Task(id="km2", title="movable", created_by="opus"))
-    result = await coord_tools._handle_coord_move(
-        {"task_id": "km2", "column": "doing"}
-    )
+    result = await coord_tools._handle_coord_move({"task_id": "km2", "column": "doing"})
     data = _parse(result)
     assert data["moved"] is True
     # verify it took effect on the board
     from skcapstone.card import KanbanBoard
+
     card = next(c for c in KanbanBoard(tmp_path).cards() if c.id == "km2")
     assert card.status.value == "doing"
 

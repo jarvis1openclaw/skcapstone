@@ -4,6 +4,7 @@ One aggregate call (``/api/overview``) powers the ``/`` landing page. Keeps the
 agent-health / active-tasks / recent-activity glance and adds operational summary
 tiles that deep-link to the board, cockpit, and CMDB.
 """
+
 from __future__ import annotations
 
 from pathlib import Path
@@ -27,12 +28,18 @@ def get_overview_home(home: Path) -> dict:
         for col in ("doing", "review"):
             for c in grid[lane][col]:
                 run = c.meta.get("agent_run") or {}
-                active_tasks.append({
-                    "id": c.id, "title": c.title, "kind": c.kind.value,
-                    "status": c.status.value, "owner": c.owner,
-                    "priority": c.priority, "swimlane": c.swimlane,
-                    "ai": run.get("state"),
-                })
+                active_tasks.append(
+                    {
+                        "id": c.id,
+                        "title": c.title,
+                        "kind": c.kind.value,
+                        "status": c.status.value,
+                        "owner": c.owner,
+                        "priority": c.priority,
+                        "swimlane": c.swimlane,
+                        "ai": run.get("state"),
+                    }
+                )
     active_tasks.sort(key=lambda t: _PRIORITY_RANK.get(t["priority"], 2))
 
     by_column = {col: sum(len(grid[lane][col]) for lane in LANE_ORDER) for col in cols}
@@ -50,6 +57,7 @@ def get_overview_home(home: Path) -> dict:
     agent = {}
     try:
         from .dashboard import _get_agent_status
+
         st = _get_agent_status(home)
         agent = {
             "name": st.get("name"),

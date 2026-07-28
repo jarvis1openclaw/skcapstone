@@ -11,6 +11,7 @@ loop is loaded (or confirmed absent under ``--no-consciousness``), during
 ``_load_components()``. :func:`run_dreaming_job` (added in a follow-up commit) reads it
 back via :func:`get_consciousness_loop`.
 """
+
 from __future__ import annotations
 
 import logging
@@ -61,9 +62,7 @@ def run_dreaming_job() -> None:
     if config is None or not config.enabled:
         logger.debug("Dreaming job: disabled via config — skipping")
         return
-    engine = DreamingEngine(
-        home=home, config=config, consciousness_loop=get_consciousness_loop()
-    )
+    engine = DreamingEngine(home=home, config=config, consciousness_loop=get_consciousness_loop())
     result = engine.dream()
     if result and result.memories_created:
         logger.info(

@@ -4,8 +4,6 @@ from __future__ import annotations
 
 from unittest.mock import MagicMock, patch
 
-import pytest
-
 from skcapstone.registry_client import RegistryClient, get_registry_client
 
 

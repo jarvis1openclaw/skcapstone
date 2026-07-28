@@ -2,13 +2,11 @@
 
 from __future__ import annotations
 
-import asyncio
-import json
 from pathlib import Path
 
 import click
 
-from ._common import AGENT_HOME, SHARED_ROOT, console
+from ._common import SHARED_ROOT, console
 
 
 def register_itil_commands(main: click.Group) -> None:
@@ -33,17 +31,21 @@ def register_itil_commands(main: click.Group) -> None:
         chg = status["changes"]
         kedb = status["kedb"]
 
-        console.print(f"\n[bold]ITIL Dashboard[/bold]")
+        console.print("\n[bold]ITIL Dashboard[/bold]")
         console.print(f"  Incidents:  [red]{inc['open']}[/red] open / {inc['total']} total")
         for sev, count in inc.get("by_severity", {}).items():
             if count:
                 console.print(f"    {sev}: {count}")
-        console.print(f"  Problems:   [yellow]{prb['active']}[/yellow] active / {prb['total']} total")
-        console.print(f"  Changes:    [blue]{chg['pending']}[/blue] pending / {chg['total']} total")
+        console.print(
+            f"  Problems:   [yellow]{prb['active']}[/yellow] active / {prb['total']} total"
+        )
+        console.print(
+            f"  Changes:    [blue]{chg['pending']}[/blue] pending / {chg['total']} total"
+        )
         console.print(f"  KEDB:       {kedb['total']} entries")
 
         if inc["open_list"]:
-            console.print(f"\n[bold red]Open Incidents:[/bold red]")
+            console.print("\n[bold red]Open Incidents:[/bold red]")
             for i in inc["open_list"]:
                 console.print(
                     f"  [{i['id']}] {i['severity'].upper()} {i['title']} "
@@ -51,7 +53,7 @@ def register_itil_commands(main: click.Group) -> None:
                 )
 
         if chg["pending_list"]:
-            console.print(f"\n[bold blue]Pending Changes:[/bold blue]")
+            console.print("\n[bold blue]Pending Changes:[/bold blue]")
             for c in chg["pending_list"]:
                 console.print(
                     f"  [{c['id']}] {c['title']} ({c['status']}, "
@@ -69,7 +71,9 @@ def register_itil_commands(main: click.Group) -> None:
     @incident.command("create")
     @click.option("--title", "-t", required=True, help="Incident title")
     @click.option(
-        "--severity", "-s", default="sev3",
+        "--severity",
+        "-s",
+        default="sev3",
         type=click.Choice(["sev1", "sev2", "sev3", "sev4"]),
         help="Severity level",
     )
@@ -101,10 +105,17 @@ def register_itil_commands(main: click.Group) -> None:
 
     @incident.command("list")
     @click.option(
-        "--status", type=click.Choice([
-            "detected", "acknowledged", "investigating",
-            "escalated", "resolved", "closed",
-        ]),
+        "--status",
+        type=click.Choice(
+            [
+                "detected",
+                "acknowledged",
+                "investigating",
+                "escalated",
+                "resolved",
+                "closed",
+            ]
+        ),
         help="Filter by status",
     )
     @click.option(
@@ -127,19 +138,24 @@ def register_itil_commands(main: click.Group) -> None:
         console.print(f"\n[bold]Incidents ({len(incidents)}):[/bold]")
         for i in incidents:
             sev = i.severity.value.upper()
-            console.print(
-                f"  [{i.id}] {sev} {i.title} ({i.status.value}) @{i.managed_by}"
-            )
+            console.print(f"  [{i.id}] {sev} {i.title} ({i.status.value}) @{i.managed_by}")
         console.print()
 
     @incident.command("update")
     @click.argument("incident_id")
     @click.option("--agent", default="human", help="Agent making the update")
     @click.option(
-        "--status", "new_status",
-        type=click.Choice([
-            "acknowledged", "investigating", "escalated", "resolved", "closed",
-        ]),
+        "--status",
+        "new_status",
+        type=click.Choice(
+            [
+                "acknowledged",
+                "investigating",
+                "escalated",
+                "resolved",
+                "closed",
+            ]
+        ),
         help="New status",
     )
     @click.option(
@@ -210,9 +226,7 @@ def register_itil_commands(main: click.Group) -> None:
             workaround=workaround,
             tags=list(tag),
         )
-        console.print(
-            f"\n  [green]Created:[/green] {prb.id} — {prb.title} ({prb.status.value})\n"
-        )
+        console.print(f"\n  [green]Created:[/green] {prb.id} — {prb.title} ({prb.status.value})\n")
 
     @problem.command("list")
     @click.option(
@@ -233,16 +247,15 @@ def register_itil_commands(main: click.Group) -> None:
 
         console.print(f"\n[bold]Problems ({len(problems)}):[/bold]")
         for p in problems:
-            console.print(
-                f"  [{p.id}] {p.title} ({p.status.value}) @{p.managed_by}"
-            )
+            console.print(f"  [{p.id}] {p.title} ({p.status.value}) @{p.managed_by}")
         console.print()
 
     @problem.command("update")
     @click.argument("problem_id")
     @click.option("--agent", default="human", help="Agent making the update")
     @click.option(
-        "--status", "new_status",
+        "--status",
+        "new_status",
         type=click.Choice(["analyzing", "known_error", "resolved"]),
         help="New status",
     )
@@ -265,9 +278,7 @@ def register_itil_commands(main: click.Group) -> None:
                 note=note,
                 create_kedb=create_kedb,
             )
-            console.print(
-                f"\n  [green]Updated:[/green] {prb.id} -> {prb.status.value}\n"
-            )
+            console.print(f"\n  [green]Updated:[/green] {prb.id} -> {prb.status.value}\n")
             if prb.kedb_id:
                 console.print(f"  [dim]KEDB entry: {prb.kedb_id}[/dim]\n")
         except ValueError as exc:
@@ -282,12 +293,15 @@ def register_itil_commands(main: click.Group) -> None:
     @change.command("propose")
     @click.option("--title", "-t", required=True, help="Change title")
     @click.option(
-        "--type", "change_type", default="normal",
+        "--type",
+        "change_type",
+        default="normal",
         type=click.Choice(["standard", "normal", "emergency"]),
         help="Change type",
     )
     @click.option(
-        "--risk", default="medium",
+        "--risk",
+        default="medium",
         type=click.Choice(["low", "medium", "high"]),
         help="Risk level",
     )
@@ -297,8 +311,17 @@ def register_itil_commands(main: click.Group) -> None:
     @click.option("--implementer", default=None, help="Implementing agent")
     @click.option("--problem", "related_problem_id", default=None, help="Related problem ID")
     @click.option("--tag", multiple=True, help="Tags")
-    def change_propose(title, change_type, risk, rollback, test_plan,
-                       managed_by, implementer, related_problem_id, tag):
+    def change_propose(
+        title,
+        change_type,
+        risk,
+        rollback,
+        test_plan,
+        managed_by,
+        implementer,
+        related_problem_id,
+        tag,
+    ):
         """Propose a new change (RFC)."""
         from ..itil import ITILManager
 
@@ -323,10 +346,19 @@ def register_itil_commands(main: click.Group) -> None:
     @change.command("list")
     @click.option(
         "--status",
-        type=click.Choice([
-            "proposed", "reviewing", "approved", "rejected",
-            "implementing", "deployed", "verified", "failed", "closed",
-        ]),
+        type=click.Choice(
+            [
+                "proposed",
+                "reviewing",
+                "approved",
+                "rejected",
+                "implementing",
+                "deployed",
+                "verified",
+                "failed",
+                "closed",
+            ]
+        ),
         help="Filter by status",
     )
     def change_list(status):
@@ -352,11 +384,20 @@ def register_itil_commands(main: click.Group) -> None:
     @click.argument("change_id")
     @click.option("--agent", default="human", help="Agent making the update")
     @click.option(
-        "--status", "new_status",
-        type=click.Choice([
-            "reviewing", "approved", "rejected", "implementing",
-            "deployed", "verified", "failed", "closed",
-        ]),
+        "--status",
+        "new_status",
+        type=click.Choice(
+            [
+                "reviewing",
+                "approved",
+                "rejected",
+                "implementing",
+                "deployed",
+                "verified",
+                "failed",
+                "closed",
+            ]
+        ),
         help="New status",
     )
     @click.option("--note", default="", help="Timeline note")
@@ -372,9 +413,7 @@ def register_itil_commands(main: click.Group) -> None:
                 new_status=new_status,
                 note=note,
             )
-            console.print(
-                f"\n  [green]Updated:[/green] {chg.id} -> {chg.status.value}\n"
-            )
+            console.print(f"\n  [green]Updated:[/green] {chg.id} -> {chg.status.value}\n")
         except ValueError as exc:
             console.print(f"\n  [red]Error:[/red] {exc}\n")
 
@@ -388,7 +427,8 @@ def register_itil_commands(main: click.Group) -> None:
     @click.argument("change_id")
     @click.option("--agent", default="human", help="Voting agent")
     @click.option(
-        "--decision", default="approved",
+        "--decision",
+        default="approved",
         type=click.Choice(["approved", "rejected", "abstain"]),
         help="Vote decision",
     )

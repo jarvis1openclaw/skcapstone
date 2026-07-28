@@ -169,7 +169,9 @@ class SKCapstoneClient:
         return self._client
 
     async def _get(self, path: str, **params: Any) -> Any:
-        resp = await self._http().get(path, params={k: v for k, v in params.items() if v is not None})
+        resp = await self._http().get(
+            path, params={k: v for k, v in params.items() if v is not None}
+        )
         resp.raise_for_status()
         return resp.json()
 

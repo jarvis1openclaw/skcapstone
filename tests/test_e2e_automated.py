@@ -19,7 +19,6 @@ import os
 import shutil
 import signal
 import subprocess
-import sys
 import tempfile
 import time
 from pathlib import Path
@@ -64,7 +63,7 @@ def _write_test_message(inbox_dir: Path, peer: str) -> tuple[Path, str]:
         "sender": peer,
         "recipient": "Opus",
         "payload": {
-            "content": f"Ping test — automated pytest E2E at {time.strftime('%Y-%m-%dT%H:%M:%SZ', time.gmtime())}",
+            "content": f"Ping test — automated pytest E2E at {time.strftime('%Y-%m-%dT%H:%M:%SZ', time.gmtime())}",  # noqa: E501
             "content_type": "text",
         },
         "message_id": msg_id,
@@ -156,10 +155,7 @@ def daemon_process():
     if proc.poll() is not None:
         with open(log_path) as fh:
             tail = fh.read()[-2000:]
-        pytest.fail(
-            f"Daemon exited prematurely (rc={proc.returncode}).\n"
-            f"Log tail:\n{tail}"
-        )
+        pytest.fail(f"Daemon exited prematurely (rc={proc.returncode}).\n" f"Log tail:\n{tail}")
 
     yield proc, log_path
 
@@ -193,8 +189,8 @@ class TestDaemonStartup:
 
     def test_consciousness_endpoint_responds(self, daemon_process):
         """GET /consciousness must return valid JSON."""
-        import urllib.request
         import urllib.error
+        import urllib.request
 
         url = f"http://127.0.0.1:{DAEMON_PORT}/consciousness"
         try:
@@ -270,7 +266,7 @@ class TestMessageRoundTrip:
         must exist and contain valid JSON with the peer's conversation history.
         """
         inbox_dir = AGENT_HOME / "sync" / "comms" / "inbox" / PEER
-        outbox_dir = AGENT_HOME / "sync" / "comms" / "outbox" / PEER
+        AGENT_HOME / "sync" / "comms" / "outbox" / PEER
         conv_file = AGENT_HOME / "conversations" / f"{PEER}.json"
 
         msg_path, msg_id = _write_test_message(inbox_dir, PEER)
@@ -284,12 +280,8 @@ class TestMessageRoundTrip:
                 break
             time.sleep(2)
 
-        assert conv_file.exists(), (
-            f"conversations/{PEER}.json not found after {POLL_TIMEOUT}s"
-        )
+        assert conv_file.exists(), f"conversations/{PEER}.json not found after {POLL_TIMEOUT}s"
 
         content = conv_file.read_text()
         data = json.loads(content)  # raises if invalid JSON
-        assert isinstance(data, (dict, list)), (
-            f"Unexpected conversations format: {content[:200]}"
-        )
+        assert isinstance(data, (dict, list)), f"Unexpected conversations format: {content[:200]}"

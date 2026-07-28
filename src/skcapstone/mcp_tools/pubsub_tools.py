@@ -74,9 +74,7 @@ TOOLS: list[Tool] = [
     ),
     Tool(
         name="pubsub_topics",
-        description=(
-            "List all known topics with message counts and last activity."
-        ),
+        description=("List all known topics with message counts and last activity."),
         inputSchema={"type": "object", "properties": {}, "required": []},
     ),
     Tool(
@@ -104,12 +102,14 @@ async def _handle_pubsub_publish(args: dict) -> list[TextContent]:
         payload=args["payload"],
         ttl_seconds=args.get("ttl_seconds", 3600),
     )
-    return _json_response({
-        "message_id": msg.message_id,
-        "topic": msg.topic,
-        "sender": msg.sender,
-        "published_at": str(msg.published_at),
-    })
+    return _json_response(
+        {
+            "message_id": msg.message_id,
+            "topic": msg.topic,
+            "sender": msg.sender,
+            "published_at": str(msg.published_at),
+        }
+    )
 
 
 async def _handle_pubsub_subscribe(args: dict) -> list[TextContent]:
@@ -122,11 +122,13 @@ async def _handle_pubsub_subscribe(args: dict) -> list[TextContent]:
     ps.initialize()
 
     sub = ps.subscribe(args["pattern"])
-    return _json_response({
-        "pattern": sub.pattern,
-        "agent": agent_name,
-        "subscribed_at": str(sub.subscribed_at),
-    })
+    return _json_response(
+        {
+            "pattern": sub.pattern,
+            "agent": agent_name,
+            "subscribed_at": str(sub.subscribed_at),
+        }
+    )
 
 
 async def _handle_pubsub_poll(args: dict) -> list[TextContent]:
@@ -142,16 +144,18 @@ async def _handle_pubsub_poll(args: dict) -> list[TextContent]:
         topic=args.get("topic"),
         limit=args.get("limit", 50),
     )
-    return _json_response([
-        {
-            "message_id": m.message_id,
-            "topic": m.topic,
-            "sender": m.sender,
-            "payload": m.payload,
-            "published_at": str(m.published_at),
-        }
-        for m in messages
-    ])
+    return _json_response(
+        [
+            {
+                "message_id": m.message_id,
+                "topic": m.topic,
+                "sender": m.sender,
+                "payload": m.payload,
+                "published_at": str(m.published_at),
+            }
+            for m in messages
+        ]
+    )
 
 
 async def _handle_pubsub_topics(_args: dict) -> list[TextContent]:

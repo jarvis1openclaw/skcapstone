@@ -68,9 +68,9 @@ class MoodSnapshot(BaseModel):
     messages_per_hour: float = 0.0
 
     # Classified states
-    success_mood: str = "neutral"   # happy / content / neutral / frustrated
-    social_mood: str = "quiet"      # social / active / quiet / isolated
-    stress_mood: str = "calm"       # calm / relaxed / tense / stressed
+    success_mood: str = "neutral"  # happy / content / neutral / frustrated
+    social_mood: str = "quiet"  # social / active / quiet / isolated
+    stress_mood: str = "calm"  # calm / relaxed / tense / stressed
 
     # Dominant label
     summary: str = "neutral"

@@ -27,10 +27,10 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-
 # ---------------------------------------------------------------------------
 # Module import + registry
 # ---------------------------------------------------------------------------
+
 
 def test_provider_package_exports():
     """The providers package exposes all four backends."""
@@ -56,6 +56,7 @@ def test_provider_module_imports(module):
 # ---------------------------------------------------------------------------
 # Basic construction (no SDK, no creds, no daemon)
 # ---------------------------------------------------------------------------
+
 
 def test_local_provider_constructs(tmp_path):
     from skcapstone.providers import LocalProvider
@@ -91,6 +92,7 @@ def test_cloud_provider_constructs(cloud):
 # ---------------------------------------------------------------------------
 # Lazy SDK import path — installed branch (SDK returns a client)
 # ---------------------------------------------------------------------------
+
 
 def _sdk_available(module_path: str) -> bool:
     try:

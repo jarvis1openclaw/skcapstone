@@ -29,9 +29,7 @@ class AuditEntry(BaseModel):
     Each entry is serialised as one JSON line in the append-only log.
     """
 
-    timestamp: str = Field(
-        default_factory=lambda: datetime.now(timezone.utc).isoformat()
-    )
+    timestamp: str = Field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
     event_type: str
     detail: str
     host: str = Field(default_factory=socket.gethostname)
@@ -64,7 +62,9 @@ def initialize_security(home: Path) -> SecurityState:
             "note": "Install sksecurity (pip install sksecurity) for full security",
             "audit_enabled": True,
         }
-        (security_dir / "security.json").write_text(json.dumps(security_config, indent=2), encoding="utf-8")
+        (security_dir / "security.json").write_text(
+            json.dumps(security_config, indent=2), encoding="utf-8"
+        )
         state.status = PillarStatus.DEGRADED
         _init_audit_log(security_dir)
         return state

@@ -17,9 +17,8 @@ import pytest
 import yaml
 from click.testing import CliRunner
 
-from skcapstone.heartbeat import AgentCapability, HeartbeatBeacon
+from skcapstone.heartbeat import HeartbeatBeacon
 from skcapstone.models import AgentConfig
-
 
 # ---------------------------------------------------------------------------
 # AgentConfig defaults
@@ -188,9 +187,7 @@ class TestCapabilitiesCLI:
         """capabilities list --json returns a JSON array."""
         from skcapstone.cli import main
 
-        result = runner.invoke(
-            main, ["capabilities", "list", "--json", "--home", str(tmp_path)]
-        )
+        result = runner.invoke(main, ["capabilities", "list", "--json", "--home", str(tmp_path)])
         assert result.exit_code == 0
         caps = json.loads(result.output)
         assert isinstance(caps, list)
@@ -236,9 +233,7 @@ class TestCapabilitiesCLI:
         # First add so it's persisted
         runner.invoke(main, ["capabilities", "add", "chat", "--home", str(tmp_path)])
 
-        result = runner.invoke(
-            main, ["capabilities", "remove", "chat", "--home", str(tmp_path)]
-        )
+        result = runner.invoke(main, ["capabilities", "remove", "chat", "--home", str(tmp_path)])
         assert result.exit_code == 0
         assert "chat" in result.output
 

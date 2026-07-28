@@ -10,6 +10,7 @@ tickets share one engine.
 Phase 4 ships flag-gated (``SKCOORD_CARD_STORE``); see
 docs/superpowers/plans/2026-07-16-cards-storage-cutover-phase4-SHELVED.md.
 """
+
 from __future__ import annotations
 
 import fcntl
@@ -72,8 +73,14 @@ _OVERLAY_TO_STORE_ACTION = {
 }
 
 _OVERLAY_PAYLOAD_KEYS = (
-    "column", "order", "priority", "swimlane", "label",
-    "link_key", "link_value", "owner",
+    "column",
+    "order",
+    "priority",
+    "swimlane",
+    "label",
+    "link_key",
+    "link_value",
+    "owner",
 )
 
 
@@ -118,13 +125,15 @@ def load_legacy_mutations(home: Path) -> dict[str, list[dict]]:
                 tid = entry.get("id")
                 if not tid:
                     continue
-                out.setdefault(tid, []).append({
-                    "ts": entry.get("archived_at", ""),
-                    "writer": entry.get("archived_by") or "archive",
-                    "seq": 0,
-                    "action": "archive",
-                    "origin": "legacy-archive",
-                })
+                out.setdefault(tid, []).append(
+                    {
+                        "ts": entry.get("archived_at", ""),
+                        "writer": entry.get("archived_by") or "archive",
+                        "seq": 0,
+                        "action": "archive",
+                        "origin": "legacy-archive",
+                    }
+                )
 
     from .card import CardEventLog
 
@@ -294,8 +303,7 @@ class CardStore:
         legacy_events = self._legacy_events(card_id)
         if legacy_events:
             events = events + legacy_events
-            events.sort(key=lambda e: (e.get("ts", ""), e.get("writer", ""),
-                                       e.get("seq", 0)))
+            events.sort(key=lambda e: (e.get("ts", ""), e.get("writer", ""), e.get("seq", 0)))
         for e in events:
             action = e.get("action")
             if action == "move":
@@ -354,10 +362,14 @@ class CardStore:
             elif action == "agent_run_activity":
                 r = card.meta.get("agent_run")
                 if r and r.get("run_id") == e.get("run_id"):
-                    r.setdefault("activity", []).append({
-                        "ts": e.get("ts"), "atype": e.get("atype"),
-                        "text": e.get("text"), "writer": e.get("writer"),
-                    })
+                    r.setdefault("activity", []).append(
+                        {
+                            "ts": e.get("ts"),
+                            "atype": e.get("atype"),
+                            "text": e.get("text"),
+                            "writer": e.get("writer"),
+                        }
+                    )
             elif action == "agent_run_state":
                 r = card.meta.get("agent_run")
                 if r and r.get("run_id") == e.get("run_id"):
@@ -383,8 +395,7 @@ class CardStore:
         if not self.cards_dir.exists():
             return []
         return sorted(
-            p.name for p in self.cards_dir.iterdir()
-            if p.is_dir() and (p / "core.json").exists()
+            p.name for p in self.cards_dir.iterdir() if p.is_dir() and (p / "core.json").exists()
         )
 
     def list_cards(self, include_archived: bool = False) -> list[Card]:
@@ -436,19 +447,21 @@ def import_from_legacy(home: Path, dry_run: bool = False) -> dict:
         if dry_run:
             imported += 1
             continue
-        store.create(CardCore(
-            id=c.id,
-            kind=c.kind.value,
-            title=c.title,
-            description=c.description,
-            created_by=c.originator,
-            created_at=c.created_at or _now_iso(),
-            dependencies=list(c.dependencies),
-            initial_priority=c.priority,
-            initial_swimlane=c.swimlane,
-            initial_labels=list(c.labels),
-            meta=dict(c.meta),
-        ))
+        store.create(
+            CardCore(
+                id=c.id,
+                kind=c.kind.value,
+                title=c.title,
+                description=c.description,
+                created_by=c.originator,
+                created_at=c.created_at or _now_iso(),
+                dependencies=list(c.dependencies),
+                initial_priority=c.priority,
+                initial_swimlane=c.swimlane,
+                initial_labels=list(c.labels),
+                meta=dict(c.meta),
+            )
+        )
         writer = c.originator or "import"
         store.append_event(c.id, "move", writer, column=c.status.value, order=c.order)
         if c.owner:
@@ -522,20 +535,22 @@ def mirror_coord_create(home: Path, task) -> None:
 
     tags_lower = {t.lower() for t in task.tags}
     kind = "epic" if "epic" in tags_lower else "task"
-    CardStore(home).create(CardCore(
-        id=task.id,
-        kind=kind,
-        title=task.title,
-        description=task.description,
-        created_by=task.created_by,
-        created_at=task.created_at,
-        acceptance_criteria=list(getattr(task, "acceptance_criteria", []) or []),
-        dependencies=list(task.dependencies),
-        initial_priority=task.priority.value,
-        initial_swimlane=_swimlane_for_tags(task.tags),
-        initial_labels=list(task.tags),
-        meta=dict(task.meta),
-    ))
+    CardStore(home).create(
+        CardCore(
+            id=task.id,
+            kind=kind,
+            title=task.title,
+            description=task.description,
+            created_by=task.created_by,
+            created_at=task.created_at,
+            acceptance_criteria=list(getattr(task, "acceptance_criteria", []) or []),
+            dependencies=list(task.dependencies),
+            initial_priority=task.priority.value,
+            initial_swimlane=_swimlane_for_tags(task.tags),
+            initial_labels=list(task.tags),
+            meta=dict(task.meta),
+        )
+    )
 
 
 def mirror_coord_claim(home: Path, task_id: str, agent: str) -> None:
@@ -548,8 +563,9 @@ def mirror_coord_complete(home: Path, task_id: str, agent: str) -> None:
     CardStore(home).append_event(task_id, "complete", agent)
 
 
-def mirror_coord_move(home: Path, task_id: str, column: str, agent: str,
-                      order: Optional[int] = None) -> None:
+def mirror_coord_move(
+    home: Path, task_id: str, column: str, agent: str, order: Optional[int] = None
+) -> None:
     """Mirror a kanban move into the CardStore."""
     CardStore(home).append_event(task_id, "move", agent or "mcp", column=column, order=order)
 
@@ -571,10 +587,9 @@ def _open_count(cards: dict) -> int:
     Open = a task/epic card, not archived, still in the backlog column.
     """
     return sum(
-        1 for c in cards.values()
-        if not c.archived
-        and c.kind.value in ("task", "epic")
-        and c.status.value == "backlog"
+        1
+        for c in cards.values()
+        if not c.archived and c.kind.value in ("task", "epic") and c.status.value == "backlog"
     )
 
 
@@ -612,8 +627,11 @@ def parity_check(home: Path, open_drift_threshold: int = OPEN_DRIFT_THRESHOLD) -
     # the other, or a different owner).
     def _bucket(status_value: str) -> str:
         return {
-            "backlog": "todo", "ready": "active", "doing": "active",
-            "review": "active", "done": "done",
+            "backlog": "todo",
+            "ready": "active",
+            "doing": "active",
+            "review": "active",
+            "done": "done",
         }.get(status_value, status_value)
 
     mismatches: list[dict] = []

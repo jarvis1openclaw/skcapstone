@@ -5,10 +5,7 @@ from __future__ import annotations
 import threading
 import time
 from datetime import datetime, timedelta, timezone
-from pathlib import Path
-from unittest.mock import MagicMock, patch, call
-
-import pytest
+from unittest.mock import MagicMock, patch
 
 from skcapstone.scheduled_tasks import (
     ScheduledTask,
@@ -19,7 +16,6 @@ from skcapstone.scheduled_tasks import (
     make_memory_promotion_task,
     make_profile_freshness_task,
 )
-
 
 # ---------------------------------------------------------------------------
 # ScheduledTask unit tests
@@ -284,7 +280,9 @@ class TestMemoryPromotionTask:
 
         # PromotionEngine is imported lazily inside the closure via
         # `from .memory_promoter import PromotionEngine` — patch the source.
-        with patch("skcapstone.memory_promoter.PromotionEngine", return_value=mock_engine) as MockEngine:
+        with patch(
+            "skcapstone.memory_promoter.PromotionEngine", return_value=mock_engine
+        ) as MockEngine:  # noqa: N806
             callback()
             MockEngine.assert_called_once_with(tmp_path)
             mock_engine.sweep.assert_called_once()
@@ -307,7 +305,9 @@ class TestMemoryPromotionTask:
         import time as _time
 
         callback = make_memory_promotion_task(tmp_path)
-        with patch("skcapstone.memory_promoter.PromotionEngine", side_effect=RuntimeError("unavailable")):
+        with patch(
+            "skcapstone.memory_promoter.PromotionEngine", side_effect=RuntimeError("unavailable")
+        ):
             callback()  # spawns a daemon thread; must return without raising
         _time.sleep(0.1)  # let the background sweep run and swallow the error
 

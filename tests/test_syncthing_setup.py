@@ -1,14 +1,10 @@
 """Tests for the Syncthing setup skill — Sovereign Singularity."""
 
 import xml.etree.ElementTree as ET
-from pathlib import Path
 from unittest.mock import patch
-
-import pytest
 
 from skcapstone.skills.syncthing_setup import (
     SHARED_FOLDER_ID,
-    STIGNORE_CONTENTS,
     configure_syncthing_folder,
     detect_syncthing,
     ensure_shared_folder,

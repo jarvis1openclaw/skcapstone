@@ -5,11 +5,9 @@ from __future__ import annotations
 from pathlib import Path
 from unittest.mock import patch
 
-import pytest
 from click.testing import CliRunner
 
 from skcapstone.cli import main
-
 
 # ---------------------------------------------------------------------------
 # skcapstone init — alias for onboard
@@ -119,9 +117,9 @@ class TestReset:
         backups = list(tmp_path.glob(".skcapstone-backup-*"))
         assert len(backups) == 1, f"Expected one backup dir, found: {backups}"
         backup = backups[0]
-        assert (backup / "identity" / "key.gpg").exists(), (
-            "identity/key.gpg must be present in the backup"
-        )
+        assert (
+            backup / "identity" / "key.gpg"
+        ).exists(), "identity/key.gpg must be present in the backup"
 
     def test_reset_force_skips_prompt(self, tmp_path: Path) -> None:
         """--force bypasses the confirmation prompt."""

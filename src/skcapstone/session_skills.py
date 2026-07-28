@@ -114,7 +114,7 @@ def prepare_session_skills(
 
     try:
         from skskills.loader import SkillLoader
-        from skskills.models import parse_skill_yaml
+        from skskills.models import parse_skill_yaml  # noqa: F401
     except ImportError:
         logger.debug("skskills not installed — skipping skill loading for %s", agent_name)
         return result

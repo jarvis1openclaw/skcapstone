@@ -4,6 +4,7 @@ Phase 3 of the interactive SKDashboard. Three-tier information architecture:
 overview cockpit -> per-discipline (incident/problem/change) -> record detail.
 All computed by folding the live ITILManager records; no charting library.
 """
+
 from __future__ import annotations
 
 import logging
@@ -43,6 +44,7 @@ def _now() -> datetime:
 
 def _mgr(home: Path):
     from .itil import ITILManager
+
     return ITILManager(Path(home).expanduser())
 
 
@@ -59,6 +61,7 @@ def _fmt_dur(minutes: Optional[float]) -> str:
 # ---------------------------------------------------------------------------
 # Tier 1: overview cockpit
 # ---------------------------------------------------------------------------
+
 
 def get_overview(home: Path) -> dict:
     """The cockpit: KPI row, open-by-severity, breach-risk, CAB queue, activity."""
@@ -127,14 +130,16 @@ def _breach_risk(open_inc) -> list[dict]:
         age = (now - det).total_seconds() / 60.0
         target = SLA_MINUTES.get(i.severity.value, 60)
         remaining = target - age
-        rows.append({
-            "id": i.id,
-            "title": i.title,
-            "severity": i.severity.value,
-            "remaining_min": round(remaining),
-            "over": remaining < 0,
-            "service": (i.affected_services or [None])[0],
-        })
+        rows.append(
+            {
+                "id": i.id,
+                "title": i.title,
+                "severity": i.severity.value,
+                "remaining_min": round(remaining),
+                "over": remaining < 0,
+                "service": (i.affected_services or [None])[0],
+            }
+        )
     rows.sort(key=lambda r: r["remaining_min"])
     return rows[:8]
 
@@ -149,16 +154,18 @@ def _cab_queue(mgr, awaiting_cab) -> list[dict]:
             votes = []
         approve = sum(1 for v in votes if v.decision.value == "approved")
         reject = sum(1 for v in votes if v.decision.value == "rejected")
-        out.append({
-            "id": c.id,
-            "title": c.title,
-            "change_type": c.change_type.value,
-            "risk": c.risk.value,
-            "rollback": c.rollback_plan,
-            "approve": approve,
-            "reject": reject,
-            "voters": [v.agent for v in votes],
-        })
+        out.append(
+            {
+                "id": c.id,
+                "title": c.title,
+                "change_type": c.change_type.value,
+                "risk": c.risk.value,
+                "rollback": c.rollback_plan,
+                "approve": approve,
+                "reject": reject,
+                "voters": [v.agent for v in votes],
+            }
+        )
     return out
 
 
@@ -166,15 +173,17 @@ def _recent_activity(incidents, changes) -> list[dict]:
     """Latest timeline entries across incidents + changes."""
     events = []
     for rec in list(incidents) + list(changes):
-        for entry in (rec.timeline or []):
-            events.append({
-                "ts": entry.get("ts", ""),
-                "record": rec.id,
-                "kind": rec.type,
-                "agent": entry.get("agent", ""),
-                "action": entry.get("action", ""),
-                "note": entry.get("note", ""),
-            })
+        for entry in rec.timeline or []:
+            events.append(
+                {
+                    "ts": entry.get("ts", ""),
+                    "record": rec.id,
+                    "kind": rec.type,
+                    "agent": entry.get("agent", ""),
+                    "action": entry.get("action", ""),
+                    "note": entry.get("note", ""),
+                }
+            )
     events.sort(key=lambda e: e["ts"], reverse=True)
     return events[:10]
 
@@ -184,17 +193,20 @@ def _service_strip(open_inc) -> list[dict]:
     rank = {"sev1": 0, "sev2": 1, "sev3": 2, "sev4": 3}
     svc = {}
     for i in open_inc:
-        for s in (i.affected_services or []):
+        for s in i.affected_services or []:
             cur = svc.get(s)
             if cur is None or rank.get(i.severity.value, 9) < rank.get(cur, 9):
                 svc[s] = i.severity.value
-    return [{"service": s, "severity": v} for s, v in
-            sorted(svc.items(), key=lambda kv: rank.get(kv[1], 9))]
+    return [
+        {"service": s, "severity": v}
+        for s, v in sorted(svc.items(), key=lambda kv: rank.get(kv[1], 9))
+    ]
 
 
 # ---------------------------------------------------------------------------
 # Tier 2: per-discipline
 # ---------------------------------------------------------------------------
+
 
 def get_incidents(home: Path) -> dict:
     mgr = _mgr(home)
@@ -203,14 +215,19 @@ def get_incidents(home: Path) -> dict:
     rows = []
     for i in incidents:
         det = _parse(i.detected_at)
-        rows.append({
-            "id": i.id, "title": i.title, "severity": i.severity.value,
-            "status": i.status.value, "service": (i.affected_services or [None])[0],
-            "age": _fmt_dur((now - det).total_seconds() / 60.0 if det else None),
-            "mttr": _fmt_dur(_minutes_between(i.detected_at, i.resolved_at)),
-            "problem": i.related_problem_id,
-            "open": i.status.value in _OPEN_INCIDENT,
-        })
+        rows.append(
+            {
+                "id": i.id,
+                "title": i.title,
+                "severity": i.severity.value,
+                "status": i.status.value,
+                "service": (i.affected_services or [None])[0],
+                "age": _fmt_dur((now - det).total_seconds() / 60.0 if det else None),
+                "mttr": _fmt_dur(_minutes_between(i.detected_at, i.resolved_at)),
+                "problem": i.related_problem_id,
+                "open": i.status.value in _OPEN_INCIDENT,
+            }
+        )
     rows.sort(key=lambda r: (not r["open"], r["severity"]))
     return {"incidents": rows}
 
@@ -219,12 +236,17 @@ def get_problems(home: Path) -> dict:
     mgr = _mgr(home)
     rows = []
     for p in mgr.list_problems():
-        rows.append({
-            "id": p.id, "title": p.title, "status": p.status.value,
-            "incidents": len(p.related_incident_ids or []),
-            "kedb": p.kedb_id, "change": p.related_change_id,
-            "workaround": bool(p.workaround),
-        })
+        rows.append(
+            {
+                "id": p.id,
+                "title": p.title,
+                "status": p.status.value,
+                "incidents": len(p.related_incident_ids or []),
+                "kedb": p.kedb_id,
+                "change": p.related_change_id,
+                "workaround": bool(p.workaround),
+            }
+        )
     return {"problems": rows}
 
 
@@ -234,13 +256,27 @@ def get_changes(home: Path) -> dict:
     cab = _cab_queue(mgr, [c for c in changes if c.status.value == "reviewing"])
     rows = []
     for c in changes:
-        rows.append({
-            "id": c.id, "title": c.title, "status": c.status.value,
-            "change_type": c.change_type.value, "risk": c.risk.value,
-            "problem": c.related_problem_id,
-        })
-    order = ["proposed", "reviewing", "approved", "implementing", "deployed",
-             "verified", "failed", "rejected", "closed"]
+        rows.append(
+            {
+                "id": c.id,
+                "title": c.title,
+                "status": c.status.value,
+                "change_type": c.change_type.value,
+                "risk": c.risk.value,
+                "problem": c.related_problem_id,
+            }
+        )
+    order = [
+        "proposed",
+        "reviewing",
+        "approved",
+        "implementing",
+        "deployed",
+        "verified",
+        "failed",
+        "rejected",
+        "closed",
+    ]
     rows.sort(key=lambda r: order.index(r["status"]) if r["status"] in order else 99)
     return {"cab_queue": cab, "changes": rows}
 
@@ -250,16 +286,24 @@ def search_kedb(home: Path, query: str) -> dict:
         entries = _mgr(home).search_kedb(query or "")
     except Exception as exc:  # noqa: BLE001
         return {"error": str(exc), "results": []}
-    return {"results": [
-        {"id": e.id, "title": e.title, "root_cause": e.root_cause,
-         "workaround": e.workaround, "symptoms": e.symptoms}
-        for e in entries
-    ]}
+    return {
+        "results": [
+            {
+                "id": e.id,
+                "title": e.title,
+                "root_cause": e.root_cause,
+                "workaround": e.workaround,
+                "symptoms": e.symptoms,
+            }
+            for e in entries
+        ]
+    }
 
 
 # ---------------------------------------------------------------------------
 # Tier 3: record detail + lineage
 # ---------------------------------------------------------------------------
+
 
 def get_record(home: Path, kind: str, record_id: str) -> dict:
     """A single incident/problem/change with its timeline + i->p->c lineage."""
@@ -295,18 +339,27 @@ def _lineage(mgr, kind, rec) -> list[dict]:
         prb = next((p for p in mgr.list_problems() if p.id == pid), None) if pid else None
     if prb is not None:
         if inc is None and prb.related_incident_ids:
-            inc = next((i for i in mgr.list_incidents()
-                        if i.id == prb.related_incident_ids[0]), None)
+            inc = next(
+                (i for i in mgr.list_incidents() if i.id == prb.related_incident_ids[0]), None
+            )
         if chg is None and prb.related_change_id:
             chg = next((c for c in mgr.list_changes() if c.id == prb.related_change_id), None)
     chain = []
     if inc is not None:
-        chain.append({"kind": "incident", "id": inc.id, "title": inc.title,
-                      "state": f"SEV{inc.severity.value[-1]} {inc.status.value}"})
+        chain.append(
+            {
+                "kind": "incident",
+                "id": inc.id,
+                "title": inc.title,
+                "state": f"SEV{inc.severity.value[-1]} {inc.status.value}",
+            }
+        )
     if prb is not None:
-        chain.append({"kind": "problem", "id": prb.id, "title": prb.title,
-                      "state": prb.status.value})
+        chain.append(
+            {"kind": "problem", "id": prb.id, "title": prb.title, "state": prb.status.value}
+        )
     if chg is not None:
-        chain.append({"kind": "change", "id": chg.id, "title": chg.title,
-                      "state": chg.status.value})
+        chain.append(
+            {"kind": "change", "id": chg.id, "title": chg.title, "state": chg.status.value}
+        )
     return chain

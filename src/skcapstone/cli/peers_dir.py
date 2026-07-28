@@ -6,10 +6,9 @@ import json
 from pathlib import Path
 
 import click
+from rich.table import Table
 
 from ._common import AGENT_HOME, console
-
-from rich.table import Table
 
 
 def register_peers_dir_commands(main: click.Group) -> None:
@@ -38,7 +37,9 @@ def register_peers_dir_commands(main: click.Group) -> None:
         console.print()
         if not peers:
             console.print("  [dim]No peers in directory.[/]")
-            console.print("  Add one: skcapstone peers add --name lumina --address /path/to/outbox/lumina")
+            console.print(
+                "  Add one: skcapstone peers add --name lumina --address /path/to/outbox/lumina"
+            )
             console.print("  Or auto-discover: skcapstone peers discover")
             console.print()
             return

@@ -25,7 +25,7 @@ from __future__ import annotations
 import logging
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Optional, TYPE_CHECKING
+from typing import TYPE_CHECKING, Optional
 
 if TYPE_CHECKING:
     from .conversation_store import ConversationStore
@@ -67,6 +67,7 @@ def count_tokens(text: str) -> int:
     """
     try:
         import tiktoken  # optional dep
+
         enc = tiktoken.get_encoding("cl100k_base")
         return max(1, len(enc.encode(text)))
     except ImportError:
@@ -242,9 +243,7 @@ class ContextWindowManager:
         }
         return self._stats[peer]
 
-    def get_all_stats(
-        self, store: Optional["ConversationStore"] = None
-    ) -> dict[str, dict]:
+    def get_all_stats(self, store: Optional["ConversationStore"] = None) -> dict[str, dict]:
         """Return current stats for all tracked senders.
 
         When *store* is provided any peers that have on-disk history but are
@@ -268,9 +267,7 @@ class ContextWindowManager:
     # Private helpers
     # ------------------------------------------------------------------
 
-    def _call_llm_summarize(
-        self, peer: str, messages: list[dict], bridge
-    ) -> str:
+    def _call_llm_summarize(self, peer: str, messages: list[dict], bridge) -> str:
         """Call *bridge* to produce a one-paragraph summary of *messages*.
 
         Args:

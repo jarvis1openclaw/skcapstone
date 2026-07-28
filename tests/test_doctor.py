@@ -23,17 +23,16 @@ from skcapstone.codex_setup import ensure_codex_setup
 from skcapstone.doctor import (
     Check,
     DiagnosticReport,
-    _check_codex,
     _check_agent_home,
+    _check_codex,
     _check_harness_env,
-    _check_yolo,
     _check_identity,
     _check_identity_consistency,
-    _provisioned_agents,
-    _scan_capauth_local,
     _check_memory,
     _check_packages,
-    run_fixes,
+    _check_yolo,
+    _provisioned_agents,
+    _scan_capauth_local,
     run_diagnostics,
     run_fixes,
 )
@@ -43,26 +42,50 @@ from skcapstone.doctor import (
 def agent_home(tmp_path):
     """Create a fully populated agent home for testing."""
     home = tmp_path / ".skcapstone"
-    for d in ["identity", "memory", "trust", "security", "sync", "config",
-              "memory/short-term", "memory/mid-term", "memory/long-term",
-              "sync/outbox", "sync/inbox"]:
+    for d in [
+        "identity",
+        "memory",
+        "trust",
+        "security",
+        "sync",
+        "config",
+        "memory/short-term",
+        "memory/mid-term",
+        "memory/long-term",
+        "sync/outbox",
+        "sync/inbox",
+    ]:
         (home / d).mkdir(parents=True, exist_ok=True)
 
-    (home / "manifest.json").write_text(json.dumps({
-        "name": "TestAgent", "version": "0.1.0",
-    }))
-    (home / "identity" / "identity.json").write_text(json.dumps({
-        "name": "TestAgent",
-        "fingerprint": "AABBCCDD11223344",
-        "capauth_managed": True,
-    }))
+    (home / "manifest.json").write_text(
+        json.dumps(
+            {
+                "name": "TestAgent",
+                "version": "0.1.0",
+            }
+        )
+    )
+    (home / "identity" / "identity.json").write_text(
+        json.dumps(
+            {
+                "name": "TestAgent",
+                "fingerprint": "AABBCCDD11223344",
+                "capauth_managed": True,
+            }
+        )
+    )
     (home / "config" / "config.yaml").write_text(yaml.dump({"agent_name": "TestAgent"}))
     (home / "memory" / "index.json").write_text("{}")
 
     # Add a memory file
-    (home / "memory" / "short-term" / "mem1.json").write_text(json.dumps({
-        "memory_id": "mem1", "content": "test",
-    }))
+    (home / "memory" / "short-term" / "mem1.json").write_text(
+        json.dumps(
+            {
+                "memory_id": "mem1",
+                "content": "test",
+            }
+        )
+    )
 
     return home
 
@@ -94,11 +117,13 @@ class TestDiagnosticReport:
 
     def test_counts(self):
         """Report counts passed and failed correctly."""
-        report = DiagnosticReport(checks=[
-            Check(name="a", description="A", passed=True),
-            Check(name="b", description="B", passed=True),
-            Check(name="c", description="C", passed=False),
-        ])
+        report = DiagnosticReport(
+            checks=[
+                Check(name="a", description="A", passed=True),
+                Check(name="b", description="B", passed=True),
+                Check(name="c", description="C", passed=False),
+            ]
+        )
 
         assert report.passed_count == 2
         assert report.failed_count == 1
@@ -107,9 +132,11 @@ class TestDiagnosticReport:
 
     def test_all_passed(self):
         """all_passed is True when everything passes."""
-        report = DiagnosticReport(checks=[
-            Check(name="a", description="A", passed=True),
-        ])
+        report = DiagnosticReport(
+            checks=[
+                Check(name="a", description="A", passed=True),
+            ]
+        )
         assert report.all_passed
 
     def test_to_dict(self):
@@ -231,14 +258,16 @@ class TestCheckCodex:
         monkeypatch.setenv("CODEX_HOME", str(codex_home))
         monkeypatch.setenv("SKAGENT", "jarvis")
 
-        report = DiagnosticReport(checks=[
-            Check(
-                name="codex:agent_context",
-                description="Codex SK agent context bootstrap",
-                passed=False,
-                category="codex",
-            )
-        ])
+        report = DiagnosticReport(
+            checks=[
+                Check(
+                    name="codex:agent_context",
+                    description="Codex SK agent context bootstrap",
+                    passed=False,
+                    category="codex",
+                )
+            ]
+        )
 
         results = run_fixes(report, agent_home)
 
@@ -260,7 +289,7 @@ class TestCheckCodex:
         codex_home = tmp_path / ".codex"
         loader = codex_home / "bin" / "load-sk-agent-context.sh"
         loader.parent.mkdir(parents=True)
-        custom_loader = "#!/usr/bin/env bash\nSKAGENT=x SKCAPSTONE_AGENT=x SKMEMORY_AGENT=x skcapstone status; skmemory ritual; skwhisper status\n"
+        custom_loader = "#!/usr/bin/env bash\nSKAGENT=x SKCAPSTONE_AGENT=x SKMEMORY_AGENT=x skcapstone status; skmemory ritual; skwhisper status\n"  # noqa: E501
         loader.write_text(custom_loader, encoding="utf-8")
 
         monkeypatch.setenv("CODEX_HOME", str(codex_home))
@@ -326,8 +355,13 @@ class TestCLIDoctorCommand:
         assert "passed" in result.output or "checks" in result.output.lower()
 
 
-def _write_claude_config(home_root: Path, *, claude_json: dict, settings: dict | None = None,
-                         mcp_json: dict | None = None) -> Path:
+def _write_claude_config(
+    home_root: Path,
+    *,
+    claude_json: dict,
+    settings: dict | None = None,
+    mcp_json: dict | None = None,
+) -> Path:
     """Lay down a fake Claude Code config tree under *home_root*. Returns the
     .claude config dir."""
     (home_root / ".claude.json").write_text(json.dumps(claude_json))
@@ -357,9 +391,12 @@ class TestCheckHarnessEnv:
 
     def test_registered_mcp_servers_pass(self, tmp_path, monkeypatch):
         """Servers present in ~/.claude.json mcpServers pass."""
-        cc = _write_claude_config(tmp_path, claude_json={
-            "mcpServers": {"skmemory": {}, "skcapstone": {}, "skchat": {}},
-        })
+        cc = _write_claude_config(
+            tmp_path,
+            claude_json={
+                "mcpServers": {"skmemory": {}, "skcapstone": {}, "skchat": {}},
+            },
+        )
         monkeypatch.setenv("HOME", str(tmp_path))
         monkeypatch.setenv("CLAUDE_CONFIG_DIR", str(cc))
         by = self._by_name(_check_harness_env(tmp_path / ".skcapstone"))
@@ -397,18 +434,34 @@ class TestCheckHarnessEnv:
         on PATH (the stale-install trap) is flagged."""
         live = tmp_path / "skenv" / "skcapstone"
         stale = tmp_path / "pyenv" / "skcapstone"
-        live.parent.mkdir(); stale.parent.mkdir()
-        live.write_text("#live"); stale.write_text("#stale")
+        live.parent.mkdir()
+        stale.parent.mkdir()
+        live.write_text("#live")
+        stale.write_text("#stale")
         cc = _write_claude_config(
             tmp_path,
             claude_json={"mcpServers": {"skmemory": {}, "skcapstone": {}, "skchat": {}}},
-            settings={"hooks": {"SessionStart": [{"hooks": [
-                {"type": "command", "command": f"{stale} context show --format claude-md"}]}]}},
+            settings={
+                "hooks": {
+                    "SessionStart": [
+                        {
+                            "hooks": [
+                                {
+                                    "type": "command",
+                                    "command": f"{stale} context show --format claude-md",
+                                }
+                            ]
+                        }
+                    ]
+                }
+            },
         )
         monkeypatch.setenv("HOME", str(tmp_path))
         monkeypatch.setenv("CLAUDE_CONFIG_DIR", str(cc))
-        monkeypatch.setattr("skcapstone.doctor.shutil.which",
-                            lambda name: str(live) if name == "skcapstone" else None)
+        monkeypatch.setattr(
+            "skcapstone.doctor.shutil.which",
+            lambda name: str(live) if name == "skcapstone" else None,
+        )
         by = self._by_name(_check_harness_env(tmp_path / ".skcapstone"))
         c = by["harness:hook:sessionstart"]
         assert c.passed is False
@@ -417,17 +470,32 @@ class TestCheckHarnessEnv:
     def test_hook_on_live_binary_passes(self, tmp_path, monkeypatch):
         """A hook pointing at the live skcapstone passes."""
         live = tmp_path / "skenv" / "skcapstone"
-        live.parent.mkdir(); live.write_text("#live")
+        live.parent.mkdir()
+        live.write_text("#live")
         cc = _write_claude_config(
             tmp_path,
             claude_json={"mcpServers": {"skmemory": {}, "skcapstone": {}, "skchat": {}}},
-            settings={"hooks": {"SessionStart": [{"hooks": [
-                {"type": "command", "command": f"{live} context show --format claude-md"}]}]}},
+            settings={
+                "hooks": {
+                    "SessionStart": [
+                        {
+                            "hooks": [
+                                {
+                                    "type": "command",
+                                    "command": f"{live} context show --format claude-md",
+                                }
+                            ]
+                        }
+                    ]
+                }
+            },
         )
         monkeypatch.setenv("HOME", str(tmp_path))
         monkeypatch.setenv("CLAUDE_CONFIG_DIR", str(cc))
-        monkeypatch.setattr("skcapstone.doctor.shutil.which",
-                            lambda name: str(live) if name == "skcapstone" else None)
+        monkeypatch.setattr(
+            "skcapstone.doctor.shutil.which",
+            lambda name: str(live) if name == "skcapstone" else None,
+        )
         by = self._by_name(_check_harness_env(tmp_path / ".skcapstone"))
         assert by["harness:hook:sessionstart"].passed is True
 
@@ -435,21 +503,28 @@ class TestCheckHarnessEnv:
         """A hook script whose PATH merely contains 'skcapstone' (e.g. one under
         skcapstone-repos/) must NOT be treated as a stale skcapstone binary."""
         live = tmp_path / "skenv" / "skcapstone"
-        live.parent.mkdir(); live.write_text("#live")
+        live.parent.mkdir()
+        live.write_text("#live")
         # A real-world false-positive: a skmemory hook living under a
         # skcapstone-repos/ checkout — its basename is NOT 'skcapstone'.
         script = tmp_path / "skcapstone-repos" / "skmemory" / "hooks" / "sk-activity-inject.sh"
-        script.parent.mkdir(parents=True); script.write_text("#!/bin/sh\n")
+        script.parent.mkdir(parents=True)
+        script.write_text("#!/bin/sh\n")
         cc = _write_claude_config(
             tmp_path,
             claude_json={"mcpServers": {}},
-            settings={"hooks": {"SessionStart": [{"hooks": [
-                {"type": "command", "command": str(script)}]}]}},
+            settings={
+                "hooks": {
+                    "SessionStart": [{"hooks": [{"type": "command", "command": str(script)}]}]
+                }
+            },
         )
         monkeypatch.setenv("HOME", str(tmp_path))
         monkeypatch.setenv("CLAUDE_CONFIG_DIR", str(cc))
-        monkeypatch.setattr("skcapstone.doctor.shutil.which",
-                            lambda name: str(live) if name == "skcapstone" else None)
+        monkeypatch.setattr(
+            "skcapstone.doctor.shutil.which",
+            lambda name: str(live) if name == "skcapstone" else None,
+        )
         by = self._by_name(_check_harness_env(tmp_path / ".skcapstone"))
         # No skcapstone-binary hook present → the check emits no sessionstart result.
         assert "harness:hook:sessionstart" not in by
@@ -458,22 +533,32 @@ class TestCheckHarnessEnv:
         """run_fixes must not destructively rewrite a non-binary hook whose path
         merely contains 'skcapstone'."""
         live = tmp_path / "skenv" / "skcapstone"
-        live.parent.mkdir(); live.write_text("#live")
+        live.parent.mkdir()
+        live.write_text("#live")
         script = tmp_path / "skcapstone-repos" / "hooks" / "inject.sh"
-        script.parent.mkdir(parents=True); script.write_text("#!/bin/sh\n")
+        script.parent.mkdir(parents=True)
+        script.write_text("#!/bin/sh\n")
         cc = _write_claude_config(
             tmp_path,
             claude_json={"mcpServers": {}},
-            settings={"hooks": {"SessionStart": [{"hooks": [
-                {"type": "command", "command": str(script)}]}]}},
+            settings={
+                "hooks": {
+                    "SessionStart": [{"hooks": [{"type": "command", "command": str(script)}]}]
+                }
+            },
         )
         monkeypatch.setenv("HOME", str(tmp_path))
         monkeypatch.setenv("CLAUDE_CONFIG_DIR", str(cc))
-        monkeypatch.setattr("skcapstone.doctor.shutil.which",
-                            lambda name: str(live) if name == "skcapstone" else None)
+        monkeypatch.setattr(
+            "skcapstone.doctor.shutil.which",
+            lambda name: str(live) if name == "skcapstone" else None,
+        )
         report = DiagnosticReport()
-        report.checks.append(Check(name="harness:hook:sessionstart",
-                                   description="x", passed=False, category="harness"))
+        report.checks.append(
+            Check(
+                name="harness:hook:sessionstart", description="x", passed=False, category="harness"
+            )
+        )
         run_fixes(report, tmp_path / ".skcapstone")
         # The script path must be left untouched (not rewritten to the binary).
         updated = json.loads((cc / "settings.json").read_text())
@@ -482,20 +567,38 @@ class TestCheckHarnessEnv:
     def test_fix_repoints_stale_hook(self, tmp_path, monkeypatch):
         """run_fixes rewrites a stale SessionStart hook to the live binary."""
         live = tmp_path / "skenv" / "skcapstone"
-        live.parent.mkdir(); live.write_text("#live")
+        live.parent.mkdir()
+        live.write_text("#live")
         cc = _write_claude_config(
             tmp_path,
             claude_json={"mcpServers": {}},
-            settings={"hooks": {"SessionStart": [{"hooks": [
-                {"type": "command", "command": "/old/path/skcapstone context show --format claude-md"}]}]}},
+            settings={
+                "hooks": {
+                    "SessionStart": [
+                        {
+                            "hooks": [
+                                {
+                                    "type": "command",
+                                    "command": "/old/path/skcapstone context show --format claude-md",  # noqa: E501
+                                }
+                            ]
+                        }
+                    ]
+                }
+            },
         )
         monkeypatch.setenv("HOME", str(tmp_path))
         monkeypatch.setenv("CLAUDE_CONFIG_DIR", str(cc))
-        monkeypatch.setattr("skcapstone.doctor.shutil.which",
-                            lambda name: str(live) if name == "skcapstone" else None)
+        monkeypatch.setattr(
+            "skcapstone.doctor.shutil.which",
+            lambda name: str(live) if name == "skcapstone" else None,
+        )
         report = DiagnosticReport()
-        report.checks.append(Check(name="harness:hook:sessionstart",
-                                   description="x", passed=False, category="harness"))
+        report.checks.append(
+            Check(
+                name="harness:hook:sessionstart", description="x", passed=False, category="harness"
+            )
+        )
         results = run_fixes(report, tmp_path / ".skcapstone")
         assert any(r.success and r.check_name == "harness:hook:sessionstart" for r in results)
         updated = json.loads((cc / "settings.json").read_text())
@@ -574,10 +677,16 @@ def identity_home(tmp_path):
     """A home with a shared operator identity + two provisioned agents."""
     home = tmp_path / ".skcapstone"
     (home / "identity").mkdir(parents=True, exist_ok=True)
-    (home / "identity" / "identity.json").write_text(json.dumps({
-        "name": "Chef", "role": "operator", "capauth_managed": True,
-        "capauth_uri": "capauth:chef@skworld.io",
-    }))
+    (home / "identity" / "identity.json").write_text(
+        json.dumps(
+            {
+                "name": "Chef",
+                "role": "operator",
+                "capauth_managed": True,
+                "capauth_uri": "capauth:chef@skworld.io",
+            }
+        )
+    )
     _mk_agent(home, "lumina")
     _mk_agent(home, "opus")
     return home
@@ -590,7 +699,7 @@ class TestProvisionedAgents:
         assert _provisioned_agents(identity_home) == ["lumina", "opus"]
 
     def test_excludes_templates_and_scaffolds(self, identity_home):
-        _mk_agent(identity_home, "lumina-template")          # template → excluded
+        _mk_agent(identity_home, "lumina-template")  # template → excluded
         _mk_agent(identity_home, "scaffold", capauth=False)  # no capauth → excluded
         assert _provisioned_agents(identity_home) == ["lumina", "opus"]
 
@@ -605,9 +714,14 @@ class TestScanCapauthLocal:
         assert _scan_capauth_local(identity_home) == []
 
     def test_detects_placeholder(self, identity_home):
-        _mk_agent(identity_home, "stale", identity_payload={
-            "name": "Stale", "email": "stale@capauth.local",
-        })
+        _mk_agent(
+            identity_home,
+            "stale",
+            identity_payload={
+                "name": "Stale",
+                "email": "stale@capauth.local",
+            },
+        )
         hits = _scan_capauth_local(identity_home)
         assert any("stale" in h for h in hits)
 
@@ -628,17 +742,27 @@ class TestIdentityConsistency:
     def test_shared_not_operator_fails(self, tmp_path):
         home = tmp_path / ".skcapstone"
         (home / "identity").mkdir(parents=True)
-        (home / "identity" / "identity.json").write_text(json.dumps({
-            "name": "test-agent", "role": "agent",
-        }))
+        (home / "identity" / "identity.json").write_text(
+            json.dumps(
+                {
+                    "name": "test-agent",
+                    "role": "agent",
+                }
+            )
+        )
         by = self._by_name(_check_identity_consistency(home))
         assert by["identity:operator"].passed is False
         assert "expected 'operator'" in by["identity:operator"].detail
 
     def test_placeholder_fails(self, identity_home):
-        _mk_agent(identity_home, "stale", identity_payload={
-            "name": "Stale", "email": "stale@capauth.local",
-        })
+        _mk_agent(
+            identity_home,
+            "stale",
+            identity_payload={
+                "name": "Stale",
+                "email": "stale@capauth.local",
+            },
+        )
         by = self._by_name(_check_identity_consistency(identity_home))
         assert by["identity:no-placeholder"].passed is False
 
@@ -670,9 +794,7 @@ class TestTransportCheckNoThreadLeak:
     def _retry_thread_count() -> int:
         import threading
 
-        return sum(
-            1 for t in threading.enumerate() if "outbox-retry" in (t.name or "")
-        )
+        return sum(1 for t in threading.enumerate() if "outbox-retry" in (t.name or ""))
 
     def test_check_transport_does_not_leak_retry_thread(self):
         import time

@@ -9,7 +9,6 @@ import pytest
 
 from skcapstone.conversation_manager import ConversationManager, _sanitize_peer_name
 
-
 # ---------------------------------------------------------------------------
 # Fixtures
 # ---------------------------------------------------------------------------

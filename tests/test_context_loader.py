@@ -25,7 +25,7 @@ from skcapstone.pillars.identity import generate_identity
 from skcapstone.pillars.memory import initialize_memory
 from skcapstone.pillars.security import initialize_security
 from skcapstone.pillars.sync import initialize_sync
-from skcapstone.pillars.trust import initialize_trust, record_trust_state
+from skcapstone.pillars.trust import initialize_trust
 
 
 @pytest.fixture(autouse=True)
@@ -73,7 +73,12 @@ def _init_agent(home: Path, name: str = "context-test") -> None:
     initialize_security(home)
     initialize_sync(home)
 
-    manifest = {"name": name, "version": "0.1.0", "created_at": "2026-01-01T00:00:00Z", "connectors": []}
+    manifest = {
+        "name": name,
+        "version": "0.1.0",
+        "created_at": "2026-01-01T00:00:00Z",
+        "connectors": [],
+    }
     (home / "manifest.json").write_text(json.dumps(manifest, indent=2))
     (home / "config").mkdir(exist_ok=True)
     (home / "config" / "config.yaml").write_text(yaml.dump({"agent_name": name}))
@@ -301,14 +306,19 @@ class TestGatherConsciousness:
         """_gather_consciousness returns all required keys."""
         result = _gather_consciousness(tmp_agent_home)
 
-        for key in ("enabled", "backends_available", "messages_processed",
-                    "active_conversations", "inotify_active"):
+        for key in (
+            "enabled",
+            "backends_available",
+            "messages_processed",
+            "active_conversations",
+            "inotify_active",
+        ):
             assert key in result, f"missing key: {key}"
 
     def test_no_daemon_no_config_returns_disabled(self, tmp_agent_home: Path):
         """Without daemon or config, enabled is False and lists are empty."""
-        from unittest.mock import patch
         import urllib.error
+        from unittest.mock import patch
 
         with patch(
             "urllib.request.urlopen",

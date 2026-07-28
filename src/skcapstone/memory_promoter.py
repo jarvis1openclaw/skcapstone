@@ -40,7 +40,6 @@ from pathlib import Path
 from typing import Any, Optional
 
 from .memory_engine import (
-    _entry_path,
     _load_entry,
     _memory_dir,
     _remove_from_index,
@@ -57,11 +56,24 @@ logger = logging.getLogger("skcapstone.memory_promoter")
 # ---------------------------------------------------------------------------
 
 # Emotion-related tags that boost promotion scores
-EMOTIONAL_TAGS = frozenset({
-    "emotional", "love", "trust", "bond", "cloud9", "feb",
-    "breakthrough", "milestone", "joy", "gratitude",
-    "connection", "entanglement", "oof", "warmth",
-})
+EMOTIONAL_TAGS = frozenset(
+    {
+        "emotional",
+        "love",
+        "trust",
+        "bond",
+        "cloud9",
+        "feb",
+        "breakthrough",
+        "milestone",
+        "joy",
+        "gratitude",
+        "connection",
+        "entanglement",
+        "oof",
+        "warmth",
+    }
+)
 
 # High-value content patterns that indicate important memories
 HIGH_VALUE_PATTERNS = [
@@ -337,7 +349,9 @@ class PromotionEngine:
                 removed += 1
                 logger.info(
                     "Dedup: archived %s (dup of %s, title='%s')",
-                    entry.memory_id, keeper[2].memory_id, title[:60],
+                    entry.memory_id,
+                    keeper[2].memory_id,
+                    title[:60],
                 )
 
         # Phase 2: near-duplicates (first 50 chars of title match)
@@ -365,7 +379,9 @@ class PromotionEngine:
                 removed += 1
                 logger.info(
                     "Dedup (near): archived %s (near-dup of %s, prefix='%s')",
-                    entry.memory_id, keeper[2].memory_id, prefix[:50],
+                    entry.memory_id,
+                    keeper[2].memory_id,
+                    prefix[:50],
                 )
 
         # Log dedup actions to promotion-log.json
@@ -420,7 +436,10 @@ class PromotionEngine:
                 compressed += 1
                 logger.info(
                     "Compressed %s (%s, age=%dd, truncated to %d chars)",
-                    entry.memory_id, lyr.value, age.days, max_chars,
+                    entry.memory_id,
+                    lyr.value,
+                    age.days,
+                    max_chars,
                 )
 
         return compressed
@@ -464,7 +483,9 @@ class PromotionEngine:
                 archived += 1
                 logger.info(
                     "Archived %s (%s, age=%dd) -> archive/",
-                    entry.memory_id, lyr.value, age.days,
+                    entry.memory_id,
+                    lyr.value,
+                    age.days,
                 )
 
         return archived
@@ -595,9 +616,7 @@ class PromotionEngine:
         Checks tags and content for emotional indicators.
         """
         tag_hits = sum(1 for t in entry.tags if t.lower() in EMOTIONAL_TAGS)
-        content_hits = sum(
-            1 for p in HIGH_VALUE_PATTERNS if p.search(entry.content)
-        )
+        content_hits = sum(1 for p in HIGH_VALUE_PATTERNS if p.search(entry.content))
         # Normalize: 3+ hits = max score
         return min(1.0, (tag_hits + content_hits) / 3)
 
@@ -670,7 +689,9 @@ class PromotionEngine:
 
         logger.info(
             "Promoted %s: %s -> %s",
-            entry.memory_id, old_layer.value, entry.layer.value,
+            entry.memory_id,
+            old_layer.value,
+            entry.layer.value,
         )
         return True
 

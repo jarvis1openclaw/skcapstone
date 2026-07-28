@@ -69,9 +69,9 @@ def test_no_hardcoded_version_literal_in_init():
     """__init__ must not reassign __version__ to a bare string literal."""
     init_src = Path(skcapstone.__file__).read_text()
     # A literal assignment like ``__version__ = "1.2.3"`` reintroduces drift.
-    assert not re.search(r'__version__\s*=\s*["\']', init_src), (
-        "__version__ must derive from metadata/pyproject, not a string literal"
-    )
+    assert not re.search(
+        r'__version__\s*=\s*["\']', init_src
+    ), "__version__ must derive from metadata/pyproject, not a string literal"
 
 
 @pytest.mark.skipif(tomllib is None, reason="tomllib requires Python 3.11+")

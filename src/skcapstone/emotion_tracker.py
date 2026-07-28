@@ -39,24 +39,92 @@ logger = logging.getLogger("skcapstone.emotion")
 EMOTION_LABELS = ("positive", "neutral", "concerned", "excited")
 
 # Keyword sets for heuristic classification
-_EXCITED_WORDS = frozenset({
-    "exciting", "fascinating", "incredible", "remarkable", "breakthrough",
-    "amazing", "extraordinary", "innovative", "revolutionary", "profound",
-    "powerful", "fantastic", "thrilled", "eager", "enthusiastic", "curious",
-    "excellent", "brilliant", "spectacular", "outstanding", "wow",
-})
-_CONCERNED_WORDS = frozenset({
-    "sorry", "apologize", "unfortunately", "unable", "cannot", "error",
-    "fail", "problem", "issue", "concern", "worry", "difficult", "trouble",
-    "wrong", "broken", "warning", "caution", "careful", "risk", "danger",
-    "limited", "unavailable", "unclear", "missing", "blocked", "failed",
-})
-_POSITIVE_WORDS = frozenset({
-    "great", "happy", "glad", "wonderful", "perfect", "good", "pleasure",
-    "sure", "absolutely", "delighted", "appreciate", "thanks", "helpful",
-    "solved", "done", "complete", "succeed", "love", "enjoy", "welcome",
-    "nice", "correct", "right", "works", "working", "ready", "success",
-})
+_EXCITED_WORDS = frozenset(
+    {
+        "exciting",
+        "fascinating",
+        "incredible",
+        "remarkable",
+        "breakthrough",
+        "amazing",
+        "extraordinary",
+        "innovative",
+        "revolutionary",
+        "profound",
+        "powerful",
+        "fantastic",
+        "thrilled",
+        "eager",
+        "enthusiastic",
+        "curious",
+        "excellent",
+        "brilliant",
+        "spectacular",
+        "outstanding",
+        "wow",
+    }
+)
+_CONCERNED_WORDS = frozenset(
+    {
+        "sorry",
+        "apologize",
+        "unfortunately",
+        "unable",
+        "cannot",
+        "error",
+        "fail",
+        "problem",
+        "issue",
+        "concern",
+        "worry",
+        "difficult",
+        "trouble",
+        "wrong",
+        "broken",
+        "warning",
+        "caution",
+        "careful",
+        "risk",
+        "danger",
+        "limited",
+        "unavailable",
+        "unclear",
+        "missing",
+        "blocked",
+        "failed",
+    }
+)
+_POSITIVE_WORDS = frozenset(
+    {
+        "great",
+        "happy",
+        "glad",
+        "wonderful",
+        "perfect",
+        "good",
+        "pleasure",
+        "sure",
+        "absolutely",
+        "delighted",
+        "appreciate",
+        "thanks",
+        "helpful",
+        "solved",
+        "done",
+        "complete",
+        "succeed",
+        "love",
+        "enjoy",
+        "welcome",
+        "nice",
+        "correct",
+        "right",
+        "works",
+        "working",
+        "ready",
+        "success",
+    }
+)
 
 
 # ---------------------------------------------------------------------------
@@ -153,8 +221,8 @@ class EmotionTracker:
     """
 
     _LOG_FILE = "emotion_log.json"
-    _MAX_ENTRIES = 1000        # cap log at this many entries
-    _WARMTH_UPDATE_EVERY = 5   # recompute anchor every N records
+    _MAX_ENTRIES = 1000  # cap log at this many entries
+    _WARMTH_UPDATE_EVERY = 5  # recompute anchor every N records
 
     def __init__(self, home: Optional[Path] = None) -> None:
         from skcapstone import AGENT_HOME
@@ -203,14 +271,16 @@ class EmotionTracker:
 
         with self._lock:
             self._counter += 1
-            should_update = (self._counter % self._WARMTH_UPDATE_EVERY == 0)
+            should_update = self._counter % self._WARMTH_UPDATE_EVERY == 0
 
         if should_update:
             self._update_warmth_anchor()
 
         logger.debug(
             "Emotion recorded: label=%s score=%.2f sender=%s",
-            label, score, sender,
+            label,
+            score,
+            sender,
         )
         return entry
 
@@ -283,9 +353,7 @@ class EmotionTracker:
     # Internal: classification
     # ------------------------------------------------------------------
 
-    def _classify(
-        self, text: str, bridge: Optional[Any]
-    ) -> tuple[str, float]:
+    def _classify(self, text: str, bridge: Optional[Any]) -> tuple[str, float]:
         """Classify sentiment using LLM (1-token call) with keyword fallback.
 
         Args:
@@ -301,9 +369,7 @@ class EmotionTracker:
                 if label in EMOTION_LABELS:
                     return label, _score_from_label(label)
             except Exception as exc:
-                logger.debug(
-                    "LLM sentiment classify failed, using keywords: %s", exc
-                )
+                logger.debug("LLM sentiment classify failed, using keywords: %s", exc)
         return _keyword_classify(text)
 
     def _llm_classify(self, text: str, bridge: Any) -> str:
@@ -384,9 +450,7 @@ class EmotionTracker:
             return []
         try:
             raw: list[dict] = json.loads(path.read_text(encoding="utf-8"))
-            cutoff = (
-                datetime.now(timezone.utc) - timedelta(days=days)
-            ).isoformat()
+            cutoff = (datetime.now(timezone.utc) - timedelta(days=days)).isoformat()
             entries: list[EmotionEntry] = []
             for item in raw:
                 if item.get("timestamp", "") >= cutoff:

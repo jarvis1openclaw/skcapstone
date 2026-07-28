@@ -18,7 +18,6 @@ from typing import Optional
 
 from skmemory.register import detect_environments, register_mcp, register_package
 
-
 # ── Helpers ──────────────────────────────────────────────────────────────────
 
 
@@ -53,64 +52,117 @@ def _build_package_registry(workspace: Optional[Path] = None) -> list[dict]:
             "mcp_cmd": "skmemory-mcp",
             "mcp_args": [],
             "mcp_env": None,
-            "openclaw_plugin_path": workspace / "pillar-repos" / "skmemory" / "openclaw-plugin" / "src" / "index.ts",
+            "openclaw_plugin_path": workspace
+            / "pillar-repos"
+            / "skmemory"
+            / "openclaw-plugin"
+            / "src"
+            / "index.ts",
         },
         {
             "name": "skcapstone",
             "mcp_cmd": "skcapstone-mcp",
             "mcp_args": [],
             "mcp_env": None,
-            "openclaw_plugin_path": workspace / "skcapstone" / "openclaw-plugin" / "src" / "index.ts",
+            "openclaw_plugin_path": workspace
+            / "skcapstone"
+            / "openclaw-plugin"
+            / "src"
+            / "index.ts",
         },
         {
             "name": "skcomms",
             "mcp_cmd": "skcomms-mcp",
             "mcp_args": [],
             "mcp_env": None,
-            "openclaw_plugin_path": workspace / "pillar-repos" / "skcomms" / "openclaw-plugin" / "src" / "index.ts",
+            "openclaw_plugin_path": workspace
+            / "pillar-repos"
+            / "skcomms"
+            / "openclaw-plugin"
+            / "src"
+            / "index.ts",
         },
         {
             "name": "skchat",
             "mcp_cmd": "skchat-mcp",
             "mcp_args": [],
             "mcp_env": None,
-            "openclaw_plugin_path": workspace / "pillar-repos" / "skchat" / "openclaw-plugin" / "src" / "index.ts",
+            "openclaw_plugin_path": workspace
+            / "pillar-repos"
+            / "skchat"
+            / "openclaw-plugin"
+            / "src"
+            / "index.ts",
         },
         {
             "name": "capauth",
             "mcp_cmd": None,
             "mcp_args": None,
             "mcp_env": None,
-            "openclaw_plugin_path": workspace / "pillar-repos" / "capauth" / "openclaw-plugin" / "src" / "index.ts",
+            "openclaw_plugin_path": workspace
+            / "pillar-repos"
+            / "capauth"
+            / "openclaw-plugin"
+            / "src"
+            / "index.ts",
         },
         {
             "name": "cloud9",
             "mcp_cmd": None,
             "mcp_args": None,
             "mcp_env": None,
-            "openclaw_plugin_path": workspace / "pillar-repos" / "cloud9" / "openclaw-plugin-python" / "src" / "index.ts",
+            "openclaw_plugin_path": workspace
+            / "pillar-repos"
+            / "cloud9"
+            / "openclaw-plugin-python"
+            / "src"
+            / "index.ts",
         },
         {
             "name": "sksecurity",
             "mcp_cmd": None,
             "mcp_args": None,
             "mcp_env": None,
-            "openclaw_plugin_path": workspace / "pillar-repos" / "sksecurity" / "openclaw-plugin" / "src" / "index.ts",
+            "openclaw_plugin_path": workspace
+            / "pillar-repos"
+            / "sksecurity"
+            / "openclaw-plugin"
+            / "src"
+            / "index.ts",
         },
         {
             "name": "skseed",
             "mcp_cmd": None,
             "mcp_args": None,
             "mcp_env": None,
-            "openclaw_plugin_path": workspace / "pillar-repos" / "skseed" / "openclaw-plugin" / "src" / "index.ts",
+            "openclaw_plugin_path": workspace
+            / "pillar-repos"
+            / "skseed"
+            / "openclaw-plugin"
+            / "src"
+            / "index.ts",
         },
         {
             "name": "skgit",
             "mcp_cmd": "node",
-            "mcp_args": [str(Path.home() / ".npm-global" / "lib" / "node_modules"
-                             / "forgejo-mcp" / "build" / "index.js")],
+            "mcp_args": [
+                str(
+                    Path.home()
+                    / ".npm-global"
+                    / "lib"
+                    / "node_modules"
+                    / "forgejo-mcp"
+                    / "build"
+                    / "index.js"
+                )
+            ],
             "mcp_env": _get_skgit_env(),
-            "openclaw_plugin_path": workspace / "skills" / "skgit" / "openclaw-plugin" / "src" / "index.ts",
+            "openclaw_plugin_path": workspace
+            / "skills"
+            / "skgit"
+            / "openclaw-plugin"
+            / "src"
+            / "index.ts",
         },
     ]
 
@@ -193,6 +245,7 @@ def _discover_plugin_servers(workspace: Path) -> list[dict]:
     transport is 'stdio' (has command) or 'remote' (has url).
     """
     import json
+
     out: list[dict] = []
     dist = workspace / "skskills" / "dist"
     for mcp_json in sorted(dist.glob("*/.mcp.json")):
@@ -203,11 +256,27 @@ def _discover_plugin_servers(workspace: Path) -> list[dict]:
             continue
         for name, spec in servers.items():
             if spec.get("command"):
-                out.append({"plugin": plugin, "name": name, "transport": "stdio",
-                            "command": spec["command"], "args": spec.get("args", []), "url": None})
+                out.append(
+                    {
+                        "plugin": plugin,
+                        "name": name,
+                        "transport": "stdio",
+                        "command": spec["command"],
+                        "args": spec.get("args", []),
+                        "url": None,
+                    }
+                )
             elif spec.get("url"):
-                out.append({"plugin": plugin, "name": name, "transport": "remote",
-                            "command": None, "args": [], "url": spec["url"]})
+                out.append(
+                    {
+                        "plugin": plugin,
+                        "name": name,
+                        "transport": "remote",
+                        "command": None,
+                        "args": [],
+                        "url": spec["url"],
+                    }
+                )
     return out
 
 
@@ -284,11 +353,16 @@ def register_all(
                 results["plugins"][key] = {"action": "would-register", "transport": "stdio"}
             else:
                 results["plugins"][key] = register_mcp(
-                    name=srv["name"], command=srv["command"], args=srv["args"],
-                    environments=environments)
+                    name=srv["name"],
+                    command=srv["command"],
+                    args=srv["args"],
+                    environments=environments,
+                )
         else:
             # url/http/sse: register_mcp has no url path yet — surface, don't mis-write.
-            results["plugins"][key] = {"action": "skip",
-                "reason": "remote (url) MCP server — register manually or via `claude mcp add`"}
+            results["plugins"][key] = {
+                "action": "skip",
+                "reason": "remote (url) MCP server — register manually or via `claude mcp add`",
+            }
 
     return results

@@ -204,7 +204,9 @@ def run_bench(
             mod = importlib.import_module(module_path)
             factory = getattr(mod, "create_transport", None)
             if factory is None:
-                r.update({"status": "unavailable", "error": f"no create_transport() in {module_path}"})
+                r.update(
+                    {"status": "unavailable", "error": f"no create_transport() in {module_path}"}
+                )
                 results.append(r)
                 continue
         except ImportError as exc:
@@ -310,19 +312,32 @@ def register_bench_commands(main: click.Group) -> None:
 
     @main.command("bench")
     @click.option(
-        "--count", "-n", default=100, show_default=True, type=int,
+        "--count",
+        "-n",
+        default=100,
+        show_default=True,
+        type=int,
         help="Number of messages to send via the file transport loopback.",
     )
     @click.option(
-        "--size", default=1024, show_default=True, type=int,
+        "--size",
+        default=1024,
+        show_default=True,
+        type=int,
         help="Message payload size in bytes.",
     )
     @click.option(
-        "--health-count", default=5, show_default=True, type=int,
+        "--health-count",
+        default=5,
+        show_default=True,
+        type=int,
         help="Number of health_check() iterations for network transports.",
     )
     @click.option(
-        "--transport", "-t", "transports", multiple=True,
+        "--transport",
+        "-t",
+        "transports",
+        multiple=True,
         help="Benchmark only this transport. Repeat to select multiple. Default: all.",
     )
     @click.option("--json-out", is_flag=True, help="Output raw JSON instead of a table.")

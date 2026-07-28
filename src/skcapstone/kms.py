@@ -61,12 +61,21 @@ logger = logging.getLogger("skcapstone.kms")
 
 try:
     from sksecurity.kms import (
-        KMS as BackendKMS,
+        KMS as BackendKMS,  # noqa: N811
+    )
+    from sksecurity.kms import (
         FileKeyStore as BackendFileKeyStore,
-        _hkdf_derive as _backend_hkdf,
-        _aes_gcm_encrypt as _backend_encrypt,
+    )
+    from sksecurity.kms import (
         _aes_gcm_decrypt as _backend_decrypt,
     )
+    from sksecurity.kms import (
+        _aes_gcm_encrypt as _backend_encrypt,
+    )
+    from sksecurity.kms import (
+        _hkdf_derive as _backend_hkdf,
+    )
+
     _HAS_BACKEND = True
 except ImportError:
     _HAS_BACKEND = False
@@ -77,6 +86,7 @@ except ImportError:
 # ---------------------------------------------------------------------------
 # Models
 # ---------------------------------------------------------------------------
+
 
 class KeyType(str, Enum):
     """Types of managed keys."""
@@ -129,6 +139,7 @@ class RotationEntry(BaseModel):
 # ---------------------------------------------------------------------------
 # Cryptographic helpers — delegates to sksecurity when available
 # ---------------------------------------------------------------------------
+
 
 def _derive_key(master_material: bytes, info: bytes, length: int = 32) -> bytes:
     """Derive a key using HKDF-SHA256.
@@ -262,6 +273,7 @@ def _key_id(label: str, key_type: KeyType, version: int = 1) -> str:
 # ---------------------------------------------------------------------------
 # KeyStore
 # ---------------------------------------------------------------------------
+
 
 class KeyStore:
     """Sovereign key management store.
@@ -653,8 +665,10 @@ class KeyStore:
         """
         records = self._load_records()
         matches = [
-            r for r in records
-            if r.label == label and r.status == KeyStatus.ACTIVE
+            r
+            for r in records
+            if r.label == label
+            and r.status == KeyStatus.ACTIVE
             and (key_type is None or r.key_type == key_type)
         ]
         if not matches:
@@ -710,9 +724,7 @@ class KeyStore:
                     f"Agent '{agent_name}' denied access to team key '{record.label}'",
                     metadata={"key_id": key_id, "agent": agent_name},
                 )
-                raise PermissionError(
-                    f"Agent '{agent_name}' not in team '{record.label}' members"
-                )
+                raise PermissionError(f"Agent '{agent_name}' not in team '{record.label}' members")
 
         material = self._load_key_material(key_id)
         self._audit(
@@ -738,7 +750,8 @@ class KeyStore:
             by_type[r.key_type.value] = by_type.get(r.key_type.value, 0) + 1
 
         expiring_soon = [
-            r for r in active
+            r
+            for r in active
             if r.expires_at and r.expires_at < datetime.now(timezone.utc) + timedelta(days=7)
         ]
 
@@ -752,9 +765,7 @@ class KeyStore:
             "expiring_soon": [r.label for r in expiring_soon],
             "kms_dir": str(self._kms_dir),
             "backend_available": _HAS_BACKEND,
-            "backend_unsealed": (
-                self._backend_kms.is_unsealed if self._backend_kms else False
-            ),
+            "backend_unsealed": (self._backend_kms.is_unsealed if self._backend_kms else False),
         }
 
     # -------------------------------------------------------------------
@@ -774,9 +785,7 @@ class KeyStore:
                 store=store,
                 audit_path=backend_dir / "audit.log",
             )
-            passphrase = hashlib.sha256(
-                self._get_identity_material()
-            ).hexdigest()
+            passphrase = hashlib.sha256(self._get_identity_material()).hexdigest()
             self._backend_kms.unseal(passphrase)
             logger.debug("sksecurity KMS backend initialized and unsealed")
         except Exception as exc:
@@ -788,7 +797,10 @@ class KeyStore:
         if self._master_material is None:
             return self.initialize()
         records = self._load_records()
-        master = next((r for r in records if r.key_type == KeyType.MASTER and r.status == KeyStatus.ACTIVE), None)
+        master = next(
+            (r for r in records if r.key_type == KeyType.MASTER and r.status == KeyStatus.ACTIVE),
+            None,
+        )
         if master is None:
             return self.initialize()
         return master
@@ -937,6 +949,7 @@ class KeyStore:
         """Log a KMS event to the security audit trail."""
         try:
             from .pillars.security import audit_event
+
             audit_event(self._home, event_type, detail, agent="kms", metadata=metadata)
         except Exception:
             logger.debug("Audit log unavailable: %s — %s", event_type, detail)

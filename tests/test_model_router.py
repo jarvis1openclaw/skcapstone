@@ -25,7 +25,6 @@ from skcapstone.model_router import (
     TaskSignal,
 )
 
-
 # ---------------------------------------------------------------------------
 # Fixtures
 # ---------------------------------------------------------------------------
@@ -76,9 +75,7 @@ class TestTagRouting:
         decision = router.route(signal)
         assert decision.tier == ModelTier.FAST
 
-    def test_architecture_tag_routes_to_reason_tier(
-        self, router: ModelRouter
-    ) -> None:
+    def test_architecture_tag_routes_to_reason_tier(self, router: ModelRouter) -> None:
         """A task tagged 'architecture' should land on the REASON tier."""
         signal = TaskSignal(
             description="Design the data pipeline",
@@ -132,9 +129,7 @@ class TestPrivacyGates:
         assert decision.tier == ModelTier.LOCAL
         assert decision.preferred_node == "localhost"
 
-    def test_privacy_takes_precedence_over_localhost(
-        self, router: ModelRouter
-    ) -> None:
+    def test_privacy_takes_precedence_over_localhost(self, router: ModelRouter) -> None:
         """privacy_sensitive wins; preferred_node should not be set to localhost."""
         signal = TaskSignal(
             description="Private task on local machine",
@@ -175,9 +170,7 @@ class TestTokenFallback:
         decision = router.route(signal)
         assert decision.tier == ModelTier.FAST
 
-    def test_exactly_threshold_tokens_routes_to_fast(
-        self, router: ModelRouter
-    ) -> None:
+    def test_exactly_threshold_tokens_routes_to_fast(self, router: ModelRouter) -> None:
         """estimated_tokens == 16 000 (not strictly greater) should remain FAST."""
         signal = TaskSignal(
             description="Borderline task",
@@ -279,9 +272,7 @@ class TestRealCallerTagAlignment:
     # memory_compressor.py estimates estimated_tokens=len(prompt)//4+512,
     # which crosses 16_000 for any prompt over ~62 KB.
 
-    def test_emotion_tracker_sentiment_classification_tags(
-        self, router: ModelRouter
-    ) -> None:
+    def test_emotion_tracker_sentiment_classification_tags(self, router: ModelRouter) -> None:
         signal = TaskSignal(
             description="1-token sentiment classification",
             tags=["classification", "fast"],
@@ -308,9 +299,7 @@ class TestRealCallerTagAlignment:
         decision = router.route(signal)
         assert decision.tier == ModelTier.FAST
 
-    def test_memory_compressor_tags_with_dynamic_group_tag(
-        self, router: ModelRouter
-    ) -> None:
+    def test_memory_compressor_tags_with_dynamic_group_tag(self, router: ModelRouter) -> None:
         # `tag` in memory_compressor.py is a dynamic per-group label (e.g. "gtd",
         # "identity") that can't be enumerated — the static "compression"/"memory"
         # keywords must be sufficient on their own (set-intersection semantics
@@ -334,8 +323,7 @@ class TestConfigFromYaml:
 
     def test_load_from_yaml(self, tmp_path: Path) -> None:
         """A minimal valid YAML config should load without errors."""
-        yaml_content = textwrap.dedent(
-            """\
+        yaml_content = textwrap.dedent("""\
             tier_models:
               fast: [my-fast-model]
               code: [my-code-model]
@@ -349,8 +337,7 @@ class TestConfigFromYaml:
               - keywords: [writing, email]
                 tier: nuance
                 priority: 10
-            """
-        )
+            """)
         config_file = tmp_path / "router_config.yaml"
         config_file.write_text(yaml_content)
 
@@ -363,8 +350,7 @@ class TestConfigFromYaml:
 
     def test_yaml_nuance_rule(self, tmp_path: Path) -> None:
         """YAML-loaded NUANCE rule fires correctly on matching tags."""
-        yaml_content = textwrap.dedent(
-            """\
+        yaml_content = textwrap.dedent("""\
             tier_models:
               nuance: [yaml-nuance-model]
               fast: [yaml-fast-model]
@@ -372,8 +358,7 @@ class TestConfigFromYaml:
               - keywords: [writing, email]
                 tier: nuance
                 priority: 10
-            """
-        )
+            """)
         config_file = tmp_path / "router.yaml"
         config_file.write_text(yaml_content)
 
@@ -589,7 +574,12 @@ class TestEdgeCases:
             ModelTier.CODE: ["code", "refactor", "debug", "test", "implement"],
             ModelTier.REASON: ["architecture", "design", "analyze", "research", "plan"],
             ModelTier.NUANCE: [
-                "marketing", "creative", "email", "copy", "comms", "writing",
+                "marketing",
+                "creative",
+                "email",
+                "copy",
+                "comms",
+                "writing",
             ],
             ModelTier.FAST: ["format", "rename", "lint", "simple", "trivial"],
         }
@@ -597,9 +587,9 @@ class TestEdgeCases:
             for kw in keywords:
                 signal = TaskSignal(description=f"task-{kw}", tags=[kw])
                 decision = router.route(signal)
-                assert decision.tier == expected_tier, (
-                    f"keyword '{kw}' routed to {decision.tier}, expected {expected_tier}"
-                )
+                assert (
+                    decision.tier == expected_tier
+                ), f"keyword '{kw}' routed to {decision.tier}, expected {expected_tier}"
 
 
 # ---------------------------------------------------------------------------
@@ -631,10 +621,12 @@ class TestMCPModelRouteHandler:
     async def test_route_with_tags(self) -> None:
         import json
 
-        result = await self.handler({
-            "description": "refactor auth module",
-            "tags": ["code", "refactor"],
-        })
+        result = await self.handler(
+            {
+                "description": "refactor auth module",
+                "tags": ["code", "refactor"],
+            }
+        )
         data = json.loads(result[0].text)
         assert data["tier"] == "code"
 
@@ -642,10 +634,12 @@ class TestMCPModelRouteHandler:
     async def test_route_privacy_sensitive(self) -> None:
         import json
 
-        result = await self.handler({
-            "description": "process medical records",
-            "privacy_sensitive": True,
-        })
+        result = await self.handler(
+            {
+                "description": "process medical records",
+                "privacy_sensitive": True,
+            }
+        )
         data = json.loads(result[0].text)
         assert data["tier"] == "local"
 
@@ -653,10 +647,12 @@ class TestMCPModelRouteHandler:
     async def test_route_localhost(self) -> None:
         import json
 
-        result = await self.handler({
-            "description": "local benchmark",
-            "requires_localhost": True,
-        })
+        result = await self.handler(
+            {
+                "description": "local benchmark",
+                "requires_localhost": True,
+            }
+        )
         data = json.loads(result[0].text)
         assert data["tier"] == "local"
         assert data["preferred_node"] == "localhost"
@@ -665,10 +661,12 @@ class TestMCPModelRouteHandler:
     async def test_route_with_token_estimate(self) -> None:
         import json
 
-        result = await self.handler({
-            "description": "big analysis",
-            "estimated_tokens": 30_000,
-        })
+        result = await self.handler(
+            {
+                "description": "big analysis",
+                "estimated_tokens": 30_000,
+            }
+        )
         data = json.loads(result[0].text)
         assert data["tier"] == "reason"
 
@@ -694,13 +692,15 @@ class TestMCPModelRouteHandler:
         """Handler accepts all optional fields together."""
         import json
 
-        result = await self.handler({
-            "description": "sensitive local code review",
-            "tags": ["code"],
-            "requires_localhost": False,
-            "privacy_sensitive": True,
-            "estimated_tokens": 50_000,
-        })
+        result = await self.handler(
+            {
+                "description": "sensitive local code review",
+                "tags": ["code"],
+                "requires_localhost": False,
+                "privacy_sensitive": True,
+                "estimated_tokens": 50_000,
+            }
+        )
         data = json.loads(result[0].text)
         # privacy_sensitive takes precedence
         assert data["tier"] == "local"

@@ -18,9 +18,12 @@ from __future__ import annotations
 import json
 import logging
 from pathlib import Path
-from typing import Optional
+from typing import TYPE_CHECKING
 
 from .models import MemoryEntry, MemoryLayer
+
+if TYPE_CHECKING:
+    import skmemory
 
 logger = logging.getLogger("skcapstone.migrate")
 
@@ -177,6 +180,8 @@ def _verify_migration(
             missing[:10],
         )
     else:
-        logger.info("Verification passed: all %d memories present in unified backend", len(entries))
+        logger.info(
+            "Verification passed: all %d memories present in unified backend", len(entries)
+        )
 
     return result

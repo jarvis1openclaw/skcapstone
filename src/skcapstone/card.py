@@ -5,6 +5,7 @@ sources of truth remain ``coordination/`` (tasks + agent files) and ``itil/``
 (event-sourced records). Columns are the shared lifecycle; swimlanes are the
 card ``kind``. See docs/superpowers/specs/2026-07-16-unified-kanban-card-model.md.
 """
+
 from __future__ import annotations
 
 import html
@@ -145,9 +146,16 @@ def fold_overlay(events: list[CardEvent]) -> dict[str, dict]:
     for e in ordered:
         patch = overlay.setdefault(
             e.card_id,
-            {"column": None, "order": None, "priority": None,
-             "swimlane": None, "labels": [], "links": {},
-             "owner": None, "owner_set": False},
+            {
+                "column": None,
+                "order": None,
+                "priority": None,
+                "swimlane": None,
+                "labels": [],
+                "links": {},
+                "owner": None,
+                "owner_set": False,
+            },
         )
         if e.action == "move":
             if e.column is not None:
@@ -395,8 +403,13 @@ class KanbanBoard:
             grid[lane][c.status.value].append(c)
         for lane in grid.values():
             for col in lane.values():
-                col.sort(key=lambda c: (c.order if c.order else 9999,
-                                        _PRIORITY_RANK.get(c.priority, 2), c.id))
+                col.sort(
+                    key=lambda c: (
+                        c.order if c.order else 9999,
+                        _PRIORITY_RANK.get(c.priority, 2),
+                        c.id,
+                    )
+                )
         return grid
 
     def wip_report(self) -> dict[str, dict]:
@@ -536,7 +549,7 @@ def _render_card(c: Card) -> str:
     sev = ""
     sev_val = c.meta.get("severity")
     if sev_val:
-        sev = f'<span class="sev" style="background:{_sev_bg(sev_val)}">{html.escape(str(sev_val)).upper()}</span>'
+        sev = f'<span class="sev" style="background:{_sev_bg(sev_val)}">{html.escape(str(sev_val)).upper()}</span>'  # noqa: E501
     cid = f'<span class="cid mono">#{html.escape(c.id)}</span>'
     title = f'<div class="ctitle">{_clean(c.title)}</div>'
     foot = ""
@@ -575,13 +588,13 @@ def render_html(kb: "KanbanBoard", title: str = "SKBoard") -> str:
 
     parts = [_HTML_HEAD.format(title=html.escape(title))]
     parts.append(
-        '<header><div><h1>SKBoard</h1>'
-        '<div class="sub mono">cards/ &middot; kind in {task, epic, incident, problem, change}</div></div>'
+        "<header><div><h1>SKBoard</h1>"
+        '<div class="sub mono">cards/ &middot; kind in {task, epic, incident, problem, change}</div></div>'  # noqa: E501
         '<div class="spacer"></div><div class="stats">'
-        f'<div class="stat"><span class="n mono">{active}</span><span class="l">Active</span></div>'
+        f'<div class="stat"><span class="n mono">{active}</span><span class="l">Active</span></div>'  # noqa: E501
         f'<div class="stat"><span class="n mono">{itil_n}</span><span class="l">ITIL</span></div>'
         f'<div class="stat"><span class="n mono">{done}</span><span class="l">Done</span></div>'
-        '</div></header>'
+        "</div></header>"
     )
 
     wip = kb.wip_report()
@@ -618,14 +631,14 @@ def render_html(kb: "KanbanBoard", title: str = "SKBoard") -> str:
             donecls = " done" if col == "done" else ""
             cards_html = "".join(_render_card(c) for c in grid[lane][col])
             parts.append(f'<div class="cell{expe}{donecls}">{cards_html}</div>')
-        parts.append('</div>')
-    parts.append('</div></div>')
+        parts.append("</div>")
+    parts.append("</div></div>")
 
     parts.append(
         '<div class="note"><b>Projection of live data.</b> Columns are the shared '
-        'lifecycle, swimlanes are the card kind. The Expedite lane carries incidents. '
-        'This board, BOARD.md, and the JSON view are all projections of one fold, so '
-        'they cannot drift.</div>'
+        "lifecycle, swimlanes are the card kind. The Expedite lane carries incidents. "
+        "This board, BOARD.md, and the JSON view are all projections of one fold, so "
+        "they cannot drift.</div>"
     )
-    parts.append('</div></body></html>')
+    parts.append("</div></body></html>")
     return "".join(parts)

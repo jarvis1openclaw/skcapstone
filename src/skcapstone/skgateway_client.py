@@ -5,6 +5,7 @@ Points at the sovereign gateway (``http://localhost:18780/v1``, model
 any failure so callers can fall back. Reused by the AI-suggestions feature and
 the Phase 5 assistant console.
 """
+
 from __future__ import annotations
 
 import json
@@ -19,21 +20,28 @@ DEFAULT_BASE = os.environ.get("SKGATEWAY_URL", "http://localhost:18780/v1")
 DEFAULT_MODEL = os.environ.get("SKGATEWAY_MODEL", "sk-default")
 
 
-def chat(messages: list[dict], model: str = DEFAULT_MODEL, max_tokens: int = 2048,
-         temperature: float = 0.3, timeout: float = 25.0,
-         base_url: str = DEFAULT_BASE) -> str | None:
+def chat(
+    messages: list[dict],
+    model: str = DEFAULT_MODEL,
+    max_tokens: int = 2048,
+    temperature: float = 0.3,
+    timeout: float = 25.0,
+    base_url: str = DEFAULT_BASE,
+) -> str | None:
     """Call the gateway's chat-completions endpoint. Returns text or None.
 
     ``max_tokens`` defaults high because the auto-routed model may think before
     answering (callers need headroom).
     """
-    payload = json.dumps({
-        "model": model,
-        "messages": messages,
-        "max_tokens": max_tokens,
-        "temperature": temperature,
-        "stream": False,
-    }).encode("utf-8")
+    payload = json.dumps(
+        {
+            "model": model,
+            "messages": messages,
+            "max_tokens": max_tokens,
+            "temperature": temperature,
+            "stream": False,
+        }
+    ).encode("utf-8")
     req = urllib.request.Request(
         base_url.rstrip("/") + "/chat/completions",
         data=payload,
@@ -49,21 +57,33 @@ def chat(messages: list[dict], model: str = DEFAULT_MODEL, max_tokens: int = 204
         return None
 
 
-def chat_stream(messages: list[dict], model: str = DEFAULT_MODEL, max_tokens: int = 2048,
-                temperature: float = 0.3, timeout: float = 60.0,
-                base_url: str = DEFAULT_BASE):
+def chat_stream(
+    messages: list[dict],
+    model: str = DEFAULT_MODEL,
+    max_tokens: int = 2048,
+    temperature: float = 0.3,
+    timeout: float = 60.0,
+    base_url: str = DEFAULT_BASE,
+):
     """Yield content tokens from the gateway as they stream (OpenAI SSE).
 
     A blocking generator (urllib); Starlette runs it in a threadpool. Yields
     nothing and logs on failure so the caller can surface a fallback line.
     """
-    payload = json.dumps({
-        "model": model, "messages": messages, "max_tokens": max_tokens,
-        "temperature": temperature, "stream": True,
-    }).encode("utf-8")
+    payload = json.dumps(
+        {
+            "model": model,
+            "messages": messages,
+            "max_tokens": max_tokens,
+            "temperature": temperature,
+            "stream": True,
+        }
+    ).encode("utf-8")
     req = urllib.request.Request(
         base_url.rstrip("/") + "/chat/completions",
-        data=payload, headers={"Content-Type": "application/json"}, method="POST",
+        data=payload,
+        headers={"Content-Type": "application/json"},
+        method="POST",
     )
     try:
         with urllib.request.urlopen(req, timeout=timeout) as resp:

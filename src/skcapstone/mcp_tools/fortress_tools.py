@@ -18,7 +18,7 @@ TOOLS: list[Tool] = [
             "properties": {
                 "layer": {
                     "type": "string",
-                    "description": "Memory layer: short-term, mid-term, or long-term (omit for all)",
+                    "description": "Memory layer: short-term, mid-term, or long-term (omit for all)",  # noqa: E501
                 },
             },
             "required": [],
@@ -59,12 +59,14 @@ async def _handle_fortress_verify(args: dict) -> list[TextContent]:
         results = []
         for f in sorted(layer_dir.glob("*.json")):
             _, seal_result = fortress.verify_and_load(f)
-            results.append({
-                "memory_id": seal_result.memory_id,
-                "verified": seal_result.verified,
-                "tampered": seal_result.tampered,
-                "sealed": seal_result.sealed,
-            })
+            results.append(
+                {
+                    "memory_id": seal_result.memory_id,
+                    "verified": seal_result.verified,
+                    "tampered": seal_result.tampered,
+                    "sealed": seal_result.sealed,
+                }
+            )
     else:
         seal_results = fortress.verify_all(home)
         results = [
@@ -79,13 +81,15 @@ async def _handle_fortress_verify(args: dict) -> list[TextContent]:
 
     tampered = sum(1 for r in results if r.get("tampered"))
     verified = sum(1 for r in results if r.get("verified"))
-    return _json_response({
-        "total": len(results),
-        "verified": verified,
-        "tampered": tampered,
-        "unsealed": len(results) - verified - tampered,
-        "details": results,
-    })
+    return _json_response(
+        {
+            "total": len(results),
+            "verified": verified,
+            "tampered": tampered,
+            "unsealed": len(results) - verified - tampered,
+            "details": results,
+        }
+    )
 
 
 async def _handle_fortress_seal_existing(_args: dict) -> list[TextContent]:
@@ -97,10 +101,12 @@ async def _handle_fortress_seal_existing(_args: dict) -> list[TextContent]:
     fortress.initialize()
 
     sealed_count = fortress.seal_existing(home)
-    return _json_response({
-        "sealed": sealed_count,
-        "message": f"Sealed {sealed_count} previously unsealed memories",
-    })
+    return _json_response(
+        {
+            "sealed": sealed_count,
+            "message": f"Sealed {sealed_count} previously unsealed memories",
+        }
+    )
 
 
 async def _handle_fortress_status(_args: dict) -> list[TextContent]:

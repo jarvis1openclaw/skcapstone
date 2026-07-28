@@ -5,24 +5,23 @@ from __future__ import annotations
 import json
 import logging
 import time
-from pathlib import Path
 from unittest.mock import MagicMock, patch
 
 import pytest
 
+from skcapstone.blueprints.schema import ModelTier
 from skcapstone.consciousness_loop import (
     ConsciousnessConfig,
     ConsciousnessLoop,
+    InboxHandler,
     LLMBridge,
     SystemPromptBuilder,
     _classify_message,
     _OllamaPool,
     _RateLimiter,
     _SimpleEnvelope,
-    InboxHandler,
 )
 from skcapstone.model_router import TaskSignal
-from skcapstone.blueprints.schema import ModelTier
 
 
 @pytest.fixture(autouse=True)
@@ -175,9 +174,9 @@ class TestLLMBridge:
         # Must degrade to passthrough (echoing user content), NOT the canned
         # connectivity-error string that the buggy walk produced.
         assert isinstance(result, str)
-        assert result == "hello", (
-            f"Expected passthrough to echo user message 'hello', got: {result!r}"
-        )
+        assert (
+            result == "hello"
+        ), f"Expected passthrough to echo user message 'hello', got: {result!r}"
 
     @patch("skseed.llm.ollama_callback")
     def test_generate_passthrough_cascade_returns_user_content(self, mock_ollama):
@@ -213,9 +212,9 @@ class TestLLMBridge:
         signal = TaskSignal(description="test", tags=["general"])
         result = bridge.generate("system prompt", "hello world", signal)
 
-        assert result == "hello world", (
-            f"Expected passthrough to return user message 'hello world', got: {result!r}"
-        )
+        assert (
+            result == "hello world"
+        ), f"Expected passthrough to return user message 'hello world', got: {result!r}"
         assert "connectivity issues" not in result
 
 
@@ -322,7 +321,11 @@ class TestSystemPromptBuilder:
         conv_dir.mkdir()
 
         history = [
-            {"role": "user", "content": "Remembered message", "timestamp": "2026-01-01T00:00:00+00:00"},
+            {
+                "role": "user",
+                "content": "Remembered message",
+                "timestamp": "2026-01-01T00:00:00+00:00",
+            },
         ]
         (conv_dir / "opus.json").write_text(json.dumps(history))
 
@@ -338,7 +341,11 @@ class TestSystemPromptBuilder:
         conv_dir.mkdir()
 
         history = [
-            {"role": "user", "content": f"Old message {i}", "timestamp": "2026-01-01T00:00:00+00:00"}
+            {
+                "role": "user",
+                "content": f"Old message {i}",
+                "timestamp": "2026-01-01T00:00:00+00:00",
+            }
             for i in range(20)
         ]
         (conv_dir / "peer.json").write_text(json.dumps(history))
@@ -476,20 +483,17 @@ class TestProcessEnvelopeACK:
 
         # Find the ACK call (first send call with "ACK" as message)
         ack_calls = [
-            c for c in mock_skcomms.send.call_args_list
-            if len(c.args) >= 2 and c.args[1] == "ACK"
+            c for c in mock_skcomms.send.call_args_list if len(c.args) >= 2 and c.args[1] == "ACK"
         ]
         assert ack_calls, "Expected at least one ACK send call"
         ack_call = ack_calls[0]
 
         # Must NOT have content_type kwarg (that was the bug)
-        assert "content_type" not in ack_call.kwargs, (
-            "ACK send used wrong kwarg 'content_type' — should be 'message_type'"
-        )
+        assert (
+            "content_type" not in ack_call.kwargs
+        ), "ACK send used wrong kwarg 'content_type' — should be 'message_type'"
         # Must have message_type kwarg
-        assert "message_type" in ack_call.kwargs, (
-            "ACK send must pass message_type kwarg"
-        )
+        assert "message_type" in ack_call.kwargs, "ACK send must pass message_type kwarg"
         assert ack_call.kwargs["message_type"] == "ack"
 
     def test_ack_not_sent_when_auto_ack_disabled(self, tmp_path):
@@ -503,8 +507,7 @@ class TestProcessEnvelopeACK:
         loop.process_envelope(self._make_envelope())
 
         ack_calls = [
-            c for c in mock_skcomms.send.call_args_list
-            if len(c.args) >= 2 and c.args[1] == "ACK"
+            c for c in mock_skcomms.send.call_args_list if len(c.args) >= 2 and c.args[1] == "ACK"
         ]
         assert not ack_calls, "ACK should not be sent when auto_ack is False"
 
@@ -523,7 +526,7 @@ class TestProcessEnvelopeACK:
 
 
 class TestResponseNotification:
-    """send_notification wiring: desktop popup on a generated response, opt-in gated (card 261d442b)."""
+    """send_notification wiring: desktop popup on a generated response, opt-in gated (card 261d442b)."""  # noqa: E501
 
     def _make_loop(self, tmp_path):
         config = ConsciousnessConfig(fallback_chain=["passthrough"])
@@ -546,15 +549,14 @@ class TestResponseNotification:
             loop.process_envelope(self._make_envelope())
 
         resp_calls = [
-            c for c in mock_notify.call_args_list
-            if c.args and c.args[0] == "Agent response"
+            c for c in mock_notify.call_args_list if c.args and c.args[0] == "Agent response"
         ]
         assert resp_calls, "send_notification path must fire on response when enabled"
         # Body must be the first 120 chars of the response.
         assert resp_calls[0].args[1] == "hello from the agent"[:120]
 
     def test_notification_suppressed_when_disabled(self, tmp_path, monkeypatch):
-        """With SKCAPSTONE_DESKTOP_NOTIFY off (default), the response notification is suppressed."""
+        """With SKCAPSTONE_DESKTOP_NOTIFY off (default), the response notification is suppressed."""  # noqa: E501
         monkeypatch.setenv("SKCAPSTONE_DESKTOP_NOTIFY", "0")
         loop = self._make_loop(tmp_path)
 
@@ -562,8 +564,7 @@ class TestResponseNotification:
             loop.process_envelope(self._make_envelope())
 
         resp_calls = [
-            c for c in mock_notify.call_args_list
-            if c.args and c.args[0] == "Agent response"
+            c for c in mock_notify.call_args_list if c.args and c.args[0] == "Agent response"
         ]
         assert not resp_calls, "response notification must be suppressed when opt-out (default)"
 
@@ -634,9 +635,7 @@ class TestProcessEnvelopeRateLimit:
         return _SimpleEnvelope(data)
 
     def test_over_limit_message_skipped(self, tmp_path):
-        loop = self._make_loop(
-            tmp_path, rate_limit_max_messages=2, rate_limit_window_s=60.0
-        )
+        loop = self._make_loop(tmp_path, rate_limit_max_messages=2, rate_limit_window_s=60.0)
         # First two are processed (generate a response); third is throttled.
         assert loop.process_envelope(self._make_envelope()) is not None
         assert loop.process_envelope(self._make_envelope()) is not None
@@ -645,15 +644,11 @@ class TestProcessEnvelopeRateLimit:
     def test_injected_rate_limiter_used(self, tmp_path):
         rl = _RateLimiter(max_messages=100, window_s=60.0)
         config = ConsciousnessConfig(auto_ack=False, fallback_chain=["passthrough"])
-        loop = ConsciousnessLoop(
-            config, home=tmp_path / ".skcapstone", rate_limiter=rl
-        )
+        loop = ConsciousnessLoop(config, home=tmp_path / ".skcapstone", rate_limiter=rl)
         assert loop._rate_limiter is rl
 
     def test_disabled_flag_bypasses_limit(self, tmp_path):
-        loop = self._make_loop(
-            tmp_path, rate_limit_enabled=False, rate_limit_max_messages=1
-        )
+        loop = self._make_loop(tmp_path, rate_limit_enabled=False, rate_limit_max_messages=1)
         # Even past the (tiny) limit, messages keep being processed.
         assert loop.process_envelope(self._make_envelope()) is not None
         assert loop.process_envelope(self._make_envelope()) is not None
@@ -825,7 +820,10 @@ class TestVerifyMessageSignature:
         loop = self._make_loop(tmp_path)
         data = {
             "sender": "unknown-peer",
-            "payload": {"content": "hello", "signature": "-----BEGIN PGP MESSAGE-----\nfake\n-----END PGP MESSAGE-----"},
+            "payload": {
+                "content": "hello",
+                "signature": "-----BEGIN PGP MESSAGE-----\nfake\n-----END PGP MESSAGE-----",
+            },
         }
         # No peer registered → get_peer returns None → failed
         assert loop._verify_message_signature(data) == "failed"
@@ -851,10 +849,14 @@ class TestVerifyMessageSignature:
         inbox = tmp_path / "inbox"
         inbox.mkdir()
         msg_file = inbox / "test.skc.json"
-        msg_file.write_text(json.dumps({
-            "sender": "jarvis",
-            "payload": {"content": "hello", "content_type": "text"},
-        }))
+        msg_file.write_text(
+            json.dumps(
+                {
+                    "sender": "jarvis",
+                    "payload": {"content": "hello", "content_type": "text"},
+                }
+            )
+        )
 
         with caplog.at_level(logging.INFO, logger="skcapstone.consciousness"):
             loop._on_inbox_file(msg_file)
@@ -873,7 +875,7 @@ class TestVerifyMessageSignature:
         peer_data = {
             "name": "jarvis",
             "fingerprint": "ABCD1234",
-            "public_key": "-----BEGIN PGP PUBLIC KEY BLOCK-----\nfake\n-----END PGP PUBLIC KEY BLOCK-----",
+            "public_key": "-----BEGIN PGP PUBLIC KEY BLOCK-----\nfake\n-----END PGP PUBLIC KEY BLOCK-----",  # noqa: E501
             "trust_level": "verified",
         }
         (peer_dir / "jarvis.json").write_text(json.dumps(peer_data))
@@ -909,7 +911,7 @@ class TestVerifyMessageSignature:
         peer_data = {
             "name": "jarvis",
             "fingerprint": "ABCD1234",
-            "public_key": "-----BEGIN PGP PUBLIC KEY BLOCK-----\nfake\n-----END PGP PUBLIC KEY BLOCK-----",
+            "public_key": "-----BEGIN PGP PUBLIC KEY BLOCK-----\nfake\n-----END PGP PUBLIC KEY BLOCK-----",  # noqa: E501
             "trust_level": "verified",
         }
         (peer_dir / "jarvis.json").write_text(json.dumps(peer_data))
@@ -1113,7 +1115,9 @@ class TestMessageThreading:
         home.mkdir()
         builder = SystemPromptBuilder(home)
 
-        builder.add_to_history("opus", "user", "Threaded msg", thread_id="t-99", in_reply_to="m-10")
+        builder.add_to_history(
+            "opus", "user", "Threaded msg", thread_id="t-99", in_reply_to="m-10"
+        )
 
         conv_file = home / "conversations" / "opus.json"
         data = json.loads(conv_file.read_text())
@@ -1304,7 +1308,7 @@ class TestSystemPromptVersioning:
         assert isinstance(stats["prompt_version_responses"], dict)
 
     def test_version_responses_incremented_on_send(self, tmp_path):
-        """prompt_version_responses counter increments for the active hash when a response is sent."""
+        """prompt_version_responses counter increments for the active hash when a response is sent."""  # noqa: E501
         home = tmp_path / ".skcapstone"
         home.mkdir()
 
@@ -1354,10 +1358,7 @@ class TestFetchSenderMemories:
         """Output contains exactly 3 memory entries when 5 are returned."""
         loop = self._make_loop(tmp_path)
 
-        entries = [
-            self._make_entry(f"id-{i}", f"Memory content {i}")
-            for i in range(5)
-        ]
+        entries = [self._make_entry(f"id-{i}", f"Memory content {i}") for i in range(5)]
 
         # by_sender returns 3, by_content returns 2 different ones
         def mock_search(home, query, tags=None, limit=5):
@@ -1416,10 +1417,12 @@ class TestFetchSenderMemories:
         entry.tags = ["peer:jarvis"]
 
         with patch("skcapstone.memory_engine.search", return_value=[entry]):
-            envelope = _SimpleEnvelope({
-                "sender": "jarvis",
-                "payload": {"content": "What is the status?", "content_type": "text"},
-            })
+            envelope = _SimpleEnvelope(
+                {
+                    "sender": "jarvis",
+                    "payload": {"content": "What is the status?", "content_type": "text"},
+                }
+            )
             loop.process_envelope(envelope)
 
         assert len(captured_system_prompts) == 1
@@ -1444,10 +1447,12 @@ class TestFetchSenderMemories:
             "skcapstone.memory_engine.search",
             side_effect=RuntimeError("db unavailable"),
         ):
-            envelope = _SimpleEnvelope({
-                "sender": "jarvis",
-                "payload": {"content": "hello", "content_type": "text"},
-            })
+            envelope = _SimpleEnvelope(
+                {
+                    "sender": "jarvis",
+                    "payload": {"content": "hello", "content_type": "text"},
+                }
+            )
             result = loop.process_envelope(envelope)
 
         assert result == "test response"
@@ -1474,10 +1479,12 @@ class TestFetchSenderMemories:
         loop._bridge.generate.side_effect = fake_generate
 
         with patch("skcapstone.memory_engine.search", return_value=[]):
-            envelope = _SimpleEnvelope({
-                "sender": "jarvis",
-                "payload": {"content": "hello", "content_type": "text"},
-            })
+            envelope = _SimpleEnvelope(
+                {
+                    "sender": "jarvis",
+                    "payload": {"content": "hello", "content_type": "text"},
+                }
+            )
             loop.process_envelope(envelope)
 
         assert len(captured_system_prompts) == 1

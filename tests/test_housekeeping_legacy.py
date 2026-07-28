@@ -4,8 +4,6 @@ import os
 import time
 from pathlib import Path
 
-import pytest
-
 from skcapstone.housekeeping import (
     DEFAULT_LEGACY_COMMS_MAX_AGE_HOURS,
     prune_legacy_comms,

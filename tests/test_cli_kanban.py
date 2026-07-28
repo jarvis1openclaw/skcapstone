@@ -1,4 +1,5 @@
 """CLI smoke tests for coord kanban + archive-done (Phases 1-2)."""
+
 from __future__ import annotations
 
 from datetime import datetime, timedelta, timezone
@@ -47,6 +48,7 @@ def test_coord_archive_done_dry_run(tmp_path):
 
 def test_coord_move_appends_event(tmp_path):
     from skcapstone.card import KanbanBoard
+
     board = Board(tmp_path)
     board.ensure_dirs()
     board.create_task(Task(id="mv1", title="move me", created_by="opus"))
@@ -62,7 +64,9 @@ def test_coord_move_rejects_bad_column(tmp_path):
     board = Board(tmp_path)
     board.ensure_dirs()
     board.create_task(Task(id="mv2", title="x", created_by="o"))
-    result = CliRunner().invoke(main, ["coord", "move", "mv2", "nonsense", "--home", str(tmp_path)])
+    result = CliRunner().invoke(
+        main, ["coord", "move", "mv2", "nonsense", "--home", str(tmp_path)]
+    )
     assert result.exit_code != 0
 
 
@@ -81,6 +85,7 @@ def test_coord_age_backlog_dry_run(tmp_path):
 
 def test_coord_maintain_runs_both_sweeps(tmp_path):
     from datetime import datetime, timedelta, timezone
+
     board = Board(tmp_path)
     board.ensure_dirs()
     old = (datetime.now(timezone.utc) - timedelta(days=200)).isoformat()

@@ -22,7 +22,6 @@ import logging
 import socket
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Optional
 
 from pydantic import BaseModel, Field
 
@@ -66,9 +65,7 @@ class IdentityCard(BaseModel):
     memory_count: int = 0
     contact_uris: list[str] = Field(default_factory=list)
     hostname: str = Field(default_factory=socket.gethostname)
-    created_at: str = Field(
-        default_factory=lambda: datetime.now(timezone.utc).isoformat()
-    )
+    created_at: str = Field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
 
 
 def generate_card(home: Path) -> IdentityCard:
@@ -241,24 +238,28 @@ def _load_capabilities(home: Path, card: IdentityCard) -> None:
 
     try:
         import capauth  # noqa: F401
+
         caps.append("capauth:identity")
     except ImportError:
         logger.debug("capauth not installed — skipping capauth:identity capability")
 
     try:
         import skcomms  # noqa: F401
+
         caps.append("skcomms:messaging")
     except ImportError:
         logger.debug("skcomms not installed — skipping skcomms:messaging capability")
 
     try:
         import skchat  # noqa: F401
+
         caps.append("skchat:p2p-chat")
     except ImportError:
         logger.debug("skchat not installed — skipping skchat:p2p-chat capability")
 
     try:
         import skmemory  # noqa: F401
+
         caps.append("skmemory:persistence")
     except ImportError:
         logger.debug("skmemory not installed — skipping skmemory:persistence capability")

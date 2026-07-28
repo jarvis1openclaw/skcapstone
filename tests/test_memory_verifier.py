@@ -24,7 +24,6 @@ from skcapstone.memory_verifier import (
 )
 from skcapstone.models import MemoryEntry, MemoryLayer
 
-
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
@@ -160,6 +159,7 @@ class TestVerifyBeforePromotion:
 
         # Re-read from disk
         import json
+
         raw = json.loads(path.read_text())
         assert "conflicting" in raw["tags"]
 
@@ -180,6 +180,7 @@ class TestVerifyBeforePromotion:
         report_path = home / "memory" / "short-term" / f"{result.conflict_report_id}.json"
         assert report_path.exists()
         import json
+
         report = json.loads(report_path.read_text())
         assert "conflicting" in report["tags"]
         assert "CONFLICT REPORT" in report["content"]
@@ -209,15 +210,17 @@ class TestVerifyBeforePromotion:
         with patch.dict(sys.modules, {"skseed": MagicMock(), "skseed.skill": skill_mock}):
             with patch("skcapstone.notifications.notify") as mock_notify:
                 import skcapstone.memory_verifier as mv
+
                 # Ensure the module uses our patched notify
-                with patch.object(mv, "_fire_conflict_notification",
-                                  wraps=mv._fire_conflict_notification):
+                with patch.object(
+                    mv, "_fire_conflict_notification", wraps=mv._fire_conflict_notification
+                ):
                     verify_before_promotion(home, entry)
         # At least one call should have urgency=critical
         calls = mock_notify.call_args_list
         assert any(
-            call.kwargs.get("urgency") == "critical" or
-            (len(call.args) >= 3 and call.args[2] == "critical")
+            call.kwargs.get("urgency") == "critical"
+            or (len(call.args) >= 3 and call.args[2] == "critical")
             for call in calls
         ), f"No critical notification call found in {calls}"
 
@@ -226,7 +229,7 @@ class TestVerifyBeforePromotion:
         entry = _make_entry(memory_id="meta01")
         entry = _make_entry(memory_id="meta01")
         # Simulate a conflict-report entry
-        from dataclasses import replace
+
         entry2 = MemoryEntry(
             memory_id="meta01",
             content="[CONFLICT REPORT] some conflict",
@@ -249,14 +252,16 @@ class TestVerifyBeforePromotion:
         entry = _make_entry()
         skill_mock = MagicMock()
         # No fragments, but is_aligned=False
-        skill_mock.truth_check = MagicMock(return_value={
-            "is_aligned": False,
-            "collider_result": {
-                "coherence_score": 0.4,
-                "truth_grade": "weak",
-                "collision_fragments": [],
-            },
-        })
+        skill_mock.truth_check = MagicMock(
+            return_value={
+                "is_aligned": False,
+                "collider_result": {
+                    "coherence_score": 0.4,
+                    "truth_grade": "weak",
+                    "collision_fragments": [],
+                },
+            }
+        )
         with patch.dict(sys.modules, {"skseed": MagicMock(), "skseed.skill": skill_mock}):
             with patch("skcapstone.memory_verifier._fire_conflict_notification"):
                 result = verify_before_promotion(home, entry)
@@ -358,10 +363,9 @@ class TestPromotionEngineGate:
         """A truth-check-blocked candidate is not in result.promoted."""
         from datetime import timedelta
 
-        from skcapstone.memory_promoter import PromotionEngine, PromotionThresholds
-
         # Write a short-term entry that scores well above threshold
         from skcapstone.memory_engine import _save_entry
+        from skcapstone.memory_promoter import PromotionEngine, PromotionThresholds
 
         created = datetime.now(timezone.utc) - timedelta(hours=30)
         entry = MemoryEntry(
@@ -390,8 +394,8 @@ class TestPromotionEngineGate:
         """A truth-check-allowed candidate ends up in mid-term."""
         from datetime import timedelta
 
-        from skcapstone.memory_promoter import PromotionEngine, PromotionThresholds
         from skcapstone.memory_engine import _save_entry
+        from skcapstone.memory_promoter import PromotionEngine, PromotionThresholds
 
         created = datetime.now(timezone.utc) - timedelta(hours=30)
         entry = MemoryEntry(

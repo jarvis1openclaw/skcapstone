@@ -235,9 +235,7 @@ class SelfTestConfig:
             return cfg
 
         if isinstance(data.get("critical_categories"), list):
-            cfg.critical_categories = frozenset(
-                str(c) for c in data["critical_categories"]
-            )
+            cfg.critical_categories = frozenset(str(c) for c in data["critical_categories"])
         if isinstance(data.get("warn_categories"), list):
             cfg.warn_categories = frozenset(str(c) for c in data["warn_categories"])
         for flag in ("check_daemon", "check_board", "check_clock", "check_network"):
@@ -416,18 +414,25 @@ def run_post_resume_selftest(
                 alive = alive_fn(home)
             except Exception as exc:
                 return SelfTestCheck(
-                    "daemon", "fail", critical=True,
+                    "daemon",
+                    "fail",
+                    critical=True,
                     detail=f"liveness probe error: {exc}",
                     category="daemon",
                     fix="skcapstone daemon start",
                 )
             if alive:
                 return SelfTestCheck(
-                    "daemon", "pass", critical=True,
-                    detail="daemon process alive", category="daemon",
+                    "daemon",
+                    "pass",
+                    critical=True,
+                    detail="daemon process alive",
+                    category="daemon",
                 )
             return SelfTestCheck(
-                "daemon", "fail", critical=True,
+                "daemon",
+                "fail",
+                critical=True,
                 detail="daemon not running (no live PID)",
                 category="daemon",
                 fix="skcapstone daemon start",
@@ -445,11 +450,15 @@ def run_post_resume_selftest(
             report_obj = diag_fn(home)
             doctor_checks = list(getattr(report_obj, "checks", []))
         except Exception as exc:
-            return [SelfTestCheck(
-                "diagnostics", "fail", critical=True,
-                detail=f"run_diagnostics raised: {exc}",
-                category="diagnostics",
-            )]
+            return [
+                SelfTestCheck(
+                    "diagnostics",
+                    "fail",
+                    critical=True,
+                    detail=f"run_diagnostics raised: {exc}",
+                    category="diagnostics",
+                )
+            ]
         out: list[SelfTestCheck] = []
         for c in doctor_checks:
             category = getattr(c, "category", "general")
@@ -463,14 +472,16 @@ def run_post_resume_selftest(
                 status: CheckStatus = "pass"
             else:
                 status = "fail" if is_critical else "warn"
-            out.append(SelfTestCheck(
-                name=getattr(c, "name", "check"),
-                status=status,
-                critical=is_critical,
-                detail=getattr(c, "detail", "") or getattr(c, "description", ""),
-                category=category,
-                fix=getattr(c, "fix", ""),
-            ))
+            out.append(
+                SelfTestCheck(
+                    name=getattr(c, "name", "check"),
+                    status=status,
+                    critical=is_critical,
+                    detail=getattr(c, "detail", "") or getattr(c, "description", ""),
+                    category=category,
+                    fix=getattr(c, "fix", ""),
+                )
+            )
         return out
 
     diag_start = time.monotonic()
@@ -491,12 +502,16 @@ def run_post_resume_selftest(
                 count = read_board(home)
             except Exception as exc:
                 return SelfTestCheck(
-                    "coordination_board", "fail", critical=True,
+                    "coordination_board",
+                    "fail",
+                    critical=True,
                     detail=f"board unreadable: {exc}",
                     category="coordination",
                 )
             return SelfTestCheck(
-                "coordination_board", "pass", critical=True,
+                "coordination_board",
+                "pass",
+                critical=True,
                 detail=f"board readable ({count} task(s))",
                 category="coordination",
             )
@@ -512,18 +527,25 @@ def run_post_resume_selftest(
                 skew = clock_fn()
             except Exception as exc:
                 return SelfTestCheck(
-                    "clock_skew", "warn", critical=False,
-                    detail=f"clock probe error: {exc}", category="clock",
+                    "clock_skew",
+                    "warn",
+                    critical=False,
+                    detail=f"clock probe error: {exc}",
+                    category="clock",
                 )
             if skew is None:
                 return SelfTestCheck(
-                    "clock_skew", "skip", critical=False,
-                    detail="clock skew not measurable", category="clock",
+                    "clock_skew",
+                    "skip",
+                    critical=False,
+                    detail="clock skew not measurable",
+                    category="clock",
                 )
             fail_thresh = cfg.clock_skew_fail_seconds
             if fail_thresh > 0 and skew >= fail_thresh:
                 return SelfTestCheck(
-                    "clock_skew", "fail",
+                    "clock_skew",
+                    "fail",
                     critical="clock" in cfg.critical_categories,
                     detail=f"clock skew {skew:.1f}s >= {fail_thresh:.0f}s",
                     category="clock",
@@ -531,14 +553,19 @@ def run_post_resume_selftest(
                 )
             if skew >= cfg.clock_skew_warn_seconds:
                 return SelfTestCheck(
-                    "clock_skew", "warn", critical=False,
+                    "clock_skew",
+                    "warn",
+                    critical=False,
                     detail=f"clock skew {skew:.1f}s >= {cfg.clock_skew_warn_seconds:.0f}s",
                     category="clock",
                     fix="resync time (e.g. sudo systemctl restart systemd-timesyncd)",
                 )
             return SelfTestCheck(
-                "clock_skew", "pass", critical=False,
-                detail=f"clock skew {skew:.2f}s", category="clock",
+                "clock_skew",
+                "pass",
+                critical=False,
+                detail=f"clock skew {skew:.2f}s",
+                category="clock",
             )
 
         report.checks.append(_timed(_clock_check))
@@ -552,17 +579,26 @@ def run_post_resume_selftest(
                 reachable, detail = net_fn(cfg.network_host)
             except Exception as exc:
                 return SelfTestCheck(
-                    "network", "warn", critical=False,
-                    detail=f"network probe error: {exc}", category="network",
+                    "network",
+                    "warn",
+                    critical=False,
+                    detail=f"network probe error: {exc}",
+                    category="network",
                 )
             if reachable:
                 return SelfTestCheck(
-                    "network", "pass", critical=False,
-                    detail=detail, category="network",
+                    "network",
+                    "pass",
+                    critical=False,
+                    detail=detail,
+                    category="network",
                 )
             return SelfTestCheck(
-                "network", "warn", critical=False,
-                detail=detail, category="network",
+                "network",
+                "warn",
+                critical=False,
+                detail=detail,
+                category="network",
                 fix="check tailscale / network (sudo tailscale up)",
             )
 

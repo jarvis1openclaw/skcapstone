@@ -1,4 +1,5 @@
 """Tests for skcapstone.dreaming_job — the jobs.yaml entrypoint for dreaming."""
+
 from skcapstone import dreaming_job
 
 

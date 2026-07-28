@@ -1,24 +1,35 @@
 """Tests for the Phase 3 ITIL cockpit API (dashboard_itil + routes)."""
+
 from __future__ import annotations
 
 import pytest
 
-from skcapstone.dashboard import create_app
 from skcapstone import dashboard_itil as di
+from skcapstone.dashboard import create_app
 
 
 @pytest.fixture
 def home(tmp_path):
     from skcapstone.itil import ITILManager
+
     mgr = ITILManager(tmp_path)
     # an open SEV2 incident, a resolved one, a change in review, a problem
-    mgr.create_incident(title="skmem-pg down .41", severity="sev2", created_by="lumina",
-                        affected_services=["skmem-pg"])
+    mgr.create_incident(
+        title="skmem-pg down .41",
+        severity="sev2",
+        created_by="lumina",
+        affected_services=["skmem-pg"],
+    )
     inc2 = mgr.create_incident(title="skchat blip", severity="sev3", created_by="opus")
     mgr.update_incident(inc2.id, "opus", new_status="acknowledged")
     mgr.update_incident(inc2.id, "opus", new_status="resolved", note="restarted")
-    ch = mgr.propose_change(title="Gateway cutover", created_by="lumina", change_type="normal",
-                            risk="medium", rollback_plan="revert route")
+    ch = mgr.propose_change(
+        title="Gateway cutover",
+        created_by="lumina",
+        change_type="normal",
+        risk="medium",
+        rollback_plan="revert route",
+    )
     mgr.update_change(ch.id, "lumina", new_status="reviewing")
     mgr.submit_cab_vote(ch.id, "jarvis", decision="approved")
     mgr.create_problem(title="Recurring conflicts", created_by="opus")
@@ -68,8 +79,10 @@ def test_record_missing(home):
 
 # ---- HTTP routes ----
 
+
 def test_itil_routes(home):
     from starlette.testclient import TestClient
+
     client = TestClient(create_app(home))
     assert client.get("/api/itil/overview").json()["kpis"]["open_incidents"] >= 1
     assert "incidents" in client.get("/api/itil/incidents").json()

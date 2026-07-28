@@ -41,8 +41,8 @@ from skcapstone.conversation_manager import ConversationManager
 from skcapstone.conversation_store import ConversationStore
 from skcapstone.fallback_tracker import FallbackEvent, FallbackTracker
 from skcapstone.metrics import ConsciousnessMetrics
-from skcapstone.model_router import ModelRouter, ModelRouterConfig, RouteDecision, TaskSignal
-from skcapstone.prompt_adapter import AdaptedPrompt, PromptAdapter
+from skcapstone.model_router import ModelRouter, ModelRouterConfig, TaskSignal
+from skcapstone.prompt_adapter import PromptAdapter
 from skcapstone.response_cache import ResponseCache, hash_prompt
 
 logger = logging.getLogger("skcapstone.consciousness")
@@ -605,7 +605,7 @@ class LLMBridge:
                         primary_backend=_primary_backend,
                         fallback_model=alt_model,
                         fallback_backend=alt_backend,
-                        reason=f"primary model {_primary_model!r} failed; alt {alt_model!r} also failed: {exc}",
+                        reason=f"primary model {_primary_model!r} failed; alt {alt_model!r} also failed: {exc}",  # noqa: E501
                         success=False,
                     )
                 )
@@ -634,7 +634,7 @@ class LLMBridge:
                             primary_backend=_primary_backend,
                             fallback_model=fast_model,
                             fallback_backend=fast_backend,
-                            reason=f"tier downgrade: {decision.tier.value} exhausted; using FAST model {fast_model!r}",
+                            reason=f"tier downgrade: {decision.tier.value} exhausted; using FAST model {fast_model!r}",  # noqa: E501
                             success=True,
                         )
                     )
@@ -670,7 +670,7 @@ class LLMBridge:
                         primary_backend=_primary_backend,
                         fallback_model=backend,
                         fallback_backend=backend,
-                        reason=f"cross-provider cascade: all tier models exhausted; using {backend!r}",
+                        reason=f"cross-provider cascade: all tier models exhausted; using {backend!r}",  # noqa: E501
                         success=True,
                     )
                 )
@@ -1419,7 +1419,8 @@ class ConsciousnessLoop:
         shared_root: Optional[Path] = None,
         rate_limiter: Optional["_RateLimiter"] = None,
     ) -> None:
-        from skcapstone import AGENT_HOME, SHARED_ROOT as _SR
+        from skcapstone import AGENT_HOME
+        from skcapstone import SHARED_ROOT as _SR
 
         self._config = config
         self._state = daemon_state
@@ -1466,9 +1467,7 @@ class ConsciousnessLoop:
         # compresses (summarizes) older history once it crosses 80% of the
         # model's context budget, so long conversations can't overflow the
         # model or blow up latency.
-        self._ctx_window = ContextWindowManager(
-            self._home, config.max_context_tokens
-        )
+        self._ctx_window = ContextWindowManager(self._home, config.max_context_tokens)
 
         # Metrics collector (persist every 5 min)
         self._metrics = ConsciousnessMetrics(home=self._home)
@@ -1750,9 +1749,7 @@ class ConsciousnessLoop:
                 signal.privacy_sensitive,
             )
             try:
-                self._metrics.record_classification(
-                    signal.tags, signal.estimated_tokens
-                )
+                self._metrics.record_classification(signal.tags, signal.estimated_tokens)
             except Exception as _cls_exc:
                 logger.debug("Classification metric record failed: %s", _cls_exc)
 
@@ -1850,7 +1847,7 @@ class ConsciousnessLoop:
             t_send = time.monotonic()
 
             logger.info(
-                "Pipeline timing — classify: %.0fms, prompt_build: %.0fms, llm: %.0fms, send: %.0fms",
+                "Pipeline timing — classify: %.0fms, prompt_build: %.0fms, llm: %.0fms, send: %.0fms",  # noqa: E501
                 (t_classify - t0) * 1000,
                 (t_prompt - t_classify) * 1000,
                 (t_llm - t_prompt) * 1000,
@@ -1887,21 +1884,15 @@ class ConsciousnessLoop:
             # it has crossed the budget threshold. Non-fatal on any failure.
             if self._conv_store is not None:
                 try:
-                    if self._ctx_window.check_and_compress(
-                        sender, self._conv_store, self._bridge
-                    ):
+                    if self._ctx_window.check_and_compress(sender, self._conv_store, self._bridge):
                         # History was rewritten on disk — refresh the in-memory
                         # snapshot the prompt builder reads from.
-                        self._conv_manager._history[sender] = (
-                            self._conv_store.get_last(
-                                sender, self._config.max_history_messages
-                            )
+                        self._conv_manager._history[sender] = self._conv_store.get_last(
+                            sender, self._config.max_history_messages
                         )
                         self._store_context_summary_memory(sender)
                 except Exception as _ctx_exc:
-                    logger.debug(
-                        "Context-window check failed (non-fatal): %s", _ctx_exc
-                    )
+                    logger.debug("Context-window check failed (non-fatal): %s", _ctx_exc)
 
             # Update mood after each cycle
             if self._mood_tracker is not None:
@@ -2134,8 +2125,8 @@ class ConsciousnessLoop:
         config_dir.mkdir(parents=True, exist_ok=True)
 
         try:
-            from watchdog.observers import Observer
             from watchdog.events import FileSystemEventHandler
+            from watchdog.observers import Observer
 
             loop_ref = self
 
@@ -2181,8 +2172,8 @@ class ConsciousnessLoop:
         inbox_dir.mkdir(parents=True, exist_ok=True)
 
         try:
+            from watchdog.events import FileCreatedEvent, FileSystemEventHandler  # noqa: F401
             from watchdog.observers import Observer
-            from watchdog.events import FileSystemEventHandler, FileCreatedEvent
 
             handler = _WatchdogAdapter(self._on_inbox_file)
             self._observer = Observer()
@@ -2369,9 +2360,7 @@ class ConsciousnessLoop:
             # envelope_id / id — accept any so dedupe is never silently skipped).
             # NOTE: we only PEEK here; the id is marked processed *after* a
             # successful submit/stage so a dropped message is never marked (F7).
-            message_id = (
-                data.get("message_id") or data.get("envelope_id") or data.get("id", "")
-            )
+            message_id = data.get("message_id") or data.get("envelope_id") or data.get("id", "")
             if message_id:
                 with self._processed_ids_lock:
                     already_seen = message_id in self._processed_ids

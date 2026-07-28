@@ -19,8 +19,8 @@ from __future__ import annotations
 import hashlib
 import json
 import logging
-import subprocess
 import shutil
+import subprocess
 from datetime import datetime, timedelta, timezone
 from enum import Enum
 from pathlib import Path
@@ -184,7 +184,9 @@ def verify_token(token: SignedToken, home: Optional[Path] = None) -> bool:
         True if the token is valid and signature checks out.
     """
     if not token.payload.is_active:
-        logger.warning("Token %s is not active (expired or not yet valid)", token.payload.token_id[:12])
+        logger.warning(
+            "Token %s is not active (expired or not yet valid)", token.payload.token_id[:12]
+        )
         return False
 
     if token.signature:
@@ -357,10 +359,17 @@ def _pgp_sign_payload(payload: TokenPayload, home: Path) -> Optional[str]:
     payload_json = payload.model_dump_json()
     try:
         cmd = [
-            "gpg", "--batch", "--yes", "--armor", "--detach-sign",
-            "--local-user", issuer_fp,
-            "--passphrase", "",
-            "--pinentry-mode", "loopback",
+            "gpg",
+            "--batch",
+            "--yes",
+            "--armor",
+            "--detach-sign",
+            "--local-user",
+            issuer_fp,
+            "--passphrase",
+            "",
+            "--pinentry-mode",
+            "loopback",
         ]
         result = subprocess.run(
             cmd,

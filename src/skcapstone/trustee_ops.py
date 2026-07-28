@@ -27,7 +27,7 @@ from ._trustee_helpers import (
     stub_spec,
     write_audit,
 )
-from .team_engine import AgentStatus, DeployedAgent, TeamDeployment, TeamEngine
+from .team_engine import AgentStatus, DeployedAgent, TeamEngine
 
 logger = logging.getLogger(__name__)
 
@@ -111,9 +111,7 @@ class TrusteeOps:
 
         if agent_name:
             if agent_name not in deployment.agents:
-                raise ValueError(
-                    f"Agent '{agent_name}' not in deployment '{deployment_id}'."
-                )
+                raise ValueError(f"Agent '{agent_name}' not in deployment '{deployment_id}'.")
             targets = {agent_name: deployment.agents[agent_name]}
         else:
             targets = dict(deployment.agents)
@@ -140,7 +138,9 @@ class TrusteeOps:
 
         refresh_deployment_status(deployment)
         self._engine._save_deployment(deployment)
-        self._audit("restart_agent", deployment_id, agent_name=agent_name or "ALL", results=results)
+        self._audit(
+            "restart_agent", deployment_id, agent_name=agent_name or "ALL", results=results
+        )
         return results
 
     # ------------------------------------------------------------------
@@ -228,9 +228,12 @@ class TrusteeOps:
         refresh_deployment_status(deployment)
         self._engine._save_deployment(deployment)
         self._audit(
-            "scale_agent", deployment_id,
-            agent_spec_key=agent_spec_key, desired_count=count,
-            added=added, removed=removed,
+            "scale_agent",
+            deployment_id,
+            agent_spec_key=agent_spec_key,
+            desired_count=count,
+            added=added,
+            removed=removed,
         )
         return {"added": added, "removed": removed, "current_count": count}
 
@@ -337,9 +340,7 @@ class TrusteeOps:
 
         if provider:
             try:
-                live_status = provider.health_check(
-                    name, self._provision_result(agent)
-                )
+                live_status = provider.health_check(name, self._provision_result(agent))
                 agent.status = live_status
                 if live_status == AgentStatus.RUNNING:
                     agent.last_heartbeat = datetime.now(timezone.utc).isoformat()
@@ -378,14 +379,14 @@ class TrusteeOps:
             raise ValueError(f"Deployment '{deployment_id}' not found.")
 
         report: List[Dict[str, Any]] = [
-            self._live_agent_health(name, agent)
-            for name, agent in deployment.agents.items()
+            self._live_agent_health(name, agent) for name, agent in deployment.agents.items()
         ]
 
         refresh_deployment_status(deployment)
         self._engine._save_deployment(deployment)
         self._audit(
-            "health_report", deployment_id,
+            "health_report",
+            deployment_id,
             agent_count=len(report),
             healthy=sum(1 for r in report if r["healthy"]),
         )
@@ -444,8 +445,11 @@ class TrusteeOps:
                     refresh_deployment_status(dep)
                     self._engine._save_deployment(dep)
                     self._audit(
-                        "agent_health", dep.deployment_id,
-                        agent_name=name, query=query, healthy=row["healthy"],
+                        "agent_health",
+                        dep.deployment_id,
+                        agent_name=name,
+                        query=query,
+                        healthy=row["healthy"],
                     )
                     return {
                         "query": query,
@@ -501,9 +505,7 @@ class TrusteeOps:
 
         if agent_name:
             if agent_name not in deployment.agents:
-                raise ValueError(
-                    f"Agent '{agent_name}' not in deployment '{deployment_id}'."
-                )
+                raise ValueError(f"Agent '{agent_name}' not in deployment '{deployment_id}'.")
             names = [agent_name]
         else:
             names = list(deployment.agents.keys())
@@ -517,9 +519,7 @@ class TrusteeOps:
                 all_lines = log_file.read_text(encoding="utf-8").splitlines()
                 logs[name] = all_lines[-tail:]
             else:
-                logs[name] = audit_lines_for_agent(
-                    self._home, deployment_id, name, tail=tail
-                )
+                logs[name] = audit_lines_for_agent(self._home, deployment_id, name, tail=tail)
 
         self._audit("get_logs", deployment_id, agent_name=agent_name or "ALL", tail=tail)
         return logs

@@ -17,8 +17,7 @@ import json
 import threading
 import time
 from http.client import HTTPConnection
-from pathlib import Path
-from unittest.mock import patch, MagicMock
+from unittest.mock import patch
 
 import pytest
 import yaml
@@ -27,8 +26,8 @@ from skcapstone.dashboard import (
     _DASHBOARD_HTML,
     _get_agent_status,
     _get_board_state,
-    _get_doctor_report,
     _get_daemon_json,
+    _get_doctor_report,
     _get_memory_stats,
     create_app,
     start_dashboard,
@@ -39,25 +38,58 @@ from skcapstone.dashboard import (
 def agent_home(tmp_path):
     """Create a minimal agent home for dashboard testing."""
     home = tmp_path / ".skcapstone"
-    for d in ["identity", "memory", "memory/short-term", "memory/mid-term",
-              "memory/long-term", "trust", "security", "sync", "sync/outbox",
-              "sync/inbox", "config", "coordination", "coordination/tasks",
-              "coordination/agents"]:
+    for d in [
+        "identity",
+        "memory",
+        "memory/short-term",
+        "memory/mid-term",
+        "memory/long-term",
+        "trust",
+        "security",
+        "sync",
+        "sync/outbox",
+        "sync/inbox",
+        "config",
+        "coordination",
+        "coordination/tasks",
+        "coordination/agents",
+    ]:
         (home / d).mkdir(parents=True, exist_ok=True)
 
-    (home / "manifest.json").write_text(json.dumps({
-        "name": "DashBot", "version": "0.1.0",
-    }))
-    (home / "identity" / "identity.json").write_text(json.dumps({
-        "name": "DashBot", "fingerprint": "DASH1234", "capauth_managed": False,
-    }))
+    (home / "manifest.json").write_text(
+        json.dumps(
+            {
+                "name": "DashBot",
+                "version": "0.1.0",
+            }
+        )
+    )
+    (home / "identity" / "identity.json").write_text(
+        json.dumps(
+            {
+                "name": "DashBot",
+                "fingerprint": "DASH1234",
+                "capauth_managed": False,
+            }
+        )
+    )
     (home / "config" / "config.yaml").write_text(yaml.dump({"agent_name": "DashBot"}))
     (home / "memory" / "index.json").write_text("{}")
     (home / "memory" / "short-term" / "m1.json").write_text(
-        json.dumps({"memory_id": "m1", "content": "test", "tags": [],
-                     "source": "test", "importance": 0.5, "layer": "short-term",
-                     "created_at": "2026-02-24T00:00:00Z", "access_count": 0,
-                     "accessed_at": None, "metadata": {}})
+        json.dumps(
+            {
+                "memory_id": "m1",
+                "content": "test",
+                "tags": [],
+                "source": "test",
+                "importance": 0.5,
+                "layer": "short-term",
+                "created_at": "2026-02-24T00:00:00Z",
+                "access_count": 0,
+                "accessed_at": None,
+                "metadata": {},
+            }
+        )
     )
 
     return home
@@ -314,8 +346,6 @@ class TestGetDaemonJson:
             "backends": {"ollama": True, "grok": False},
         }
 
-        import urllib.request
-
         class _FakeResponse:
             def __init__(self, data):
                 self._data = json.dumps(data).encode()
@@ -368,8 +398,14 @@ class TestDaemonApiEndpoint:
         assert resp.status == 200
         assert "application/json" in resp.getheader("Content-Type")
         data = json.loads(resp.read())
-        for key in ("generated_at", "daemon", "consciousness", "backend_health",
-                    "active_conversations", "system"):
+        for key in (
+            "generated_at",
+            "daemon",
+            "consciousness",
+            "backend_health",
+            "active_conversations",
+            "system",
+        ):
             assert key in data, f"Missing key in /api/daemon response: {key}"
         conn.close()
 
@@ -402,9 +438,10 @@ class TestDashboardJsonCLI:
 
     def test_json_flag_outputs_valid_json(self, agent_home):
         """dashboard --json prints JSON to stdout and exits without starting a server."""
-        from click.testing import CliRunner
-        from skcapstone.cli.status import register_status_commands
         import click
+        from click.testing import CliRunner
+
+        from skcapstone.cli.status import register_status_commands
 
         @click.group()
         def _cli():
@@ -425,9 +462,10 @@ class TestDashboardJsonCLI:
 
     def test_json_flag_contains_generated_at(self, agent_home):
         """dashboard --json output includes a generated_at timestamp."""
-        from click.testing import CliRunner
-        from skcapstone.cli.status import register_status_commands
         import click
+        from click.testing import CliRunner
+
+        from skcapstone.cli.status import register_status_commands
 
         @click.group()
         def _cli():
@@ -445,9 +483,10 @@ class TestDashboardJsonCLI:
 
     def test_json_flag_daemon_offline_still_exits_zero(self, agent_home):
         """dashboard --json exits 0 even when daemon is unreachable (daemon offline)."""
-        from click.testing import CliRunner
-        from skcapstone.cli.status import register_status_commands
         import click
+        from click.testing import CliRunner
+
+        from skcapstone.cli.status import register_status_commands
 
         @click.group()
         def _cli():
@@ -470,6 +509,7 @@ class TestStarletteApp:
 
     def test_create_app_serves_html_and_json(self, agent_home):
         from starlette.testclient import TestClient
+
         client = TestClient(create_app(agent_home))
         r = client.get("/")
         assert r.status_code == 200

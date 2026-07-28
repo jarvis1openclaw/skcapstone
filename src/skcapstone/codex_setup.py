@@ -109,7 +109,9 @@ def render_agents_block(
 ) -> str:
     """Render the managed global Codex AGENTS.md block."""
     agent = agent_name or resolve_default_agent()
-    sk_home = skcapstone_home or Path(os.environ.get("SKCAPSTONE_HOME", "~/.skcapstone")).expanduser()
+    sk_home = (
+        skcapstone_home or Path(os.environ.get("SKCAPSTONE_HOME", "~/.skcapstone")).expanduser()
+    )
     return f"""{START_MARKER}
 # SKCapstone Agent Context
 

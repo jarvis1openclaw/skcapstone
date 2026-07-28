@@ -94,7 +94,7 @@ TOOLS: list[Tool] = [
                 },
                 "mode": {
                     "type": "string",
-                    "description": "Brainstorming mode: socratic, dialectic, adversarial, collaborative (default: dialectic)",
+                    "description": "Brainstorming mode: socratic, dialectic, adversarial, collaborative (default: dialectic)",  # noqa: E501
                     "enum": ["socratic", "dialectic", "adversarial", "collaborative"],
                 },
             },

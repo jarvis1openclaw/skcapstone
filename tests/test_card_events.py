@@ -1,4 +1,5 @@
 """Tests for the kanban overlay events (Phase 3)."""
+
 from __future__ import annotations
 
 from skcapstone.card import (
@@ -9,8 +10,8 @@ from skcapstone.card import (
 )
 from skcapstone.coordination import Board, Task
 
-
 # ---- Task 1: append/read ----
+
 
 def test_card_event_log_append_and_read(tmp_path):
     log = CardEventLog(tmp_path)
@@ -24,16 +25,23 @@ def test_card_event_log_append_and_read(tmp_path):
 
 # ---- Task 2: fold ----
 
+
 def test_fold_overlay_move_last_wins_and_labels_accumulate():
     events = [
-        CardEvent(card_id="c", action="move", column="ready", order=1,
-                  ts="2026-07-16T01:00:00+00:00"),
-        CardEvent(card_id="c", action="add_label", label="urgent",
-                  ts="2026-07-16T01:01:00+00:00"),
-        CardEvent(card_id="c", action="move", column="review", order=2,
-                  ts="2026-07-16T01:02:00+00:00"),
-        CardEvent(card_id="c", action="link", link_key="pr", link_value="#42",
-                  ts="2026-07-16T01:03:00+00:00"),
+        CardEvent(
+            card_id="c", action="move", column="ready", order=1, ts="2026-07-16T01:00:00+00:00"
+        ),
+        CardEvent(card_id="c", action="add_label", label="urgent", ts="2026-07-16T01:01:00+00:00"),
+        CardEvent(
+            card_id="c", action="move", column="review", order=2, ts="2026-07-16T01:02:00+00:00"
+        ),
+        CardEvent(
+            card_id="c",
+            action="link",
+            link_key="pr",
+            link_value="#42",
+            ts="2026-07-16T01:03:00+00:00",
+        ),
     ]
     ov = fold_overlay(events)["c"]
     assert ov["column"] == "review"
@@ -44,23 +52,20 @@ def test_fold_overlay_move_last_wins_and_labels_accumulate():
 
 def test_fold_overlay_remove_label():
     events = [
-        CardEvent(card_id="c", action="add_label", label="x",
-                  ts="2026-07-16T01:00:00+00:00"),
-        CardEvent(card_id="c", action="remove_label", label="x",
-                  ts="2026-07-16T01:01:00+00:00"),
+        CardEvent(card_id="c", action="add_label", label="x", ts="2026-07-16T01:00:00+00:00"),
+        CardEvent(card_id="c", action="remove_label", label="x", ts="2026-07-16T01:01:00+00:00"),
     ]
     assert "x" not in fold_overlay(events)["c"]["labels"]
 
 
 # ---- Task 3: apply overlay ----
 
+
 def test_move_event_overrides_derived_column(tmp_path):
     board = Board(tmp_path)
     board.ensure_dirs()
     board.create_task(Task(id="m1", title="movable", created_by="opus"))  # derived: backlog
-    CardEventLog(tmp_path).append(
-        CardEvent(card_id="m1", action="move", column="review", order=5)
-    )
+    CardEventLog(tmp_path).append(CardEvent(card_id="m1", action="move", column="review", order=5))
     kb = KanbanBoard(tmp_path)
     card = next(c for c in kb.cards() if c.id == "m1")
     assert card.status.value == "review"
@@ -80,6 +85,7 @@ def test_bad_column_in_overlay_is_ignored(tmp_path):
 
 
 # ---- Task 4: WIP ----
+
 
 def test_wip_report_flags_over_limit(tmp_path):
     board = Board(tmp_path)
@@ -109,16 +115,15 @@ def test_wip_excludes_expedite_lane(tmp_path):
 
 # ---- Fold-drift fix (card ba4af853): overlay owner support ----
 
+
 def test_fold_overlay_assign_and_unassign():
     events = [
-        CardEvent(card_id="c", action="assign", owner="lumina",
-                  ts="2026-07-16T01:00:00+00:00"),
+        CardEvent(card_id="c", action="assign", owner="lumina", ts="2026-07-16T01:00:00+00:00"),
     ]
     ov = fold_overlay(events)["c"]
     assert ov["owner"] == "lumina"
     assert ov["owner_set"] is True
-    events.append(CardEvent(card_id="c", action="unassign",
-                            ts="2026-07-16T01:01:00+00:00"))
+    events.append(CardEvent(card_id="c", action="unassign", ts="2026-07-16T01:01:00+00:00"))
     ov = fold_overlay(events)["c"]
     assert ov["owner"] is None
     assert ov["owner_set"] is True
@@ -128,8 +133,6 @@ def test_overlay_assign_applies_to_legacy_projection(tmp_path):
     board = Board(tmp_path)
     board.ensure_dirs()
     board.create_task(Task(id="own1", title="ownable", created_by="o"))
-    CardEventLog(tmp_path).append(
-        CardEvent(card_id="own1", action="assign", owner="lumina")
-    )
+    CardEventLog(tmp_path).append(CardEvent(card_id="own1", action="assign", owner="lumina"))
     card = next(c for c in KanbanBoard(tmp_path).cards() if c.id == "own1")
     assert card.owner == "lumina"

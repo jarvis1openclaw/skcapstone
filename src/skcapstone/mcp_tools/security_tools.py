@@ -54,10 +54,12 @@ async def _handle_security_audit_log(args: dict) -> list[TextContent]:
         from ..pillars.security import read_audit_log
 
         entries = read_audit_log(home, limit=limit)
-        return _json_response({
-            "count": len(entries),
-            "entries": [e.model_dump() for e in entries],
-        })
+        return _json_response(
+            {
+                "count": len(entries),
+                "entries": [e.model_dump() for e in entries],
+            }
+        )
     except Exception as exc:
         return _error_response(f"Could not read audit log: {exc}")
 
@@ -72,9 +74,7 @@ async def _handle_security_status(_args: dict) -> list[TextContent]:
 
     if config_file.exists():
         try:
-            result["config"] = _json.loads(
-                config_file.read_text(encoding="utf-8")
-            )
+            result["config"] = _json.loads(config_file.read_text(encoding="utf-8"))
         except Exception:
             result["config"] = {"error": "could not parse security.json"}
 
@@ -93,9 +93,7 @@ async def _handle_security_status(_args: dict) -> list[TextContent]:
     if audit_log.exists():
         try:
             lines = audit_log.read_text(encoding="utf-8").splitlines()
-            result["audit_log_entries"] = len(
-                [ln for ln in lines if ln.strip()]
-            )
+            result["audit_log_entries"] = len([ln for ln in lines if ln.strip()])
         except Exception:
             result["audit_log_entries"] = "unreadable"
     else:

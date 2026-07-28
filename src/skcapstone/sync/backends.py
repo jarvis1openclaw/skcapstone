@@ -90,9 +90,7 @@ class SyncthingBackend(SyncBackend):
         """Copy vault to Syncthing outbox for P2P distribution."""
         try:
             shutil.copy2(vault_path, self.outbox / vault_path.name)
-            shutil.copy2(
-                manifest_path, self.outbox / manifest_path.name
-            )
+            shutil.copy2(manifest_path, self.outbox / manifest_path.name)
 
             state_file = self.sync_dir / "sync-state.json"
             state = {}
@@ -106,9 +104,7 @@ class SyncthingBackend(SyncBackend):
             state["seed_count"] = len(list(self.outbox.glob("*.tar.gz*")))
             state_file.write_text(json.dumps(state, indent=2), encoding="utf-8")
 
-            logger.info(
-                "Vault pushed to Syncthing outbox: %s", vault_path.name
-            )
+            logger.info("Vault pushed to Syncthing outbox: %s", vault_path.name)
             return True
         except OSError as exc:
             logger.error("Syncthing push failed: %s", exc)
@@ -153,9 +149,7 @@ class GitBackend(SyncBackend):
     @property
     def name(self) -> str:
         backend_label = (
-            "forgejo"
-            if self.config.backend_type == SyncBackendType.FORGEJO
-            else "github"
+            "forgejo" if self.config.backend_type == SyncBackendType.FORGEJO else "github"
         )
         return backend_label
 
@@ -177,10 +171,20 @@ class GitBackend(SyncBackend):
                 env["GIT_TOKEN"] = token
 
         result = subprocess.run(
-            ["git", "clone", "--depth", "1",
-             "-b", self.config.branch,
-             self.config.repo_url, str(self._repo_dir)],
-            capture_output=True, text=True, check=False, env=env,
+            [
+                "git",
+                "clone",
+                "--depth",
+                "1",
+                "-b",
+                self.config.branch,
+                self.config.repo_url,
+                str(self._repo_dir),
+            ],
+            capture_output=True,
+            text=True,
+            check=False,
+            env=env,
         )
         return result.returncode == 0
 
@@ -189,31 +193,32 @@ class GitBackend(SyncBackend):
             return False
 
         try:
-            shutil.copy2(
-                vault_path, self._repo_dir / vault_path.name
-            )
-            shutil.copy2(
-                manifest_path, self._repo_dir / manifest_path.name
-            )
+            shutil.copy2(vault_path, self._repo_dir / vault_path.name)
+            shutil.copy2(manifest_path, self._repo_dir / manifest_path.name)
 
             cmds = [
                 ["git", "add", "-A"],
                 [
-                    "git", "commit", "-m",
-                    f"vault: {vault_path.name} "
-                    f"[{datetime.now(timezone.utc).isoformat()}]",
+                    "git",
+                    "commit",
+                    "-m",
+                    f"vault: {vault_path.name} " f"[{datetime.now(timezone.utc).isoformat()}]",
                 ],
                 ["git", "push", "origin", self.config.branch],
             ]
             for cmd in cmds:
                 result = subprocess.run(
-                    cmd, capture_output=True, text=True,
-                    check=False, cwd=str(self._repo_dir),
+                    cmd,
+                    capture_output=True,
+                    text=True,
+                    check=False,
+                    cwd=str(self._repo_dir),
                 )
                 if result.returncode != 0:
                     logger.error(
                         "Git command failed: %s -> %s",
-                        " ".join(cmd), result.stderr,
+                        " ".join(cmd),
+                        result.stderr,
                     )
                     return False
 
@@ -229,7 +234,9 @@ class GitBackend(SyncBackend):
 
         result = subprocess.run(
             ["git", "pull", "origin", self.config.branch],
-            capture_output=True, text=True, check=False,
+            capture_output=True,
+            text=True,
+            check=False,
             cwd=str(self._repo_dir),
         )
         if result.returncode != 0:
@@ -251,10 +258,7 @@ class GitBackend(SyncBackend):
         return dest
 
     def available(self) -> bool:
-        return (
-            shutil.which("git") is not None
-            and self.config.repo_url is not None
-        )
+        return shutil.which("git") is not None and self.config.repo_url is not None
 
 
 class LocalBackend(SyncBackend):
@@ -276,9 +280,7 @@ class LocalBackend(SyncBackend):
     def push(self, vault_path: Path, manifest_path: Path) -> bool:
         try:
             shutil.copy2(vault_path, self.target / vault_path.name)
-            shutil.copy2(
-                manifest_path, self.target / manifest_path.name
-            )
+            shutil.copy2(manifest_path, self.target / manifest_path.name)
             logger.info("Vault pushed to local: %s", self.target)
             return True
         except OSError as exc:
@@ -317,9 +319,7 @@ class GDriveBackend(SyncBackend):
 
     _SCOPES = ["https://www.googleapis.com/auth/drive.file"]
     _CREDS_ENV = "GDRIVE_CREDENTIALS_FILE"
-    _DEFAULT_CREDS = (
-        Path.home() / ".config" / "skcapstone" / "gdrive_credentials.json"
-    )
+    _DEFAULT_CREDS = Path.home() / ".config" / "skcapstone" / "gdrive_credentials.json"
 
     def __init__(self, config: SyncBackendConfig, agent_home: Path):
         self.config = config
@@ -349,8 +349,7 @@ class GDriveBackend(SyncBackend):
             from googleapiclient.discovery import build  # type: ignore
         except ImportError:
             logger.error(
-                "google-api-python-client not installed. "
-                "Run: pip install skcapstone[gdrive]"
+                "google-api-python-client not installed. " "Run: pip install skcapstone[gdrive]"
             )
             return None
 
@@ -368,9 +367,7 @@ class GDriveBackend(SyncBackend):
             creds = service_account.Credentials.from_service_account_file(
                 str(creds_path), scopes=self._SCOPES
             )
-            self._service = build(
-                "drive", "v3", credentials=creds, cache_discovery=False
-            )
+            self._service = build("drive", "v3", credentials=creds, cache_discovery=False)
             return self._service
         except Exception as exc:
             logger.error("GDrive service initialisation failed: %s", exc)
@@ -389,14 +386,10 @@ class GDriveBackend(SyncBackend):
 
         # Avoid duplicates: update the file if one with the same name exists.
         query = (
-            f"name = '{local_path.name}' "
-            f"and '{folder_id}' in parents "
-            "and trashed = false"
+            f"name = '{local_path.name}' " f"and '{folder_id}' in parents " "and trashed = false"
         )
         existing = (
-            service.files()
-            .list(q=query, fields="files(id, name)", spaces="drive")
-            .execute()
+            service.files().list(q=query, fields="files(id, name)", spaces="drive").execute()
         )
         existing_files = existing.get("files", [])
 
@@ -458,9 +451,7 @@ class GDriveBackend(SyncBackend):
 
         try:
             query = (
-                f"name contains 'vault-' "
-                f"and '{folder_id}' in parents "
-                "and trashed = false"
+                f"name contains 'vault-' " f"and '{folder_id}' in parents " "and trashed = false"
             )
             results = (
                 service.files()
@@ -496,9 +487,7 @@ class GDriveBackend(SyncBackend):
         return self._creds_path() is not None
 
 
-def create_backend(
-    config: SyncBackendConfig, agent_home: Path
-) -> SyncBackend:
+def create_backend(config: SyncBackendConfig, agent_home: Path) -> SyncBackend:
     """Factory function to create the appropriate backend.
 
     Args:

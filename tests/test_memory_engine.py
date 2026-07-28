@@ -218,7 +218,7 @@ class TestListMemories:
 
     def test_list_newest_first(self, agent_home: Path):
         """List should return newest memories first."""
-        e1 = store(agent_home, "First")
+        store(agent_home, "First")
         e2 = store(agent_home, "Second")
 
         entries = list_memories(agent_home)

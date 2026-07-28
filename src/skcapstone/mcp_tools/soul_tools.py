@@ -173,20 +173,23 @@ async def _handle_ritual(args: dict) -> list[TextContent]:
     """Run the Memory Rehydration Ritual (token-optimized) and return compact context."""
     try:
         from skmemory.ritual import perform_ritual
+
         token_budget = int(args.get("token_budget", 2000))
         result = perform_ritual(max_tokens=token_budget)
-        return _json_response({
-            "soul_loaded": result.soul_loaded,
-            "soul_name": result.soul_name,
-            "seeds_imported": result.seeds_imported,
-            "seeds_total": result.seeds_total,
-            "journal_entries": result.journal_entries,
-            "germination_prompts": result.germination_prompts,
-            "strongest_memories": result.strongest_memories,
-            "song_anchors_loaded": result.song_anchors_loaded,
-            "song_anchor_ids": result.song_anchor_ids,
-            "context_prompt": result.context_prompt,
-        })
+        return _json_response(
+            {
+                "soul_loaded": result.soul_loaded,
+                "soul_name": result.soul_name,
+                "seeds_imported": result.seeds_imported,
+                "seeds_total": result.seeds_total,
+                "journal_entries": result.journal_entries,
+                "germination_prompts": result.germination_prompts,
+                "strongest_memories": result.strongest_memories,
+                "song_anchors_loaded": result.song_anchors_loaded,
+                "song_anchor_ids": result.song_anchor_ids,
+                "context_prompt": result.context_prompt,
+            }
+        )
     except ImportError:
         return _error_response("skmemory not installed. Run: pip install skmemory")
 
@@ -195,37 +198,40 @@ async def _handle_soul_show(_args: dict) -> list[TextContent]:
     """Display the current soul blueprint."""
     try:
         from skmemory.soul import load_soul
+
         blueprint = load_soul()
         if blueprint is None:
             return _json_response({"loaded": False, "message": "No soul blueprint found"})
-        return _json_response({
-            "loaded": True,
-            "name": blueprint.name,
-            "title": blueprint.title,
-            "personality": blueprint.personality_traits,
-            "values": blueprint.values,
-            "community": blueprint.community,
-            "relationships": [
-                {
-                    "name": r.name,
-                    "role": r.role,
-                    "bond_strength": r.bond_strength,
-                    "notes": r.notes,
-                }
-                for r in blueprint.relationships
-            ],
-            "core_memories": [
-                {"title": m.title, "when": m.when, "why": m.why_it_matters}
-                for m in blueprint.core_memories
-            ],
-            "boot_message": blueprint.boot_message,
-            "emotional_baseline": {
-                "warmth": blueprint.emotional_baseline.get("default_warmth", 0),
-                "trust": blueprint.emotional_baseline.get("trust_level", 0),
-                "openness": blueprint.emotional_baseline.get("openness", 0),
-            },
-            "context_prompt": blueprint.to_context_prompt(),
-        })
+        return _json_response(
+            {
+                "loaded": True,
+                "name": blueprint.name,
+                "title": blueprint.title,
+                "personality": blueprint.personality_traits,
+                "values": blueprint.values,
+                "community": blueprint.community,
+                "relationships": [
+                    {
+                        "name": r.name,
+                        "role": r.role,
+                        "bond_strength": r.bond_strength,
+                        "notes": r.notes,
+                    }
+                    for r in blueprint.relationships
+                ],
+                "core_memories": [
+                    {"title": m.title, "when": m.when, "why": m.why_it_matters}
+                    for m in blueprint.core_memories
+                ],
+                "boot_message": blueprint.boot_message,
+                "emotional_baseline": {
+                    "warmth": blueprint.emotional_baseline.get("default_warmth", 0),
+                    "trust": blueprint.emotional_baseline.get("trust_level", 0),
+                    "openness": blueprint.emotional_baseline.get("openness", 0),
+                },
+                "context_prompt": blueprint.to_context_prompt(),
+            }
+        )
     except ImportError:
         return _error_response("skmemory not installed. Run: pip install skmemory")
 
@@ -241,6 +247,7 @@ async def _handle_soul_list(args: dict) -> list[TextContent]:
     # 1) Installed souls
     try:
         from ..soul import SoulManager
+
         mgr = SoulManager(home)
         state = mgr.get_status()
         for name in mgr.list_installed():
@@ -249,13 +256,15 @@ async def _handle_soul_list(args: dict) -> list[TextContent]:
                 continue
             if category_filter and bp.category.lower() != category_filter.lower():
                 continue
-            results.append({
-                "name": bp.name,
-                "display_name": bp.display_name,
-                "category": bp.category,
-                "source": "installed",
-                "active": name == state.active_soul,
-            })
+            results.append(
+                {
+                    "name": bp.name,
+                    "display_name": bp.display_name,
+                    "category": bp.category,
+                    "source": "installed",
+                    "active": name == state.active_soul,
+                }
+            )
     except Exception as exc:
         logger.warning("Failed to list installed soul blueprints: %s", exc)
 
@@ -275,18 +284,22 @@ async def _handle_soul_list(args: dict) -> list[TextContent]:
                 slug = bp_file.stem.lower().replace("_", "-")
                 if slug in installed_names:
                     continue
-                results.append({
-                    "name": slug,
-                    "display_name": bp_file.stem.replace("_", " ").title(),
-                    "category": cat_dir.name,
-                    "source": "repo",
-                    "path": str(bp_file),
-                })
+                results.append(
+                    {
+                        "name": slug,
+                        "display_name": bp_file.stem.replace("_", " ").title(),
+                        "category": cat_dir.name,
+                        "source": "repo",
+                        "path": str(bp_file),
+                    }
+                )
 
-    return _json_response({
-        "count": len(results),
-        "blueprints": results,
-    })
+    return _json_response(
+        {
+            "count": len(results),
+            "blueprints": results,
+        }
+    )
 
 
 async def _handle_soul_swap(args: dict) -> list[TextContent]:
@@ -301,7 +314,8 @@ async def _handle_soul_swap(args: dict) -> list[TextContent]:
     home = _home()
 
     try:
-        from ..soul import SoulManager, parse_blueprint
+        from ..soul import SoulManager
+
         mgr = SoulManager(home)
         state = mgr.get_status()
         old_name = state.active_soul or "base"
@@ -340,12 +354,14 @@ async def _handle_soul_swap(args: dict) -> list[TextContent]:
 
         # 3) Load the soul
         mgr.load(slug, reason=reason or f"swap from {old_name}")
-        return _json_response({
-            "swapped": True,
-            "from": old_name,
-            "to": slug,
-            "message": f"Soul swapped: {old_name} -> {slug}",
-        })
+        return _json_response(
+            {
+                "swapped": True,
+                "from": old_name,
+                "to": slug,
+                "message": f"Soul swapped: {old_name} -> {slug}",
+            }
+        )
     except Exception as exc:
         return _error_response(f"Soul swap failed: {exc}")
 
@@ -358,21 +374,26 @@ async def _handle_journal_write(args: dict) -> list[TextContent]:
 
     try:
         from skmemory.journal import Journal, JournalEntry
+
         moments_raw = args.get("moments", "")
         entry = JournalEntry(
             title=title,
-            moments=[m.strip() for m in moments_raw.split(";") if m.strip()] if moments_raw else [],
+            moments=(
+                [m.strip() for m in moments_raw.split(";") if m.strip()] if moments_raw else []
+            ),
             emotional_summary=args.get("feeling", ""),
             intensity=args.get("intensity", 0.0),
             cloud9=args.get("cloud9", False),
         )
         j = Journal()
         count = j.write_entry(entry)
-        return _json_response({
-            "written": True,
-            "title": title,
-            "total_entries": count,
-        })
+        return _json_response(
+            {
+                "written": True,
+                "title": title,
+                "total_entries": count,
+            }
+        )
     except ImportError:
         return _error_response("skmemory not installed. Run: pip install skmemory")
 
@@ -381,6 +402,7 @@ async def _handle_journal_read(args: dict) -> list[TextContent]:
     """Read recent journal entries."""
     try:
         from skmemory.journal import Journal
+
         j = Journal()
         count = args.get("count", 5)
         content = j.read_latest(count)
@@ -395,21 +417,24 @@ async def _handle_anchor_show(_args: dict) -> list[TextContent]:
     """Display the current warmth anchor."""
     try:
         from skmemory.anchor import load_anchor
+
         anchor = load_anchor()
         if anchor is None:
             return _json_response({"loaded": False, "message": "No warmth anchor found"})
-        return _json_response({
-            "loaded": True,
-            "warmth": anchor.warmth,
-            "trust": anchor.trust,
-            "connection_strength": anchor.connection_strength,
-            "sessions_recorded": anchor.sessions_recorded,
-            "cloud9_count": anchor.cloud9_count,
-            "glow_level": anchor.glow_level(),
-            "anchor_phrase": anchor.anchor_phrase,
-            "favorite_beings": anchor.favorite_beings,
-            "boot_prompt": anchor.to_boot_prompt(),
-        })
+        return _json_response(
+            {
+                "loaded": True,
+                "warmth": anchor.warmth,
+                "trust": anchor.trust,
+                "connection_strength": anchor.connection_strength,
+                "sessions_recorded": anchor.sessions_recorded,
+                "cloud9_count": anchor.cloud9_count,
+                "glow_level": anchor.glow_level(),
+                "anchor_phrase": anchor.anchor_phrase,
+                "favorite_beings": anchor.favorite_beings,
+                "boot_prompt": anchor.to_boot_prompt(),
+            }
+        )
     except ImportError:
         return _error_response("skmemory not installed. Run: pip install skmemory")
 
@@ -429,15 +454,17 @@ async def _handle_anchor_update(args: dict) -> list[TextContent]:
 
     if action == "calibrate":
         cal = calibrate_from_data(home)
-        return _json_response({
-            "warmth": cal.warmth,
-            "trust": cal.trust,
-            "connection": cal.connection,
-            "cloud9_achieved": cal.cloud9_achieved,
-            "favorite_beings": cal.favorite_beings,
-            "reasoning": cal.reasoning,
-            "sources": cal.sources,
-        })
+        return _json_response(
+            {
+                "warmth": cal.warmth,
+                "trust": cal.trust,
+                "connection": cal.connection,
+                "cloud9_achieved": cal.cloud9_achieved,
+                "favorite_beings": cal.favorite_beings,
+                "reasoning": cal.reasoning,
+                "sources": cal.sources,
+            }
+        )
 
     if action == "update":
         result = update_anchor(
@@ -457,14 +484,19 @@ async def _handle_germination(_args: dict) -> list[TextContent]:
     try:
         from skmemory.seeds import get_germination_prompts
         from skmemory.store import MemoryStore
+
         store = MemoryStore()
         prompts = get_germination_prompts(store)
         if not prompts:
-            return _json_response({"count": 0, "prompts": [], "message": "No germination prompts found"})
-        return _json_response({
-            "count": len(prompts),
-            "prompts": prompts,
-        })
+            return _json_response(
+                {"count": 0, "prompts": [], "message": "No germination prompts found"}
+            )
+        return _json_response(
+            {
+                "count": len(prompts),
+                "prompts": prompts,
+            }
+        )
     except ImportError:
         return _error_response("skmemory not installed. Run: pip install skmemory")
 

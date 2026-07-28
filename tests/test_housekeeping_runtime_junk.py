@@ -179,7 +179,7 @@ class TestPruneCommsOutboxFlat:
 
     def test_prunes_root_outbox_flat(self, tmp_path):
         out = tmp_path / "comms" / "outbox"
-        aged = _mk(out, "old.skc.json", 200)
+        _mk(out, "old.skc.json", 200)
         deleted = prune_comms_outbox_flat(tmp_path)
         assert deleted == 1
 

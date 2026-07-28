@@ -15,9 +15,8 @@ from pathlib import Path
 
 import click
 
-from ._common import AGENT_HOME, console
 from ..chat import AgentChat
-
+from ._common import AGENT_HOME, console
 
 # Payload type markers
 _PING_KEY = "skchat_ping"
@@ -163,13 +162,15 @@ def register_test_connection_commands(main: click.Group) -> None:
     @main.command("test-connection")
     @click.argument("peer")
     @click.option(
-        "--timeout", "-t",
+        "--timeout",
+        "-t",
         default=10.0,
         show_default=True,
         help="Seconds to wait for a pong response.",
     )
     @click.option(
-        "--count", "-c",
+        "--count",
+        "-c",
         default=1,
         show_default=True,
         help="Number of pings to send (reports min/avg/max when > 1).",
@@ -198,9 +199,7 @@ def register_test_connection_commands(main: click.Group) -> None:
             identity = "unknown"
 
         console.print()
-        console.print(
-            f"  PING [cyan]{peer}[/]  (timeout={timeout:.0f}s, count={count})"
-        )
+        console.print(f"  PING [cyan]{peer}[/]  (timeout={timeout:.0f}s, count={count})")
         console.print()
 
         latencies: list[float] = []
@@ -220,9 +219,7 @@ def register_test_connection_commands(main: click.Group) -> None:
                 )
             else:
                 last_error = result.get("error") or "unreachable"
-                console.print(
-                    f"  [{i + 1}/{count}]  [red]no pong[/]  {last_error}"
-                )
+                console.print(f"  [{i + 1}/{count}]  [red]no pong[/]  {last_error}")
 
         console.print()
 
@@ -237,16 +234,11 @@ def register_test_connection_commands(main: click.Group) -> None:
                     f"({len(latencies)}/{count} received)"
                 )
             else:
-                console.print(
-                    f"  [bold green]REACHABLE[/]  "
-                    f"latency={latencies[0]:.1f} ms"
-                )
+                console.print(f"  [bold green]REACHABLE[/]  " f"latency={latencies[0]:.1f} ms")
             if last_transport:
                 console.print(f"  transport: [dim]{last_transport}[/]")
         else:
-            console.print(
-                f"  [bold red]UNREACHABLE[/]  {last_error or 'no pong received'}"
-            )
+            console.print(f"  [bold red]UNREACHABLE[/]  {last_error or 'no pong received'}")
             console.print()
             raise SystemExit(1)
 

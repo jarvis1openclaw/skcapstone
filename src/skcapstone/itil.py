@@ -1313,9 +1313,7 @@ class ITILManager:
         )
         filename = f"{change_id}-{agent}.json"
         path = self.cab_dir / filename
-        atomic_write_text(
-            path, json.dumps(vote.model_dump(), indent=2, default=str) + "\n"
-        )
+        atomic_write_text(path, json.dumps(vote.model_dump(), indent=2, default=str) + "\n")
         return vote
 
     def get_cab_votes(self, change_id: str) -> list[CABDecision]:
@@ -1357,9 +1355,7 @@ class ITILManager:
             tags=tags or [],
         )
         path = self.kedb_dir / f"{entry.id}.json"
-        atomic_write_text(
-            path, json.dumps(entry.model_dump(), indent=2, default=str) + "\n"
-        )
+        atomic_write_text(path, json.dumps(entry.model_dump(), indent=2, default=str) + "\n")
         return entry
 
     def _load_kedb(self) -> list[KEDBEntry]:
@@ -1622,7 +1618,7 @@ class ITILManager:
             )
         except Exception:
             try:
-                from .mcp_tools.gtd_tools import _make_item, _load_list, _save_list
+                from .mcp_tools.gtd_tools import _load_list, _make_item, _save_list
 
                 list_for = {
                     "next": "next-actions",
@@ -1664,8 +1660,8 @@ class ITILManager:
         try:
             from .mcp_tools.gtd_tools import (
                 _find_item_across_lists,
-                _remove_item_from_list,
                 _load_archive,
+                _remove_item_from_list,
                 _save_archive,
             )
 

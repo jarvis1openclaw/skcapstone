@@ -12,7 +12,6 @@ from skcapstone.coordination import (
     Task,
     TaskPriority,
     TaskStatus,
-    TaskView,
     get_briefing_json,
     get_briefing_text,
 )
@@ -240,9 +239,7 @@ class TestBoardMd:
         assert "File test" in path.read_text()
 
     def test_board_shows_agents(self, board: Board):
-        board.save_agent(
-            AgentFile(agent="opus", notes="Building tokens")
-        )
+        board.save_agent(AgentFile(agent="opus", notes="Building tokens"))
         md = board.generate_board_md()
         assert "opus" in md
         assert "Building tokens" in md
@@ -367,7 +364,9 @@ class TestWriteTaskRaw:
 
     def test_returns_path_and_no_tmp_left(self, board: Board):
         board.create_task(Task(id="def45678", title="Tmp"))
-        p = board._write_task_raw("def45678", lambda d: d.setdefault("meta", {}).__setitem__("x", 1))
+        p = board._write_task_raw(
+            "def45678", lambda d: d.setdefault("meta", {}).__setitem__("x", 1)
+        )
         assert p.exists()
         assert list(board.tasks_dir.glob("*.tmp")) == []
 
@@ -381,8 +380,9 @@ class TestScoreTask:
 
     def test_appends_score_and_shape(self, board: Board):
         board.create_task(Task(id="aa11bb22", title="Score me"))
-        board.score_task("aa11bb22", round=1, score=4, notes="thin tests",
-                         harness="claude_code", phase="grade")
+        board.score_task(
+            "aa11bb22", round=1, score=4, notes="thin tests", harness="claude_code", phase="grade"
+        )
         t = {x.id: x for x in board.load_tasks()}["aa11bb22"]
         ap = t.meta["autopilot"]
         assert ap["phase"] == "grade"
@@ -413,11 +413,14 @@ class TestUpdateTask:
     """Tests for Board.update_task (reversible autonomous edits)."""
 
     def test_updates_and_snapshots_edits(self, board: Board):
-        board.create_task(Task(id="11aa22bb", title="Edit me",
-                               description="old", tags=["x"]))
-        board.update_task("11aa22bb", description="new",
-                          acceptance_criteria=["ac1"], add_tags=["y"],
-                          run_id="run-1")
+        board.create_task(Task(id="11aa22bb", title="Edit me", description="old", tags=["x"]))
+        board.update_task(
+            "11aa22bb",
+            description="new",
+            acceptance_criteria=["ac1"],
+            add_tags=["y"],
+            run_id="run-1",
+        )
         t = {x.id: x for x in board.load_tasks()}["11aa22bb"]
         assert t.description == "new"
         assert t.acceptance_criteria == ["ac1"]
@@ -476,8 +479,7 @@ class TestUnblockedTaskIds:
 
     def test_blocked_until_dep_completed(self, board: Board):
         board.create_task(Task(id="bbb22222", title="Dep"))
-        board.create_task(Task(id="ccc33333", title="Needs dep",
-                               dependencies=["bbb22222"]))
+        board.create_task(Task(id="ccc33333", title="Needs dep", dependencies=["bbb22222"]))
         assert "ccc33333" not in board.unblocked_task_ids()
         board.claim_task("jarvis", "bbb22222")
         board.complete_task("jarvis", "bbb22222")
@@ -488,8 +490,9 @@ class TestUnblockedTaskIds:
     def test_union_across_agents(self, board: Board):
         board.create_task(Task(id="ddd44444", title="d1"))
         board.create_task(Task(id="eee55555", title="d2"))
-        board.create_task(Task(id="fff66666", title="needs both",
-                               dependencies=["ddd44444", "eee55555"]))
+        board.create_task(
+            Task(id="fff66666", title="needs both", dependencies=["ddd44444", "eee55555"])
+        )
         board.claim_task("jarvis", "ddd44444")
         board.complete_task("jarvis", "ddd44444")
         board.claim_task("opus", "eee55555")
@@ -500,21 +503,18 @@ class TestUnblockedTaskIds:
 class TestReleaseStaleClaims:
     """Tests for Board.release_stale_claims (staleness keyed on last_seen)."""
 
-    def _write_agent_last_seen(self, board: Board, agent: str, iso: str,
-                               claimed, current):
+    def _write_agent_last_seen(self, board: Board, agent: str, iso: str, claimed, current):
         """Write an agent file with a specific last_seen timestamp."""
-        af = AgentFile(agent=agent, claimed_tasks=list(claimed),
-                       current_task=current)
+        af = AgentFile(agent=agent, claimed_tasks=list(claimed), current_task=current)
         data = af.model_dump()
         data["last_seen"] = iso  # override the auto-now stamp on disk
-        (board.agents_dir / f"{agent}.json").write_text(
-            json.dumps(data), encoding="utf-8")
+        (board.agents_dir / f"{agent}.json").write_text(json.dumps(data), encoding="utf-8")
 
     def test_releases_when_agent_stale(self, board: Board):
-        from datetime import datetime, timezone, timedelta
+        from datetime import datetime, timedelta, timezone
+
         old = (datetime.now(timezone.utc) - timedelta(hours=5)).isoformat()
-        self._write_agent_last_seen(board, "jarvis", old,
-                                    claimed=["aa11", "bb22"], current="aa11")
+        self._write_agent_last_seen(board, "jarvis", old, claimed=["aa11", "bb22"], current="aa11")
         released = board.release_stale_claims("jarvis", older_than_seconds=3600)
         assert set(released) == {"aa11", "bb22"}
         af = board.load_agent("jarvis")
@@ -523,9 +523,9 @@ class TestReleaseStaleClaims:
 
     def test_fresh_agent_not_released(self, board: Board):
         from datetime import datetime, timezone
+
         now = datetime.now(timezone.utc).isoformat()
-        self._write_agent_last_seen(board, "opus", now,
-                                    claimed=["cc33"], current="cc33")
+        self._write_agent_last_seen(board, "opus", now, claimed=["cc33"], current="cc33")
         assert board.release_stale_claims("opus", older_than_seconds=3600) == []
         assert board.load_agent("opus").claimed_tasks == ["cc33"]
 
