@@ -13,7 +13,7 @@ from datetime import datetime, timezone
 
 from .. import __version__ as skcapstone_version
 from . import store
-from .capacity import node_capacity
+from .capacity import allocatable, node_capacity
 from .conditions import merge_transitions, node_conditions
 from .paths import FleetPaths
 
@@ -43,6 +43,7 @@ def build_node_report(paths: FleetPaths, node: str, now_iso: str) -> dict:
         "observedGeneration": int(spec["generation"]) if spec else 0,
         "status": {
             "capacity": cap,
+            "allocatable": allocatable(cap),
             "versions": {
                 "python": platform.python_version(),
                 "skcapstone": skcapstone_version,

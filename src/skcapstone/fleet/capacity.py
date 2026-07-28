@@ -55,6 +55,24 @@ def _gpu_info() -> dict | None:
         return None
 
 
+RESERVE_CORES = 1
+RESERVE_RAM_GB = 1.0
+RESERVE_DISK_GB = 5.0
+
+
+def allocatable(capacity: dict) -> dict:
+    """Schedulable headroom: capacity minus fixed host reserves (spec 5.1).
+
+    Mirrors the autoscale discipline (leave the host a core and some RAM)
+    so the fleet scheduler and the local worker pool agree on what is spare.
+    """
+    return {
+        "cores": max(1, int(capacity.get("cores", 1)) - RESERVE_CORES),
+        "ram_gb": round(max(0.0, float(capacity.get("ram_gb", 0.0)) - RESERVE_RAM_GB), 1),
+        "disk_gb": round(max(0.0, float(capacity.get("disk_gb", 0.0)) - RESERVE_DISK_GB), 1),
+    }
+
+
 def node_capacity() -> dict:
     """Current host capacity for the node.json self-report."""
     try:

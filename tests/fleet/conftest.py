@@ -27,3 +27,11 @@ def noded41():
     from skcapstone.fleet.store import Writer
 
     return Writer(role="sknoded", node="node-41", identity="")
+
+
+@pytest.fixture
+def scheduler_writer():
+    """The scheduler seat (placement owner, runs on the control-plane node)."""
+    from skcapstone.fleet.store import Writer
+
+    return Writer(role="scheduler", node="node-158", identity="")
