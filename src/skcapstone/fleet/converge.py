@@ -120,7 +120,7 @@ def _heal(
 ) -> None:
     """One bounded heal attempt (start or restart) with logs-on-failure."""
     if state.state == "failed":
-        logs = actuation.systemd_logs(spec["unit"], runner=runner)
+        logs = actuation.failure_logs(spec, runner=runner)
         events.emit(
             paths,
             writer,
@@ -131,10 +131,10 @@ def _heal(
             message=logs[-800:],
             now=now,
         )
-        ok = actuation.systemd_restart(spec["unit"], runner=runner)
+        ok = actuation.restart(spec, runner=runner)
         reason = "Restarted" if ok else "RestartFailed"
     else:
-        ok = actuation.systemd_start(spec["unit"], runner=runner)
+        ok = actuation.start(spec, runner=runner)
         reason = "Started" if ok else "StartFailed"
     backoff.record_attempt(track, now)
     events.emit(
@@ -192,7 +192,7 @@ def converge_service(
     if spec["deleted"]:
         return {"skipped": "tombstoned (deleted: true); unit left untouched"}
 
-    state = actuation.systemd_state(spec["unit"], runner=runner)
+    state = actuation.state_of(spec, runner=runner)
     track = backoff.tracker(node, name)
     probe_ok = True
     if spec["healthCheck"] is not None and state.state == "active":

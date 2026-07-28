@@ -9,7 +9,7 @@ import json as jsonlib
 
 import click
 
-from . import admission, node_controller, service_controller, store
+from . import admission, alerts, node_controller, service_controller, store
 from . import services as services_mod
 from . import sknoded as sknoded_mod
 from .explain import explain as explain_kind
@@ -84,6 +84,28 @@ def uncordon_cmd(name: str) -> None:
     """Mark a node schedulable again."""
     node_controller.cordon(default_paths(), name, False, writer=_operator())
     click.echo(f"{name} uncordoned")
+
+
+@fleet.command("drain")
+@click.argument("name")
+def drain_cmd(name: str) -> None:
+    """Cordon a node and alert with its residents (manual move in v1)."""
+    paths_ = default_paths()
+    residents = service_controller.node_residents(paths_, name)
+    try:
+        node_controller.cordon(paths_, name, True, writer=_operator())
+    except LookupError as exc:
+        raise click.ClickException(str(exc)) from exc
+    names = ", ".join(r["name"] for r in residents) or "none"
+    alerts.send_alert(
+        f"fleet: drain {name}: cordoned; residents: {names}; "
+        f"move them manually (v1 drains never auto-move)",
+        level="warn",
+    )
+    click.echo(f"{name} cordoned (drain)")
+    for r in residents:
+        click.echo(f"  resident: {r['name']}\tvia={r['via']}\tstate={r['state']}")
+    click.echo("manual move required in v1: re-place or migrate each resident, then uncordon")
 
 
 @fleet.command("explain")
