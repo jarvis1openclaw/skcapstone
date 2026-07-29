@@ -1,0 +1,70 @@
+"""Report-only operator loop: it observes and reports, and never writes."""
+
+from __future__ import annotations
+
+from skcapstone.fleet import sknoded, store
+from skcapstone.fleet.paths import FleetPaths
+from skcapstone.operator_seat import loop
+
+
+def _enroll(tmp_path, monkeypatch):
+    monkeypatch.setenv("SKFLEET_ROOT", str(tmp_path / "fleet"))
+    monkeypatch.setenv("SKFLEET_NODE", "node-158")
+    monkeypatch.setattr(
+        "skcapstone.fleet.sknoded.node_capacity",
+        lambda: {"cores": 8, "ram_gb": 16.0, "disk_gb": 100.0, "gpu": None, "vram_gb": None},
+    )
+    paths = FleetPaths(root=tmp_path / "fleet")
+    op = store.Writer(role="operator", node="node-158", identity="")
+    sknoded.run_once(paths, "node-158")
+    store.write_spec(paths, "node", "node-158", {"cordoned": False}, writer=op)
+    sknoded.run_once(paths, "node-158")
+    return paths, op
+
+
+def test_loop_reports_and_returns_a_brief(tmp_path, monkeypatch):
+    paths, _ = _enroll(tmp_path, monkeypatch)
+    out = []
+    res = loop.run_once(paths, now_iso="2026-07-29T00:00:00Z", emit=out.append)
+    assert res["frozen"] is False
+    assert res["brief"] is not None
+    assert res["route"] in ("ornith", "claude")
+    assert res["report"] == out[0]
+
+
+def test_loop_stands_down_when_frozen(tmp_path, monkeypatch):
+    paths, _ = _enroll(tmp_path, monkeypatch)
+    human = store.Writer(role="operator", node="node-158", identity="chef")
+    store.set_frozen(paths, True, writer=human, reason="drill")
+    out = []
+    res = loop.run_once(paths, now_iso="2026-07-29T00:00:00Z", emit=out.append)
+    assert res["frozen"] is True
+    assert res["proposals"] == []
+    assert "standing down" in out[0]
+
+
+def test_loop_writes_nothing_to_the_fleet(tmp_path, monkeypatch):
+    # Report-only guarantee: a pass must not create or change any fleet file.
+    paths, _ = _enroll(tmp_path, monkeypatch)
+
+    def _snapshot():
+        return {p: p.read_bytes() for p in (tmp_path / "fleet").rglob("*.json")}
+
+    before = _snapshot()
+    loop.run_once(paths, now_iso="2026-07-29T00:00:00Z", emit=lambda _s: None)
+    assert _snapshot() == before  # no file created or modified
+
+
+def test_loop_carries_injected_proposals_into_the_report(tmp_path, monkeypatch):
+    paths, _ = _enroll(tmp_path, monkeypatch)
+    proposal = {
+        "change_class": "normal",
+        "action": "restart_service",
+        "rationale": "service Ready went False",
+    }
+    out = []
+    res = loop.run_once(
+        paths, now_iso="2026-07-29T00:00:00Z", propose=lambda b, r: [proposal], emit=out.append
+    )
+    assert res["proposals"] == [proposal]
+    assert "restart_service" in out[0]
