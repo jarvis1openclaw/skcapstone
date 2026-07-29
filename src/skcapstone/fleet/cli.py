@@ -14,6 +14,7 @@ from . import (
     admission,
     agent_controller,
     alerts,
+    config_controller,
     cron_controller,
     modelserver_controller,
     node_controller,
@@ -220,7 +221,7 @@ def services_cmd() -> None:
 @fleet.command("get")
 @click.argument("resource")
 def get_cmd(resource: str) -> None:
-    """List objects of one kind (currently: cronjobs, modelservers, agents)."""
+    """List objects of one kind (currently: cronjobs, modelservers, agents, configs)."""
     if resource == "cronjobs":
         rows = cron_controller.cron_rows(default_paths(), _now_iso())
         if not rows:
@@ -254,8 +255,20 @@ def get_cmd(resource: str) -> None:
                 f"{r.name}\t{r.node or 'unplaced'}\t{r.soul or '-'}\t{r.model or '-'}\t{r.ready}"
             )
         return
+    if resource == "configs":
+        rows = config_controller.config_rows(default_paths(), _now_iso())
+        if not rows:
+            click.echo("no configs")
+            return
+        click.echo("NAME\tNODE\tSECRETS\tDRIFT\tROTATION")
+        for r in rows:
+            click.echo(
+                f"{r.name}\t{r.node or 'unplaced'}\t{r.secrets_present}\t"
+                f"{r.drift}\t{r.rotation_overdue}"
+            )
+        return
     raise click.ClickException(
-        f"unknown resource: {resource!r} (known: cronjobs, modelservers, agents)"
+        f"unknown resource: {resource!r} (known: cronjobs, modelservers, agents, configs)"
     )
 
 
