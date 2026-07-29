@@ -12,6 +12,7 @@ import click
 
 from . import (
     admission,
+    agent_controller,
     alerts,
     cron_controller,
     modelserver_controller,
@@ -219,7 +220,7 @@ def services_cmd() -> None:
 @fleet.command("get")
 @click.argument("resource")
 def get_cmd(resource: str) -> None:
-    """List objects of one kind (currently: cronjobs, modelservers)."""
+    """List objects of one kind (currently: cronjobs, modelservers, agents)."""
     if resource == "cronjobs":
         rows = cron_controller.cron_rows(default_paths(), _now_iso())
         if not rows:
@@ -242,7 +243,20 @@ def get_cmd(resource: str) -> None:
             ports = ",".join(str(p) for p in r.ports)
             click.echo(f"{r.name}\t{r.node or 'unplaced'}\t{ports}\t{r.serving}\t{r.vram}")
         return
-    raise click.ClickException(f"unknown resource: {resource!r} (known: cronjobs, modelservers)")
+    if resource == "agents":
+        rows = agent_controller.agent_rows(default_paths(), _now_iso())
+        if not rows:
+            click.echo("no agents")
+            return
+        click.echo("NAME\tNODE\tSOUL\tMODEL\tREADY")
+        for r in rows:
+            click.echo(
+                f"{r.name}\t{r.node or 'unplaced'}\t{r.soul or '-'}\t{r.model or '-'}\t{r.ready}"
+            )
+        return
+    raise click.ClickException(
+        f"unknown resource: {resource!r} (known: cronjobs, modelservers, agents)"
+    )
 
 
 @fleet.command("reconcile")
