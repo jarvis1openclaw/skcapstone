@@ -858,6 +858,32 @@ class ITILManager:
                 }
             )
 
+        # Auto-normal tier (Operator Seat): a NORMAL change the operator authored
+        # may auto-approve at fold ONLY when it is not high-risk, carries a rollback
+        # plan, is tagged `auto-normal`, and has no rejection vote. The standing
+        # human veto is preserved (a single rejection in the CAB block below still
+        # blocks). MAJOR changes are deliberately untouched: they fall through to
+        # the CAB derivation, which requires a `human` approval, so the AI can never
+        # self-authorize a major change.
+        if (
+            change_type == "normal"
+            and status == "proposed"
+            and "auto-normal" in tags
+            and core.get("created_by") == "operator"
+            and core.get("risk", "medium") != "high"
+            and (core.get("rollback_plan") or "").strip()
+            and not any(v.decision == CABDecisionValue.REJECTED for v in votes)
+        ):
+            status = "approved"
+            timeline.append(
+                {
+                    "ts": core.get("created_at") or _now_iso(),
+                    "agent": "operator",
+                    "action": "auto-approved",
+                    "note": "Auto-normal (operator, risk!=high, rollback, no reject)",
+                }
+            )
+
         # CAB derivation - mirrors the old _evaluate_cab guard exactly:
         # any rejection blocks; else >=1 human approval unblocks.
         if status in ("proposed", "reviewing") and votes:
