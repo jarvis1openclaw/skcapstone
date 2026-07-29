@@ -6,14 +6,19 @@ Available standalone as `skfleet` and as `skcapstone fleet ...`.
 from __future__ import annotations
 
 import json as jsonlib
+from datetime import datetime, timezone
 
 import click
 
-from . import admission, alerts, node_controller, service_controller, store
+from . import admission, alerts, cron_controller, node_controller, service_controller, store
 from . import services as services_mod
 from . import sknoded as sknoded_mod
 from .explain import explain as explain_kind
 from .paths import default_paths, self_node_name
+
+
+def _now_iso() -> str:
+    return datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
 
 
 def _operator() -> store.Writer:
@@ -200,6 +205,24 @@ def services_cmd() -> None:
         flags = "".join([" PAUSED" if r.paused else "", " STALE" if r.stale else ""])
         click.echo(
             f"{r.name}\t-> {r.node or 'unplaced'}\t" f"state={r.state}\tready={r.ready}{flags}"
+        )
+
+
+@fleet.command("get")
+@click.argument("resource")
+def get_cmd(resource: str) -> None:
+    """List objects of one kind (currently: cronjobs)."""
+    if resource != "cronjobs":
+        raise click.ClickException(f"unknown resource: {resource!r} (known: cronjobs)")
+    rows = cron_controller.cron_rows(default_paths(), _now_iso())
+    if not rows:
+        click.echo("no cronjobs")
+        return
+    click.echo("NAME\tNODE\tSCHEDULE\tENABLED\tLAST\tNEXT\tMISSED")
+    for r in rows:
+        click.echo(
+            f"{r.name}\t{r.node or 'unplaced'}\t{r.schedule}\t{r.enabled}\t"
+            f"{r.last_run or 'never'}\t{r.next_run}\t{r.missed}"
         )
 
 
