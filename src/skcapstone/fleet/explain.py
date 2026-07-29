@@ -140,6 +140,28 @@ KINDS: dict[str, dict] = {
             "skfleet describe modelserver <name>",
         ],
     },
+    "config": {
+        "kind": "Config",
+        "description": "Referenced skvault secret names and expected file hashes for a workload.",
+        "spec": {
+            "name": "config name",
+            "secrets": "list of skvault entry names expected to be present",
+            "files": "map of file path to expected sha256 hex digest",
+            "rotationDays": "optional max age in days before secrets are overdue for rotation",
+        },
+        "status": {
+            "conditions": "list of {type, status, reason, message, lastTransition}",
+        },
+        "conditions": {
+            "SecretPresent": "every spec secret name is present in the observed skvault",
+            "ConfigDrift": "any observed file hash differs from the spec's expected hash",
+            "RotationOverdue": "rotationDays is set and the oldest secret exceeds it",
+        },
+        "actions": [
+            "skfleet get configs",
+            "skfleet describe config <name>",
+        ],
+    },
 }
 
 
