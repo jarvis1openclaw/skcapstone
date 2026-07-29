@@ -119,6 +119,27 @@ KINDS: dict[str, dict] = {
             "skfleet describe cronjob <name>",
         ],
     },
+    "modelserver": {
+        "kind": "ModelServer",
+        "description": "A model-serving process exposing ports and loaded models.",
+        "spec": {
+            "name": "modelserver name",
+            "ports": "list of ints in 1..65535 the server should expose",
+            "models": "list of model names the server should have loaded",
+            "node": "optional node placement",
+            "vramBudgetGb": "optional VRAM budget in GB",
+        },
+        "status": {
+            "conditions": "list of {type, status, reason, message, lastTransition}",
+        },
+        "conditions": {
+            "Serving": "every spec port is open and every spec model is loaded",
+        },
+        "actions": [
+            "skfleet get modelservers",
+            "skfleet describe modelserver <name>",
+        ],
+    },
 }
 
 
