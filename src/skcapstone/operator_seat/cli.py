@@ -7,8 +7,9 @@ Available as `skoperator`. Commands:
   status    freeze state
   freeze / unfreeze   toggle the kill switch (human only)
 
-Actuation stays OFF here: `run` is report-only unless --execute is passed AND an
-apply function is wired (not in v1), so this surface cannot touch the fleet.
+Report-only by default. With --execute, auto-normal proposals are applied via
+the fleet act verb (signed spec annotations); majors still park for approval and
+freeze always wins.
 """
 
 from __future__ import annotations
@@ -53,11 +54,13 @@ def operator() -> None:
     "--execute",
     is_flag=True,
     default=False,
-    help="Enable actuation (v1 has no apply function wired, so this still only reports).",
+    help="Enable actuation: apply auto-normal fixes via the fleet act verb (majors still park).",
 )
 def run_cmd(execute: bool) -> None:
     """One operator pass: observe, reason, report. Report-only by default."""
     paths = default_paths()
+
+    now = _now_iso()
 
     def _propose(brief, route):
         if brief.get("quiet"):
@@ -66,11 +69,18 @@ def run_cmd(execute: bool) -> None:
         chat = functools.partial(proposer.default_chat, base_url=_gateway(), model=model)
         return proposer.propose(brief, fleet_adapter.fleet_explain(), chat=chat)
 
+    apply_fn = None
+    if execute:
+
+        def apply_fn(prop, cls):  # noqa: E731 - the fleet act verb, only when --execute
+            return fleet_adapter.fleet_act(paths, prop, cls, now_iso=now)
+
     res = loop.run_once(
         paths,
-        now_iso=_now_iso(),
+        now_iso=now,
         propose=_propose,
         decisions_dir=_decisions_dir(paths),
+        apply_fn=apply_fn,
         execute=execute,
         emit=click.echo,
     )

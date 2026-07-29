@@ -15,7 +15,18 @@ from ..fleet import (
     modelserver_controller,
     node_controller,
     service_controller,
+    store,
 )
+from ..fleet.paths import self_node_name
+
+#: Reversible ops the operator may apply through the fleet act verb, mapped to
+#: the object kind they annotate. Irreversible or major actions never reach the
+#: act verb (they escalate and park), so they are deliberately absent here.
+_ACTION_KIND = {
+    "rerun_cronjob": "cronjob",
+    "restart_service": "service",
+    "replace_workload": "service",
+}
 
 #: Condition types that indicate a PROBLEM when their status is "True" (the rest
 #: are health conditions that indicate a problem when "False"). The operator
@@ -139,4 +150,43 @@ def fleet_observe(paths, now_iso: str) -> dict:
     return {"conditions": conds}
 
 
-__all__ = ["fleet_explain", "fleet_observe", "PROBLEM_WHEN_TRUE"]
+def fleet_act(paths, proposal: dict, classification: dict, *, now_iso: str, writer=None) -> dict:
+    """Apply an operator proposal to the fleet: the act verb (ops channel).
+
+    Records the action as a SIGNED entry on the target object's spec
+    (`operatorActions`), so every operator touch is auditable and reversible.
+    Refuses when the fleet is frozen (belt-and-suspenders: the loop already
+    checks freeze first). Only reversible ops are mapped; anything else raises,
+    since majors and irreversible actions escalate and never reach the act verb.
+    The writer is the autonomous seat (agent_seat=True): it may write object
+    specs but never plane files.
+    """
+    if store.is_frozen(paths):
+        raise RuntimeError("fleet is frozen: the operator does not actuate")
+    action = proposal.get("action")
+    kind = _ACTION_KIND.get(action)
+    if kind is None:
+        raise ValueError(f"no ops-channel mapping for action {action!r}")
+    name = proposal.get("object")
+    existing = store.read_spec(paths, kind, name)
+    if existing is None:
+        raise ValueError(f"unknown {kind} object {name!r}")
+    spec = dict(existing.get("spec", {}))
+    log = list(spec.get("operatorActions", []))
+    log.append(
+        {
+            "action": action,
+            "ts": now_iso,
+            "by": "atlas",
+            "changeClass": classification.get("change_class"),
+            "rationale": proposal.get("rationale", ""),
+        }
+    )
+    spec["operatorActions"] = log
+    writer = writer or store.Writer(
+        role="operator", node=self_node_name(), identity="operator", agent_seat=True
+    )
+    return store.write_spec(paths, kind, name, spec, writer=writer)
+
+
+__all__ = ["fleet_explain", "fleet_observe", "fleet_act", "PROBLEM_WHEN_TRUE"]
