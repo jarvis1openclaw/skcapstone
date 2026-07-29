@@ -37,6 +37,10 @@ def build_brief(
             condition_type = condition["type"]
             status = condition["status"]
             entry = {"app": app, "type": condition_type, "status": status}
+            # Carry the object identity through so downstream (the proposer) knows
+            # WHICH object is firing, not just the condition type.
+            if "object" in condition:
+                entry["object"] = condition["object"]
 
             if status == "Unknown":
                 stale.append(entry)
