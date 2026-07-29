@@ -34,6 +34,11 @@ class Writer:
     role: str
     node: str
     identity: str
+    agent_seat: bool = False
+    # True for the autonomous AI operator seat. The operator uses the `operator`
+    # role for the ops channel (writing object specs), but it must NEVER write the
+    # plane control files (the freeze kill-switch, the carve-out manifest). Those
+    # stay human-only so the human keeps the one card that overrides the AI.
 
 
 def writer_identity() -> str:
@@ -265,9 +270,17 @@ def is_frozen(paths: FleetPaths) -> bool:
 
 
 def set_frozen(paths: FleetPaths, frozen: bool, *, writer: Writer, reason: str = "") -> dict:
-    """Toggle the kill-switch. Operator seat only (spec section 8)."""
-    if writer.role != "operator":
-        raise OwnershipError("only the operator seat may toggle freeze")
+    """Toggle the kill-switch. HUMAN operator only (spec section 8).
+
+    The autonomous AI operator seat (writer.agent_seat) can never toggle freeze:
+    the kill switch is the human's sole override and the AI must not be able to
+    unfreeze itself.
+    """
+    if writer.role != "operator" or writer.agent_seat:
+        raise OwnershipError(
+            "only a human operator may toggle freeze; the autonomous AI seat "
+            "cannot touch its own kill switch"
+        )
     payload = {
         "frozen": bool(frozen),
         "reason": reason,
@@ -276,6 +289,27 @@ def set_frozen(paths: FleetPaths, frozen: bool, *, writer: Writer, reason: str =
     }
     _dump(paths.freeze_path(), payload)
     return payload
+
+
+def write_plane_file(paths: FleetPaths, name: str, payload: dict, *, writer: Writer) -> dict:
+    """Write a plane control file (objects/_<name>.json: the carve-out manifest,
+    and any future human-owned plane flag). HUMAN-only, same rule as the freeze.
+
+    The autonomous AI operator seat can never write a plane file, so it cannot
+    edit the carve-out manifest that lists its own guardrails. Names must start
+    with an underscore (plane files are the `objects/_*` namespace).
+    """
+    if writer.role != "operator" or writer.agent_seat:
+        raise OwnershipError(
+            "plane files are human-only; the autonomous AI seat cannot write them"
+        )
+    if not name.startswith("_"):
+        raise OwnershipError(f"plane files live in the objects/_* namespace: {name!r}")
+    full = dict(payload)
+    full["writer"] = _writer_block(writer)
+    full["updatedAt"] = _now_iso()
+    _dump(paths.freeze_path().parent / f"{name}.json", full)
+    return full
 
 
 def actuation_allowed(paths: FleetPaths) -> bool:
