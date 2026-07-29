@@ -183,6 +183,41 @@ the record.
 - **One seat, every app.** A single operator manages the whole ecosystem
   through one adapter contract, rolled out app by app.
 
+## Control surface: the `skoperator` CLI
+
+```
+skoperator run              # one pass: observe, reason, report (report-only)
+skoperator pending          # list decisions parked for a human
+skoperator decide <id> --approve [--choice N] | --reject
+skoperator status           # freeze state
+skoperator freeze --reason "..."   # human-only kill switch
+skoperator unfreeze                # human-only
+```
+
+`run` is report-only unless `--execute` is passed AND an apply function is wired.
+`freeze`/`unfreeze` and every plane-file write are human-only: the autonomous
+seat carries `agent_seat=True` and is refused.
+
+## Running Atlas: go-live runbook
+
+Atlas ships **report-only** and comes live in deliberate, reversible stages. You
+never lose the freeze card at any step.
+
+1. **Install:** `pip install -e .` puts `skoperator` on the path.
+2. **Watch it think (report-only):** enable the timer. Atlas runs every 15
+   minutes, observes the fleet, reasons, and reports. It writes nothing.
+   ```
+   systemctl --user enable --now skoperator.timer
+   journalctl --user -u skoperator.service -f
+   ```
+3. **Let it park decisions:** as real conditions fire, Atlas parks proposed
+   fixes. Review them: `skoperator pending`, then `skoperator decide`.
+4. **Give it hands (the threshold):** wire the fleet act function as the loop's
+   `apply_fn`, then add `--execute` to `skoperator.service`. Now auto-normal
+   fixes apply themselves (signed, ITIL-recorded); majors still park.
+5. **The freeze is always yours:** `skoperator freeze` halts all actuation
+   instantly, at any stage. Atlas cannot lift it.
+
 ## Status and rollout
 
 - Constitution (guardrails + governance): **live and tested.**
