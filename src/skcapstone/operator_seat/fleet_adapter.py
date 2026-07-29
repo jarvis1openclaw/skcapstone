@@ -1,0 +1,142 @@
+"""Fleet operator adapter: the reference implementation of the adapter contract.
+
+The one operator observes and acts on every app through the same three verbs
+(explain, observe, act). This module is the fleet's conformant implementation of
+the read side (explain + observe), gathered from the Phase 4-7 controllers. The
+act verb is wired in the fleet adapter CLI card; observe here writes nothing.
+"""
+
+from __future__ import annotations
+
+from ..fleet import (
+    agent_controller,
+    config_controller,
+    cron_controller,
+    modelserver_controller,
+    node_controller,
+    service_controller,
+)
+
+#: Condition types that indicate a PROBLEM when their status is "True" (the rest
+#: are health conditions that indicate a problem when "False"). The operator
+#: brief uses this polarity to decide what is firing.
+PROBLEM_WHEN_TRUE = frozenset(
+    {
+        "MissedRun",
+        "ConfigDrift",
+        "RotationOverdue",
+        "CrashLooping",
+        "SyncConflict",
+        "MemoryPressure",
+        "DiskPressure",
+    }
+)
+
+#: The fleet action catalog the operator may draw on (adapter-contract shape).
+_ACTIONS = [
+    {
+        "name": "rerun_cronjob",
+        "standard": True,
+        "reversible": True,
+        "blast_radius": "low",
+        "runbook": "re-run a missed CronJob",
+        "kedb_refs": [],
+    },
+    {
+        "name": "restart_service",
+        "standard": True,
+        "reversible": True,
+        "blast_radius": "low",
+        "runbook": "restart a failed Service unit",
+        "kedb_refs": [],
+    },
+    {
+        "name": "replace_workload",
+        "standard": False,
+        "reversible": True,
+        "blast_radius": "medium",
+        "runbook": "re-place a workload on another node",
+        "kedb_refs": [],
+    },
+    {
+        "name": "drain_node",
+        "standard": False,
+        "reversible": True,
+        "blast_radius": "drain_always_on",
+        "runbook": "drain a node (parks if always-on)",
+        "kedb_refs": [],
+    },
+    {
+        "name": "delete_object",
+        "standard": False,
+        "reversible": False,
+        "blast_radius": "delete",
+        "runbook": "tombstone a fleet object",
+        "kedb_refs": [],
+    },
+]
+
+
+def _b(value: bool) -> str:
+    return "True" if value else "False"
+
+
+def fleet_explain() -> dict:
+    """The fleet's self-description in the adapter-contract shape."""
+    from ..fleet.explain import KINDS
+
+    conditions = sorted(
+        {
+            "MissedRun",
+            "AgentReady",
+            "Serving",
+            "SecretPresent",
+            "ConfigDrift",
+            "RotationOverdue",
+            "Ready",
+        }
+        | set(PROBLEM_WHEN_TRUE)
+    )
+    return {
+        "kinds": sorted(KINDS),
+        "conditions": conditions,
+        "actions": [dict(a) for a in _ACTIONS],
+    }
+
+
+def fleet_observe(paths, now_iso: str) -> dict:
+    """Read-only snapshot of every fleet object's key condition(s).
+
+    Never writes: the operator's observe verb only reads derived state.
+    """
+    conds: list[dict] = []
+
+    for nv in node_controller.node_views(paths):
+        for c in nv.conditions:
+            conds.append({"type": c.get("type"), "status": c.get("status"), "object": nv.name})
+
+    for row in cron_controller.cron_rows(paths, now_iso):
+        conds.append({"type": "MissedRun", "status": _b(row.missed), "object": row.name})
+
+    for row in agent_controller.agent_rows(paths, now_iso):
+        conds.append({"type": "AgentReady", "status": row.ready, "object": row.name})
+
+    for row in modelserver_controller.modelserver_rows(paths, now_iso):
+        conds.append({"type": "Serving", "status": _b(row.serving), "object": row.name})
+
+    for row in config_controller.config_rows(paths, now_iso):
+        conds.append(
+            {"type": "SecretPresent", "status": _b(row.secrets_present), "object": row.name}
+        )
+        conds.append({"type": "ConfigDrift", "status": _b(row.drift), "object": row.name})
+        conds.append(
+            {"type": "RotationOverdue", "status": _b(row.rotation_overdue), "object": row.name}
+        )
+
+    for row in service_controller.service_rows(paths):
+        conds.append({"type": "Ready", "status": row.ready, "object": row.name})
+
+    return {"conditions": conds}
+
+
+__all__ = ["fleet_explain", "fleet_observe", "PROBLEM_WHEN_TRUE"]
