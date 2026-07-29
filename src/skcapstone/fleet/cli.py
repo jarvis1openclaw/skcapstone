@@ -10,7 +10,15 @@ from datetime import datetime, timezone
 
 import click
 
-from . import admission, alerts, cron_controller, node_controller, service_controller, store
+from . import (
+    admission,
+    alerts,
+    cron_controller,
+    modelserver_controller,
+    node_controller,
+    service_controller,
+    store,
+)
 from . import services as services_mod
 from . import sknoded as sknoded_mod
 from .explain import explain as explain_kind
@@ -211,19 +219,30 @@ def services_cmd() -> None:
 @fleet.command("get")
 @click.argument("resource")
 def get_cmd(resource: str) -> None:
-    """List objects of one kind (currently: cronjobs)."""
-    if resource != "cronjobs":
-        raise click.ClickException(f"unknown resource: {resource!r} (known: cronjobs)")
-    rows = cron_controller.cron_rows(default_paths(), _now_iso())
-    if not rows:
-        click.echo("no cronjobs")
+    """List objects of one kind (currently: cronjobs, modelservers)."""
+    if resource == "cronjobs":
+        rows = cron_controller.cron_rows(default_paths(), _now_iso())
+        if not rows:
+            click.echo("no cronjobs")
+            return
+        click.echo("NAME\tNODE\tSCHEDULE\tENABLED\tLAST\tNEXT\tMISSED")
+        for r in rows:
+            click.echo(
+                f"{r.name}\t{r.node or 'unplaced'}\t{r.schedule}\t{r.enabled}\t"
+                f"{r.last_run or 'never'}\t{r.next_run}\t{r.missed}"
+            )
         return
-    click.echo("NAME\tNODE\tSCHEDULE\tENABLED\tLAST\tNEXT\tMISSED")
-    for r in rows:
-        click.echo(
-            f"{r.name}\t{r.node or 'unplaced'}\t{r.schedule}\t{r.enabled}\t"
-            f"{r.last_run or 'never'}\t{r.next_run}\t{r.missed}"
-        )
+    if resource == "modelservers":
+        rows = modelserver_controller.modelserver_rows(default_paths(), _now_iso())
+        if not rows:
+            click.echo("no modelservers")
+            return
+        click.echo("NAME\tNODE\tPORTS\tSERVING\tVRAM")
+        for r in rows:
+            ports = ",".join(str(p) for p in r.ports)
+            click.echo(f"{r.name}\t{r.node or 'unplaced'}\t{ports}\t{r.serving}\t{r.vram}")
+        return
+    raise click.ClickException(f"unknown resource: {resource!r} (known: cronjobs, modelservers)")
 
 
 @fleet.command("reconcile")
