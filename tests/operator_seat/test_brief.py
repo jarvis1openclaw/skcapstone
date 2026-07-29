@@ -68,3 +68,11 @@ def test_multi_app_aggregation_and_counts():
     assert result["stale"] == [{"app": "app-b", "type": "CrashLooping", "status": "Unknown"}]
     assert result["counts"] == {"firing": 2, "stale": 1}
     assert result["quiet"] is False
+
+
+def test_firing_entry_carries_object_identity():
+    from skcapstone.operator_seat import brief as briefmod
+
+    obs = {"fleet": [{"type": "MissedRun", "status": "True", "object": "nightly"}]}
+    b = briefmod.build_brief(obs, {"MissedRun"})
+    assert b["firing"][0]["object"] == "nightly"
