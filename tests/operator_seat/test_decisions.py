@@ -151,3 +151,24 @@ def test_resolve_choice_out_of_range_raises(tmp_path):
             by="alice",
             resolved_iso="2026-07-29T01:00:00Z",
         )
+
+
+def test_park_is_create_or_skip_dedup(tmp_path):
+    from skcapstone.operator_seat import decisions
+
+    d = str(tmp_path / "dec")
+    r1 = decisions.park(
+        d,
+        [{"action": "restart_service", "object": "web"}],
+        decision_id="k1",
+        created_iso="2026-07-29T00:00:00Z",
+    )
+    # re-parking the same id (persistent firing) must not duplicate or overwrite
+    r2 = decisions.park(
+        d,
+        [{"action": "restart_service", "object": "web"}],
+        decision_id="k1",
+        created_iso="2026-07-29T00:15:00Z",
+    )
+    assert r2["created"] == r1["created"]  # original preserved, not re-stamped
+    assert len(decisions.list_pending(d)) == 1  # one decision, not two

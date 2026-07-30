@@ -28,7 +28,10 @@ def _no_proposals(brief_dict: dict, route: str) -> list[dict]:
 
 
 def _decision_id(proposal: dict, now_iso: str, index: int) -> str:
-    seed = f"{now_iso}|{index}|{proposal.get('action')}|{proposal.get('object')}"
+    # Content-based (action + object), NOT time-based: the same persistent firing
+    # maps to the same id every pass, so with park's create-or-skip a standing
+    # issue is one decision the human resolves once, not a new one each run.
+    seed = f"{proposal.get('action')}|{proposal.get('object')}"
     return hashlib.sha1(seed.encode()).hexdigest()[:12]
 
 

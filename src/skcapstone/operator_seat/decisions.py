@@ -54,6 +54,12 @@ def park(
     """
     if not 1 <= len(options) <= 3:
         raise ValueError("park requires 1 to 3 options")
+    path = _record_path(store_dir, decision_id)
+    if path.exists():
+        # Create-or-skip: a persistent firing re-parks the same (content-based) id,
+        # so a standing issue is ONE decision the human resolves once, not a fresh
+        # one every pass. The existing record and any resolution are preserved.
+        return _load(path)
     record = {
         "id": decision_id,
         "created": created_iso,
@@ -63,7 +69,7 @@ def park(
         "resolved_by": None,
         "resolved_at": None,
     }
-    _dump(_record_path(store_dir, decision_id), record)
+    _dump(path, record)
     return record
 
 
