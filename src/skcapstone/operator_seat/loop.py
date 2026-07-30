@@ -15,11 +15,31 @@ from typing import Any, Callable
 
 from ..fleet import store
 from ..fleet.paths import default_paths
-from . import brain, brief, decisions, fleet_adapter, plan
+from . import (
+    brain,
+    brief,
+    decisions,
+    fleet_adapter,
+    plan,
+    skchat_adapter,
+    skcomms_adapter,
+    skgateway_adapter,
+    skmemory_adapter,
+    skos_adapter,
+)
 
 #: The registered app adapters: name -> observe callable(paths, now_iso) -> {conditions}.
-#: The fleet is the reference adapter; app adapters (skchat, ...) register here.
-ADAPTERS: dict[str, Callable[..., dict]] = {"fleet": fleet_adapter.fleet_observe}
+#: One operator, many apps: the fleet is the reference; each app plugs in here.
+#: Every app observe fails safe (reports healthy when the app is unreachable), so a
+#: down probe never raises a false alarm.
+ADAPTERS: dict[str, Callable[..., dict]] = {
+    "fleet": fleet_adapter.fleet_observe,
+    "skchat": skchat_adapter.observe,
+    "skcomms": skcomms_adapter.observe,
+    "skmemory": skmemory_adapter.observe,
+    "skgateway": skgateway_adapter.observe,
+    "skos": skos_adapter.observe,
+}
 
 
 def _no_proposals(brief_dict: dict, route: str) -> list[dict]:
