@@ -22,7 +22,7 @@ import click
 
 from ..fleet import store
 from ..fleet.paths import default_paths
-from . import decisions, fleet_adapter, loop, proposer
+from . import decisions, fleet_adapter, loop, notify, proposer
 
 
 def _now_iso() -> str:
@@ -56,7 +56,14 @@ def operator() -> None:
     default=False,
     help="Enable actuation: apply auto-normal fixes via the fleet act verb (majors still park).",
 )
-def run_cmd(execute: bool) -> None:
+@click.option(
+    "--notify",
+    "notify_flag",
+    is_flag=True,
+    default=False,
+    help="Send the report + parked escalations to Telegram (silent when all quiet).",
+)
+def run_cmd(execute: bool, notify_flag: bool) -> None:
     """One operator pass: observe, reason, report. Report-only by default."""
     paths = default_paths()
 
@@ -86,6 +93,15 @@ def run_cmd(execute: bool) -> None:
     )
     if res.get("outcomes"):
         click.echo(f"({len(res['outcomes'])} proposal(s); parked escalations await approval)")
+
+    # Telegram: message the human only when something happened (silent when quiet).
+    if notify_flag and res.get("outcomes"):
+        notify.notify_report(res["report"])
+        escalated = {o["action"] for o in res["outcomes"] if o["disposition"] == "escalate"}
+        if escalated:
+            for d in decisions.list_pending(_decisions_dir(paths)):
+                if any(o.get("action") in escalated for o in d.get("options", [])):
+                    notify.notify_escalation(d)
 
 
 @operator.command("pending")
