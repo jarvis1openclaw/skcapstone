@@ -69,6 +69,12 @@ class IncidentStatus(str, Enum):
     CLOSED = "closed"
 
 
+# The statuses an incident holds while it is still live work. Used both to find
+# the open incident for a service and to gate the auto-created GTD item: we only
+# mirror an incident into GTD once it has actually persisted as an open record.
+OPEN_INCIDENT_STATUSES = frozenset({"detected", "acknowledged", "investigating", "escalated"})
+
+
 class ProblemStatus(str, Enum):
     IDENTIFIED = "identified"
     ANALYZING = "analyzing"
@@ -1017,10 +1023,23 @@ class ITILManager:
         )
 
         # Auto-create GTD item and link it via an event (no whole-file rewrite).
+        # Guard first: make sure an OPEN incident actually persisted (folds back
+        # from disk as a live record) before mirroring it into GTD. Without this,
+        # a core that failed to persist or diverged across nodes (the recurring
+        # ITIL orphan storm) still left a dangling ``[ITIL:...]`` GTD item that the
+        # daily validator had to batch-close. No open incident -> no GTD item.
         inc = self._fold_record(self.incidents_dir, record_id, Incident)
-        gtd_id = self._create_gtd_item_for_incident(inc)
-        if gtd_id:
-            self._append_event(self.incidents_dir, record_id, agent, "gtd_link", id=gtd_id)
+        if inc is None or inc.status.value not in OPEN_INCIDENT_STATUSES:
+            logger.warning(
+                "Skipping GTD emit for %s: incident did not persist as an open record "
+                "(status=%s); not creating an orphan next-action.",
+                record_id,
+                getattr(getattr(inc, "status", None), "value", None),
+            )
+        else:
+            gtd_id = self._create_gtd_item_for_incident(inc)
+            if gtd_id:
+                self._append_event(self.incidents_dir, record_id, agent, "gtd_link", id=gtd_id)
 
         self._publish_event(
             "itil.incident.created",
@@ -1104,9 +1123,8 @@ class ITILManager:
         id is.  This remains a cheap convenience so a single node does not
         re-emit a ``created`` event every health cycle while a service is down.
         """
-        open_statuses = {"detected", "acknowledged", "investigating", "escalated"}
         for inc in self.list_incidents():
-            if inc.status.value in open_statuses and service in inc.affected_services:
+            if inc.status.value in OPEN_INCIDENT_STATUSES and service in inc.affected_services:
                 return inc
         return None
 
@@ -1455,8 +1473,7 @@ class ITILManager:
         changes = self._load_records(self.changes_dir, Change)
         kedb = self._load_kedb()
 
-        open_inc_statuses = {"detected", "acknowledged", "investigating", "escalated"}
-        open_incidents = [i for i in incidents if i.status.value in open_inc_statuses]
+        open_incidents = [i for i in incidents if i.status.value in OPEN_INCIDENT_STATUSES]
         active_problems = [p for p in problems if p.status.value != "resolved"]
         pending_changes = [
             c
