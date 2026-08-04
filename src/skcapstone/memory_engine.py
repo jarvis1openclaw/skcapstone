@@ -630,13 +630,34 @@ def _remove_from_sqlite_index(home: Path, memory_id: str) -> None:
 
 
 def _load_index(home: Path) -> dict:
-    """Load the memory index from disk."""
+    """Load the memory index from disk, normalized to a ``{memory_id: {...}}`` dict.
+
+    This engine owns the index as a dict keyed by ``memory_id``, but sibling repair
+    paths (``self_healing._check_memory_index``, external per-node reconcilers) may
+    rewrite ``index.json`` as a ``[{"memory_id": ...}, ...]`` list. Loading that list
+    verbatim used to crash every :func:`store` at ``index[entry.memory_id] = ...``
+    (``TypeError: list indices must be integers or slices, not str``) - which is what
+    silently killed dream-insight persistence. Normalizing either shape here keeps
+    stores working and, via :func:`_save_index`, converts the file back to the dict
+    form the rest of the engine (and ``doctor``) expects.
+    """
     index_path = _memory_dir(home) / "index.json"
-    if index_path.exists():
-        try:
-            return json.loads(index_path.read_text(encoding="utf-8"))
-        except json.JSONDecodeError:
-            return {}
+    if not index_path.exists():
+        return {}
+    try:
+        data = json.loads(index_path.read_text(encoding="utf-8"))
+    except json.JSONDecodeError:
+        return {}
+    if isinstance(data, dict):
+        return data
+    if isinstance(data, list):
+        normalized: dict = {}
+        for item in data:
+            if isinstance(item, dict) and item.get("memory_id"):
+                normalized[item["memory_id"]] = {
+                    k: v for k, v in item.items() if k != "memory_id"
+                }
+        return normalized
     return {}
 
 

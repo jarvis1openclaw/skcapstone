@@ -395,3 +395,51 @@ class TestMemoryEntryModel:
             importance=1.0,
         )
         assert not entry.should_promote
+
+
+class TestIndexShapeTolerance:
+    """The search index must survive being rewritten as a list by repair paths.
+
+    Regression: ``self_healing._check_memory_index`` (and external per-node
+    reconcilers) rewrite ``index.json`` as a ``[{"memory_id": ...}, ...]`` list.
+    Loading that verbatim crashed every ``store()`` at ``index[memory_id] = ...``
+    with ``TypeError: list indices must be integers or slices, not str`` - which
+    silently killed dream-insight persistence (mem_created dropped to 0).
+    """
+
+    def test_store_survives_list_shaped_index(self, agent_home: Path):
+        from skcapstone.memory_engine import _load_index, _memory_dir
+
+        mem_dir = _memory_dir(agent_home)
+        mem_dir.mkdir(parents=True, exist_ok=True)
+        # Pre-seed the index in the list shape a healer would write.
+        (mem_dir / "index.json").write_text(
+            json.dumps(
+                [
+                    {"memory_id": "aaaa1111", "layer": "short-term", "tags": ["x"]},
+                    {"memory_id": "bbbb2222", "layer": "mid-term", "tags": ["y"]},
+                ]
+            ),
+            encoding="utf-8",
+        )
+
+        # Must not raise, and the new entry must be indexed.
+        entry = store(home=agent_home, content="[Dream insight] coherence has mass", tags=["dream"])
+
+        index = _load_index(agent_home)
+        assert isinstance(index, dict), "index normalizes to a dict"
+        assert entry.memory_id in index, "new store is indexed"
+        assert "aaaa1111" in index and "bbbb2222" in index, "pre-existing list entries preserved"
+
+    def test_load_index_normalizes_list_to_dict(self, agent_home: Path):
+        from skcapstone.memory_engine import _load_index, _memory_dir
+
+        mem_dir = _memory_dir(agent_home)
+        mem_dir.mkdir(parents=True, exist_ok=True)
+        (mem_dir / "index.json").write_text(
+            json.dumps([{"memory_id": "cccc3333", "layer": "long-term", "tags": ["z"]}]),
+            encoding="utf-8",
+        )
+
+        index = _load_index(agent_home)
+        assert index == {"cccc3333": {"layer": "long-term", "tags": ["z"]}}
