@@ -2,10 +2,26 @@
 
 from __future__ import annotations
 
+from pathlib import Path
+
 import pytest
 
 from skcapstone import dashboard_itil as di
 from skcapstone.dashboard import create_app
+
+
+@pytest.fixture(autouse=True)
+def _isolate_gtd_dir(tmp_path: Path, monkeypatch) -> None:
+    """Redirect _shared_root() so the incidents/problem created below emit their
+    auto-GTD items into tmp_path, not the real ~/.skcapstone/coordination/gtd store.
+
+    Without this, every test run here left real orphan [ITIL:inc-...]/[ITIL:prb-...]
+    next-actions and projects behind (source of the recurring ITIL orphan storm's
+    "skmem-pg down .41" / "Recurring conflicts" items - the `home` fixture below
+    creates those exact records on every collection)."""
+    import skcapstone.mcp_tools._helpers as _helpers
+
+    monkeypatch.setattr(_helpers, "SHARED_ROOT", str(tmp_path))
 
 
 @pytest.fixture

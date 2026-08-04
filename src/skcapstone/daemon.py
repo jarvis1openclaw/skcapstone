@@ -3074,9 +3074,10 @@ class DaemonService:
 def read_pid(home: Optional[Path] = None) -> Optional[int]:
     """Read the daemon PID from the PID file.
 
-    Checks the given home directory first, then falls back to the shared
-    root (AGENT_HOME / ~/.skcapstone) since the daemon writes its PID
-    to config.home which defaults to the shared root.
+    Checks the given home directory only. When ``home`` is not given (the
+    default/bare daemon, no ``--agent``), it resolves to the shared root
+    (AGENT_HOME / ~/.skcapstone), since that's where the default daemon
+    writes its PID.
 
     Args:
         home: Agent home directory (or shared root).
@@ -3087,8 +3088,17 @@ def read_pid(home: Optional[Path] = None) -> Optional[int]:
     home = (home or Path(AGENT_HOME)).expanduser()
     shared_root = Path(AGENT_HOME).expanduser()
 
-    # Check agent home first, then shared root
-    for candidate in (home, shared_root):
+    # 2026-08-04: named agents each get their own home + PID file so they can
+    # run simultaneously (see cli/daemon.py::daemon_start docstring). This
+    # used to also fall back to the shared root's PID file whenever the
+    # agent-specific one was absent (e.g. after a clean shutdown removed it),
+    # which meant a live *bare* `skcapstone.service` (no --agent) made every
+    # named agent's is_running()/read_pid() report a false positive and
+    # refuse to start. Only consult the shared root when the caller is
+    # actually asking about it (home == shared_root); a named agent's check
+    # is home-scoped only - no fallback.
+    candidates = (home,) if home != shared_root else (shared_root,)
+    for candidate in candidates:
         pid_path = candidate / PID_FILE
         if not pid_path.exists():
             continue

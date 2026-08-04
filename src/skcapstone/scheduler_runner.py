@@ -117,8 +117,27 @@ class JobRunner:
         try:
             fd = os.open(str(lock_path), os.O_CREAT | os.O_EXCL | os.O_WRONLY)
         except FileExistsError:
-            yield False
-            return
+            # If the process that wrote the PID in this lockfile is gone (SIGKILL,
+            # host crash - the unlink in the `finally` below never ran), the lock
+            # is stale. Clear it and retry the atomic acquire once. This closed
+            # out the TODO below after a real incident: dreaming-reflection sat
+            # blocked for 2+ weeks on a lockfile from a dead PID (2026-07-17).
+            if self._is_stale(lock_path):
+                logger.warning(
+                    "Clearing stale lock for job %s (%s): owning process is gone",
+                    job.name,
+                    lock_path,
+                )
+                with contextlib.suppress(OSError):
+                    lock_path.unlink()
+                try:
+                    fd = os.open(str(lock_path), os.O_CREAT | os.O_EXCL | os.O_WRONLY)
+                except FileExistsError:
+                    yield False
+                    return
+            else:
+                yield False
+                return
         try:
             os.write(fd, str(os.getpid()).encode())
             os.close(fd)
@@ -126,11 +145,37 @@ class JobRunner:
         finally:
             # NOTE: if the process is SIGKILL'd or the host crashes, this unlink
             # never runs and the lockfile blocks the job until removed. The PID
-            # written above is the hook for a future staleness check (compare to
-            # /proc/<pid> and unlink if the process is gone); v1 relies on
-            # operators clearing stale locks on restart.
+            # written above is checked by `_is_stale()` on the next acquire
+            # attempt (compare to /proc/<pid> and unlink if the process is gone).
             with contextlib.suppress(OSError):
                 lock_path.unlink()
+
+    @staticmethod
+    def _is_stale(lock_path: Path) -> bool:
+        """Return ``True`` if ``lock_path`` names a PID that is no longer alive.
+
+        Args:
+            lock_path: Path to an existing per-job lock file, written by
+                :meth:`lock` as the plain-text PID of the holder.
+
+        Returns:
+            ``True`` when the file's PID can be parsed and no process with
+            that PID exists (``os.kill(pid, 0)`` raises ``ProcessLookupError``).
+            ``False`` on any ambiguous case (unreadable/unparseable file, or
+            a PID we lack permission to signal) so a real overlapping run is
+            never mistaken for stale.
+        """
+        try:
+            pid = int(lock_path.read_text(encoding="utf-8").strip())
+        except (OSError, ValueError):
+            return False
+        try:
+            os.kill(pid, 0)
+        except ProcessLookupError:
+            return True
+        except PermissionError:
+            return False
+        return False
 
     # ------------------------------------------------------------------
     # Dispatch

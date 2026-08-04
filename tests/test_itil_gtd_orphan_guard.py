@@ -79,3 +79,65 @@ def test_resolved_incident_emits_no_gtd(tmp_path: Path, monkeypatch):
 
     mgr.create_incident(title="already fixed", severity="sev3", managed_by="opus")
     assert _itil_gtd_items() == [], "resolved incident should not emit a GTD item"
+
+
+def _inject_orphan_gtd(itil_id: str, text: str) -> str:
+    """Write an ITIL-linked next-action whose incident core does NOT exist.
+
+    Mimics an orphan synced in from a divergent node - the exact shape the
+    daily validator keeps finding (source ``itil`` + ``itil_id`` + no core).
+    """
+    from skcapstone.mcp_tools.gtd_tools import _load_list, _make_item, _save_list
+
+    item = _make_item(text=text, source="itil", context="@ops")
+    item["status"] = "next"
+    item["source_ref"] = itil_id
+    item["itil_id"] = itil_id
+    items = _load_list("next-actions")
+    items.append(item)
+    _save_list("next-actions", items)
+    return item["id"]
+
+
+def test_reconcile_reaps_orphan_with_no_core(tmp_path: Path):
+    """A GTD next-action tagged with an incident id that has no core is drained."""
+    from skcapstone.itil import ITILManager
+    from skcapstone.mcp_tools.gtd_tools import _load_archive
+
+    orphan_id = _inject_orphan_gtd("inc-deadbeef", "[ITIL:inc-deadbeef] skmem-pg down .41")
+    assert _itil_gtd_items(), "orphan seeded"
+
+    reaped = ITILManager(str(tmp_path)).reconcile_gtd_orphans()
+
+    assert orphan_id in reaped
+    assert _itil_gtd_items() == [], "orphan must be removed from active lists"
+    archived = [i for i in _load_archive() if i.get("id") == orphan_id]
+    assert archived and archived[0]["status"] == "dropped", "reaped item lands in archive"
+
+
+def test_reconcile_keeps_open_incident_item(tmp_path: Path):
+    """The next-action for a genuinely open incident survives the sweep."""
+    from skcapstone.itil import ITILManager
+
+    mgr = ITILManager(str(tmp_path))
+    inc = mgr.create_incident(title="real outage", severity="sev2", managed_by="opus")
+    assert inc.gtd_item_ids
+
+    reaped = mgr.reconcile_gtd_orphans()
+
+    assert reaped == [], "open incident's item is not an orphan"
+    assert any(inc.id in i["text"] for i in _itil_gtd_items()), "live item preserved"
+
+
+def test_reconcile_is_idempotent(tmp_path: Path):
+    """Second run finds nothing to reap - no double-archiving, no churn."""
+    from skcapstone.itil import ITILManager
+
+    _inject_orphan_gtd("inc-cafebabe", "[ITIL:inc-cafebabe] down")
+    mgr = ITILManager(str(tmp_path))
+
+    first = mgr.reconcile_gtd_orphans()
+    second = mgr.reconcile_gtd_orphans()
+
+    assert len(first) == 1
+    assert second == [], "reconcile must be idempotent"
