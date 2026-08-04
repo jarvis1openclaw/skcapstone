@@ -611,6 +611,44 @@ def make_itil_auto_close_task(home: Path) -> Callable[[], None]:
     return _run
 
 
+def make_itil_gtd_reconcile_task(home: Path) -> Callable[[], None]:
+    """Return a callback that drains orphaned ITIL-linked GTD next-actions.
+
+    The read-side complement to the create-side guard in
+    :meth:`ITILManager.create_incident`. It reaps any ``[ITIL:...]`` GTD item whose
+    owning incident is not an open record (core never persisted, diverged across
+    synced nodes, or since closed) - the recurring cross-node "orphan storm" the
+    daily validator used to batch-close by hand.
+
+    Pinned to the incident-authority node (``health.incident_node``) so exactly one
+    node reaps the shared, Syncthing-synced GTD store and nodes do not race. When no
+    authority is configured the gate is open (any node may reconcile), matching the
+    create-side default.
+
+    Args:
+        home: Shared root directory.
+    """
+
+    def _run() -> None:
+        try:
+            from .service_health import _may_file_incidents
+        except Exception:
+            _may_file_incidents = None
+        if _may_file_incidents is not None and not _may_file_incidents():
+            logger.debug("Not the incident-authority node; skipping ITIL GTD reconcile")
+            return
+
+        from .itil import ITILManager
+
+        reaped = ITILManager(home).reconcile_gtd_orphans()
+        if reaped:
+            logger.info("ITIL GTD reconcile: drained %d orphan item(s)", len(reaped))
+        else:
+            logger.debug("ITIL GTD reconcile: nothing to drain")
+
+    return _run
+
+
 def make_itil_escalation_task(home: Path) -> Callable[[], None]:
     """Return a callback that checks SLA breaches on open incidents.
 
@@ -751,6 +789,11 @@ def build_scheduler(
             name="itil_auto_close",
             interval_seconds=1800,  # 30 minutes
             callback=make_itil_auto_close_task(shared),
+        )
+        scheduler.register(
+            name="itil_gtd_reconcile",
+            interval_seconds=1800,  # 30 minutes
+            callback=make_itil_gtd_reconcile_task(shared),
         )
     except Exception:
         logger.debug("ITIL scheduled tasks not available - skipped")

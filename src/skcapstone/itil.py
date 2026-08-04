@@ -69,6 +69,12 @@ class IncidentStatus(str, Enum):
     CLOSED = "closed"
 
 
+# The statuses an incident holds while it is still live work. Used both to find
+# the open incident for a service and to gate the auto-created GTD item: we only
+# mirror an incident into GTD once it has actually persisted as an open record.
+OPEN_INCIDENT_STATUSES = frozenset({"detected", "acknowledged", "investigating", "escalated"})
+
+
 class ProblemStatus(str, Enum):
     IDENTIFIED = "identified"
     ANALYZING = "analyzing"
@@ -1017,10 +1023,23 @@ class ITILManager:
         )
 
         # Auto-create GTD item and link it via an event (no whole-file rewrite).
+        # Guard first: make sure an OPEN incident actually persisted (folds back
+        # from disk as a live record) before mirroring it into GTD. Without this,
+        # a core that failed to persist or diverged across nodes (the recurring
+        # ITIL orphan storm) still left a dangling ``[ITIL:...]`` GTD item that the
+        # daily validator had to batch-close. No open incident -> no GTD item.
         inc = self._fold_record(self.incidents_dir, record_id, Incident)
-        gtd_id = self._create_gtd_item_for_incident(inc)
-        if gtd_id:
-            self._append_event(self.incidents_dir, record_id, agent, "gtd_link", id=gtd_id)
+        if inc is None or inc.status.value not in OPEN_INCIDENT_STATUSES:
+            logger.warning(
+                "Skipping GTD emit for %s: incident did not persist as an open record "
+                "(status=%s); not creating an orphan next-action.",
+                record_id,
+                getattr(getattr(inc, "status", None), "value", None),
+            )
+        else:
+            gtd_id = self._create_gtd_item_for_incident(inc)
+            if gtd_id:
+                self._append_event(self.incidents_dir, record_id, agent, "gtd_link", id=gtd_id)
 
         self._publish_event(
             "itil.incident.created",
@@ -1104,9 +1123,8 @@ class ITILManager:
         id is.  This remains a cheap convenience so a single node does not
         re-emit a ``created`` event every health cycle while a service is down.
         """
-        open_statuses = {"detected", "acknowledged", "investigating", "escalated"}
         for inc in self.list_incidents():
-            if inc.status.value in open_statuses and service in inc.affected_services:
+            if inc.status.value in OPEN_INCIDENT_STATUSES and service in inc.affected_services:
                 return inc
         return None
 
@@ -1158,10 +1176,22 @@ class ITILManager:
             note=f"Problem identified: {title}",
         )
 
+        # Guard first: same belt-and-suspenders as create_incident (45bb088) -
+        # only mirror the problem into GTD once it has actually persisted as a
+        # live record. A None fold (unpersisted / diverged core) or an
+        # already-resolved fold must not spawn a fresh investigation project.
         prb = self._fold_record(self.problems_dir, record_id, Problem)
-        gtd_id = self._create_gtd_project_for_problem(prb)
-        if gtd_id:
-            self._append_event(self.problems_dir, record_id, agent, "gtd_link", id=gtd_id)
+        if prb is None or prb.status.value == "resolved":
+            logger.warning(
+                "Skipping GTD emit for %s: problem did not persist as a live record "
+                "(status=%s); not creating an orphan project.",
+                record_id,
+                getattr(getattr(prb, "status", None), "value", None),
+            )
+        else:
+            gtd_id = self._create_gtd_project_for_problem(prb)
+            if gtd_id:
+                self._append_event(self.problems_dir, record_id, agent, "gtd_link", id=gtd_id)
 
         self._publish_event(
             "itil.problem.created",
@@ -1455,8 +1485,7 @@ class ITILManager:
         changes = self._load_records(self.changes_dir, Change)
         kedb = self._load_kedb()
 
-        open_inc_statuses = {"detected", "acknowledged", "investigating", "escalated"}
-        open_incidents = [i for i in incidents if i.status.value in open_inc_statuses]
+        open_incidents = [i for i in incidents if i.status.value in OPEN_INCIDENT_STATUSES]
         active_problems = [p for p in problems if p.status.value != "resolved"]
         pending_changes = [
             c
@@ -1732,6 +1761,114 @@ class ITILManager:
                     _save_archive(archive)
         except Exception:
             logger.debug("Failed to complete GTD items: %s", gtd_item_ids)
+
+    def _itil_ref_is_orphan(self, itil_id: str) -> bool:
+        """True when an ITIL-linked GTD ref has no *open* owning record.
+
+        Chef's rule for the recurring orphan storm: an open incident must exist
+        before an ITIL GTD item is valid. A ref is an orphan when its core never
+        persisted (or diverged across synced nodes so it exists nowhere here), or
+        - for incidents specifically - the record exists but is no longer open
+        (a closed/resolved incident should have had its GTD item completed, not
+        left dangling as an active next-action).
+
+        Problems and changes are long-lived by design, so they are only treated
+        as orphans when the record is entirely missing, never on status.
+
+        Args:
+            itil_id: The ``inc-``/``prb-``/``chg-`` id carried by the GTD item.
+
+        Returns:
+            True if the linked item should be reaped.
+        """
+        prefix = str(itil_id).split("-", 1)[0]
+        directory = {
+            "inc": self.incidents_dir,
+            "prb": self.problems_dir,
+            "chg": self.changes_dir,
+        }.get(prefix)
+        if directory is None:
+            return False  # unknown/foreign ref - leave it alone
+        rid = self._resolve_id(directory, itil_id)
+        if not self._record_exists(directory, rid):
+            return True  # no core anywhere -> orphan
+        if prefix == "inc":
+            inc = self._fold_record(directory, rid, Incident)
+            if inc is None or inc.status.value not in OPEN_INCIDENT_STATUSES:
+                return True  # exists but not open -> stale, reap
+        return False
+
+    def reconcile_gtd_orphans(self) -> list[str]:
+        """Drain ITIL-linked GTD items whose owning record is not an open incident.
+
+        Idempotent reconcile sweep - the read-side complement to the create-side
+        guard in :meth:`create_incident`. It defends against orphans that arrive
+        by any path the create guard cannot cover: GTD next-actions synced in from
+        a node whose incident core never converged, refs left behind by a since-
+        patched writer, or items for incidents that have since closed. Each reaped
+        item is moved to the GTD archive (status ``dropped``) rather than deleted,
+        so the action is auditable and reversible.
+
+        Returns:
+            The list of reaped GTD item ids (empty when nothing was orphaned).
+        """
+        reaped: list[str] = []
+        try:
+            from .mcp_tools.gtd_tools import (
+                _GTD_LISTS,
+                _load_archive,
+                _load_list,
+                _save_archive,
+                _save_list,
+            )
+        except Exception:
+            logger.debug("gtd_tools not importable - skipping ITIL GTD reconcile")
+            return reaped
+
+        for list_name in _GTD_LISTS:
+            try:
+                items = _load_list(list_name)
+            except Exception:
+                continue
+            keep: list[dict] = []
+            dropped: list[dict] = []
+            for item in items:
+                itil_id = item.get("itil_id") or item.get("source_ref")
+                if not itil_id:
+                    # Legacy items (pre-structured-fields) carry the id only in the
+                    # ``[ITIL:inc-XXXX]`` text prefix - parse it as a fallback so the
+                    # sweep reaps them too.
+                    m = re.search(r"\[ITIL:((?:inc|prb|chg)-[0-9a-f]+)\]", item.get("text", ""))
+                    if m:
+                        itil_id = m.group(1)
+                if (
+                    itil_id
+                    and str(itil_id).startswith(("inc-", "prb-", "chg-"))
+                    and self._itil_ref_is_orphan(str(itil_id))
+                ):
+                    item["status"] = "dropped"
+                    item["completed_at"] = _now_iso()
+                    item["drop_reason"] = "itil-orphan-reconcile: no open incident record"
+                    dropped.append(item)
+                    reaped.append(item.get("id"))
+                else:
+                    keep.append(item)
+            if dropped:
+                try:
+                    archive = _load_archive()
+                    archive.extend(dropped)
+                    _save_archive(archive)
+                    _save_list(list_name, keep)
+                except Exception:
+                    logger.warning("Failed to persist ITIL GTD reconcile for %s", list_name)
+
+        if reaped:
+            logger.info(
+                "ITIL GTD reconcile: reaped %d orphan next-action(s): %s", len(reaped), reaped
+            )
+        else:
+            logger.debug("ITIL GTD reconcile: no orphaned next-actions")
+        return reaped
 
     # ── PubSub helper ─────────────────────────────────────────────────
 
