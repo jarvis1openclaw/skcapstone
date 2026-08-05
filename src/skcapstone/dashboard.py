@@ -659,9 +659,54 @@ def create_app(home: Path):
             headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
         )
 
+    # ── Model-management console (card e7cde8f1) ──
+    # The SKDashboard surface of the model-enablement picker. Proxies the
+    # gateway's loopback advertise allowlist (same source of truth the skchat
+    # app "Manage models" screen writes), so both surfaces stay in sync.
+    import os as _os
+
+    _gateway_admin = _os.environ.get("SKGATEWAY_URL", "http://localhost:18780").rstrip("/")
+
+    async def api_models_get(_request):
+        """Full discovered catalog + `advertised` flags (gateway /admin/models)."""
+        import urllib.request
+
+        try:
+            with urllib.request.urlopen(f"{_gateway_admin}/admin/models", timeout=3) as r:
+                return _json(json.loads(r.read().decode("utf-8")))
+        except Exception as exc:  # gateway down: empty catalog, never 500 the page
+            return _json({"object": "list", "data": [], "error": str(exc)})
+
+    async def api_models_advertise(request):
+        """Persist the enabled set to the gateway allowlist (PUT /admin/models/advertise)."""
+        import urllib.request
+
+        raw = await request.body()
+        try:
+            parsed = json.loads(raw or b"{}")
+            enabled = parsed.get("enabled", [])
+            if not isinstance(enabled, list) or not all(isinstance(x, str) for x in enabled):
+                raise ValueError("enabled must be a list of strings")
+        except Exception as exc:
+            return JSONResponse({"error": str(exc)}, status_code=400)
+        req = urllib.request.Request(
+            f"{_gateway_admin}/admin/models/advertise",
+            data=json.dumps({"enabled": enabled}).encode("utf-8"),
+            method="PUT",
+            headers={"Content-Type": "application/json"},
+        )
+        try:
+            with urllib.request.urlopen(req, timeout=3) as r:
+                return _json(json.loads(r.read().decode("utf-8")))
+        except Exception as exc:
+            return JSONResponse({"error": str(exc)}, status_code=502)
+
     routes = [
         Route("/", index),
         Route("/index.html", index),
+        Route("/models", _page("models.html")),
+        Route("/api/models", api_models_get),
+        Route("/api/models/advertise", api_models_advertise, methods=["POST"]),
         Route("/.well-known/skworld-module.json", well_known_manifest),
         Route("/board", board_page),
         Route("/api/status", _get_route(_get_agent_status)),

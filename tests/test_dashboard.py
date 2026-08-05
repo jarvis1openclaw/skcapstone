@@ -206,6 +206,44 @@ class TestHTTPServer:
         assert "SKDashboard" in body
         conn.close()
 
+    def test_serves_models_console_page(self, dashboard_server):
+        """GET /models returns the model-management console HTML."""
+        server, port = dashboard_server
+        conn = HTTPConnection("127.0.0.1", port, timeout=5)
+        conn.request("GET", "/models")
+        resp = conn.getresponse()
+        assert resp.status == 200
+        body = resp.read().decode("utf-8")
+        assert "Models" in body and "/api/models" in body
+        conn.close()
+
+    def test_api_models_fails_soft_when_gateway_down(self, dashboard_server):
+        """GET /api/models never 500s: an unreachable gateway yields an empty
+        catalog with an error note, so the console degrades instead of breaking."""
+        server, port = dashboard_server
+        conn = HTTPConnection("127.0.0.1", port, timeout=5)
+        conn.request("GET", "/api/models")
+        resp = conn.getresponse()
+        assert resp.status == 200
+        data = json.loads(resp.read())
+        # gateway is not running under test -> data is a list (possibly empty)
+        assert "data" in data and isinstance(data["data"], list)
+        conn.close()
+
+    def test_api_models_advertise_rejects_bad_shape(self, dashboard_server):
+        """POST /api/models/advertise with a non-list `enabled` is a 400, not a
+        write (the value feeds the gateway allowlist and must be validated)."""
+        server, port = dashboard_server
+        conn = HTTPConnection("127.0.0.1", port, timeout=5)
+        conn.request(
+            "POST", "/api/models/advertise",
+            body=json.dumps({"enabled": "not-a-list"}),
+            headers={"Content-Type": "application/json"},
+        )
+        resp = conn.getresponse()
+        assert resp.status == 400
+        conn.close()
+
     def test_api_status_json(self, dashboard_server):
         """GET /api/status returns valid JSON."""
         server, port = dashboard_server
