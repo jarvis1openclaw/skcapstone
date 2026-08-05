@@ -59,6 +59,12 @@
     const saveBtn = document.getElementById('btn-save');
     const toast = document.getElementById('toast');
 
+    // Prefix-aware API base: works standalone (page at /models -> API '') AND
+    // embedded under the skchat shell proxy (page at /skdashboard/models -> API
+    // '/skdashboard', so fetches hit /skdashboard/api/... and reach the dashboard
+    // through the reverse proxy instead of escaping the prefix).
+    const API = location.pathname.replace(/\/models\/?$/, '');
+
     let models = [];              // [{id, provider, free, advertised}]
     const enabled = new Set();    // ids currently enabled (mutable, local)
     let query = '';
@@ -75,7 +81,7 @@
     async function load() {
       body.innerHTML = '<div class="emptymsg">Loading models…</div>';
       try {
-        const r = await fetch('/api/models');
+        const r = await fetch(API + '/api/models');
         const d = await r.json();
         models = (d.data || []).slice();
         enabled.clear();
@@ -139,7 +145,7 @@
       const payload = enableAll ? [] : Array.from(enabled);
       saveBtn.disabled = true;
       try {
-        const r = await fetch('/api/models/advertise', {
+        const r = await fetch(API + '/api/models/advertise', {
           method: 'POST', headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ enabled: payload }),
         });
