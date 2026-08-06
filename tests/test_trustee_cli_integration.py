@@ -14,7 +14,7 @@ from typing import Any
 import pytest
 from click.testing import CliRunner
 
-from skcapstone._cli_monolith import main
+from skcapstone.cli import main
 from skcapstone.blueprints.schema import ProviderType
 from skcapstone.team_engine import AgentStatus, DeployedAgent, TeamDeployment, TeamEngine
 

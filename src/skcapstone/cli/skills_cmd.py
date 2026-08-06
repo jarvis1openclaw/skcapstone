@@ -6,6 +6,7 @@ import json
 import logging
 import sys
 import urllib.request
+from pathlib import Path
 from typing import Optional
 
 import click
@@ -14,7 +15,7 @@ from rich.panel import Panel
 from rich.table import Table
 
 from ..registry_client import get_registry_client
-from ._common import console
+from ._common import AGENT_HOME, console
 
 logger = logging.getLogger(__name__)
 
@@ -250,3 +251,108 @@ def register_skills_commands(main: click.Group) -> None:
         console.print(f"  [green]Installed:[/] [bold]{result['name']}[/] v{result['version']}")
         console.print(f"  [dim]Path:  {result['install_path']}[/]")
         console.print(f"  [dim]Agent: {result['agent']}[/]\n")
+
+    @skills.command("link")
+    @click.argument("skill_name")
+    @click.argument("agent_name")
+    def skills_link(skill_name: str, agent_name: str) -> None:
+        """Link a global skill into an agent's namespace.
+
+        \b
+        Example:
+            skcapstone skills link syncthing-setup jarvis
+        """
+        try:
+            from skskills.registry import SkillRegistry
+        except ImportError:
+            console.print("[red]skskills is not installed.[/red] Run: pip install skskills")
+            return
+
+        registry = SkillRegistry()
+        try:
+            path = registry.link_to_agent(skill_name, agent_name)
+            console.print(f"[green]Linked:[/green] {skill_name} → {agent_name}")
+            console.print(f"  Path: {path}")
+        except FileNotFoundError as exc:
+            console.print(f"[red]Link failed:[/red] {exc}")
+
+    @skills.command("status")
+    @click.option("--home", default=AGENT_HOME, type=click.Path(), help="Agent home directory.")
+    def skills_status(home: str) -> None:
+        """Show skills pillar status for all agents.
+
+        Reports per-agent skill counts from both the registry
+        and the skcapstone synced skills directory.
+        """
+        import os
+
+        home_path = Path(home).expanduser()
+        skskills_home = Path(os.environ.get("SKSKILLS_HOME", "~/.skskills")).expanduser()
+
+        console.print("\n[bold cyan]Skills Pillar Status[/]\n")
+        console.print(f"  SKSkills home:    {skskills_home}")
+        console.print(f"  SKCapstone home:  {home_path}")
+
+        agents_dir = skskills_home / "agents"
+        table = Table(title="Per-Agent Skill Counts")
+        table.add_column("Agent", style="green")
+        table.add_column("Registry Skills", style="yellow")
+        table.add_column("Skcapstone Skills", style="cyan")
+        table.add_column("Total")
+
+        # Collect known agents from both registries
+        known_agents: set[str] = set()
+        if agents_dir.exists():
+            for d in agents_dir.iterdir():
+                if d.is_dir():
+                    known_agents.add(d.name)
+
+        skcap_agents_dir = home_path / "skills" / "agents"
+        if skcap_agents_dir.exists():
+            for d in skcap_agents_dir.iterdir():
+                if d.is_dir():
+                    known_agents.add(d.name)
+
+        if not known_agents:
+            console.print("\n[dim]No per-agent namespaces configured yet.[/dim]")
+            console.print("  Create one with: skcapstone skills link syncthing-setup <agent>")
+            return
+
+        for agent_name in sorted(known_agents):
+            # Count registry skills
+            reg_count = 0
+            if (agents_dir / agent_name).exists():
+                reg_count = sum(
+                    1
+                    for d in (agents_dir / agent_name).iterdir()
+                    if (d.is_dir() or d.is_symlink()) and (d / "skill.yaml").exists()
+                )
+
+            # Count skcapstone skills
+            skcap_count = 0
+            agent_skcap = skcap_agents_dir / agent_name if skcap_agents_dir.exists() else None
+            if agent_skcap and agent_skcap.exists():
+                skcap_count = sum(
+                    1 for d in agent_skcap.iterdir() if d.is_dir() and (d / "skill.yaml").exists()
+                )
+
+            total = reg_count + skcap_count
+            table.add_row(agent_name, str(reg_count), str(skcap_count), str(total))
+
+        console.print()
+        console.print(table)
+
+        # Global registry
+        installed_dir = skskills_home / "installed"
+        global_count = 0
+        if installed_dir.exists():
+            global_count = sum(
+                1 for d in installed_dir.iterdir() if d.is_dir() and (d / "skill.yaml").exists()
+            )
+        console.print(
+            f"\n  Global registry: [yellow]{global_count}[/] skill(s) in {installed_dir}"
+        )
+        console.print(
+            "\n  [dim]Tip: Use [white]skcapstone skills link <skill> <agent>[/white] "
+            "to give an agent access to a global skill.[/dim]\n"
+        )

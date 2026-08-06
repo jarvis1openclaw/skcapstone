@@ -473,7 +473,7 @@ class InstallerApp:
         try:
             from click import Context
 
-            from ._cli_monolith import init
+            from .cli.init_cmd import init
 
             ctx = Context(init, info_name="init")
             ctx.invoke(

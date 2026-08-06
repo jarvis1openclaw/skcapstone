@@ -12,7 +12,7 @@ from unittest.mock import patch
 import pytest
 from click.testing import CliRunner
 
-from skcapstone._cli_monolith import main
+from skcapstone.cli import main
 from skcapstone.models import MemoryEntry, MemoryLayer
 
 
@@ -58,7 +58,6 @@ class TestMemoryStoreArgs:
         agent_home.mkdir()
 
         with (
-            patch("skcapstone._cli_monolith.mem_store", create=True),
             patch("skcapstone.memory_engine.store", return_value=fake_entry) as mock_store,
             patch("skcapstone.pillars.security.audit_event"),
         ):

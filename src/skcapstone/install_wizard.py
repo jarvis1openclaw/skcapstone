@@ -377,7 +377,7 @@ def _path_fresh_install(
         # Lazy import to avoid circular
         from click import Context
 
-        from ._cli_monolith import init
+        from .cli.init_cmd import init
 
         ctx = Context(init, info_name="init")
         ctx.invoke(init, name=name, email=email, home=home)
@@ -440,7 +440,7 @@ def _path_fresh_install(
     # --- Step 7: Claude Code integration ---
     console.print(f"  [bold]Step 7/{total_steps}[/]  AI tool integration...", end=" ")
     try:
-        from ._cli_monolith import _write_global_claude_md
+        from .cli.init_cmd import _write_global_claude_md
 
         claude_md = _write_global_claude_md(home_path, name)
         if claude_md:
@@ -567,7 +567,7 @@ def _path_join_existing(
     try:
         from click import Context
 
-        from ._cli_monolith import init
+        from .cli.init_cmd import init
 
         ctx = Context(init, info_name="init")
         ctx.invoke(init, name=name, email=email, home=str(home_path))
