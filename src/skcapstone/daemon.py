@@ -2318,7 +2318,7 @@ class DaemonService:
                         # skcomms not installed - fall back to skcapstone signed tokens
                         if token_str:
                             try:
-                                from .tokens import import_token, verify_token
+                                from capauth.tokens import import_token, verify_token
 
                                 tok = import_token(token_str)
                                 if verify_token(tok, home=config.home):

@@ -33,7 +33,7 @@ def register_token_commands(main: click.Group) -> None:
     @click.option("--no-sign", is_flag=True, help="Skip PGP signing.")
     def token_issue(home, subject, cap, ttl, token_type, no_sign):
         """Issue a new capability token."""
-        from ..tokens import TokenType, issue_token
+        from capauth.tokens import TokenType, issue_token
 
         validate_agent_name(subject)
 
@@ -81,7 +81,7 @@ def register_token_commands(main: click.Group) -> None:
     @click.option("--home", default=AGENT_HOME, type=click.Path())
     def token_list(home):
         """List all issued tokens."""
-        from ..tokens import is_revoked, list_tokens
+        from capauth.tokens import is_revoked, list_tokens
 
         home_path = Path(home).expanduser()
         if not home_path.exists():
@@ -132,7 +132,7 @@ def register_token_commands(main: click.Group) -> None:
     @click.option("--home", default=AGENT_HOME, type=click.Path())
     def token_verify(token_id, home):
         """Verify a token's signature and validity."""
-        from ..tokens import is_revoked, list_tokens, verify_token
+        from capauth.tokens import is_revoked, list_tokens, verify_token
 
         validate_task_id(token_id)  # token IDs are hex UUIDs
 
@@ -171,7 +171,7 @@ def register_token_commands(main: click.Group) -> None:
     @click.option("--home", default=AGENT_HOME, type=click.Path())
     def token_revoke(token_id, home):
         """Revoke a previously issued token."""
-        from ..tokens import list_tokens, revoke_token
+        from capauth.tokens import list_tokens, revoke_token
 
         validate_task_id(token_id)  # token IDs are hex UUIDs
 
@@ -198,7 +198,7 @@ def register_token_commands(main: click.Group) -> None:
     @click.option("--home", default=AGENT_HOME, type=click.Path())
     def token_export(token_id, home):
         """Export a token as portable JSON."""
-        from ..tokens import export_token, list_tokens
+        from capauth.tokens import export_token, list_tokens
 
         validate_task_id(token_id)  # token IDs are hex UUIDs
 

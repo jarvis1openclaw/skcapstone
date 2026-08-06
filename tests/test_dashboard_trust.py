@@ -65,7 +65,7 @@ def test_empty_home_is_empty_not_error(tmp_path):
 
 
 def test_build_failure_degrades_gracefully(tmp_path, monkeypatch):
-    import skcapstone.trust_graph as tg
+    import capauth.trust.graph as tg
 
     def boom(_home):
         raise RuntimeError("source unreadable")

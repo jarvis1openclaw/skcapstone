@@ -6,15 +6,8 @@ import json
 from pathlib import Path
 
 import yaml
-
-from skcapstone.coordination import Board, Task
-from skcapstone.pillars.identity import generate_identity
-from skcapstone.pillars.memory import initialize_memory
-from skcapstone.pillars.security import initialize_security
-from skcapstone.pillars.sync import initialize_sync
-from skcapstone.pillars.trust import initialize_trust, record_trust_state
-from skcapstone.tokens import issue_token
-from skcapstone.trust_graph import (
+from capauth.tokens import issue_token
+from capauth.trust.graph import (
     FORMATTERS,
     TrustEdge,
     TrustGraph,
@@ -24,6 +17,13 @@ from skcapstone.trust_graph import (
     format_json,
     format_table,
 )
+
+from skcapstone.coordination import Board, Task
+from skcapstone.pillars.identity import generate_identity
+from skcapstone.pillars.memory import initialize_memory
+from skcapstone.pillars.security import initialize_security
+from skcapstone.pillars.sync import initialize_sync
+from skcapstone.pillars.trust import initialize_trust, record_trust_state
 
 
 def _init_agent(home: Path, name: str = "graph-test") -> None:

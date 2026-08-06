@@ -11,6 +11,8 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
+from capauth.tokens import is_revoked, issue_token, list_tokens, revoke_token
+
 from skcapstone.coordination import Board, Task, TaskStatus
 from skcapstone.discovery import discover_all
 from skcapstone.memory_engine import delete, recall, search, store
@@ -25,7 +27,6 @@ from skcapstone.pillars.sync import (
     pull_seeds,
 )
 from skcapstone.pillars.trust import initialize_trust, record_trust_state
-from skcapstone.tokens import is_revoked, issue_token, list_tokens, revoke_token
 
 
 class TestInitToMemoryLifecycle:

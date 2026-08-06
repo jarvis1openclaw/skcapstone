@@ -128,8 +128,8 @@ def register_trust_commands(main: click.Group) -> None:
     @click.option("--format", "fmt", type=click.Choice(["table", "dot", "json"]), default="table")
     def trust_graph(home, fmt):
         """Visualize the trust web - who trusts whom."""
-        from ..trust_graph import FORMATTERS as TG_FORMATTERS
-        from ..trust_graph import build_trust_graph
+        from capauth.trust.graph import FORMATTERS as TG_FORMATTERS
+        from capauth.trust.graph import build_trust_graph
 
         home_path = Path(home).expanduser()
         graph = build_trust_graph(home_path)
@@ -143,7 +143,7 @@ def register_trust_commands(main: click.Group) -> None:
     @click.option("--reset", is_flag=True, help="Reset all thresholds to defaults.")
     def trust_calibrate(home, recommend, setting, reset):
         """View and tune trust layer thresholds."""
-        from ..trust_calibration import (
+        from capauth.trust.calibration import (
             TrustThresholds,
             apply_setting,
             load_calibration,

@@ -61,7 +61,7 @@ TOOLS: list[Tool] = [
 
 async def _handle_trust_calibrate(args: dict) -> list[TextContent]:
     """View, recommend, or update trust calibration."""
-    from ..trust_calibration import (
+    from capauth.trust.calibration import (
         TrustThresholds,
         apply_setting,
         load_calibration,
@@ -103,8 +103,8 @@ async def _handle_trust_calibrate(args: dict) -> list[TextContent]:
 
 async def _handle_trust_graph(args: dict) -> list[TextContent]:
     """Return the trust web graph."""
-    from ..trust_graph import FORMATTERS as TG_FORMATTERS
-    from ..trust_graph import build_trust_graph
+    from capauth.trust.graph import FORMATTERS as TG_FORMATTERS
+    from capauth.trust.graph import build_trust_graph
 
     home = _home()
     graph = build_trust_graph(home)

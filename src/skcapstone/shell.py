@@ -263,8 +263,8 @@ def _handle_trust(args: list[str]) -> None:
     sub = args[0] if args else "status"
 
     if sub == "graph":
-        from .trust_graph import FORMATTERS as TG_FORMATTERS
-        from .trust_graph import build_trust_graph
+        from capauth.trust.graph import FORMATTERS as TG_FORMATTERS
+        from capauth.trust.graph import build_trust_graph
 
         fmt = args[1] if len(args) > 1 else "table"
         graph = build_trust_graph(_home())
@@ -284,7 +284,7 @@ def _handle_trust(args: list[str]) -> None:
         )
 
     elif sub == "calibrate":
-        from .trust_calibration import load_calibration, recommend_thresholds
+        from capauth.trust.calibration import load_calibration, recommend_thresholds
 
         if len(args) > 1 and args[1] == "recommend":
             from .pillars.trust import list_febs

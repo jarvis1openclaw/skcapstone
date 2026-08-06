@@ -19,6 +19,8 @@ import json
 from pathlib import Path
 from unittest.mock import patch
 
+from capauth.tokens import issue_token
+
 # ---------------------------------------------------------------------------
 # Core skcapstone imports
 # ---------------------------------------------------------------------------
@@ -32,7 +34,6 @@ from skcapstone.pillars.security import audit_event, initialize_security, read_a
 from skcapstone.pillars.sync import collect_seed, initialize_sync
 from skcapstone.pillars.trust import initialize_trust, record_trust_state
 from skcapstone.runtime import AgentRuntime
-from skcapstone.tokens import issue_token
 
 
 def _init_full_agent(home: Path, name: str = "test-agent") -> None:

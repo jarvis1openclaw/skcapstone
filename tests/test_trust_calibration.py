@@ -6,8 +6,7 @@ import json
 from pathlib import Path
 
 import pytest
-
-from skcapstone.trust_calibration import (
+from capauth.trust.calibration import (
     TrustThresholds,
     apply_setting,
     load_calibration,

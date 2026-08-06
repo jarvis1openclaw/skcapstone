@@ -333,7 +333,7 @@ def _discover_and_import_febs(home: Path) -> int:
 
 def _derive_trust_from_febs(home: Path, feb_files: list[Path]) -> TrustState:
     """Derive trust state from FEB files using calibration thresholds."""
-    from ..trust_calibration import load_calibration
+    from capauth.trust.calibration import load_calibration
 
     cal = load_calibration(home)
     depths: list[float] = []

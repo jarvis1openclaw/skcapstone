@@ -41,6 +41,17 @@ jobs:
       - name: Lint
         run: ruff check src/
 
+  shim-imports:
+    # CR-3.6: blocking gate. The capauth re-export shims
+    # (skcapstone.tokens / trust_graph / trust_calibration) were retired;
+    # their implementations live in capauth. Any new import of the shim
+    # names fails the build. Import from capauth.* directly.
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: No retired capauth shim imports
+        run: bash scripts/check-no-shim-imports.sh
+
   build:
     runs-on: ubuntu-latest
     steps:

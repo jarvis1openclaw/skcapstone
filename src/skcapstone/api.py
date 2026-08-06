@@ -522,7 +522,7 @@ def _check_bearer(
     except ImportError:
         if token_str and config:
             try:
-                from .tokens import import_token, verify_token
+                from capauth.tokens import import_token, verify_token
 
                 tok = import_token(token_str)
                 if verify_token(tok, home=config.home):
@@ -1908,7 +1908,7 @@ async def websocket_logs(
     except ImportError:
         if token_str and config:
             try:
-                from .tokens import import_token, verify_token
+                from capauth.tokens import import_token, verify_token
 
                 tok = import_token(token_str)
                 if verify_token(tok, home=config.home):
