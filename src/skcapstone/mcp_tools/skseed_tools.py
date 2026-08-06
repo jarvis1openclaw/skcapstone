@@ -245,6 +245,11 @@ async def _handle_skseed_alignment(args: dict) -> list[TextContent]:
     return _json_response(result)
 
 
+# Tools present in this module but intentionally NOT published on the MCP
+# wire surface (kept for direct import / tests). Excluded by
+# collect_all_tools / collect_all_handlers.
+HIDDEN: set[str] = {"skseed_ingest"}
+
 HANDLERS: dict = {
     "skseed_ingest": _handle_skseed_ingest,
     "skseed_collide": _handle_skseed_collide,

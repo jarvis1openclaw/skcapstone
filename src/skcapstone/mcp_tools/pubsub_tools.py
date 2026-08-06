@@ -94,7 +94,7 @@ async def _handle_pubsub_publish(args: dict) -> list[TextContent]:
 
     home = _home()
     agent_name = _get_agent_name(home)
-    ps = PubSub(_shared_root(), agent_name=agent_name)
+    ps = PubSub(home, agent_name=agent_name)
     ps.initialize()
 
     msg = ps.publish(
@@ -118,7 +118,7 @@ async def _handle_pubsub_subscribe(args: dict) -> list[TextContent]:
 
     home = _home()
     agent_name = _get_agent_name(home)
-    ps = PubSub(_shared_root(), agent_name=agent_name)
+    ps = PubSub(home, agent_name=agent_name)
     ps.initialize()
 
     sub = ps.subscribe(args["pattern"])
@@ -137,7 +137,7 @@ async def _handle_pubsub_poll(args: dict) -> list[TextContent]:
 
     home = _home()
     agent_name = _get_agent_name(home)
-    ps = PubSub(_shared_root(), agent_name=agent_name)
+    ps = PubSub(home, agent_name=agent_name)
     ps.initialize()
 
     messages = ps.poll(
@@ -163,7 +163,7 @@ async def _handle_pubsub_topics(_args: dict) -> list[TextContent]:
     from ..pubsub import PubSub
 
     home = _home()
-    ps = PubSub(_shared_root(), agent_name=_get_agent_name(home))
+    ps = PubSub(home, agent_name=_get_agent_name(home))
     ps.initialize()
     return _json_response(ps.list_topics())
 

@@ -17,30 +17,28 @@ TOOLS: list[Tool] = [
     Tool(
         name="security_audit_log",
         description=(
-            "Read recent entries from the security audit log. "
-            "Returns structured JSONL entries with timestamp, event type, "
-            "detail, host, and optional agent/metadata fields. "
-            "Use limit to control how many entries are returned."
+            "Read recent entries from the security audit log. Returns structured JSONL "
+            "entries with timestamp, event type, detail, host, and optional agent/metadata "
+            "fields."
         ),
         inputSchema={
-            "type": "object",
             "properties": {
                 "limit": {
-                    "type": "integer",
                     "description": "Maximum entries to return (default: 20, 0 = all)",
-                },
+                    "type": "integer",
+                }
             },
             "required": [],
+            "type": "object",
         },
     ),
     Tool(
         name="security_status",
         description=(
-            "Show the security pillar status: whether sksecurity is installed, "
-            "audit log health, threat count, last scan time, and overall "
-            "security configuration."
+            "Show the security pillar status: whether sksecurity is installed, audit log "
+            "health, threat count, last scan time, and overall security configuration."
         ),
-        inputSchema={"type": "object", "properties": {}, "required": []},
+        inputSchema={"properties": {}, "required": [], "type": "object"},
     ),
 ]
 

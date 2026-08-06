@@ -6,7 +6,7 @@ from pathlib import Path
 
 from mcp.types import TextContent, Tool
 
-from ._helpers import _get_agent_name, _home, _json_response, _shared_root
+from ._helpers import _get_agent_name, _home, _json_response
 
 TOOLS: list[Tool] = [
     Tool(
@@ -86,7 +86,7 @@ async def _handle_file_send(args: dict) -> list[TextContent]:
 
     home = _home()
     agent_name = _get_agent_name(home)
-    ft = FileTransfer(_shared_root(), agent_name=agent_name)
+    ft = FileTransfer(home, agent_name=agent_name)
     ft.initialize()
 
     file_path = Path(args["file_path"])
@@ -114,7 +114,7 @@ async def _handle_file_receive(args: dict) -> list[TextContent]:
 
     home = _home()
     agent_name = _get_agent_name(home)
-    ft = FileTransfer(_shared_root(), agent_name=agent_name)
+    ft = FileTransfer(home, agent_name=agent_name)
     ft.initialize()
 
     output_dir = Path(args["output_dir"]) if args.get("output_dir") else None
@@ -132,8 +132,8 @@ async def _handle_file_list(args: dict) -> list[TextContent]:
     """List file transfers."""
     from ..file_transfer import FileTransfer
 
-    _home()
-    ft = FileTransfer(_shared_root(), agent_name=_get_agent_name(_home()))
+    home = _home()
+    ft = FileTransfer(home, agent_name=_get_agent_name(home))
     ft.initialize()
 
     transfers = ft.list_transfers(direction=args.get("direction"))
@@ -159,8 +159,8 @@ async def _handle_file_status(_args: dict) -> list[TextContent]:
     """Get file transfer subsystem status."""
     from ..file_transfer import FileTransfer
 
-    _home()
-    ft = FileTransfer(_shared_root(), agent_name=_get_agent_name(_home()))
+    home = _home()
+    ft = FileTransfer(home, agent_name=_get_agent_name(home))
     ft.initialize()
     return _json_response(ft.status())
 

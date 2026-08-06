@@ -10,164 +10,122 @@ TOOLS: list[Tool] = [
     Tool(
         name="trustee_health",
         description=(
-            "Run health checks on agents in a deployment. Returns per-agent "
-            "status, heartbeat, and error info. With 'agent_name' set, "
-            "reports the focused status of a single agent or role (e.g. "
-            "sentinel) across all deployments, including whether it is "
-            "absent (not deployed anywhere)."
+            "Run health checks on all agents in a deployment. Returns per-agent status, "
+            "heartbeat, and error info."
         ),
         inputSchema={
-            "type": "object",
             "properties": {
-                "deployment_id": {
-                    "type": "string",
-                    "description": (
-                        "The deployment ID to check. Required unless "
-                        "'agent_name' is given, in which case it narrows the "
-                        "focused lookup to one deployment."
-                    ),
-                },
-                "agent_name": {
-                    "type": "string",
-                    "description": (
-                        "Focus on a single agent by instance name or role "
-                        "(e.g. sentinel). Searches all deployments when "
-                        "'deployment_id' is omitted."
-                    ),
-                },
+                "deployment_id": {"description": "The deployment ID to check", "type": "string"}
             },
-            "required": [],
+            "required": ["deployment_id"],
+            "type": "object",
         },
     ),
     Tool(
         name="trustee_restart",
         description=(
-            "Restart a failed agent or all agents in a deployment. "
-            "Calls provider stop/start and updates deployment state."
+            "Restart a failed agent or all agents in a deployment. Calls provider stop/start "
+            "and updates deployment state."
         ),
         inputSchema={
-            "type": "object",
             "properties": {
-                "deployment_id": {
-                    "type": "string",
-                    "description": "The deployment ID",
-                },
                 "agent_name": {
-                    "type": "string",
                     "description": "Agent to restart (omit for all agents)",
+                    "type": "string",
                 },
+                "deployment_id": {"description": "The deployment ID", "type": "string"},
             },
             "required": ["deployment_id"],
+            "type": "object",
         },
     ),
     Tool(
         name="trustee_scale",
         description=(
-            "Scale the number of instances for an agent type up or down. "
-            "Adds or removes instances while updating deployment state."
+            "Scale the number of instances for an agent type up or down. Adds or removes "
+            "instances while updating deployment state."
         ),
         inputSchema={
-            "type": "object",
             "properties": {
-                "deployment_id": {
-                    "type": "string",
-                    "description": "The deployment ID",
-                },
                 "agent_spec_key": {
-                    "type": "string",
                     "description": "The agent spec key (role) to scale",
+                    "type": "string",
                 },
-                "count": {
-                    "type": "integer",
-                    "description": "Desired total instance count (>= 1)",
-                },
+                "count": {"description": "Desired total instance count (>= 1)", "type": "integer"},
+                "deployment_id": {"description": "The deployment ID", "type": "string"},
             },
             "required": ["deployment_id", "agent_spec_key", "count"],
+            "type": "object",
         },
     ),
     Tool(
         name="trustee_rotate",
         description=(
-            "Snapshot context, destroy, and redeploy an agent fresh. "
-            "Used when an agent shows context degradation."
+            "Snapshot context, destroy, and redeploy an agent fresh. Used when an agent "
+            "shows context degradation."
         ),
         inputSchema={
-            "type": "object",
             "properties": {
-                "deployment_id": {
-                    "type": "string",
-                    "description": "The deployment ID",
-                },
-                "agent_name": {
-                    "type": "string",
-                    "description": "Agent to rotate",
-                },
+                "agent_name": {"description": "Agent to rotate", "type": "string"},
+                "deployment_id": {"description": "The deployment ID", "type": "string"},
             },
             "required": ["deployment_id", "agent_name"],
+            "type": "object",
         },
     ),
     Tool(
         name="trustee_monitor",
         description=(
-            "Run a single autonomous monitoring pass over all deployments "
-            "or a specific one. Detects stale heartbeats, triggers "
-            "auto-restart/rotate, and escalates on critical degradation."
+            "Run a single autonomous monitoring pass over all deployments or a specific one. "
+            "Detects stale heartbeats, triggers auto-restart/rotate, and escalates on "
+            "critical degradation."
         ),
         inputSchema={
-            "type": "object",
             "properties": {
-                "deployment_id": {
-                    "type": "string",
-                    "description": "Specific deployment to check (omit for all)",
-                },
-                "heartbeat_timeout": {
-                    "type": "number",
-                    "description": "Seconds before heartbeat is stale (default: 120)",
-                },
                 "auto_restart": {
-                    "type": "boolean",
                     "description": "Enable auto-restart on failure (default: true)",
+                    "type": "boolean",
                 },
                 "auto_rotate": {
-                    "type": "boolean",
                     "description": "Enable auto-rotate after repeated failures (default: true)",
+                    "type": "boolean",
+                },
+                "deployment_id": {
+                    "description": "Specific deployment to check (omit for all)",
+                    "type": "string",
+                },
+                "heartbeat_timeout": {
+                    "description": "Seconds before heartbeat is stale (default: 120)",
+                    "type": "number",
                 },
             },
             "required": [],
+            "type": "object",
         },
     ),
     Tool(
         name="trustee_logs",
         description=(
-            "Get recent log lines for agents in a deployment. "
-            "Reads agent log files or falls back to audit log entries."
+            "Get recent log lines for agents in a deployment. Reads agent log files or falls "
+            "back to audit log entries."
         ),
         inputSchema={
-            "type": "object",
             "properties": {
-                "deployment_id": {
-                    "type": "string",
-                    "description": "The deployment ID",
-                },
-                "agent_name": {
-                    "type": "string",
-                    "description": "Specific agent (omit for all)",
-                },
-                "tail": {
-                    "type": "integer",
-                    "description": "Max lines per agent (default: 50)",
-                },
+                "agent_name": {"description": "Specific agent (omit for all)", "type": "string"},
+                "deployment_id": {"description": "The deployment ID", "type": "string"},
+                "tail": {"description": "Max lines per agent (default: 50)", "type": "integer"},
             },
             "required": ["deployment_id"],
+            "type": "object",
         },
     ),
     Tool(
         name="trustee_deployments",
         description=(
-            "List all active deployments with agent counts and status. "
-            "Overview of the entire team fleet."
+            "List all active deployments with agent counts and status. Overview of the "
+            "entire team fleet."
         ),
-        inputSchema={"type": "object", "properties": {}, "required": []},
+        inputSchema={"properties": {}, "required": [], "type": "object"},
     ),
 ]
 
@@ -190,23 +148,12 @@ def _get_trustee_ops():
 
 
 async def _handle_trustee_health(args: dict) -> list[TextContent]:
-    """Run health checks on a deployment, or focus on one agent/role."""
+    """Run health checks on a deployment."""
     deployment_id = args.get("deployment_id", "")
-    agent_name = args.get("agent_name")
+    if not deployment_id:
+        return _error_response("deployment_id is required")
 
     ops, _ = _get_trustee_ops()
-
-    # Focused single-agent / role surface (e.g. the security Sentinel).
-    if agent_name:
-        try:
-            result = ops.agent_health(agent_name, deployment_id=deployment_id or None)
-            return _json_response(result)
-        except ValueError as exc:
-            return _error_response(str(exc))
-
-    if not deployment_id:
-        return _error_response("deployment_id or agent_name is required")
-
     try:
         report = ops.health_report(deployment_id)
         healthy = sum(1 for r in report if r["healthy"])
@@ -364,8 +311,8 @@ async def _handle_trustee_deployments(_args: dict) -> list[TextContent]:
                             "status": (
                                 a.status.value if hasattr(a.status, "value") else str(a.status)
                             ),
-                            "host": a.host or "\u2014",
-                            "last_heartbeat": a.last_heartbeat or "\u2014",
+                            "host": a.host or "-",
+                            "last_heartbeat": a.last_heartbeat or "-",
                         }
                         for name, a in d.agents.items()
                     },

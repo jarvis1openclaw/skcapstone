@@ -6,7 +6,7 @@ import logging
 
 from mcp.types import TextContent, Tool
 
-from ._helpers import _error_response, _json_response, _shared_root
+from ._helpers import _error_response, _home, _json_response, _shared_root
 
 logger = logging.getLogger(__name__)
 
@@ -14,119 +14,93 @@ TOOLS: list[Tool] = [
     Tool(
         name="coord_status",
         description=(
-            "Show the multi-agent coordination board. Lists all tasks "
-            "with status, priority, and assignees. Shows active agents."
+            "Show the multi-agent coordination board. Lists all tasks with status, priority, "
+            "and assignees. Shows active agents."
         ),
-        inputSchema={"type": "object", "properties": {}, "required": []},
+        inputSchema={"properties": {}, "required": [], "type": "object"},
     ),
     Tool(
         name="coord_claim",
         description=(
-            "Claim a task on the coordination board for an agent. "
-            "Prevents duplicate work across agents."
+            "Claim a task on the coordination board for an agent. Prevents duplicate work "
+            "across agents."
         ),
         inputSchema={
-            "type": "object",
             "properties": {
-                "task_id": {
-                    "type": "string",
-                    "description": "The task ID to claim",
-                },
-                "agent_name": {
-                    "type": "string",
-                    "description": "Agent name claiming the task",
-                },
+                "agent_name": {"description": "Agent name claiming the task", "type": "string"},
+                "task_id": {"description": "The task ID to claim", "type": "string"},
             },
             "required": ["task_id", "agent_name"],
+            "type": "object",
         },
     ),
     Tool(
         name="coord_complete",
-        description=("Mark a task as completed on the coordination board."),
+        description="Mark a task as completed on the coordination board.",
         inputSchema={
-            "type": "object",
             "properties": {
-                "task_id": {
-                    "type": "string",
-                    "description": "The task ID to complete",
-                },
-                "agent_name": {
-                    "type": "string",
-                    "description": "Agent name completing the task",
-                },
+                "agent_name": {"description": "Agent name completing the task", "type": "string"},
+                "task_id": {"description": "The task ID to complete", "type": "string"},
             },
             "required": ["task_id", "agent_name"],
+            "type": "object",
         },
     ),
     Tool(
         name="coord_create",
-        description=("Create a new task on the coordination board."),
+        description="Create a new task on the coordination board.",
         inputSchema={
-            "type": "object",
             "properties": {
-                "title": {
-                    "type": "string",
-                    "description": "Task title",
-                },
-                "description": {
-                    "type": "string",
-                    "description": "Task description",
-                },
+                "created_by": {"description": "Creator agent name", "type": "string"},
+                "description": {"description": "Task description", "type": "string"},
                 "priority": {
-                    "type": "string",
-                    "enum": ["critical", "high", "medium", "low"],
                     "description": "Task priority (default: medium)",
-                },
-                "tags": {
-                    "type": "array",
-                    "items": {"type": "string"},
-                    "description": "Task tags",
-                },
-                "created_by": {
+                    "enum": ["critical", "high", "medium", "low"],
                     "type": "string",
-                    "description": "Creator agent name",
                 },
+                "tags": {"description": "Task tags", "items": {"type": "string"}, "type": "array"},
+                "title": {"description": "Task title", "type": "string"},
             },
             "required": ["title"],
+            "type": "object",
         },
     ),
     Tool(
         name="coord_kanban",
         description=(
-            "Show the unified kanban board over coord tasks and ITIL tickets. "
-            "Returns per-lane per-column counts, WIP status, and the active "
-            "cards (ready/doing/review). Columns are the lifecycle; swimlanes "
-            "are the card kind (feature/bug/security/expedite/change/problem)."
+            "Show the unified kanban board over coord tasks and ITIL tickets: per-lane "
+            "per-column counts, WIP status, and the active cards (ready/doing/review). "
+            "Columns are the lifecycle; swimlanes are the card kind."
         ),
-        inputSchema={"type": "object", "properties": {}, "required": []},
+        inputSchema={"properties": {}, "required": [], "type": "object"},
     ),
     Tool(
         name="coord_move",
         description=(
-            "Move a card to a kanban column (backlog/ready/doing/review/done). "
-            "The explicit move is authoritative for the card's column."
+            "Move a card to a kanban column (backlog/ready/doing/review/done). The explicit "
+            "move is authoritative for the column."
         ),
         inputSchema={
-            "type": "object",
             "properties": {
-                "task_id": {"type": "string", "description": "The card/task ID to move"},
+                "agent": {"description": "Writer name (defaults to host)", "type": "string"},
                 "column": {
-                    "type": "string",
-                    "enum": ["backlog", "ready", "doing", "review", "done"],
                     "description": "Target kanban column",
+                    "enum": ["backlog", "ready", "doing", "review", "done"],
+                    "type": "string",
                 },
-                "order": {"type": "integer", "description": "Position within the column"},
-                "agent": {"type": "string", "description": "Writer name (defaults to host)"},
+                "order": {"description": "Position within the column", "type": "integer"},
+                "task_id": {"description": "The card/task ID", "type": "string"},
             },
             "required": ["task_id", "column"],
+            "type": "object",
         },
     ),
     Tool(
         name="coord_score",
         description=(
             "Record an autopilot grade on a coordination task. Appends to "
-            "meta.autopilot.scores[] idempotently (same round+harness updates "
-            "in place). Optionally sets phase and a pr/artifact ref."
+            "meta.autopilot.scores[] idempotently (same round+harness updates in place). "
+            "Optionally sets phase and a pr/artifact ref."
         ),
         inputSchema={
             "type": "object",
@@ -149,7 +123,7 @@ async def _handle_coord_status(_args: dict) -> list[TextContent]:
     """Return coordination board status."""
     from ..coordination import Board
 
-    board = Board(_shared_root())
+    board = Board(_home())
     views = board.get_task_views()
     agents = board.load_agents()
 
@@ -197,15 +171,9 @@ async def _handle_coord_claim(args: dict) -> list[TextContent]:
     if not task_id or not agent_name:
         return _error_response("task_id and agent_name are required")
 
-    board = Board(_shared_root())
+    board = Board(_home())
     try:
         agent = board.claim_task(agent_name, task_id)
-        try:
-            from .. import activity
-
-            activity.push("task.claimed", {"task_id": task_id, "agent": agent_name})
-        except Exception as exc:
-            logger.warning("Failed to push task.claimed activity for %s: %s", task_id, exc)
         return _json_response(
             {
                 "claimed": True,
@@ -227,20 +195,31 @@ async def _handle_coord_complete(args: dict) -> list[TextContent]:
     if not task_id or not agent_name:
         return _error_response("task_id and agent_name are required")
 
-    board = Board(_shared_root())
+    board = Board(_home())
+    # board.complete_task() automatically mints Joules via _mint_joules_for_task
     agent = board.complete_task(agent_name, task_id)
-    try:
-        from .. import activity
 
-        activity.push("task.completed", {"task_id": task_id, "agent": agent_name})
+    # Report minted Joules in the response (best-effort)
+    joules_minted = 0
+    try:
+        from ..coordination import _PRIORITY_JOULE_MAP
+
+        for t in board.load_tasks():
+            if t.id == task_id:
+                _cat, _evt, joules_minted = _PRIORITY_JOULE_MAP.get(
+                    t.priority.value, ("community", "support_ticket", 50)
+                )
+                break
     except Exception as exc:
-        logger.warning("Failed to push task.completed activity for %s: %s", task_id, exc)
+        logger.warning("Failed to calculate joules for completed task %s: %s", task_id, exc)
+
     return _json_response(
         {
             "completed": True,
             "task_id": task_id,
             "agent": agent.agent,
             "completed_tasks": agent.completed_tasks,
+            "joules_minted": joules_minted,
         }
     )
 
@@ -253,7 +232,7 @@ async def _handle_coord_create(args: dict) -> list[TextContent]:
     if not title:
         return _error_response("title is required")
 
-    board = Board(_shared_root())
+    board = Board(_home())
     task = Task(
         title=title,
         description=args.get("description", ""),
@@ -376,6 +355,11 @@ async def _handle_coord_move(args: dict) -> list[TextContent]:
         pass
     return _json_response({"moved": True, "task_id": task_id, "column": column})
 
+
+# Tools present in this module but intentionally NOT published on the MCP
+# wire surface (kept for direct import / tests). Excluded by
+# collect_all_tools / collect_all_handlers.
+HIDDEN: set[str] = {"coord_score"}
 
 HANDLERS: dict = {
     "coord_status": _handle_coord_status,

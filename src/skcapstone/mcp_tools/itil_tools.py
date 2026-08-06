@@ -14,119 +14,97 @@ TOOLS: list[Tool] = [
     Tool(
         name="itil_incident_create",
         description=(
-            "Create a new ITIL incident for a service disruption. "
-            "Auto-creates a linked GTD item (next-action for sev1/sev2, inbox for sev3/sev4)."
+            "Create a new ITIL incident for a service disruption. Auto-creates a linked GTD "
+            "item (next-action for sev1/sev2, inbox for sev3/sev4)."
         ),
         inputSchema={
-            "type": "object",
             "properties": {
-                "title": {
+                "affected_services": {
+                    "description": "List of affected service names",
+                    "items": {"type": "string"},
+                    "type": "array",
+                },
+                "impact": {"description": "Business impact description", "type": "string"},
+                "managed_by": {
+                    "description": "Agent responsible for managing this incident",
                     "type": "string",
-                    "description": "Brief description of the incident",
                 },
                 "severity": {
-                    "type": "string",
-                    "enum": ["sev1", "sev2", "sev3", "sev4"],
                     "description": "Severity level (default: sev3)",
+                    "enum": ["sev1", "sev2", "sev3", "sev4"],
+                    "type": "string",
                 },
                 "source": {
-                    "type": "string",
-                    "enum": [
-                        "service_health",
-                        "dreaming",
-                        "manual",
-                        "daemon_error",
-                        "heartbeat",
-                    ],
                     "description": "Detection source (default: manual)",
-                },
-                "affected_services": {
-                    "type": "array",
-                    "items": {"type": "string"},
-                    "description": "List of affected service names",
-                },
-                "impact": {
+                    "enum": ["service_health", "dreaming", "manual", "daemon_error", "heartbeat"],
                     "type": "string",
-                    "description": "Business impact description",
-                },
-                "managed_by": {
-                    "type": "string",
-                    "description": "Agent responsible for managing this incident",
                 },
                 "tags": {
-                    "type": "array",
-                    "items": {"type": "string"},
                     "description": "Tags for categorization",
+                    "items": {"type": "string"},
+                    "type": "array",
                 },
+                "title": {"description": "Brief description of the incident", "type": "string"},
             },
             "required": ["title"],
+            "type": "object",
         },
     ),
     Tool(
         name="itil_incident_update",
         description=(
-            "Update an incident: transition status, escalate severity, "
-            "add timeline notes, or resolve. Valid status transitions "
-            "(per _INCIDENT_TRANSITIONS): "
-            "detected -> {acknowledged, escalated, resolved}; "
-            "acknowledged -> {investigating, escalated, resolved}; "
-            "investigating -> {escalated, resolved}; "
-            "escalated -> {investigating, resolved}; "
-            "resolved -> {closed}; closed is terminal. "
-            "A separate reopen event moves resolved -> investigating "
-            "(fold-only, clears resolved_at/resolution_summary)."
+            "Update an incident: transition status, escalate severity, add timeline notes, "
+            "or resolve. Valid status transitions (per _INCIDENT_TRANSITIONS): detected -> "
+            "{acknowledged, escalated, resolved}; acknowledged -> {investigating, escalated, "
+            "resolved}; investigating -> {escalated, resolved}; escalated -> {investigating, "
+            "resolved}; resolved -> {closed}; closed is terminal. A separate reopen event "
+            "moves resolved -> investigating (fold-only, clears "
+            "resolved_at/resolution_summary)."
         ),
         inputSchema={
-            "type": "object",
             "properties": {
+                "agent": {"description": "Agent making the update", "type": "string"},
                 "incident_id": {
-                    "type": "string",
                     "description": "Incident ID (e.g. inc-a1b2c3d4)",
-                },
-                "agent": {
                     "type": "string",
-                    "description": "Agent making the update",
                 },
                 "new_status": {
+                    "description": "New status",
+                    "enum": ["acknowledged", "investigating", "escalated", "resolved", "closed"],
                     "type": "string",
-                    "enum": [
-                        "acknowledged",
-                        "investigating",
-                        "escalated",
-                        "resolved",
-                        "closed",
-                    ],
-                    "description": "New status to transition to",
                 },
-                "severity": {
+                "note": {"description": "Timeline note", "type": "string"},
+                "related_problem_id": {
+                    "description": "Link to a related problem record",
                     "type": "string",
-                    "enum": ["sev1", "sev2", "sev3", "sev4"],
-                    "description": "New severity (for escalation/de-escalation)",
-                },
-                "note": {
-                    "type": "string",
-                    "description": "Timeline note",
                 },
                 "resolution_summary": {
-                    "type": "string",
                     "description": "Resolution summary (when resolving)",
-                },
-                "related_problem_id": {
                     "type": "string",
-                    "description": "Link to a related problem record",
+                },
+                "severity": {
+                    "description": "New severity",
+                    "enum": ["sev1", "sev2", "sev3", "sev4"],
+                    "type": "string",
                 },
             },
             "required": ["incident_id", "agent"],
+            "type": "object",
         },
     ),
     Tool(
         name="itil_incident_list",
-        description=("List ITIL incidents filtered by status, severity, or affected service."),
+        description="List ITIL incidents filtered by status, severity, or affected service.",
         inputSchema={
-            "type": "object",
             "properties": {
-                "status": {
+                "service": {"description": "Filter by affected service name", "type": "string"},
+                "severity": {
+                    "description": "Filter by severity",
+                    "enum": ["sev1", "sev2", "sev3", "sev4"],
                     "type": "string",
+                },
+                "status": {
+                    "description": "Filter by status",
                     "enum": [
                         "detected",
                         "acknowledged",
@@ -135,175 +113,128 @@ TOOLS: list[Tool] = [
                         "resolved",
                         "closed",
                     ],
-                    "description": "Filter by status",
-                },
-                "severity": {
                     "type": "string",
-                    "enum": ["sev1", "sev2", "sev3", "sev4"],
-                    "description": "Filter by severity",
-                },
-                "service": {
-                    "type": "string",
-                    "description": "Filter by affected service name",
                 },
             },
             "required": [],
+            "type": "object",
         },
     ),
     Tool(
         name="itil_problem_create",
         description=(
-            "Create a new ITIL problem record to investigate root cause. "
-            "Links to related incidents and auto-creates a GTD project."
+            "Create a new ITIL problem record to investigate root cause. Links to related "
+            "incidents and auto-creates a GTD project."
         ),
         inputSchema={
-            "type": "object",
             "properties": {
-                "title": {
-                    "type": "string",
-                    "description": "Problem title",
-                },
                 "managed_by": {
-                    "type": "string",
                     "description": "Agent responsible for investigation",
+                    "type": "string",
                 },
                 "related_incident_ids": {
-                    "type": "array",
-                    "items": {"type": "string"},
                     "description": "Related incident IDs",
-                },
-                "workaround": {
-                    "type": "string",
-                    "description": "Known workaround if any",
+                    "items": {"type": "string"},
+                    "type": "array",
                 },
                 "tags": {
-                    "type": "array",
-                    "items": {"type": "string"},
                     "description": "Tags for categorization",
+                    "items": {"type": "string"},
+                    "type": "array",
                 },
+                "title": {"description": "Problem title", "type": "string"},
+                "workaround": {"description": "Known workaround if any", "type": "string"},
             },
             "required": ["title"],
+            "type": "object",
         },
     ),
     Tool(
         name="itil_problem_update",
         description=(
-            "Update a problem record: transition status, set root cause, "
-            "add workaround, optionally create a KEDB entry. "
-            "Valid transitions: identified->analyzing->known_error->resolved."
+            "Update a problem record: transition status, set root cause, add workaround, "
+            "optionally create a KEDB entry. Valid transitions: "
+            "identified->analyzing->known_error->resolved."
         ),
         inputSchema={
-            "type": "object",
             "properties": {
-                "problem_id": {
-                    "type": "string",
-                    "description": "Problem ID (e.g. prb-e5f6g7h8)",
-                },
-                "agent": {
-                    "type": "string",
-                    "description": "Agent making the update",
+                "agent": {"description": "Agent making the update", "type": "string"},
+                "create_kedb": {
+                    "description": "Create a KEDB entry from this problem",
+                    "type": "boolean",
                 },
                 "new_status": {
-                    "type": "string",
+                    "description": "New status",
                     "enum": ["analyzing", "known_error", "resolved"],
-                    "description": "New status to transition to",
-                },
-                "root_cause": {
                     "type": "string",
-                    "description": "Root cause description",
                 },
-                "workaround": {
-                    "type": "string",
-                    "description": "Workaround description",
-                },
-                "note": {
-                    "type": "string",
-                    "description": "Timeline note",
-                },
-                "create_kedb": {
-                    "type": "boolean",
-                    "description": "Create a KEDB entry from this problem (default: false)",
-                },
+                "note": {"description": "Timeline note", "type": "string"},
+                "problem_id": {"description": "Problem ID (e.g. prb-e5f6g7h8)", "type": "string"},
+                "root_cause": {"description": "Root cause description", "type": "string"},
+                "workaround": {"description": "Workaround description", "type": "string"},
             },
             "required": ["problem_id", "agent"],
+            "type": "object",
         },
     ),
     Tool(
         name="itil_change_propose",
         description=(
-            "Propose a change (RFC). Standard changes auto-approve at fold "
-            "time. Operator-authored normal changes tagged 'auto-normal' "
-            "(not high-risk, with a rollback plan, no rejection) also "
-            "auto-approve. All other normal changes and every emergency "
-            "change follow the CAB path: a human approval unblocks, any "
-            "rejection blocks. Emergency changes have no timeout or "
-            "fast-path auto-approval."
+            "Propose a change (RFC). Standard changes auto-approve at fold time. "
+            "Operator-authored normal changes tagged 'auto-normal' (not high-risk, with a "
+            "rollback plan, no rejection) also auto-approve. All other normal changes and "
+            "every emergency change follow the CAB path: a human approval unblocks, any "
+            "rejection blocks. Emergency changes have no timeout or fast-path auto-approval."
         ),
         inputSchema={
-            "type": "object",
             "properties": {
-                "title": {
-                    "type": "string",
-                    "description": "Change title",
-                },
                 "change_type": {
-                    "type": "string",
-                    "enum": ["standard", "normal", "emergency"],
                     "description": "Type of change (default: normal)",
-                },
-                "risk": {
+                    "enum": ["standard", "normal", "emergency"],
                     "type": "string",
-                    "enum": ["low", "medium", "high"],
-                    "description": "Risk level (default: medium)",
-                },
-                "rollback_plan": {
-                    "type": "string",
-                    "description": "How to roll back if the change fails",
-                },
-                "test_plan": {
-                    "type": "string",
-                    "description": "How to verify the change works",
-                },
-                "managed_by": {
-                    "type": "string",
-                    "description": "Agent managing the change",
                 },
                 "implementer": {
-                    "type": "string",
                     "description": "Agent who will implement the change",
-                },
-                "related_problem_id": {
                     "type": "string",
+                },
+                "managed_by": {"description": "Agent managing the change", "type": "string"},
+                "related_problem_id": {
                     "description": "Related problem ID if applicable",
+                    "type": "string",
+                },
+                "risk": {
+                    "description": "Risk level (default: medium)",
+                    "enum": ["low", "medium", "high"],
+                    "type": "string",
+                },
+                "rollback_plan": {
+                    "description": "How to roll back if the change fails",
+                    "type": "string",
                 },
                 "tags": {
-                    "type": "array",
-                    "items": {"type": "string"},
                     "description": "Tags for categorization",
+                    "items": {"type": "string"},
+                    "type": "array",
                 },
+                "test_plan": {"description": "How to verify the change works", "type": "string"},
+                "title": {"description": "Change title", "type": "string"},
             },
             "required": ["title"],
+            "type": "object",
         },
     ),
     Tool(
         name="itil_change_update",
         description=(
-            "Update a change: transition status (implementing, deployed, "
-            "verified, failed, closed) or add timeline notes."
+            "Update a change: transition status (implementing, deployed, verified, failed, "
+            "closed) or add timeline notes."
         ),
         inputSchema={
-            "type": "object",
             "properties": {
-                "change_id": {
-                    "type": "string",
-                    "description": "Change ID (e.g. chg-i1j2k3l4)",
-                },
-                "agent": {
-                    "type": "string",
-                    "description": "Agent making the update",
-                },
+                "agent": {"description": "Agent making the update", "type": "string"},
+                "change_id": {"description": "Change ID (e.g. chg-i1j2k3l4)", "type": "string"},
                 "new_status": {
-                    "type": "string",
+                    "description": "New status",
                     "enum": [
                         "reviewing",
                         "approved",
@@ -314,70 +245,59 @@ TOOLS: list[Tool] = [
                         "failed",
                         "closed",
                     ],
-                    "description": "New status to transition to",
-                },
-                "note": {
                     "type": "string",
-                    "description": "Timeline note",
                 },
+                "note": {"description": "Timeline note", "type": "string"},
             },
             "required": ["change_id", "agent"],
+            "type": "object",
         },
     ),
     Tool(
         name="itil_cab_vote",
         description=(
-            "Submit a CAB (Change Advisory Board) vote for a proposed change. "
-            "Each agent writes its own vote file (conflict-free). "
-            "A human rejection blocks the change; a human approval unblocks it."
+            "Submit a CAB (Change Advisory Board) vote for a proposed change. Each agent "
+            "writes its own vote file (conflict-free). A human rejection blocks the change; "
+            "a human approval unblocks it."
         ),
         inputSchema={
-            "type": "object",
             "properties": {
-                "change_id": {
-                    "type": "string",
-                    "description": "Change ID to vote on",
-                },
-                "agent": {
-                    "type": "string",
-                    "description": "Voting agent name",
-                },
+                "agent": {"description": "Voting agent name", "type": "string"},
+                "change_id": {"description": "Change ID to vote on", "type": "string"},
+                "conditions": {"description": "Conditions for approval", "type": "string"},
                 "decision": {
-                    "type": "string",
-                    "enum": ["approved", "rejected", "abstain"],
                     "description": "Vote decision (default: abstain)",
-                },
-                "conditions": {
+                    "enum": ["approved", "rejected", "abstain"],
                     "type": "string",
-                    "description": "Conditions for approval (e.g. 'deploy during maintenance window')",  # noqa: E501
                 },
             },
             "required": ["change_id", "agent"],
+            "type": "object",
         },
     ),
     Tool(
         name="itil_status",
         description=(
-            "ITIL dashboard: open incidents by severity, active problems, "
-            "pending changes, and KEDB count."
+            "ITIL dashboard: open incidents by severity, active problems, pending changes, "
+            "and KEDB count."
         ),
-        inputSchema={"type": "object", "properties": {}, "required": []},
+        inputSchema={"properties": {}, "required": [], "type": "object"},
     ),
     Tool(
         name="itil_kedb_search",
         description=(
-            "Search the Known Error Database by symptoms, service name, "
-            "or keywords. Returns matching entries with workarounds."
+            "Search the Known Error Database by symptoms, service name, or keywords. Returns "
+            "matching entries with workarounds."
         ),
         inputSchema={
-            "type": "object",
             "properties": {
                 "query": {
-                    "type": "string",
                     "description": "Search query (matches title, symptoms, root cause, tags)",
-                },
+                    "type": "string",
+                }
             },
             "required": ["query"],
+            "type": "object",
         },
     ),
 ]

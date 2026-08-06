@@ -246,226 +246,197 @@ TOOLS: list[Tool] = [
     Tool(
         name="gtd_capture",
         description=(
-            "Capture an item to the GTD inbox. Quick-add anything that "
-            "needs processing later. Returns confirmation with item ID."
+            "Capture an item to the GTD inbox. Quick-add anything that needs processing "
+            "later. Returns confirmation with item ID."
         ),
         inputSchema={
-            "type": "object",
             "properties": {
-                "text": {
+                "context": {
+                    "description": "GTD context tag, e.g. @computer, @phone, @home",
                     "type": "string",
-                    "description": "The item text to capture",
-                },
-                "source": {
-                    "type": "string",
-                    "enum": ["manual", "telegram", "email", "voice"],
-                    "description": "Where this item came from (default: manual)",
                 },
                 "privacy": {
-                    "type": "string",
-                    "enum": ["private", "team", "community", "public"],
                     "description": "Privacy level (default: private)",
-                },
-                "context": {
+                    "enum": ["private", "team", "community", "public"],
                     "type": "string",
-                    "description": "GTD context tag, e.g. @computer, @phone, @home",
                 },
-                "source_ref": {
+                "source": {
+                    "description": "Where this item came from (default: manual)",
+                    "enum": ["manual", "telegram", "email", "voice"],
                     "type": "string",
-                    "description": (
-                        "Stable dedup key for this source (e.g. gmail thread id, "
-                        "incident id). When set, a repeat (source, source_ref) is "
-                        "skipped so re-captures don't duplicate. Omit for quick-adds."
-                    ),
                 },
+                "text": {"description": "The item text to capture", "type": "string"},
             },
             "required": ["text"],
+            "type": "object",
         },
     ),
     Tool(
         name="gtd_inbox",
         description=(
-            "List current GTD inbox items, sorted newest first. "
-            "Shows items awaiting clarification and processing."
+            "List current GTD inbox items, sorted newest first. Shows items awaiting "
+            "clarification and processing."
         ),
         inputSchema={
-            "type": "object",
             "properties": {
                 "limit": {
-                    "type": "integer",
                     "description": "Maximum items to return (default: 20)",
-                },
+                    "type": "integer",
+                }
             },
             "required": [],
+            "type": "object",
         },
     ),
     Tool(
         name="gtd_status",
         description=(
-            "Summary of all GTD lists: inbox count, next-actions count, "
-            "projects count, waiting-for count, someday-maybe count."
+            "Summary of all GTD lists: inbox count, next-actions count, projects count, "
+            "waiting-for count, someday-maybe count."
         ),
-        inputSchema={"type": "object", "properties": {}, "required": []},
+        inputSchema={"properties": {}, "required": [], "type": "object"},
     ),
     Tool(
         name="gtd_clarify",
         description=(
-            "Clarify and organize a GTD inbox item. Determines whether the item "
-            "is actionable, single/multi-step, and routes it to the appropriate list."
+            "Clarify and organize a GTD inbox item. Determines whether the item is "
+            "actionable, single/multi-step, and routes it to the appropriate list."
         ),
         inputSchema={
-            "type": "object",
             "properties": {
-                "item_id": {
+                "actionable": {"description": "Is this item actionable?", "type": "boolean"},
+                "context": {
+                    "description": "GTD context tag, e.g. @computer, @phone, @home",
                     "type": "string",
-                    "description": "ID of the inbox item to clarify",
                 },
-                "actionable": {
-                    "type": "boolean",
-                    "description": "Is this item actionable?",
+                "delegate_to": {"description": "Person or agent to delegate to", "type": "string"},
+                "energy": {
+                    "description": "Energy level required",
+                    "enum": ["high", "medium", "low"],
+                    "type": "string",
+                },
+                "item_id": {"description": "ID of the inbox item to clarify", "type": "string"},
+                "priority": {
+                    "description": "Priority level",
+                    "enum": ["critical", "high", "medium", "low"],
+                    "type": "string",
                 },
                 "steps": {
-                    "type": "string",
-                    "enum": ["single", "multi"],
                     "description": "Single action or multi-step project",
-                },
-                "context": {
+                    "enum": ["single", "multi"],
                     "type": "string",
-                    "description": "GTD context tag, e.g. @computer, @phone, @home",
-                },
-                "priority": {
-                    "type": "string",
-                    "enum": ["critical", "high", "medium", "low"],
-                    "description": "Priority level (default: medium)",
-                },
-                "energy": {
-                    "type": "string",
-                    "enum": ["high", "medium", "low"],
-                    "description": "Energy level required (default: medium)",
-                },
-                "delegate_to": {
-                    "type": "string",
-                    "description": "Person or agent to delegate to (routes to waiting-for)",
                 },
             },
             "required": ["item_id", "actionable"],
+            "type": "object",
         },
     ),
     Tool(
         name="gtd_move",
-        description=(
-            "Manually move a GTD item from its current list to another list. "
-            "Use for re-routing items that have already been clarified."
-        ),
+        description="Manually move a GTD item from its current list to another list.",
         inputSchema={
-            "type": "object",
             "properties": {
-                "item_id": {
-                    "type": "string",
-                    "description": "ID of the item to move",
-                },
                 "destination": {
-                    "type": "string",
-                    "enum": ["next", "project", "waiting", "someday", "reference", "done"],
                     "description": "Destination list",
+                    "enum": ["next", "project", "waiting", "someday", "reference", "done"],
+                    "type": "string",
                 },
+                "item_id": {"description": "ID of the item to move", "type": "string"},
             },
             "required": ["item_id", "destination"],
+            "type": "object",
         },
     ),
     Tool(
         name="gtd_done",
         description=(
-            "Mark any GTD item as done regardless of which list it is in. "
-            "Moves it to the archive with a completed_at timestamp."
+            "Mark any GTD item as done regardless of which list it is in. Moves it to the "
+            "archive with a completed_at timestamp."
         ),
         inputSchema={
-            "type": "object",
             "properties": {
-                "item_id": {
-                    "type": "string",
-                    "description": "ID of the item to mark as done",
-                },
+                "item_id": {"description": "ID of the item to mark as done", "type": "string"}
             },
             "required": ["item_id"],
+            "type": "object",
         },
     ),
     Tool(
         name="gtd_review",
         description=(
-            "Generate a GTD weekly review summary. Shows counts per list, "
-            "oldest items, longest-waiting items, and stale projects."
+            "Generate a GTD weekly review summary. Shows counts per list, oldest items, "
+            "longest-waiting items, and stale projects."
         ),
-        inputSchema={"type": "object", "properties": {}, "required": []},
+        inputSchema={"properties": {}, "required": [], "type": "object"},
     ),
     Tool(
         name="gtd_next",
         description=(
-            "View next actions filtered by context, energy level, and/or priority. "
-            "Returns a sorted list (highest priority first, then oldest first)."
+            "View next actions filtered by context, energy level, and/or priority. Returns a "
+            "sorted list (highest priority first, then oldest first)."
         ),
         inputSchema={
-            "type": "object",
             "properties": {
                 "context": {
-                    "type": "string",
                     "description": "Filter by GTD context tag, e.g. @computer, @phone, @home",
+                    "type": "string",
                 },
                 "energy": {
-                    "type": "string",
-                    "enum": ["high", "medium", "low"],
                     "description": "Filter by energy level required",
-                },
-                "priority": {
+                    "enum": ["high", "medium", "low"],
                     "type": "string",
-                    "enum": ["critical", "high", "medium", "low"],
-                    "description": "Filter by priority level",
                 },
                 "limit": {
-                    "type": "integer",
                     "description": "Maximum items to return (default: 10)",
+                    "type": "integer",
+                },
+                "priority": {
+                    "description": "Filter by priority level",
+                    "enum": ["critical", "high", "medium", "low"],
+                    "type": "string",
                 },
             },
             "required": [],
+            "type": "object",
         },
     ),
     Tool(
         name="gtd_projects",
         description=(
-            "View GTD projects with their status. Can filter by active or stale "
-            "(no activity in 7+ days). Shows the next action for each project."
+            "View GTD projects with their status. Can filter by active or stale (no activity "
+            "in 7+ days). Shows the next action for each project."
         ),
         inputSchema={
-            "type": "object",
             "properties": {
-                "status": {
-                    "type": "string",
-                    "enum": ["active", "stale", "all"],
-                    "description": "Filter by project status (default: all)",
-                },
                 "limit": {
-                    "type": "integer",
                     "description": "Maximum items to return (default: 10)",
+                    "type": "integer",
+                },
+                "status": {
+                    "description": "Filter by project status (default: all)",
+                    "enum": ["active", "stale", "all"],
+                    "type": "string",
                 },
             },
             "required": [],
+            "type": "object",
         },
     ),
     Tool(
         name="gtd_waiting",
         description=(
-            "View waiting-for items sorted by longest waiting first. "
-            "Shows who/what you are waiting on and how long."
+            "View waiting-for items sorted by longest waiting first. Shows who/what you are "
+            "waiting on and how long."
         ),
         inputSchema={
-            "type": "object",
             "properties": {
                 "limit": {
-                    "type": "integer",
                     "description": "Maximum items to return (default: 10)",
-                },
+                    "type": "integer",
+                }
             },
             "required": [],
+            "type": "object",
         },
     ),
 ]

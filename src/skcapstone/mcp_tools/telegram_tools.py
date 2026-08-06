@@ -16,228 +16,196 @@ TOOLS: list[Tool] = [
     Tool(
         name="telegram_import",
         description=(
-            "Import a Telegram Desktop chat export into memories. "
-            "Point to the export directory containing result.json."
+            "Import a Telegram Desktop chat export into memories. Point to the export "
+            "directory containing result.json."
         ),
         inputSchema={
-            "type": "object",
             "properties": {
-                "export_path": {
+                "chat_name": {
+                    "description": "Override the chat name from the export",
                     "type": "string",
-                    "description": "Path to Telegram export directory or result.json file",
                 },
-                "mode": {
+                "export_path": {
+                    "description": "Path to Telegram export directory or result.json file",
                     "type": "string",
-                    "description": "Import mode: 'daily' (consolidate per day) or 'message' (one per message)",  # noqa: E501
-                    "enum": ["daily", "message"],
-                    "default": "daily",
                 },
                 "min_length": {
-                    "type": "integer",
-                    "description": "Skip messages shorter than this many characters",
                     "default": 30,
+                    "description": "Skip messages shorter than this many characters",
+                    "type": "integer",
                 },
-                "chat_name": {
+                "mode": {
+                    "default": "daily",
+                    "description": (
+                        "Import mode: 'daily' (consolidate per day) or 'message' (one per message)"
+                    ),
+                    "enum": ["daily", "message"],
                     "type": "string",
-                    "description": "Override the chat name from the export",
                 },
-                "tags": {
-                    "type": "string",
-                    "description": "Extra comma-separated tags to apply",
-                },
+                "tags": {"description": "Extra comma-separated tags to apply", "type": "string"},
             },
             "required": ["export_path"],
+            "type": "object",
         },
     ),
     Tool(
         name="telegram_import_api",
         description=(
-            "Import messages directly from Telegram API using Telethon. "
-            "Requires TELEGRAM_API_ID and TELEGRAM_API_HASH env vars. "
-            "No manual export needed - connects and pulls messages directly."
+            "Import messages directly from Telegram API using Telethon. Requires "
+            "TELEGRAM_API_ID and TELEGRAM_API_HASH env vars. No manual export needed - "
+            "connects and pulls messages directly."
         ),
         inputSchema={
-            "type": "object",
             "properties": {
                 "chat": {
-                    "type": "string",
                     "description": "Chat username, title, or numeric ID to import from",
+                    "type": "string",
+                },
+                "chat_name": {"description": "Override the chat name", "type": "string"},
+                "limit": {"description": "Maximum number of messages to fetch", "type": "integer"},
+                "min_length": {
+                    "default": 30,
+                    "description": "Skip messages shorter than this many characters",
+                    "type": "integer",
                 },
                 "mode": {
-                    "type": "string",
+                    "default": "daily",
                     "description": "Import mode: 'daily' or 'message'",
                     "enum": ["daily", "message"],
-                    "default": "daily",
-                },
-                "limit": {
-                    "type": "integer",
-                    "description": "Maximum number of messages to fetch",
+                    "type": "string",
                 },
                 "since": {
-                    "type": "string",
                     "description": "Only fetch messages after this date (YYYY-MM-DD)",
-                },
-                "min_length": {
-                    "type": "integer",
-                    "description": "Skip messages shorter than this many characters",
-                    "default": 30,
-                },
-                "chat_name": {
                     "type": "string",
-                    "description": "Override the chat name",
                 },
-                "tags": {
-                    "type": "string",
-                    "description": "Extra comma-separated tags",
-                },
+                "tags": {"description": "Extra comma-separated tags", "type": "string"},
             },
             "required": ["chat"],
+            "type": "object",
         },
     ),
     Tool(
         name="telegram_setup",
         description=(
-            "Check Telegram API setup status. Reports whether Telethon is "
-            "installed, API credentials are set, and a session file exists."
+            "Check Telegram API setup status. Reports whether Telethon is installed, API "
+            "credentials are set, and a session file exists."
         ),
-        inputSchema={
-            "type": "object",
-            "properties": {},
-            "required": [],
-        },
+        inputSchema={"properties": {}, "required": [], "type": "object"},
     ),
     Tool(
         name="telegram_send",
         description=(
-            "Send a message to a Telegram chat via Telethon. "
-            "Requires TELEGRAM_API_ID and TELEGRAM_API_HASH env vars."
+            "Send a message to a Telegram chat via Telethon. Requires TELEGRAM_API_ID and "
+            "TELEGRAM_API_HASH env vars."
         ),
         inputSchema={
-            "type": "object",
             "properties": {
-                "chat": {
-                    "type": "string",
-                    "description": "Chat username, title, or numeric ID",
-                },
-                "message": {
-                    "type": "string",
-                    "description": "Message text to send",
-                },
+                "chat": {"description": "Chat username, title, or numeric ID", "type": "string"},
+                "message": {"description": "Message text to send", "type": "string"},
                 "parse_mode": {
-                    "type": "string",
-                    "enum": ["html", "markdown"],
                     "description": "Optional parse mode for message formatting",
+                    "enum": ["html", "markdown"],
+                    "type": "string",
                 },
             },
             "required": ["chat", "message"],
+            "type": "object",
         },
     ),
     Tool(
         name="telegram_poll",
         description=(
-            "Fetch recent messages from a Telegram chat (one-shot poll). "
-            "Returns messages as a JSON array. Requires Telethon API credentials."
+            "Fetch recent messages from a Telegram chat (one-shot poll). Returns messages as "
+            "a JSON array. Requires Telethon API credentials."
         ),
         inputSchema={
-            "type": "object",
             "properties": {
-                "chat": {
-                    "type": "string",
-                    "description": "Chat username, title, or numeric ID",
-                },
+                "chat": {"description": "Chat username, title, or numeric ID", "type": "string"},
                 "limit": {
-                    "type": "integer",
-                    "description": "Maximum number of messages to fetch (default: 20)",
                     "default": 20,
+                    "description": "Maximum number of messages to fetch (default: 20)",
+                    "type": "integer",
                 },
                 "since": {
-                    "type": "string",
                     "description": "Only fetch messages after this ISO date (YYYY-MM-DD)",
+                    "type": "string",
                 },
             },
             "required": ["chat"],
+            "type": "object",
         },
     ),
     Tool(
         name="telegram_catchup",
         description=(
-            "Full catch-up import from a Telegram group into ALL memory tiers. "
-            "Downloads chat via Telethon and distributes: last 24h → short-term "
-            "(individual messages), last 7 days → mid-term (daily summaries), "
-            "older → long-term (weekly summaries). Use this to rehydrate an "
-            "agent's context from a Telegram group."
+            "Full catch-up import from a Telegram group into ALL memory tiers. Downloads "
+            "chat via Telethon and distributes: last 24h → short-term, last 7 days → "
+            "mid-term, older → long-term."
         ),
         inputSchema={
-            "type": "object",
             "properties": {
                 "chat": {
-                    "type": "string",
                     "description": "Chat username, title, or numeric ID to catch up from",
+                    "type": "string",
                 },
                 "limit": {
-                    "type": "integer",
-                    "description": "Maximum total messages to fetch (default: 2000)",
                     "default": 2000,
-                },
-                "since": {
-                    "type": "string",
-                    "description": "Only fetch messages after this date (YYYY-MM-DD)",
+                    "description": "Maximum total messages to fetch (default: 2000)",
+                    "type": "integer",
                 },
                 "min_length": {
-                    "type": "integer",
-                    "description": "Skip messages shorter than this (default: 20)",
                     "default": 20,
+                    "description": "Skip messages shorter than this (default: 20)",
+                    "type": "integer",
                 },
-                "tags": {
+                "since": {
+                    "description": "Only fetch messages after this date (YYYY-MM-DD)",
                     "type": "string",
-                    "description": "Extra comma-separated tags to apply",
                 },
+                "tags": {"description": "Extra comma-separated tags to apply", "type": "string"},
             },
             "required": ["chat"],
+            "type": "object",
         },
     ),
     Tool(
         name="telegram_chats",
         description=(
-            "List available Telegram chats, groups, and channels. "
-            "Returns id, title, type, and unread count for each."
+            "List available Telegram chats, groups, and channels. Returns id, title, type, "
+            "and unread count for each."
         ),
         inputSchema={
-            "type": "object",
             "properties": {
                 "limit": {
-                    "type": "integer",
-                    "description": "Maximum number of chats to list (default: 50)",
                     "default": 50,
-                },
+                    "description": "Maximum number of chats to list (default: 50)",
+                    "type": "integer",
+                }
             },
             "required": [],
+            "type": "object",
         },
     ),
     Tool(
         name="telegram_soul_swap",
         description=(
-            "Perform a soul swap and announce it to a Telegram chat. "
-            "Switches the active soul persona using the soul_switch module, "
-            "then sends a notification message to the specified chat."
+            "Perform a soul swap and announce it to a Telegram chat. Switches the active "
+            "soul persona, then sends a notification message to the specified chat."
         ),
         inputSchema={
-            "type": "object",
             "properties": {
                 "chat": {
-                    "type": "string",
                     "description": "Chat username, title, or numeric ID to announce the swap in",
+                    "type": "string",
                 },
                 "from_soul": {
-                    "type": "string",
                     "description": "Current soul name being swapped from",
-                },
-                "to_soul": {
                     "type": "string",
-                    "description": "New soul name to swap to",
                 },
+                "to_soul": {"description": "New soul name to swap to", "type": "string"},
             },
             "required": ["chat", "from_soul", "to_soul"],
+            "type": "object",
         },
     ),
 ]

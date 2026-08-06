@@ -10,35 +10,37 @@ TOOLS: list[Tool] = [
     Tool(
         name="fortress_verify",
         description=(
-            "Verify integrity of all memories in a layer. "
-            "Checks HMAC-SHA256 seals to detect tampering."
+            "Verify integrity of all memories in a layer. Checks HMAC-SHA256 seals to detect "
+            "tampering."
         ),
         inputSchema={
-            "type": "object",
             "properties": {
                 "layer": {
+                    "description": (
+                        "Memory layer: short-term, mid-term, or long-term (omit for all)"
+                    ),
                     "type": "string",
-                    "description": "Memory layer: short-term, mid-term, or long-term (omit for all)",  # noqa: E501
-                },
+                }
             },
             "required": [],
+            "type": "object",
         },
     ),
     Tool(
         name="fortress_seal_existing",
         description=(
-            "Seal all unsealed memories with HMAC-SHA256 integrity seals. "
-            "Idempotent \u2014 already-sealed memories are skipped."
+            "Seal all unsealed memories with HMAC-SHA256 integrity seals. Idempotent - "
+            "already-sealed memories are skipped."
         ),
-        inputSchema={"type": "object", "properties": {}, "required": []},
+        inputSchema={"properties": {}, "required": [], "type": "object"},
     ),
     Tool(
         name="fortress_status",
         description=(
-            "Get Memory Fortress status: seal key source, "
-            "encryption enabled, total sealed/verified counts."
+            "Get Memory Fortress status: seal key source, encryption enabled, total "
+            "sealed/verified counts."
         ),
-        inputSchema={"type": "object", "properties": {}, "required": []},
+        inputSchema={"properties": {}, "required": [], "type": "object"},
     ),
 ]
 

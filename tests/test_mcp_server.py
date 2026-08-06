@@ -739,7 +739,7 @@ class TestSKChatTools:
     async def test_skchat_send_requires_params(self):
         """skchat_send without recipient/message returns error."""
         with patch(
-            "skcapstone.mcp_server._get_skchat_identity", return_value="capauth:test@local"
+            "skcapstone.mcp_tools.chat_tools._get_skchat_identity", return_value="capauth:test@local"
         ):
             result = await call_tool("skchat_send", {})
         parsed = _extract_json(result)
@@ -749,7 +749,7 @@ class TestSKChatTools:
     async def test_skchat_send_requires_message(self):
         """skchat_send with only recipient returns error."""
         with patch(
-            "skcapstone.mcp_server._get_skchat_identity", return_value="capauth:test@local"
+            "skcapstone.mcp_tools.chat_tools._get_skchat_identity", return_value="capauth:test@local"
         ):
             result = await call_tool("skchat_send", {"recipient": "lumina"})
         parsed = _extract_json(result)
@@ -771,8 +771,8 @@ class TestSKChatTools:
         )()
 
         with (
-            patch("skcapstone.mcp_server._get_skchat_identity", return_value="capauth:opus@local"),
-            patch("skcapstone.mcp_server._resolve_recipient", return_value="capauth:lumina@local"),
+            patch("skcapstone.mcp_tools.chat_tools._get_skchat_identity", return_value="capauth:opus@local"),
+            patch("skcapstone.mcp_tools.chat_tools._resolve_recipient", return_value="capauth:lumina@local"),
             patch("skchat.agent_comm.AgentMessenger.from_identity", return_value=mock_messenger),
         ):
             result = await call_tool(
@@ -797,8 +797,8 @@ class TestSKChatTools:
         mock_messenger = type("M", (), {"send": lambda self, **kw: capture_send(**kw)})()
 
         with (
-            patch("skcapstone.mcp_server._get_skchat_identity", return_value="capauth:opus@local"),
-            patch("skcapstone.mcp_server._resolve_recipient", return_value="capauth:jarvis@local"),
+            patch("skcapstone.mcp_tools.chat_tools._get_skchat_identity", return_value="capauth:opus@local"),
+            patch("skcapstone.mcp_tools.chat_tools._resolve_recipient", return_value="capauth:jarvis@local"),
             patch("skchat.agent_comm.AgentMessenger.from_identity", return_value=mock_messenger),
         ):
             result = await call_tool(
@@ -838,7 +838,7 @@ class TestSKChatTools:
         )()
 
         with (
-            patch("skcapstone.mcp_server._get_skchat_identity", return_value="capauth:opus@local"),
+            patch("skcapstone.mcp_tools.chat_tools._get_skchat_identity", return_value="capauth:opus@local"),
             patch("skchat.agent_comm.AgentMessenger.from_identity", return_value=mock_messenger),
         ):
             result = await call_tool("skchat_inbox", {})
@@ -875,7 +875,7 @@ class TestSKChatTools:
         )()
 
         with (
-            patch("skcapstone.mcp_server._get_skchat_identity", return_value="capauth:opus@local"),
+            patch("skcapstone.mcp_tools.chat_tools._get_skchat_identity", return_value="capauth:opus@local"),
             patch("skchat.agent_comm.AgentMessenger.from_identity", return_value=mock_messenger),
         ):
             result = await call_tool("skchat_inbox", {"limit": 10})
@@ -913,7 +913,7 @@ class TestSKChatTools:
         )()
 
         with (
-            patch("skcapstone.mcp_server._get_skchat_identity", return_value="capauth:opus@local"),
+            patch("skcapstone.mcp_tools.chat_tools._get_skchat_identity", return_value="capauth:opus@local"),
             patch("skchat.agent_comm.AgentMessenger.from_identity", return_value=mock_messenger),
         ):
             result = await call_tool("skchat_inbox", {"message_type": "finding"})
@@ -925,7 +925,7 @@ class TestSKChatTools:
     async def test_skchat_group_create_requires_name(self):
         """skchat_group_create without name returns error."""
         with patch(
-            "skcapstone.mcp_server._get_skchat_identity", return_value="capauth:opus@local"
+            "skcapstone.mcp_tools.chat_tools._get_skchat_identity", return_value="capauth:opus@local"
         ):
             result = await call_tool("skchat_group_create", {})
         parsed = _extract_json(result)
@@ -943,8 +943,8 @@ class TestSKChatTools:
         )()
 
         with (
-            patch("skcapstone.mcp_server._get_skchat_identity", return_value="capauth:opus@local"),
-            patch("skcapstone.mcp_server._get_skchat_history", return_value=mock_history),
+            patch("skcapstone.mcp_tools.chat_tools._get_skchat_identity", return_value="capauth:opus@local"),
+            patch("skcapstone.mcp_tools.chat_tools._get_skchat_history", return_value=mock_history),
         ):
             result = await call_tool(
                 "skchat_group_create",
@@ -968,10 +968,10 @@ class TestSKChatTools:
         )()
 
         with (
-            patch("skcapstone.mcp_server._get_skchat_identity", return_value="capauth:opus@local"),
-            patch("skcapstone.mcp_server._get_skchat_history", return_value=mock_history),
+            patch("skcapstone.mcp_tools.chat_tools._get_skchat_identity", return_value="capauth:opus@local"),
+            patch("skcapstone.mcp_tools.chat_tools._get_skchat_history", return_value=mock_history),
             patch(
-                "skcapstone.mcp_server._resolve_recipient",
+                "skcapstone.mcp_tools.chat_tools._resolve_recipient",
                 side_effect=lambda n: f"capauth:{n}@local",
             ),
         ):
@@ -1002,7 +1002,7 @@ class TestSKChatTools:
             },
         )()
 
-        with patch("skcapstone.mcp_server._get_skchat_history", return_value=mock_history):
+        with patch("skcapstone.mcp_tools.chat_tools._get_skchat_history", return_value=mock_history):
             result = await call_tool(
                 "skchat_group_send",
                 {"group_id": "nonexistent", "message": "Hello"},
@@ -1022,7 +1022,7 @@ class TestSKChatTools:
             },
         )()
 
-        with patch("skcapstone.mcp_server._get_skchat_history", return_value=mock_history):
+        with patch("skcapstone.mcp_tools.chat_tools._get_skchat_history", return_value=mock_history):
             result = await call_tool(
                 "skchat_group_send",
                 {"group_id": "thread-123", "message": "Hello"},
@@ -1070,8 +1070,8 @@ class TestSKChatTools:
         )()
 
         with (
-            patch("skcapstone.mcp_server._get_skchat_identity", return_value="capauth:opus@local"),
-            patch("skcapstone.mcp_server._get_skchat_history", return_value=mock_history),
+            patch("skcapstone.mcp_tools.chat_tools._get_skchat_identity", return_value="capauth:opus@local"),
+            patch("skcapstone.mcp_tools.chat_tools._get_skchat_history", return_value=mock_history),
         ):
             result = await call_tool(
                 "skchat_group_send",
