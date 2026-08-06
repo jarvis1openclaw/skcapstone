@@ -553,6 +553,116 @@ class TestDefaultModelsAreReal:
 # ---------------------------------------------------------------------------
 
 
+class TestRegistryRoleFold:
+    """CR-5.1: model_router folds tier -> concrete model onto skmodels registry
+    ROLES via a thin ``resolve_role`` resolver.
+
+    Carries the acceptance of the superseded cards:
+      - cf1c088c (model-routing-truth): every role the router emits is a REAL
+        registry role that resolves to a concrete backend (no dangling alias),
+        and the ``sk-auto`` marker safe-degrades for direct Python callers.
+      - 258fab9e (central model registry): the registry is the single source;
+        an unknown role / unreadable registry degrades safely, never crashes,
+        and the local fallback keeps every tier servable.
+    """
+
+    _REG = textwrap.dedent("""\
+        backends:
+          ornith-big:
+            url: http://192.168.0.100:8082/v1
+            model: ornith-1.0-35b
+            kind: chat
+          opus:
+            url: http://192.168.0.41:18780/v1
+            model: claude-opus-4-8
+            kind: chat
+        roles:
+          sk-default: ornith-big
+          sk-code: ornith-big
+          sk-heavy: opus
+          sk-auto: auto
+        defaults:
+          role: sk-default
+        """)
+
+    @pytest.fixture()
+    def registry(self, tmp_path, monkeypatch):
+        """Point skos.models at a host-independent fixture registry."""
+        skm = pytest.importorskip("skos.models")
+        reg = tmp_path / "registry.yaml"
+        reg.write_text(self._REG, encoding="utf-8")
+        monkeypatch.setenv("SKMODELS_REGISTRY", str(reg))
+        skm._invalidate()
+        yield skm
+        skm._invalidate()
+
+    def test_default_tier_roles_all_resolve_to_a_real_backend(self, registry):
+        # cf1c088c: alias validation. Every role emitted by default() resolves
+        # to a concrete registry backend model (not a dangling alias).
+        from skcapstone.model_router import ModelRouterConfig, resolve_role
+
+        cfg = ModelRouterConfig.default()
+        for tier in (
+            ModelTier.FAST,
+            ModelTier.CODE,
+            ModelTier.REASON,
+            ModelTier.NUANCE,
+            ModelTier.LOCAL,
+        ):
+            role = cfg.tier_models[tier.value][0]
+            model = resolve_role(role)
+            assert model, f"{tier.value} role {role!r} must resolve to a real backend"
+            assert model == "ornith-1.0-35b"
+
+    def test_resolve_role_reads_the_registry_context(self, registry):
+        # The same resolver the gateway uses resolves an agent:<name> context.
+        registry.set_context("agent:lumina", "sk-heavy")
+        from skcapstone.model_router import resolve_role
+
+        assert resolve_role(context="agent:lumina") == "claude-opus-4-8"
+
+    def test_sk_auto_safe_degrades_for_direct_callers(self, registry):
+        # cf1c088c: sk-auto is a gateway-only marker; a Python caller must never
+        # get the un-routable "auto"; it degrades to the default role's backend.
+        from skcapstone.model_router import resolve_role
+
+        assert resolve_role("sk-auto") == "ornith-1.0-35b"
+
+    def test_unknown_role_safe_degrades_not_raises(self, registry):
+        # 258fab9e safe defaults: an unknown role falls back to the default role.
+        from skcapstone.model_router import resolve_role
+
+        assert resolve_role("no-such-role") == "ornith-1.0-35b"
+
+    def test_missing_registry_returns_none_never_crashes(self, tmp_path, monkeypatch):
+        # 258fab9e: an unreadable/missing registry degrades to None (the caller
+        # then uses the tier's local fallback), never an exception.
+        skm = pytest.importorskip("skos.models")
+        monkeypatch.setenv("SKMODELS_REGISTRY", str(tmp_path / "does-not-exist.yaml"))
+        skm._invalidate()
+        from skcapstone.model_router import resolve_role
+
+        assert resolve_role("sk-default") is None
+        skm._invalidate()
+
+    def test_every_tier_has_a_local_fallback(self):
+        # 258fab9e: the safe default. Every tier keeps a genuinely-pulled local
+        # model as its last resort so a gateway outage cannot 404 the tier.
+        from skcapstone.model_router import _LOCAL_FALLBACK, ModelRouterConfig
+
+        cfg = ModelRouterConfig.default()
+        for tier in (
+            ModelTier.FAST,
+            ModelTier.CODE,
+            ModelTier.REASON,
+            ModelTier.NUANCE,
+            ModelTier.LOCAL,
+        ):
+            models = cfg.tier_models[tier.value]
+            assert len(models) >= 2
+            assert models[-1] == _LOCAL_FALLBACK
+
+
 class TestEdgeCases:
     """Boundary conditions and unusual inputs."""
 

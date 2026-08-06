@@ -23,6 +23,72 @@ from pydantic import BaseModel, Field
 from skcapstone.blueprints.schema import ModelTier
 
 # ---------------------------------------------------------------------------
+# Registry-backed resolution (CR-5.1: skmodels registry roles are the source)
+# ---------------------------------------------------------------------------
+#
+# model_router's job is to classify a task into a TIER. The CONCRETE model for a
+# tier is NOT owned here: it is a skmodels registry ROLE (``sk-default``,
+# ``sk-code``, …), the SAME registry the gateway routes from. So this module is a
+# thin resolver over ``skos.models``: there is no second model table to drift.
+#
+# The tier -> role map below is the single knob. Every tier currently unifies on
+# ``sk-default`` (the SKGateway auto-router role that reaches ornith-big/35B via
+# SKC_LOCAL_OPENAI_URL -> :18780, with 3-box failover), matching the live
+# 2026-08-01 behaviour; per-request DIFFICULTY tiering is done fleet-side by the
+# registry ``sk-auto`` role in the gateway. Point a tier at a different role here
+# (or in the registry) to fold real per-tier routing back in (one edit, no new
+# table). ``_LOCAL_FALLBACK`` is a genuinely-pulled Ollama model appended after
+# the role so a role that cannot resolve still cascades to something servable.
+
+_TIER_ROLE: Dict[str, str] = {
+    ModelTier.FAST.value: "sk-default",
+    ModelTier.CODE.value: "sk-default",
+    ModelTier.REASON.value: "sk-default",
+    ModelTier.NUANCE.value: "sk-default",
+    ModelTier.LOCAL.value: "sk-default",
+}
+
+_LOCAL_FALLBACK = "gemma3:1b"
+
+
+def resolve_role(
+    role: Optional[str] = None,
+    *,
+    context: Optional[str] = None,
+    path: Optional[str] = None,
+) -> Optional[str]:
+    """Resolve a registry ROLE (or an ``agent:<name>`` context) to a concrete
+    backend model via ``skos.models`` (the single source of truth the gateway
+    also routes from).
+
+    This is the thin resolver the CR-5.1 fold leaves in place of a private model
+    table. It NEVER raises:
+
+    - ``skos.models`` not importable / registry unreadable -> ``None``;
+    - an unknown role safe-degrades to the registry default role (``skos.models``
+      already does this) and the ``sk-auto`` marker degrades to ``sk-default``
+      for direct callers, so a Python caller never gets the un-routable ``auto``.
+
+    Args:
+        role: A registry role name (e.g. ``"sk-default"``, ``"sk-code"``).
+        context: A context key (e.g. ``"agent:lumina"``); wins over *role*.
+        path: Optional registry path override (tests).
+
+    Returns:
+        The concrete model id (e.g. ``"ornith-1.0-35b"``) or ``None``.
+    """
+    try:
+        import skos.models as _skm
+    except Exception:
+        return None
+    try:
+        backend = _skm.resolve(role=role, context=context, path=path)
+    except Exception:
+        return None
+    return (getattr(backend, "model", None) or None)
+
+
+# ---------------------------------------------------------------------------
 # Supporting models
 # ---------------------------------------------------------------------------
 
@@ -118,20 +184,23 @@ class ModelRouterConfig(BaseModel):
             the four primary tag-rule groups.
         """
         return cls(
-            # 2026-08-01: default every tier to the sovereign SKGateway role
-            # ``sk-default`` (routes to ornith-big / 35B, with 3-box failover),
-            # then fall back to local ``gemma3:1b`` only if SKGateway is down.
-            # The previous cloud tiers (claude-sonnet/opus, grok-3, kimi) all
-            # needed provider API keys the daemon does not carry, so every call
-            # cascaded to the tiny gemma3:1b. sk-default reaches SKGateway via the
-            # _local_callback OpenAI path (SKC_LOCAL_OPENAI_URL) because "sk-default"
-            # is in _OLLAMA_MODEL_PATTERNS.
+            # CR-5.1: tier -> model is folded onto the skmodels registry ROLES
+            # (``_TIER_ROLE``, the single knob), NOT a private table here. Every
+            # tier resolves through its registry role, then falls back to a local
+            # ``gemma3:1b`` only if the role/gateway is unreachable. The role name
+            # is emitted verbatim (not pre-resolved) so it reaches SKGateway via
+            # the _local_callback OpenAI path (SKC_LOCAL_OPENAI_URL -> :18780),
+            # where ``sk-auto`` does per-request difficulty tiering fleet-side;
+            # "sk-default" is in _OLLAMA_MODEL_PATTERNS so it routes there.
             tier_models={
-                ModelTier.FAST.value: ["sk-default", "gemma3:1b"],
-                ModelTier.CODE.value: ["sk-default", "gemma3:1b"],
-                ModelTier.REASON.value: ["sk-default", "gemma3:1b"],
-                ModelTier.NUANCE.value: ["sk-default", "gemma3:1b"],
-                ModelTier.LOCAL.value: ["sk-default", "gemma3:1b"],
+                tier: [_TIER_ROLE[tier], _LOCAL_FALLBACK]
+                for tier in (
+                    ModelTier.FAST.value,
+                    ModelTier.CODE.value,
+                    ModelTier.REASON.value,
+                    ModelTier.NUANCE.value,
+                    ModelTier.LOCAL.value,
+                )
             },
             tag_rules=[
                 TagRule(

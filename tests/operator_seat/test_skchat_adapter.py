@@ -125,13 +125,37 @@ def test_default_probe_fails_safe(monkeypatch, tmp_path):
     monkeypatch.setattr("urllib.request.urlopen", _boom_urlopen)
     monkeypatch.delenv("SKCHAT_DATAPLANE_AUTH", raising=False)
     monkeypatch.setenv("SKCHAT_BRIDGE_HEARTBEAT", str(tmp_path / "no-heartbeat.ts"))
-    monkeypatch.setenv("SKCOMMS_OUTBOX", str(tmp_path / "empty-outbox"))
+    # Pin the UNIFIED skcomms retry store at an empty temp dir so the depth
+    # probe is hermetic (coord eb659f61 / CR-5.3: depth reflects the unified
+    # PersistentOutbox, not the legacy ~/.skcomms/outbox spool).
+    monkeypatch.setenv("SKCOMMS_OUTBOX_DIR", str(tmp_path / "empty-outbox"))
     st = skchat_adapter._default_probe()
     assert st["daemon_ready"] is True
     assert st["bridge_alive"] is True
     assert st["auth_enforced"] is True
     assert st["outbox_depth"] == 0
     assert st["calling_ready"] is True
+
+
+def test_default_probe_depth_reflects_unified_outbox(monkeypatch, tmp_path):
+    # OutboxBounded/outbox_depth must reflect the UNIFIED skcomms PersistentOutbox
+    # pending queue (coord eb659f61 / CR-5.3), not the legacy ~/.skcomms/outbox.
+    def _boom_urlopen(*a, **k):
+        raise OSError("skchat down")
+
+    monkeypatch.setattr("urllib.request.urlopen", _boom_urlopen)
+    monkeypatch.setenv("SKCHAT_BRIDGE_HEARTBEAT", str(tmp_path / "no-heartbeat.ts"))
+    outbox = tmp_path / "unified-outbox"
+    monkeypatch.setenv("SKCOMMS_OUTBOX_DIR", str(outbox))
+    pending = outbox / "pending"
+    pending.mkdir(parents=True)
+    for i in range(3):
+        (pending / f"{i}.json").write_text("{}")
+    # A non-*.json file and a subdir must not be counted as pending entries.
+    (pending / "notes.txt").write_text("x")
+    (pending / "sub").mkdir()
+    assert skchat_adapter._unified_outbox_depth() == 3
+    assert skchat_adapter._default_probe()["outbox_depth"] == 3
 
 
 # --- act verb ----------------------------------------------------------------

@@ -5,8 +5,11 @@ apps: skchat plugs in by exposing the same three verbs the fleet does.
 
 The observe probes are REAL and injectable (tests never touch a live skchat):
 the daemon health endpoint, the telegram bridge poll age (the silent-wedge
-detector), the real outbox file count (the flood detector that would have caught
-the 1.5M-tombstone incident), the dataplane-auth state, and the calling backend's
+detector), the pending depth of the UNIFIED skcomms PersistentOutbox retry store
+(coord eb659f61 / roadmap CR-5.3, read through the one canonical probe
+``skcomms.operator_probe.queue_depth`` so OutboxBounded here and skcomms'
+QueueDrained share a single backlog metric), the dataplane-auth state, and the
+calling backend's
 WebRTC signaling health (CallingReady, spec 2.3's deferred fifth condition,
 grounded in the daemon's ``webrtc_signaling`` health field). Every probe fails
 SAFE (reports healthy) rather than raising a false alarm when skchat is
@@ -112,6 +115,25 @@ def _count_outbox(outbox_dir: str | Path) -> int:
     return sum(1 for f in p.iterdir() if f.is_file())
 
 
+def _unified_outbox_depth() -> int:
+    """Depth of the unified skcomms PersistentOutbox: the single backlog metric.
+
+    Delegates to the one canonical probe ``skcomms.operator_probe.queue_depth``
+    (coord eb659f61 / roadmap CR-5.3), so Atlas's ``OutboxBounded`` condition and
+    the skchat operator CLI read the SAME consolidated retry store
+    (``retry_outbox_dir()/pending``, honoring ``SKCOMMS_OUTBOX_DIR``) instead of
+    the legacy ``~/.skcomms/outbox`` transport spool. Fails SAFE (returns 0) when
+    skcomms is not importable, so a probe failure never raises a false 'outbox
+    flooded' alarm.
+    """
+    try:
+        from skcomms.operator_probe import queue_depth
+
+        return queue_depth()
+    except Exception:
+        return 0
+
+
 def _calling_ready(webrtc_signaling) -> bool:
     """CallingReady rule: the calling backend is down ONLY when the daemon's
     WebRTC signaling health reads ``down`` (the transport is not wired). ``ok``,
@@ -123,10 +145,6 @@ def _calling_ready(webrtc_signaling) -> bool:
 
 
 # --- real signal readers (each fails safe = healthy) -------------------------
-
-
-def _outbox_dir() -> str:
-    return os.environ.get("SKCOMMS_OUTBOX", str(Path.home() / ".skcomms" / "outbox"))
 
 
 def _probe_daemon_health() -> tuple[bool, bool | None, bool]:
@@ -196,7 +214,7 @@ def _default_probe() -> dict:
     return {
         "daemon_ready": daemon_ready,
         "bridge_alive": _bridge_alive(poll_age, daemon_ready),
-        "outbox_depth": _count_outbox(_outbox_dir()),
+        "outbox_depth": _unified_outbox_depth(),
         "outbox_limit": _OUTBOX_LIMIT,
         # Unknown auth fails safe to enforced (True): never cry a false 'auth off'.
         "auth_enforced": True if auth is None else bool(auth),
