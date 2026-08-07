@@ -50,7 +50,7 @@ _ACTIONS = [
         "reversible": True,
         "blast_radius": "low",
         "runbook": "systemctl --user restart skcode-hostd and verify HostdReady",
-        "kedb_refs": ["ke-skcode-hostd-down"],
+        "kedb_refs": ["ke-hostd-wedge"],
     },
     {
         "name": "archive-stale-session",
@@ -58,7 +58,7 @@ _ACTIONS = [
         "reversible": True,
         "blast_radius": "low",
         "runbook": "archive a wedged session (stop + persist, never a destructive kill)",
-        "kedb_refs": ["ke-skcode-session-wedge"],
+        "kedb_refs": ["ke-session-runaway"],
     },
     {
         "name": "kill-runaway-session",
@@ -66,7 +66,7 @@ _ACTIONS = [
         "reversible": False,
         "blast_radius": "low",
         "runbook": "kill a runaway session (irreversible: escalates as MAJOR with options)",
-        "kedb_refs": ["ke-skcode-session-wedge"],
+        "kedb_refs": ["ke-session-runaway"],
     },
     {
         "name": "pause-dispatch",

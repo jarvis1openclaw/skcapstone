@@ -78,8 +78,8 @@ OPERATOR_KEDB_SEEDS: list[dict] = [
         "tags": ["operator", "skchat", "skcomms", "outbox"],
     },
     {
-        "id": "ke-skcode-hostd-down",
-        "title": "skcode-hostd down",
+        "id": "ke-hostd-wedge",
+        "title": "skcode-hostd wedge / down",
         "symptoms": [
             "HostdReady is False",
             "the skcode-hostd API (http://localhost:9394/api/v1/hosts/self) does "
@@ -90,7 +90,7 @@ OPERATOR_KEDB_SEEDS: list[dict] = [
         "tags": ["operator", "skcode", "hostd"],
     },
     {
-        "id": "ke-skcode-session-wedge",
+        "id": "ke-session-runaway",
         "title": "skcode session wedge / runaway",
         "symptoms": [
             "SessionsHealthy is False",
