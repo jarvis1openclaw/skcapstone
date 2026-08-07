@@ -24,6 +24,7 @@ from ..fleet import store
 from ..fleet.operatorapp_controller import operatorapp_rows
 from ..fleet.paths import default_paths
 from . import (
+    act_dispatch,
     bootstrap,
     brief_publish,
     decisions,
@@ -80,6 +81,18 @@ def operator() -> None:
     help="Enable actuation: apply auto-normal fixes via the fleet act verb (majors still park).",
 )
 @click.option(
+    "--honor",
+    "honor_flag",
+    is_flag=True,
+    default=False,
+    envvar="SKOPERATOR_HONOR",
+    help=(
+        "CR-9.1 autonomy step 1: physically actuate auto STANDARD-catalog fixes on "
+        "the fleet + skchat adapters (else --execute only writes signed annotations). "
+        "OFF by default; the one-line Chef flip. Ignored unless --execute is set."
+    ),
+)
+@click.option(
     "--notify",
     "notify_flag",
     is_flag=True,
@@ -105,6 +118,7 @@ def operator() -> None:
 )
 def run_cmd(
     execute: bool,
+    honor_flag: bool,
     notify_flag: bool,
     publish_dir: str | None,
     no_publish: bool,
@@ -114,6 +128,12 @@ def run_cmd(
     paths = default_paths()
 
     now = _now_iso()
+
+    # Honoring only matters when execution is on: it is what turns an applied
+    # proposal from a signed annotation (fleet_act) into a real STANDARD-catalog
+    # actuation on the fleet + skchat adapters. OFF by default (the report/annotate
+    # deployment running today), so this pass is byte-identical unless Chef flips it.
+    honor = bool(honor_flag) and bool(execute)
 
     # Idempotent startup bootstrap: keep the Operatorapp set and the KEDB current
     # before the first pass, so registrations and known-error entries are never
@@ -131,17 +151,31 @@ def run_cmd(
         if boot.get("discovered"):
             click.echo(f"discovered: {', '.join(boot['discovered'])}")
 
+    # The action catalog the brain reasons over and the planner classifies against.
+    # Honoring widens it to fleet + skchat so skchat self-heals can be proposed and
+    # planned; without honoring it stays the fleet-only catalog (unchanged today).
+    explain = act_dispatch.merged_explain() if honor else fleet_adapter.fleet_explain()
+
     def _propose(brief, route):
         if brief.get("quiet"):
             return []
         model = "ornith-1.0-35b" if route == "ornith" else "sk-default"
         chat = functools.partial(proposer.default_chat, base_url=_gateway(), model=model)
-        return proposer.propose(brief, fleet_adapter.fleet_explain(), chat=chat)
+        return proposer.propose(brief, explain, chat=chat)
 
     apply_fn = None
-    if execute:
+    if execute and honor:
+        # CR-9.1: physically actuate auto STANDARD-catalog fixes (fleet + skchat),
+        # each recorded as an ITIL change first. Freeze is enforced by the act verbs.
+        from .. import SHARED_ROOT
+        from ..itil import ITILManager
 
-        def apply_fn(prop, cls):  # noqa: E731 - the fleet act verb, only when --execute
+        apply_fn = act_dispatch.build_apply_fn(
+            paths, now, itil=ITILManager(SHARED_ROOT), emit=click.echo
+        )
+    elif execute:
+
+        def apply_fn(prop, cls):  # noqa: E731 - annotation-only act verb (no --honor)
             return fleet_adapter.fleet_act(paths, prop, cls, now_iso=now)
 
     # Manifest-driven observe adapters (OPS0.3): empty when discovery is gated off
@@ -153,12 +187,15 @@ def run_cmd(
         paths,
         now_iso=now,
         propose=_propose,
+        explain=explain,
         decisions_dir=_decisions_dir(paths),
         apply_fn=apply_fn,
         execute=execute,
         emit=click.echo,
         extra_observers=extra_observers,
     )
+    if honor:
+        click.echo("honor: ON (CR-9.1 step-1 physical actuation: fleet + skchat)")
     if res.get("outcomes"):
         click.echo(f"({len(res['outcomes'])} proposal(s); parked escalations await approval)")
 
