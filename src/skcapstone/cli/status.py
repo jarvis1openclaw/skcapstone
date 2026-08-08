@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import contextlib
+import io
 import json
 import logging
 import os
@@ -593,18 +595,39 @@ def register_status_commands(main: click.Group) -> None:
         from ..doctor import run_diagnostics, run_fixes
 
         home_path = Path(home).expanduser()
-        report = run_diagnostics(home_path, deep=deep)
 
-        if category:
-            wanted = set(category)
-            report.checks = [c for c in report.checks if c.category in wanted]
+        def _quiet():
+            """Swallow stdout while --json-out is in effect.
+
+            --json-out promises machine-readable output, so nothing else may
+            reach stdout. Running the checks imports optional third-party deps,
+            and at least one (liboqs-python) prints a banner at import time,
+            which lands ahead of the JSON and makes json.load() fail on the
+            very first character. In human mode, leave stdout alone.
+            """
+            return (
+                contextlib.redirect_stdout(io.StringIO()) if json_out else contextlib.nullcontext()
+            )
+
+        def _diagnose():
+            with _quiet():
+                r = run_diagnostics(home_path, deep=deep)
+            # Reapply the filter after every run, including the post-fix
+            # re-run: filtering only once would silently widen --strict back
+            # to the whole report the moment --fix was passed.
+            if category:
+                wanted = set(category)
+                r.checks = [c for c in r.checks if c.category in wanted]
+            return r
+
+        report = _diagnose()
 
         # ── Auto-fix pass ─────────────────────────────────────────────────
         fix_results = []
         if auto_fix and report.failed_count > 0:
-            fix_results = run_fixes(report, home_path)
-            # Re-run diagnostics so the output reflects the fixed state.
-            report = run_diagnostics(home_path, deep=deep)
+            with _quiet():
+                fix_results = run_fixes(report, home_path)
+            report = _diagnose()
 
         if json_out:
             data = report.to_dict()

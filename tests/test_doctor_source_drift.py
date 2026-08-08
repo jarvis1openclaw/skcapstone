@@ -374,3 +374,48 @@ class TestStrictAndCategory:
         checks = [Check(name="source:a", description="a", passed=False, category="source")]
         result, _ = self._invoke(monkeypatch, checks, "--category", "source")
         assert result.exit_code == 0
+
+
+class TestJsonOutIsActuallyMachineReadable:
+    """--json-out documents itself as machine-readable. Optional third-party
+    deps imported during the checks print banners at import time (liboqs-python
+    prints one), which landed ahead of the JSON and made json.load() fail on
+    the very first character."""
+
+    def test_a_banner_printed_during_checks_does_not_corrupt_the_json(self, monkeypatch):
+        import json as _json
+
+        from click.testing import CliRunner
+
+        from skcapstone.cli import main
+        from skcapstone.doctor import DiagnosticReport
+
+        def _noisy(home, deep=False):
+            print("liboqs-python faulthandler is disabled")
+            return DiagnosticReport(
+                checks=[Check(name="source:a", description="a", passed=True, category="source")]
+            )
+
+        monkeypatch.setattr("skcapstone.doctor.run_diagnostics", _noisy)
+        result = CliRunner().invoke(main, ["doctor", "--category", "source", "--json-out"])
+
+        data = _json.loads(result.output)  # would raise before the fix
+        assert data["total"] == 1
+
+    def test_human_output_is_left_alone(self, monkeypatch):
+        """Only --json-out has a purity contract; do not silently swallow
+        output a human asked to see."""
+        from click.testing import CliRunner
+
+        from skcapstone.cli import main
+        from skcapstone.doctor import DiagnosticReport
+
+        def _noisy(home, deep=False):
+            print("SOME-BACKEND-BANNER")
+            return DiagnosticReport(
+                checks=[Check(name="source:a", description="a", passed=True, category="source")]
+            )
+
+        monkeypatch.setattr("skcapstone.doctor.run_diagnostics", _noisy)
+        result = CliRunner().invoke(main, ["doctor", "--category", "source"])
+        assert "SOME-BACKEND-BANNER" in result.output
