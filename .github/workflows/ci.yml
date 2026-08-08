@@ -7,11 +7,11 @@ name: CI
 # the pytest.yml `unit` jobs, not anything in this file.
 #
 # This workflow keeps:
-#   - lint: advisory only (job-level continue-on-error). It runs black and
-#     ruff HONESTLY (no `|| true`), so failures show red on the job, but it
-#     does not block merges yet. Pre-existing debt as of 2026-07-17:
-#     ~1019 ruff errors, ~369 files needing black. Once the debt is paid,
-#     remove continue-on-error to make lint blocking.
+#   - lint: runs black and ruff HONESTLY (no `|| true`). The 2026-07-17 debt
+#     (~1019 ruff errors, ~369 files needing black) is now PAID: ruff is clean
+#     and black formats everything. Both tools are PINNED, because unpinned
+#     they re-red this job on every upstream release with no commit from us in
+#     between, which is exactly how it went red again after 2026-08-07.
 #   - build: wheel/sdist build + twine check (blocking).
 
 on:
@@ -26,16 +26,13 @@ permissions:
 jobs:
   lint:
     runs-on: ubuntu-latest
-    # Advisory while pre-existing lint debt is paid down. Failures are
-    # visible (red job) but do not fail the workflow run.
-    continue-on-error: true
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
       - name: Install lint tools
-        run: pip install black ruff
+        run: pip install "black==26.5.1" "ruff==0.15.4"
       - name: Check formatting
         run: black --check src/ tests/
       - name: Lint

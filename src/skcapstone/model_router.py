@@ -85,7 +85,7 @@ def resolve_role(
         backend = _skm.resolve(role=role, context=context, path=path)
     except Exception:
         return None
-    return (getattr(backend, "model", None) or None)
+    return getattr(backend, "model", None) or None
 
 
 # ---------------------------------------------------------------------------

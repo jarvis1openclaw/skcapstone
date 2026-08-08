@@ -5,6 +5,7 @@
 sites in _cli_monolith, and the dashboard tests all resolve to the real
 implementation byte-identically. New code should import from ``skdashboard``.
 """
+
 from __future__ import annotations
 
 import sys
