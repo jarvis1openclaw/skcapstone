@@ -101,9 +101,7 @@ def test_gameday_wedge_detected_and_self_heal_computed_dry(monkeypatch, tmp_path
         calls.append(cmd)
         return subprocess.CompletedProcess(cmd, 0, "", "")
 
-    apply_fn = act_dispatch.build_apply_fn(
-        _paths(tmp_path), "drill", runner=capture, itil=None
-    )
+    apply_fn = act_dispatch.build_apply_fn(_paths(tmp_path), "drill", runner=capture, itil=None)
     result = apply_fn(proposal, planned[0]["classification"])
     assert result["adapter"] == "skchat"
     assert result["actuation"]["performed"] is True

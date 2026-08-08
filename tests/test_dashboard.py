@@ -236,7 +236,8 @@ class TestHTTPServer:
         server, port = dashboard_server
         conn = HTTPConnection("127.0.0.1", port, timeout=5)
         conn.request(
-            "POST", "/api/models/advertise",
+            "POST",
+            "/api/models/advertise",
             body=json.dumps({"enabled": "not-a-list"}),
             headers={"Content-Type": "application/json"},
         )

@@ -5,6 +5,7 @@ module object via sys.modules), so every importer, attribute access, and
 ``monkeypatch.setattr`` on a class OR a module global reaches the real
 implementation byte-identically. New code should import from ``skcoord`` directly.
 """
+
 from __future__ import annotations
 
 import sys
