@@ -49,6 +49,10 @@ dependencies = [
 dashboard = [
     "starlette>=0.40",
     "uvicorn>=0.30",
+    # The dashboard modules moved out in the CR-4.3 split and skcapstone's
+    # dashboard_* modules are now transparent re-export shims over them, so this
+    # extra has been shipping without the package it exists to install.
+    "skdashboard>=0.1.0",
 ]
 identity = [
     "capauth>=0.2.5",
@@ -89,6 +93,7 @@ all = [
     "skwhisper>=0.1.0",
     "skchat-sovereign>=0.1.1",
     "skcomms>=0.1.0",
+    "skdashboard>=0.1.0",
     "fusepy>=3.0.1",
     "boto3>=1.34",
     "google-cloud-compute>=1.18",

@@ -48,6 +48,18 @@ jobs:
           python -m pip install --upgrade pip
           pip install -e ".[all,dev]"
 
+      # The extracted siblings (CR-4.1/4.3) are declared deps, so the step above
+      # already pulls them from PyPI. Reinstall from git main so CI tests the
+      # code that ships TOGETHER: a published wheel can lag its repo, and
+      # skcapstone's dashboard_*/coordination modules are transparent re-export
+      # shims, so a stale sibling silently changes what the shims re-export.
+      # --no-deps keeps this from dragging anything over the checkout under test.
+      - name: Install extracted siblings from source
+        run: |
+          pip install --force-reinstall --no-deps --no-cache-dir \
+            "skcoord @ git+https://github.com/smilinTux/skcoord@master" \
+            "skdashboard @ git+https://github.com/smilinTux/skdashboard@master"
+
       - name: Run unit tests (exclude integration + e2e via markers)
         run: |
           python -m pytest tests/ \
