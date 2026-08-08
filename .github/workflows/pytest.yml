@@ -54,11 +54,15 @@ jobs:
       # skcapstone's dashboard_*/coordination modules are transparent re-export
       # shims, so a stale sibling silently changes what the shims re-export.
       # --no-deps keeps this from dragging anything over the checkout under test.
+      # No @ref on purpose: pip then clones whatever the DEFAULT branch is.
+      # Pinning @master broke this job the day those repos were renamed to
+      # main, and a CI step that breaks on someone else's rename is a step
+      # that will break again.
       - name: Install extracted siblings from source
         run: |
           pip install --force-reinstall --no-deps --no-cache-dir \
-            "skcoord @ git+https://github.com/smilinTux/skcoord@master" \
-            "skdashboard @ git+https://github.com/smilinTux/skdashboard@master"
+            "skcoord @ git+https://github.com/smilinTux/skcoord" \
+            "skdashboard @ git+https://github.com/smilinTux/skdashboard"
 
       - name: Run unit tests (exclude integration + e2e via markers)
         run: |
