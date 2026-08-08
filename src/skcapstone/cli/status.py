@@ -544,7 +544,15 @@ def register_status_commands(main: click.Group) -> None:
         is_flag=True,
         help="Show detailed output for ALL checks, including passing ones.",
     )
-    def doctor(home: str, json_out: bool, auto_fix: bool, verbose: bool):
+    @click.option(
+        "--deep",
+        is_flag=True,
+        help=(
+            "Also run slow, network-bound checks: compare each editable checkout's "
+            "CONTENT against its released artifact on PyPI."
+        ),
+    )
+    def doctor(home: str, json_out: bool, auto_fix: bool, verbose: bool, deep: bool):
         """Diagnose sovereign stack health.
 
         With --fix, automatically remediate fixable failures: create missing
@@ -558,14 +566,14 @@ def register_status_commands(main: click.Group) -> None:
         from ..doctor import run_diagnostics, run_fixes
 
         home_path = Path(home).expanduser()
-        report = run_diagnostics(home_path)
+        report = run_diagnostics(home_path, deep=deep)
 
         # ── Auto-fix pass ─────────────────────────────────────────────────
         fix_results = []
         if auto_fix and report.failed_count > 0:
             fix_results = run_fixes(report, home_path)
             # Re-run diagnostics so the output reflects the fixed state.
-            report = run_diagnostics(home_path)
+            report = run_diagnostics(home_path, deep=deep)
 
         if json_out:
             data = report.to_dict()
@@ -601,6 +609,7 @@ def register_status_commands(main: click.Group) -> None:
 
         category_labels = {
             "packages": "Python Packages",
+            "source": "Source Drift (editable checkouts)",
             "system": "System Tools",
             "agent": "Agent Home",
             "identity": "Identity (CapAuth)",
@@ -613,6 +622,7 @@ def register_status_commands(main: click.Group) -> None:
 
         for cat_key in [
             "packages",
+            "source",
             "system",
             "agent",
             "identity",
@@ -632,16 +642,25 @@ def register_status_commands(main: click.Group) -> None:
                 # Verbose: always print every check with full detail
                 console.print(f"  [bold]{label}[/]")
                 for c in checks:
-                    icon = "[green]\u2713[/]" if c.passed else "[red]\u2717[/]"
+                    # An unknown gets its own marker. Painting it red would make
+                    # an unanswerable check look like a defect; painting it
+                    # green would make it look answered.
+                    if c.unknown:
+                        icon = "[yellow]?[/]"
+                    elif c.passed:
+                        icon = "[green]\u2713[/]"
+                    else:
+                        icon = "[red]\u2717[/]"
                     detail_str = f"  [dim]{c.detail}[/]" if c.detail else ""
                     name_str = f"  [dim dim]({c.name})[/]"
                     console.print(f"    {icon} {c.description}{detail_str}{name_str}")
-                    if not c.passed and c.fix:
+                    if not c.passed and not c.unknown and c.fix:
                         console.print(f"      [yellow]Fix:[/] {c.fix}")
             else:
                 # Normal: collapse fully-passing categories into one line
-                failing = [c for c in checks if not c.passed]
-                if not failing:
+                failing = [c for c in checks if not c.passed and not c.unknown]
+                unknowns = [c for c in checks if c.unknown]
+                if not failing and not unknowns:
                     count = len(checks)
                     console.print(
                         f"  [bold]{label}[/]  " f"[dim green]\u2713 {count}/{count} passed[/]"
@@ -653,30 +672,38 @@ def register_status_commands(main: click.Group) -> None:
                         console.print(f"    [red]\u2717[/] {c.description}{detail}")
                         if c.fix:
                             console.print(f"      [yellow]Fix: {c.fix}[/]")
+                    for c in unknowns:
+                        detail = f" [dim]({c.detail})[/]" if c.detail else ""
+                        console.print(f"    [yellow]?[/] {c.description}{detail}")
 
             console.print()
 
         passed = report.passed_count
         failed = report.failed_count
+        unknown = report.unknown_count
         total = report.total_count
+        unknown_str = f"  [yellow]{unknown} unknown[/]" if unknown else ""
 
         if verbose:
             fail_color = "red" if failed else "dim"
             console.print(
                 f"  [bold]Summary:[/] "
                 f"[green]{passed} passed[/]  "
-                f"[{fail_color}]{failed} failed[/]  "
+                f"[{fail_color}]{failed} failed[/]"
+                f"{unknown_str}  "
                 f"[dim]{total} total[/]"
             )
-        elif report.all_passed:
+        elif report.all_passed and not unknown:
             console.print(
                 f"  [bold green]\u2713 All {total} checks passed.[/] "
                 "Your sovereign stack is healthy."
             )
         else:
+            unknown_tail = f", [bold yellow]{unknown}[/] unknown" if unknown else ""
             console.print(
                 f"  [bold green]{passed}[/] passed, "
-                f"[bold red]{failed}[/] failed "
+                f"[bold red]{failed}[/] failed"
+                f"{unknown_tail} "
                 f"out of {total} checks."
             )
 
