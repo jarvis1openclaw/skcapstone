@@ -36,6 +36,12 @@ class Check:
         detail: Extra info (version, path, count, etc.).
         fix: Suggested fix if the check failed.
         category: Grouping (packages, identity, memory, transport, etc.).
+        unknown: The check could not answer its question (offline, missing
+            tool, unsupported layout). Distinct from BOTH pass and fail on
+            purpose: reporting an unanswerable check as a pass is a lie, and
+            reporting it as a failure trains people to ignore the category.
+            An unknown counts toward neither ``passed_count`` nor
+            ``failed_count``; it is surfaced on its own.
     """
 
     name: str
@@ -44,6 +50,7 @@ class Check:
     detail: str = ""
     fix: str = ""
     category: str = "general"
+    unknown: bool = False
 
 
 @dataclass
@@ -60,13 +67,18 @@ class DiagnosticReport:
 
     @property
     def passed_count(self) -> int:
-        """Number of checks that passed."""
-        return sum(1 for c in self.checks if c.passed)
+        """Number of checks that passed (an unknown is not a pass)."""
+        return sum(1 for c in self.checks if c.passed and not c.unknown)
 
     @property
     def failed_count(self) -> int:
-        """Number of checks that failed."""
-        return sum(1 for c in self.checks if not c.passed)
+        """Number of checks that failed (an unknown is not a failure either)."""
+        return sum(1 for c in self.checks if not c.passed and not c.unknown)
+
+    @property
+    def unknown_count(self) -> int:
+        """Number of checks that could not answer their question."""
+        return sum(1 for c in self.checks if c.unknown)
 
     @property
     def total_count(self) -> int:
@@ -88,6 +100,7 @@ class DiagnosticReport:
             "agent_home": self.agent_home,
             "passed": self.passed_count,
             "failed": self.failed_count,
+            "unknown": self.unknown_count,
             "total": self.total_count,
             "all_passed": self.all_passed,
             "checks": [
@@ -96,6 +109,7 @@ class DiagnosticReport:
                     "category": c.category,
                     "description": c.description,
                     "passed": c.passed,
+                    "unknown": c.unknown,
                     "detail": c.detail,
                     "fix": c.fix,
                 }
@@ -104,11 +118,15 @@ class DiagnosticReport:
         }
 
 
-def run_diagnostics(home: Path) -> DiagnosticReport:
+def run_diagnostics(home: Path, deep: bool = False) -> DiagnosticReport:
     """Run all diagnostic checks against the sovereign agent stack.
 
     Args:
         home: Agent home directory (~/.skcapstone).
+        deep: Also run the slow, network-bound checks (currently the
+            content comparison of each editable checkout against its
+            released artifact). Off by default so session-start runs stay
+            fast and work offline.
 
     Returns:
         DiagnosticReport with results for every check.
@@ -116,6 +134,7 @@ def run_diagnostics(home: Path) -> DiagnosticReport:
     report = DiagnosticReport(agent_home=str(home))
 
     report.checks.extend(_check_packages())
+    report.checks.extend(_check_source_drift(deep=deep))
     report.checks.extend(_check_system_tools())
     report.checks.extend(_check_agent_home(home))
     report.checks.extend(_check_identity(home))
@@ -1386,6 +1405,322 @@ def _check_codex() -> list[Check]:
                 category="codex",
             )
         ]
+
+
+# ───────────────────────────────────────────────────────────────────────────
+# Source drift: is the code we RUN the same as the code anyone else can get?
+# ───────────────────────────────────────────────────────────────────────────
+
+# Every SK* package that is normally installed editable into ~/.skenv from a
+# checkout under ~/clawd/skcapstone-repos/. A package installed from a real
+# wheel simply reports "not a checkout" and is not a finding.
+_SOURCE_PACKAGES = (
+    "skcapstone",
+    "skcoord",
+    "skdashboard",
+    "capauth",
+    "skmemory",
+    "skcomms",
+    "skchat",
+    "cloud9",
+)
+
+
+def _git(repo: Path, *args: str, timeout: int = 15) -> Optional[str]:
+    """Run a git command in *repo*, returning stripped stdout or None on any error.
+
+    None means "could not answer", never "nothing found" - callers must treat
+    it as unknown rather than as an empty result.
+    """
+    try:
+        proc = subprocess.run(
+            ["git", "-C", str(repo), *args],
+            capture_output=True,
+            text=True,
+            timeout=timeout,
+            check=False,
+        )
+    except (OSError, subprocess.SubprocessError) as exc:
+        logger.debug("git %s in %s failed: %s", args, repo, exc)
+        return None
+    if proc.returncode != 0:
+        return None
+    return proc.stdout.strip()
+
+
+def _repo_root_for(module_name: str) -> Optional[Path]:
+    """Resolve the git checkout backing an importable package, if any.
+
+    Walks up from the imported module's file looking for a ``.git`` entry,
+    which works regardless of how the editable install was wired (``.pth``
+    file, import finder, or a plain source tree on sys.path).
+    """
+    try:
+        mod = importlib.import_module(module_name)
+    except Exception:  # noqa: BLE001 - any import problem means "no checkout"
+        return None
+    file = getattr(mod, "__file__", None)
+    if not file:
+        return None
+    for parent in Path(file).resolve().parents:
+        if (parent / ".git").exists():
+            return parent
+    return None
+
+
+def _check_source_drift(deep: bool = False) -> list[Check]:
+    """Report, per editable checkout, how far the running code is from the world.
+
+    Services here import straight from working trees, so production IS the
+    working tree and nothing forces "what runs" to equal "what is committed".
+    Three independent questions, reported separately because they have
+    different fixes and different blast radii:
+
+    * uncommitted - the code we run exists in exactly one place on earth.
+    * unpushed    - CI has never seen it; no teammate and no other node can get it.
+    * unpublished - anyone consuming this from PyPI gets different code.
+
+    The unpublished check is content-based and network-bound, so it only runs
+    under *deep*. Comparing version STRINGS would be worse than useless here:
+    capauth's repo and its wheel both said 0.2.14 while differing in eight
+    authorization rules, so a version comparison would have actively confirmed
+    "in sync" for the exact case this exists to catch.
+    """
+    checks: list[Check] = []
+
+    for pkg in _SOURCE_PACKAGES:
+        repo = _repo_root_for(pkg)
+        if repo is None:
+            # Either not installed (already reported by _check_packages) or
+            # installed from a real wheel, which is the reproducible case.
+            continue
+
+        dirty = _git(repo, "status", "--porcelain")
+        if dirty is None:
+            checks.append(
+                Check(
+                    name=f"source:{pkg}:uncommitted",
+                    description=f"{pkg} working tree vs HEAD",
+                    passed=False,
+                    unknown=True,
+                    detail=f"UNKNOWN: could not read git status in {repo}",
+                    category="source",
+                )
+            )
+        else:
+            # Ignore untracked files: a checkout collects build output and
+            # scratch files constantly, and flagging those would bury the
+            # signal that actually matters (edited tracked code).
+            tracked = [ln for ln in dirty.splitlines() if not ln.startswith("??")]
+            checks.append(
+                Check(
+                    name=f"source:{pkg}:uncommitted",
+                    description=f"{pkg} working tree vs HEAD",
+                    passed=not tracked,
+                    detail=(
+                        f"{len(tracked)} tracked file(s) modified - this code runs "
+                        f"here and exists nowhere else"
+                        if tracked
+                        else "clean"
+                    ),
+                    fix=f"git -C {repo} diff  # review, then commit or restore",
+                    category="source",
+                )
+            )
+
+        checks.append(_unpushed_check(pkg, repo))
+
+        if deep:
+            checks.append(_unpublished_check(pkg, repo))
+
+    return checks
+
+
+def _unpushed_check(pkg: str, repo: Path) -> Check:
+    """Is HEAD reachable from the remote, or does it live only on this node?"""
+    upstream = _git(repo, "rev-parse", "--abbrev-ref", "--symbolic-full-name", "@{u}")
+    if upstream is None:
+        # No upstream (detached HEAD, a local-only branch, no remote). That is
+        # a legitimate state, not a defect, but it does mean we cannot answer.
+        branch = _git(repo, "rev-parse", "--abbrev-ref", "HEAD") or "?"
+        return Check(
+            name=f"source:{pkg}:unpushed",
+            description=f"{pkg} HEAD vs its remote",
+            passed=False,
+            unknown=True,
+            detail=f"UNKNOWN: branch {branch} has no upstream to compare against",
+            category="source",
+        )
+
+    ahead = _git(repo, "rev-list", "--count", "@{u}..HEAD")
+    if ahead is None or not ahead.isdigit():
+        return Check(
+            name=f"source:{pkg}:unpushed",
+            description=f"{pkg} HEAD vs its remote",
+            passed=False,
+            unknown=True,
+            detail=f"UNKNOWN: could not count commits ahead of {upstream}",
+            category="source",
+        )
+
+    n = int(ahead)
+    return Check(
+        name=f"source:{pkg}:unpushed",
+        description=f"{pkg} HEAD vs its remote",
+        passed=n == 0,
+        detail=(
+            f"{n} commit(s) ahead of {upstream} - CI has never seen this"
+            if n
+            else f"in sync with {upstream}"
+        ),
+        fix=f"git -C {repo} push",
+        category="source",
+    )
+
+
+def _unpublished_check(pkg: str, repo: Path) -> Check:
+    """Does the checkout's package tree match the released artifact's?
+
+    Compares CONTENT (a hash over the package's .py files), not version
+    strings, because the failure this exists to catch is precisely a repo and
+    a wheel that agree on the version and disagree on the code.
+    """
+    dist = _distribution_name(pkg)
+    local = _tree_digest(repo, pkg)
+    if local is None:
+        return Check(
+            name=f"source:{pkg}:unpublished",
+            description=f"{pkg} checkout vs released artifact",
+            passed=False,
+            unknown=True,
+            detail=f"UNKNOWN: could not hash the local package tree for {pkg}",
+            category="source",
+        )
+
+    published = _published_tree_digest(dist, pkg)
+    if published is None:
+        return Check(
+            name=f"source:{pkg}:unpublished",
+            description=f"{pkg} checkout vs released artifact",
+            passed=False,
+            unknown=True,
+            detail=(
+                f"UNKNOWN: no comparable release for {dist} "
+                f"(offline, never published, or a non-wheel release)"
+            ),
+            category="source",
+        )
+
+    return Check(
+        name=f"source:{pkg}:unpublished",
+        description=f"{pkg} checkout vs released artifact",
+        passed=local == published,
+        detail=(
+            "checkout matches the latest release"
+            if local == published
+            else (
+                "checkout DIFFERS from the latest release - consumers installing "
+                "from PyPI get different code (version numbers may still match)"
+            )
+        ),
+        fix=f"cut a release from {repo} (bump, merge, tag)",
+        category="source",
+    )
+
+
+def _distribution_name(pkg: str) -> str:
+    """Map an import name to its PyPI distribution name where they differ."""
+    return {"skchat": "skchat-sovereign"}.get(pkg, pkg)
+
+
+def _tree_digest(repo: Path, pkg: str) -> Optional[str]:
+    """Stable hash over a package's .py sources in a checkout."""
+    for candidate in (repo / "src" / pkg, repo / pkg):
+        if candidate.is_dir():
+            return _digest_py_files(candidate)
+    return None
+
+
+def _digest_py_files(root: Path) -> Optional[str]:
+    """Hash every .py under *root*, path-sorted so the result is order-stable.
+
+    Only .py files: a wheel and a checkout legitimately differ in build
+    metadata, caches, and data files, and treating that as drift would make
+    the check cry wolf on every package.
+    """
+    import hashlib
+
+    if not root.is_dir():
+        return None
+    try:
+        files = sorted(p for p in root.rglob("*.py") if "__pycache__" not in p.parts)
+        # An empty tree must be unknown, NOT a digest. rglob over a missing or
+        # empty directory yields nothing and hashes to the digest of the empty
+        # string, so two failed extractions would hash identically and the
+        # check would confidently report "matches the release" having compared
+        # nothing at all. That is the exact false pass this check exists to
+        # avoid, so refuse to answer instead.
+        if not files:
+            return None
+        h = hashlib.sha256()
+        for f in files:
+            h.update(f.relative_to(root).as_posix().encode())
+            h.update(f.read_bytes())
+        return h.hexdigest()
+    except OSError as exc:
+        logger.debug("hashing %s failed: %s", root, exc)
+        return None
+
+
+def _published_tree_digest(dist: str, pkg: str) -> Optional[str]:
+    """Download the latest released wheel and hash its package tree the same way.
+
+    Returns None on ANY failure (offline, unpublished, sdist-only), so the
+    caller reports unknown rather than inventing a mismatch.
+    """
+    import tempfile
+    import zipfile
+
+    with tempfile.TemporaryDirectory() as tmp:
+        try:
+            proc = subprocess.run(
+                [
+                    "pip",
+                    "download",
+                    dist,
+                    "--no-deps",
+                    "--only-binary",
+                    ":all:",
+                    "--no-cache-dir",
+                    "-d",
+                    tmp,
+                ],
+                capture_output=True,
+                text=True,
+                timeout=180,
+                check=False,
+            )
+        except (OSError, subprocess.SubprocessError) as exc:
+            logger.debug("pip download %s failed: %s", dist, exc)
+            return None
+        if proc.returncode != 0:
+            return None
+
+        wheels = list(Path(tmp).glob("*.whl"))
+        if not wheels:
+            return None
+        extract = Path(tmp) / "x"
+        try:
+            with zipfile.ZipFile(wheels[0]) as zf:
+                zf.extractall(extract)
+        except (OSError, zipfile.BadZipFile) as exc:
+            logger.debug("unpacking %s failed: %s", wheels[0], exc)
+            return None
+
+        pkg_dir = extract / pkg
+        if not pkg_dir.is_dir():
+            return None
+        return _digest_py_files(pkg_dir)
 
 
 def _check_versions() -> list[Check]:
