@@ -9,6 +9,7 @@ from pathlib import Path
 
 import click
 
+from .. import DEFAULT_PORT
 from ._common import AGENT_HOME, console
 
 logger = logging.getLogger(__name__)
@@ -27,7 +28,7 @@ def register_consciousness_commands(main: click.Group) -> None:
         """
 
     @consciousness.command("status")
-    @click.option("--port", default=7777, help="Daemon API port.")
+    @click.option("--port", default=DEFAULT_PORT, show_default=True, help="Daemon API port.")
     @click.option("--json-out", is_flag=True, help="Output as JSON.")
     def consciousness_status(port: int, json_out: bool):
         """Show consciousness loop status from the running daemon."""
@@ -203,7 +204,7 @@ def register_consciousness_commands(main: click.Group) -> None:
     @consciousness.command("quality")
     @click.option("--home", default=AGENT_HOME, type=click.Path(), help="Agent home directory.")
     @click.option("--json-out", is_flag=True, help="Output as JSON.")
-    @click.option("--port", default=7777, help="Daemon API port (tries live daemon first).")
+    @click.option("--port", default=DEFAULT_PORT, show_default=True, help="Daemon API port (tries live daemon first).")
     def consciousness_quality(home: str, json_out: bool, port: int):
         """Show average response quality scores for today.
 

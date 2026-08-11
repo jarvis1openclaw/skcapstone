@@ -367,8 +367,12 @@ def _probe_remote_registry(state: SkillsState) -> None:
     Args:
         state: SkillsState to update with remote info (mutated in place).
     """
-    from .registry_client import get_registry_client, DEFAULT_REGISTRY_URL
     import os
+    import urllib.request
+
+    import yaml
+
+    from .registry_client import get_registry_client, DEFAULT_REGISTRY_URL
 
     registry_url = os.environ.get("SKSKILLS_REGISTRY_URL", DEFAULT_REGISTRY_URL)
     state.registry_url = registry_url
@@ -383,10 +387,23 @@ def _probe_remote_registry(state: SkillsState) -> None:
         state.registry_available = True
         state.remote_skill_count = len(skills)
     except Exception as e:
-        logger.warning("discovery.py: %s", e)
-        # Remote unreachable — cached index may still work; that is
-        # handled by RemoteRegistry.fetch_index() internally.
-        state.registry_available = False
+        # The legacy FastAPI registry may be unavailable while the GitHub
+        # catalog remains the supported read path used by the CLI.
+        try:
+            catalog_url = "https://raw.githubusercontent.com/smilinTux/skskills/main/catalog.yaml"
+            req = urllib.request.Request(catalog_url, headers={"User-Agent": "skcapstone"})
+            with urllib.request.urlopen(req, timeout=5) as resp:
+                raw = yaml.safe_load(resp.read().decode("utf-8")) or {}
+            skills = raw.get("skills", [])
+            state.registry_url = catalog_url
+            state.registry_available = True
+            state.remote_skill_count = len(skills)
+        except Exception as fallback_exc:
+            logger.warning("discovery.py: %s", e)
+            logger.warning("discovery.py: GitHub skills catalog fallback failed: %s", fallback_exc)
+            # Remote unreachable — cached index may still work; that is
+            # handled by RemoteRegistry.fetch_index() internally.
+            state.registry_available = False
 
 
 def discover_skills(home: Path, agent: Optional[str] = None) -> SkillsState:
@@ -429,6 +446,8 @@ def discover_skills(home: Path, agent: Optional[str] = None) -> SkillsState:
             state.status = PillarStatus.ACTIVE
         # Still check remote even if no local skills home
         _probe_remote_registry(state)
+        if state.registry_available and state.status in {PillarStatus.MISSING, PillarStatus.DEGRADED}:
+            state.status = PillarStatus.ACTIVE
         return state
 
     # 2. Global registry
@@ -456,6 +475,8 @@ def discover_skills(home: Path, agent: Optional[str] = None) -> SkillsState:
 
     # 4. Remote skills-registry (non-blocking, best-effort)
     _probe_remote_registry(state)
+    if state.registry_available and state.status in {PillarStatus.MISSING, PillarStatus.DEGRADED}:
+        state.status = PillarStatus.ACTIVE
 
     return state
 

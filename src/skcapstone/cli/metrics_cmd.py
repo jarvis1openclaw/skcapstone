@@ -8,6 +8,7 @@ from pathlib import Path
 
 import click
 
+from .. import DEFAULT_PORT
 from ._common import AGENT_HOME, console
 
 
@@ -16,7 +17,7 @@ def register_metrics_commands(main: click.Group) -> None:
 
     @main.command("metrics")
     @click.option("--home", default=AGENT_HOME, type=click.Path(), help="Agent home directory.")
-    @click.option("--port", default=7777, help="Daemon API port (default: 7777).")
+    @click.option("--port", default=DEFAULT_PORT, show_default=True, help="Daemon API port.")
     @click.option("--json-out", is_flag=True, help="Output raw JSON.")
     @click.option("--date", "date_str", default=None, help="Show metrics for a specific date (YYYY-MM-DD).")
     def metrics_cmd(home: str, port: int, json_out: bool, date_str: str | None):

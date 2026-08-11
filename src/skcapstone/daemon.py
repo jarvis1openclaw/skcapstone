@@ -29,7 +29,7 @@ from http.server import BaseHTTPRequestHandler, HTTPServer, ThreadingHTTPServer
 from pathlib import Path
 from typing import Optional
 
-from . import AGENT_HOME, SHARED_ROOT
+from . import AGENT_HOME, DEFAULT_PORT, SHARED_ROOT
 from . import activity as _activity
 
 logger = logging.getLogger("skcapstone.daemon")
@@ -50,7 +50,6 @@ def _sanitize_peer(peer: str) -> str:
     sanitized = sanitized.strip(".")
     return sanitized[:64]
 
-DEFAULT_PORT = 7777
 PID_FILE = "daemon.pid"
 LOG_DIR = "logs"
 

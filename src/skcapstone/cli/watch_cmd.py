@@ -28,16 +28,17 @@ from rich.panel import Panel
 from rich.table import Table
 from rich.text import Text
 
+from .. import DEFAULT_PORT
 from ._common import AGENT_HOME, console
 
 logger = logging.getLogger(__name__)
 
 
-def _fetch_consciousness(port: int = 7777) -> dict:
+def _fetch_consciousness(port: int = DEFAULT_PORT) -> dict:
     """Fetch consciousness loop status from the running daemon.
 
     Args:
-        port: Daemon HTTP API port (default: 7777).
+        port: Daemon HTTP API port.
 
     Returns:
         Dict with consciousness data, or empty dict if unreachable.
@@ -50,7 +51,7 @@ def _fetch_consciousness(port: int = 7777) -> dict:
         return {}
 
 
-def _build_renderable(home: Path, daemon_port: int = 7777) -> Group:
+def _build_renderable(home: Path, daemon_port: int = DEFAULT_PORT) -> Group:
     """Build the full live dashboard renderable.
 
     Collects agent status, consciousness data, recent memories, and
@@ -303,7 +304,7 @@ def register_watch_commands(main: click.Group) -> None:
     )
     @click.option(
         "--daemon-port",
-        default=7777,
+        default=DEFAULT_PORT,
         show_default=True,
         help="Daemon HTTP API port for consciousness stats.",
     )

@@ -26,7 +26,7 @@ from typing import Any, Optional
 
 import logging
 
-from . import SHARED_ROOT
+from . import DEFAULT_PORT, SHARED_ROOT
 from .coordination import Board
 from .discovery import discover_all
 from .memory_engine import list_memories, search
@@ -180,7 +180,7 @@ def _gather_soul(home: Path) -> dict[str, Any]:
 def _gather_consciousness(home: Path) -> dict[str, Any]:
     """Gather consciousness loop stats from the daemon or config fallback.
 
-    First tries the live daemon at http://localhost:7777/consciousness.
+    First tries the live daemon at the configured local daemon port.
     Falls back to checking whether a consciousness config file exists.
 
     Args:
@@ -194,7 +194,7 @@ def _gather_consciousness(home: Path) -> dict[str, Any]:
 
     try:
         with urllib.request.urlopen(
-            "http://localhost:7777/consciousness", timeout=2
+            f"http://localhost:{DEFAULT_PORT}/consciousness", timeout=2
         ) as resp:
             data = json.loads(resp.read().decode("utf-8"))
         backends = data.get("backends", {})
@@ -232,12 +232,11 @@ def _gather_consciousness(home: Path) -> dict[str, Any]:
 def _gather_mcp_status(home: Path) -> dict[str, Any]:
     """Check MCP server availability."""
     try:
-        from .mcp_server import TOOLS, server
+        from .mcp_server import server
 
         return {
             "available": True,
-            "server_name": server.name,
-            "tool_count": len(TOOLS) if hasattr(TOOLS, "__len__") else 0,
+            "server_name": getattr(server, "name", "skcapstone"),
         }
     except Exception as exc:
         logger.debug("MCP server not available: %s", exc)

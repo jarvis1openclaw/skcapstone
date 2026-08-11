@@ -14,6 +14,7 @@ import urllib.request
 import urllib.error
 from dataclasses import dataclass, field
 from typing import Optional
+from importlib.metadata import PackageNotFoundError, distribution, version
 
 logger = logging.getLogger(__name__)
 
@@ -23,7 +24,7 @@ ECOSYSTEM_PACKAGES = [
     "capauth",
     "sksecurity",
     "skcomm",
-    "skchat",
+    "skchat-sovereign",
     "cloud9-protocol",
 ]
 
@@ -43,6 +44,8 @@ class PackageVersion:
     installed: Optional[str] = None
     latest: Optional[str] = None
     up_to_date: bool = True
+    editable: bool = False
+    editable_location: Optional[str] = None
 
 
 @dataclass
@@ -71,6 +74,30 @@ class VersionReport:
         return [p for p in self.packages if not p.installed]
 
 
+def _get_installed_distribution(package_name: str) -> tuple[Optional[str], bool, Optional[str]]:
+    """Get installed distribution metadata.
+
+    Returns:
+        Tuple of (version, editable, editable_location).
+    """
+    try:
+        dist = distribution(package_name)
+        installed = dist.version
+        editable = False
+        location = None
+        direct_url = dist.read_text("direct_url.json")
+        if direct_url:
+            try:
+                data = json.loads(direct_url)
+                editable = bool(data.get("dir_info", {}).get("editable"))
+                location = data.get("url")
+            except json.JSONDecodeError:
+                pass
+        return installed, editable, location
+    except PackageNotFoundError:
+        return None, False, None
+
+
 def _get_installed_version(package_name: str) -> Optional[str]:
     """Get the installed version of a package.
 
@@ -81,8 +108,6 @@ def _get_installed_version(package_name: str) -> Optional[str]:
         Version string or None.
     """
     try:
-        from importlib.metadata import version
-
         return version(package_name)
     except Exception as e:
         logger.debug("version_check.py metadata lookup failed: %s", e)
@@ -135,18 +160,33 @@ def check_versions(
     report = VersionReport()
 
     for name in pkg_list:
-        installed = _get_installed_version(name)
+        installed, editable, editable_location = _get_installed_distribution(name)
+        if installed is None:
+            installed = _get_installed_version(name)
         latest = _get_pypi_version(name) if check_pypi else None
 
         up_to_date = True
         if installed and latest:
-            up_to_date = installed == latest
+            if editable:
+                # Editable installs are local development checkouts. Treat
+                # them as intentional so doctor does not suggest replacing
+                # locally patched source with a PyPI wheel.
+                up_to_date = True
+            else:
+                try:
+                    from packaging.version import parse as parse_version
+
+                    up_to_date = parse_version(installed) >= parse_version(latest)
+                except Exception:
+                    up_to_date = installed == latest
 
         report.packages.append(PackageVersion(
             name=name,
             installed=installed,
             latest=latest,
             up_to_date=up_to_date,
+            editable=editable,
+            editable_location=editable_location,
         ))
 
     return report

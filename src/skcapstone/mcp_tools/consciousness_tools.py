@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from mcp.types import TextContent, Tool
 
+from .. import DEFAULT_PORT
 from ._helpers import _home, _json_response, _text_response, _error_response
 
 TOOLS: list[Tool] = [
@@ -47,7 +48,7 @@ async def _handle_consciousness_status(arguments: dict) -> list[TextContent]:
         import urllib.request
         import json
 
-        url = "http://127.0.0.1:7777/consciousness"
+        url = f"http://127.0.0.1:{DEFAULT_PORT}/consciousness"
         with urllib.request.urlopen(url, timeout=3) as resp:
             data = json.loads(resp.read())
             return _json_response(data)
