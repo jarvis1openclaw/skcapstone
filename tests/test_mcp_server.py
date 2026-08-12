@@ -74,7 +74,8 @@ class TestToolListing:
     async def test_list_tools_returns_all(self):
         """list_tools returns all registered tools."""
         tools = await list_tools()
-        assert len(tools) == 125
+        # 125 base + suggest_item/queue_item (fleet suggestion engine P2.4).
+        assert len(tools) == 127
 
     @pytest.mark.asyncio
     async def test_tool_names(self):
