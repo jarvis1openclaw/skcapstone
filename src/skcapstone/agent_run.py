@@ -19,6 +19,7 @@ agent until explicitly enabled.
 
 from __future__ import annotations
 
+import json
 import logging
 import os
 import socket
@@ -57,16 +58,82 @@ def _iso(dt: datetime) -> str:
 # ---------------------------------------------------------------------------
 
 
+# GTD store layout (mirrors mcp_tools.gtd_tools._GTD_LISTS; kept local so
+# ensure_card reads the store under its own ``home`` param, not a global root).
+_GTD_LIST_FILES = {
+    "inbox": "inbox.json",
+    "next-actions": "next-actions.json",
+    "projects": "projects.json",
+    "waiting-for": "waiting-for.json",
+    "someday-maybe": "someday-maybe.json",
+    "archive": "archive.json",
+}
+
+
+def _find_gtd_item(home: Path, item_id: str) -> tuple[Optional[str], Optional[dict]]:
+    """Locate a GTD item by id across all list files under ``home``.
+
+    Returns ``(list_name, item)`` or ``(None, None)`` if not found. Reads the
+    unified GTD store at ``<home>/coordination/gtd`` (the same flat JSON files
+    the skcapstone GTD MCP path and the skos.gtd_ingest sink write).
+    """
+    gtd = Path(home).expanduser() / "coordination" / "gtd"
+    for list_name, fname in _GTD_LIST_FILES.items():
+        try:
+            items = json.loads((gtd / fname).read_text(encoding="utf-8"))
+        except (json.JSONDecodeError, FileNotFoundError, OSError):
+            continue
+        for item in items if isinstance(items, list) else []:
+            if isinstance(item, dict) and item.get("id") == item_id:
+                return list_name, item
+    return None, None
+
+
 def ensure_card(home: Path, card_id: str) -> bool:
     """Make sure ``card_id`` exists in the CardStore.
 
-    ITIL records (inc-/prb-/chg-) created after the migration may not yet be
-    CardStore cards; this lazily materializes one from the ITIL record so AI
-    next-steps attach uniformly to tasks and ITIL tickets.
+    ITIL records (inc-/prb-/chg-) and GTD next-actions (gtd-) created outside
+    the CardStore are lazily materialized into a shadow card here, so AI
+    next-steps attach uniformly across tasks, ITIL tickets, and GTD items. The
+    shadow card carries a ``meta.origin`` backlink to the source surface.
     """
     store = CardStore(home)
     if store.fold(card_id) is not None:
         return True
+
+    if card_id.startswith("gtd-"):
+        item_id = card_id[len("gtd-") :]
+        list_name, item = _find_gtd_item(home, item_id)
+        if item is None:
+            return False
+        context = (item.get("context") or "").strip()
+        labels = ["gtd"]
+        if context:
+            labels.append(context)
+        store.create(
+            CardCore(
+                id=card_id,
+                kind="task",
+                title=(item.get("text") or "").strip() or f"GTD {item_id}",
+                description="",
+                created_by=item.get("source", "gtd"),
+                created_at=item.get("created_at") or _iso(_now()),
+                initial_priority=(item.get("priority") or "medium"),
+                initial_swimlane="feature",
+                initial_labels=labels,
+                meta={
+                    "origin": {
+                        "surface": "gtd",
+                        "id": item_id,
+                        "list": list_name,
+                        "privacy": item.get("privacy", "private"),
+                    }
+                },
+            )
+        )
+        store.append_event(card_id, "move", "gtd-import", column="backlog")
+        return True
+
     from .card import card_from_change, card_from_incident, card_from_problem
     from .itil import ITILManager
 
@@ -195,7 +262,65 @@ _HEURISTIC = {
 }
 
 
+# GTD next-actions are often outbound comms (email/DM/call). Execute must never
+# auto-send; it drafts for a human to send. See memory outbound-comms-draft-by-default.
+_HEURISTIC_GTD = [
+    {
+        "text": "Clarify this into a concrete next action (and a project if it needs one).",
+        "mode": "propose",
+    },
+    {
+        "text": "Draft the outbound message or gather the research for review (do not send).",
+        "mode": "dry-run",
+    },
+    {
+        "text": "Prepare the work as a draft for review; never auto-send or auto-complete.",
+        "mode": "execute",
+    },
+]
+
+# Verbs that mean a real outbound side effect. A gtd execute suggesting one of
+# these is downgraded to dry-run (draft), so the runner drafts, the human sends.
+_SEND_VERBS = (
+    "send",
+    "publish",
+    "post ",
+    "email ",
+    "e-mail",
+    "reply",
+    "message ",
+    "deliver",
+    "submit",
+    "dispatch",
+    "text ",
+    "dm ",
+)
+
+
+def _is_gtd(card) -> bool:
+    return ((getattr(card, "meta", None) or {}).get("origin") or {}).get("surface") == "gtd"
+
+
+def _clamp_gtd_suggestions(suggestions: list[dict]) -> list[dict]:
+    """Downgrade any send-like ``execute`` suggestion to ``dry-run`` (draft).
+
+    Keeps GTD execute draft-only: the agent prepares an outbound artifact, a
+    human sends it. Non-send execute (e.g. "prepare a draft") is left as-is.
+    """
+    out = []
+    for s in suggestions:
+        s = dict(s)
+        if s.get("mode") == "execute":
+            text = s.get("text", "").lower()
+            if any(v in text for v in _SEND_VERBS):
+                s["mode"] = "dry-run"
+        out.append(s)
+    return out
+
+
 def _heuristic_suggestions(card) -> list[dict]:
+    if _is_gtd(card):
+        return [dict(s) for s in _HEURISTIC_GTD]
     kind = card.kind.value
     if kind == "task" and "bug" in {label.lower() for label in card.labels}:
         kind = "bug"
@@ -225,12 +350,20 @@ def suggest_next_steps(
         from . import skgateway_client as gw
 
         recent = "; ".join(a.get("text", "") for a in card.meta.get("comments", [])[-3:])
+        gtd_rule = (
+            "This is a GTD next-action, which may be an outbound message. NEVER suggest "
+            "'execute' that sends, publishes, or delivers anything; drafting for review is "
+            "'dry-run'. Reserve 'execute' for preparing a draft only.\n"
+            if _is_gtd(card)
+            else ""
+        )
         prompt = (
             "You suggest next-step instructions an AI agent can execute on a work item. "
             'Return ONLY a JSON array of 3 objects, each {"text": <one concise imperative '
             "instruction>, \"mode\": one of propose|dry-run|execute}. Prefer 'propose' for "
             "analysis, 'dry-run' for reversible/scratch work, 'execute' only for a change that "
-            "should produce a draft PR. For kind 'change', never suggest 'execute'.\n\n"
+            "should produce a draft PR. For kind 'change', never suggest 'execute'.\n"
+            f"{gtd_rule}\n"
             f"Kind: {card.kind.value}\nTitle: {card.title}\n"
             f"Description: {(card.description or '')[:400]}\n"
             f"Status: {card.status.value}\nLabels: {', '.join(card.labels)}\n"
@@ -249,6 +382,9 @@ def suggest_next_steps(
                 for s in parsed:
                     if s["mode"] == "execute":
                         s["mode"] = "propose"
+            # gtd: downgrade any send-like execute to a draft (dry-run)
+            if _is_gtd(card):
+                parsed = _clamp_gtd_suggestions(parsed)
             return {"suggestions": parsed[:4], "source": "llm"}
     except Exception as exc:  # noqa: BLE001
         logger.info("suggest_next_steps LLM path failed: %s", exc)
@@ -338,15 +474,24 @@ def set_state(
 # ---------------------------------------------------------------------------
 
 
-def gate(kind: str, mode: str) -> dict:
+def gate(kind: str, mode: str, origin: Optional[str] = None) -> dict:
     """Decide whether a run may execute now, given the card kind and mode.
 
     Returns ``{"allow_execute": bool, "reason": str}``. propose/dry-run are
-    always allowed (no real side effects); execute is gated by kind.
+    always allowed (no real side effects); execute is gated by kind and by the
+    originating surface. ``origin`` is the source surface (e.g. "gtd"), so an
+    outbound-comms surface can be clamped to draft-only.
     """
     if mode in ("propose", "dry-run"):
         return {"allow_execute": True, "reason": f"{mode} has no real side effects"}
     # mode == execute
+    if origin == "gtd":
+        # GTD next-actions may be outbound comms; execute prepares a draft for
+        # review and must never auto-send or auto-complete the item.
+        return {
+            "allow_execute": True,
+            "reason": "gtd execute is draft-only: prepare a draft for review, never auto-send",
+        }
     if kind == "change":
         return {
             "allow_execute": False,
@@ -400,7 +545,9 @@ def process_one(home: Path, item: dict, worker: str = "runner", dispatcher=None)
         worker,
     )
 
-    decision = gate(kind, mode)
+    card = CardStore(home).fold(card_id)
+    origin = ((getattr(card, "meta", None) or {}).get("origin") or {}).get("surface")
+    decision = gate(kind, mode, origin=origin)
     if mode == "execute" and not decision["allow_execute"]:
         add_activity(
             home, card_id, run_id, "elicitation", f"execution gated: {decision['reason']}", worker
@@ -416,7 +563,6 @@ def process_one(home: Path, item: dict, worker: str = "runner", dispatcher=None)
         }
 
     # Build the execution context.
-    card = CardStore(home).fold(card_id)
     context = {
         "card_id": card_id,
         "kind": kind,

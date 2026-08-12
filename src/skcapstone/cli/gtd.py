@@ -655,3 +655,71 @@ def register_gtd_commands(main: click.Group) -> None:
                 )
 
         console.print()
+
+    @gtd.command("suggest")
+    @click.argument("item_id")
+    @click.option("--no-llm", is_flag=True, help="Heuristics only (skip the model).")
+    def gtd_suggest(item_id, no_llm):
+        """Show AI next-step options for a GTD item.
+
+        Materializes a shadow card (gtd-<id>) and asks the suggestion engine,
+        the same one behind the kanban 'Suggest next steps' button.
+
+        Example: skcapstone gtd suggest 8f2c1a
+        """
+        from ..agent_run import suggest_next_steps
+        from ..mcp_tools._helpers import _shared_root
+
+        home = _shared_root()
+        card_id = item_id if item_id.startswith("gtd-") else f"gtd-{item_id}"
+        out = suggest_next_steps(home, card_id, use_llm=not no_llm)
+        if out.get("error"):
+            console.print(f"  [red]{out['error']}[/]  (unknown GTD item id?)")
+            return
+        console.print(
+            f"\n  [bold]Next steps for[/] [cyan]{card_id}[/] "
+            f"[dim](source: {out.get('source')})[/]\n"
+        )
+        colors = {"propose": "green", "dry-run": "yellow", "execute": "red"}
+        for i, s in enumerate(out.get("suggestions", []), 1):
+            mode = s.get("mode", "propose")
+            c = colors.get(mode, "white")
+            console.print(f"  [bold]{i}.[/] {s['text']}  [{c}]\\[{mode}][/]")
+        console.print(
+            f"\n  [dim]Queue one:[/] skcapstone gtd queue {item_id} "
+            f'--instruction "..." --mode <mode>\n'
+        )
+
+    @gtd.command("queue")
+    @click.argument("item_id")
+    @click.option("--instruction", "-i", required=True, help="What the agent should do.")
+    @click.option(
+        "--mode",
+        "-m",
+        default="propose",
+        type=click.Choice(["propose", "dry-run", "execute"]),
+        help="propose (analyse) / dry-run (draft) / execute (draft PR).",
+    )
+    @click.option("--agent", "-a", default="lumina", help="Agent to dispatch.")
+    def gtd_queue(item_id, instruction, mode, agent):
+        """Queue an AI agent to work a GTD item (the terminal push-button).
+
+        The runner is plan-only unless SKAI_RUNNER_LIVE=1, so this records the
+        request and moves the shadow card to review. For GTD items, execute is
+        clamped to draft-only: the agent prepares a draft, a human sends it.
+
+        Example: skcapstone gtd queue 8f2c1a -i "Draft the reply" -m dry-run
+        """
+        from ..agent_run import request_run
+        from ..mcp_tools._helpers import _shared_root
+
+        home = _shared_root()
+        card_id = item_id if item_id.startswith("gtd-") else f"gtd-{item_id}"
+        r = request_run(home, card_id, instruction, agent=agent, mode=mode, requester="operator")
+        if r.get("error"):
+            console.print(f"  [red]{r['error']}[/]")
+            return
+        console.print(
+            f"  [green]Queued[/] run [cyan]{r['run_id']}[/] on [cyan]{card_id}[/]  "
+            f"[dim](mode: {mode}, agent: {agent}, state: {r['state']})[/]"
+        )
