@@ -7,6 +7,7 @@ unless SKAI_EXECUTE_BRIDGE=1 is explicitly set).
 
 No em/en dashes anywhere (SKWorld hard rule).
 """
+
 from __future__ import annotations
 
 import sys

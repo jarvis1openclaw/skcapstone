@@ -50,8 +50,15 @@ def test_text_output_leads_with_joules():
     from skcapstone.cli import main
 
     today = datetime.now(timezone.utc).date().isoformat()
-    record_run(card_id="c1", repo="skrender", tokens=1000, cost_usd=3.5,
-               passed=True, pr="https://x/pr/1", ts=f"{today}T00:00:00+00:00")
+    record_run(
+        card_id="c1",
+        repo="skrender",
+        tokens=1000,
+        cost_usd=3.5,
+        passed=True,
+        pr="https://x/pr/1",
+        ts=f"{today}T00:00:00+00:00",
+    )
 
     result = CliRunner().invoke(main, ["autopilot-cost"])
     assert result.exit_code == 0
@@ -69,8 +76,15 @@ def test_json_out_reports_recorded_run():
     from skcapstone.cli import main
 
     today = datetime.now(timezone.utc).date().isoformat()
-    record_run(card_id="c1", repo="skrender", tokens=1000, cost_usd=3.5,
-               passed=True, pr="https://x/pr/1", ts=f"{today}T00:00:00+00:00")
+    record_run(
+        card_id="c1",
+        repo="skrender",
+        tokens=1000,
+        cost_usd=3.5,
+        passed=True,
+        pr="https://x/pr/1",
+        ts=f"{today}T00:00:00+00:00",
+    )
 
     result = CliRunner().invoke(main, ["autopilot-cost", "--json-out"])
     assert result.exit_code == 0

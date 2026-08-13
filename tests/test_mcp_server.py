@@ -74,8 +74,23 @@ class TestToolListing:
     async def test_list_tools_returns_all(self):
         """list_tools returns all registered tools."""
         tools = await list_tools()
-        # 125 base + suggest_item/queue_item (fleet suggestion engine P2.4).
-        assert len(tools) == 127
+        # 125 base
+        # + suggest_item / queue_item          (fleet suggestion engine, P2.4)
+        # + itil_change_validate / _schedule / _unschedule   (CM P1.2)
+        #
+        # Bump this WITH the commit that adds a tool. It drifted three behind
+        # and kept main red, which is worse than useless: a count nobody trusts
+        # gets bumped reflexively, and then it guards nothing.
+        assert len(tools) == 130
+
+    @pytest.mark.asyncio
+    async def test_tool_names_are_unique(self):
+        """What the count is really proxying for. A duplicate registration
+        silently shadows one of the two tools, and a bare count cannot tell
+        that apart from a tool being added."""
+        names = [t.name for t in await list_tools()]
+        dupes = {n for n in names if names.count(n) > 1}
+        assert not dupes, f"duplicate MCP tool registrations: {sorted(dupes)}"
 
     @pytest.mark.asyncio
     async def test_tool_names(self):
