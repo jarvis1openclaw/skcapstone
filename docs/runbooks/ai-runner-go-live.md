@@ -25,12 +25,24 @@ dispatching a live agent. This runbook is the gate for turning real dispatch on.
 
 ## Before setting SKAI_RUNNER_LIVE=1
 
-1. **Wire the sandboxed executor.** Implement and register the
-   `skharness.autocode` bridge and call `agent_run.set_execute_dispatcher(bridge)`
-   at runner startup. The bridge must construct a `skharness.autocode` WorkItem
-   from the run context, run it through sandbox → grade → twin-gate, and return
-   `{"summary", "activity", "links"}` with a DRAFT PR link, never an auto-merge.
-   (Follow-up card: "wire skharness.autocode execute dispatcher".)
+1. **Wire the sandboxed executor.** The bridge is built
+   (`skharness.autocode.agentrun_bridge`, card 0f0a291b): set `SKAI_EXECUTE_BRIDGE=1`
+   in the runner env so `run_ai_runner_job` lazily wires it via
+   `set_execute_dispatcher`. It runs one sandboxed round → `ratify` twin-gate
+   grade → commit/push/**draft** PR, structurally incapable of merging. Every
+   missing prerequisite fail-closes (execute stays plan-only). Prerequisites the
+   bridge checks, each of which must be satisfied for a repo to be eligible:
+   - `~/.skcapstone/config/autopilot.yaml` (or `SKOS_AUTOPILOT_CONFIG`) exists
+     with a non-empty `repo_map`, and a resolvable harness (`claude-code`).
+   - `live_execution: true` in that file. NOTE: this also arms the manual
+     `skos autopilot run --canary` path; keep `enabled: false` + the kill switch
+     so the scheduled autopilot engine stays off.
+   - The card being executed carries exactly one `repo:<name>` label (0 or >1 is
+     refused); no repo is inferred from instruction text.
+   - The target repo is NOT automerge-enabled, and has an explicit
+     `min_quality: direct` (an UNSET `min_quality` coerces to `gated`, which the
+     P1 bridge refuses because it does not provide the crown-jewel gated engine).
+   The bridge opens the PR as a **draft**; a human merges after review.
 2. **Verify propose/dry-run first.** Enable live dispatch with execute still
    fail-closed; confirm propose/dry-run runs behave (plans/scratch diffs land in
    review) before trusting execute.

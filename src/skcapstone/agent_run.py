@@ -540,6 +540,29 @@ def execute_dispatch_available() -> bool:
     return _execute_dispatcher is not None
 
 
+def _maybe_wire_execute_bridge() -> None:
+    """Wire the skharness execute bridge iff explicitly enabled and buildable.
+    Inert by default; every failure path leaves execute fail-closed (R1).
+
+    See docs/specs/2026-08-13-skharness-execute-bridge-arch.md section 6.
+    """
+    if os.environ.get("SKAI_EXECUTE_BRIDGE") != "1":
+        return
+    if execute_dispatch_available():
+        return
+    try:
+        from skharness.autocode.agentrun_bridge import build_execute_dispatcher
+    except ImportError:
+        logger.info("SKAI_EXECUTE_BRIDGE=1 but skharness is not installed; "
+                    "execute stays fail-closed (R1)")
+        return
+    fn = build_execute_dispatcher()
+    if fn is None:
+        logger.info("execute bridge prerequisites missing; execute stays fail-closed")
+        return
+    set_execute_dispatcher(fn)
+
+
 # ---------------------------------------------------------------------------
 # The runner step
 # ---------------------------------------------------------------------------
@@ -770,6 +793,7 @@ def run_ai_runner_job() -> None:
     """
     from . import SHARED_ROOT
 
+    _maybe_wire_execute_bridge()
     home = Path(SHARED_ROOT).expanduser()
     results = run_once(home, worker="ai-runner", dispatcher=claude_dispatcher)
     if results:
