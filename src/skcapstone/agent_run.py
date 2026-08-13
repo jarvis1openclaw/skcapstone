@@ -255,8 +255,9 @@ _HEURISTIC = {
         },
         {"text": "Assess the risk and prepare the CAB summary.", "mode": "propose"},
         {
-            "text": "Prepare the implementation in a worktree for review after CAB approval.",
-            "mode": "dry-run",
+            "text": "Prepare the change: implement in a sandbox and open a DRAFT PR for CAB "
+            "review.",
+            "mode": "execute",
         },
     ],
 }
@@ -474,13 +475,36 @@ def set_state(
 # ---------------------------------------------------------------------------
 
 
-def gate(kind: str, mode: str, origin: Optional[str] = None) -> dict:
+def gate(
+    kind: str,
+    mode: str,
+    origin: Optional[str] = None,
+    change_status: Optional[str] = None,
+) -> dict:
     """Decide whether a run may execute now, given the card kind and mode.
 
     Returns ``{"allow_execute": bool, "reason": str}``. propose/dry-run are
     always allowed (no real side effects); execute is gated by kind and by the
     originating surface. ``origin`` is the source surface (e.g. "gtd"), so an
     outbound-comms surface can be clamped to draft-only.
+
+    ``change_status`` is the folded ITIL change record's current status
+    (``kind == "change"`` only); ``process_one`` looks it up by the ``chg-``
+    card id. It is ``None`` when the record could not be resolved or folded,
+    which this function treats exactly like any status outside the carve-out
+    below: fail-closed, blocked.
+
+    CM P2.1 decision matrix for ``kind == "change"``, ``mode == "execute"``:
+
+    - ``proposed`` / ``reviewing`` -> allow (PREPARE). The wired R1 executor
+      (``skharness.autocode.agentrun_bridge``) is structurally draft-only -
+      its ``_merge`` raises and finalize has no merge path - so an execute
+      run here can only ever land a sandboxed, twin-gate-graded DRAFT PR for
+      CAB review, never an implementation.
+    - anything else (``approved``, ``scheduled``, ``implementing``,
+      ``deployed``, ``verified``, ``failed``, ``rejected``, ``closed``, an
+      unknown status, or an unfoldable record / ``None``) -> block, same
+      reason string as before this carve-out.
     """
     if mode in ("propose", "dry-run"):
         return {"allow_execute": True, "reason": f"{mode} has no real side effects"}
@@ -493,6 +517,15 @@ def gate(kind: str, mode: str, origin: Optional[str] = None) -> dict:
             "reason": "gtd execute is draft-only: prepare a draft for review, never auto-send",
         }
     if kind == "change":
+        if change_status in ("proposed", "reviewing"):
+            return {
+                "allow_execute": True,
+                "reason": (
+                    "prepare: change is 'proposed'/'reviewing', so execute drafts a "
+                    "sandboxed, twin-gate-graded DRAFT PR for CAB review (the wired "
+                    "executor is structurally draft-only, it has no merge path)"
+                ),
+            }
         return {
             "allow_execute": False,
             "reason": (
@@ -503,6 +536,30 @@ def gate(kind: str, mode: str, origin: Optional[str] = None) -> dict:
     # task/epic/incident/problem: execute produces a reviewable artifact (draft PR),
     # never an auto-merge / auto-close.
     return {"allow_execute": True, "reason": "execute produces a draft for review"}
+
+
+def _fold_change_status(home: Path, card_id: str) -> Optional[str]:
+    """Fold the ITIL change record's current status for the gate, or ``None``.
+
+    Fail-closed by construction: an unknown id, a corrupt/missing core, or any
+    other fold failure returns ``None``, which ``gate()`` treats the same as
+    any non-draft status (block). This is the "one more lookup by id prefix
+    chg-" the design doc describes; it reuses ``ITILManager``'s own
+    resolve/fold idiom (the same one ``itil_tools.py``'s validate/schedule
+    handlers use) rather than reimplementing record I/O here.
+    """
+    try:
+        from .itil import Change, ITILManager
+
+        mgr = ITILManager(Path(home).expanduser())
+        rid = mgr._resolve_id(mgr.changes_dir, card_id)
+        chg = mgr._fold_record(mgr.changes_dir, rid, Change)
+        if chg is None:
+            return None
+        return chg.status.value
+    except Exception as exc:  # noqa: BLE001 - fail-closed: any failure blocks
+        logger.info("could not fold change %s for gate: %s", card_id, exc)
+        return None
 
 
 def live_execution_enabled() -> bool:
@@ -553,8 +610,9 @@ def _maybe_wire_execute_bridge() -> None:
     try:
         from skharness.autocode.agentrun_bridge import build_execute_dispatcher
     except ImportError:
-        logger.info("SKAI_EXECUTE_BRIDGE=1 but skharness is not installed; "
-                    "execute stays fail-closed (R1)")
+        logger.info(
+            "SKAI_EXECUTE_BRIDGE=1 but skharness is not installed; execute stays fail-closed (R1)"
+        )
         return
     fn = build_execute_dispatcher()
     if fn is None:
@@ -600,7 +658,10 @@ def process_one(home: Path, item: dict, worker: str = "runner", dispatcher=None)
 
     card = CardStore(home).fold(card_id)
     origin = ((getattr(card, "meta", None) or {}).get("origin") or {}).get("surface")
-    decision = gate(kind, mode, origin=origin)
+    change_status = None
+    if kind == "change" and mode == "execute":
+        change_status = _fold_change_status(home, card_id)
+    decision = gate(kind, mode, origin=origin, change_status=change_status)
     if mode == "execute" and not decision["allow_execute"]:
         add_activity(
             home, card_id, run_id, "elicitation", f"execution gated: {decision['reason']}", worker
@@ -673,7 +734,10 @@ def process_one(home: Path, item: dict, worker: str = "runner", dispatcher=None)
                     home, card_id, run_id, a.get("atype", "action"), a.get("text", ""), worker
                 )
             add_activity(home, card_id, run_id, "response", result.get("summary", "done"), worker)
-            set_state(home, card_id, run_id, NEEDS_REVIEW, worker, **result.get("links", {}))
+            links = result.get("links", {})
+            if mode == "execute" and card_id.startswith("chg-") and links.get("pr"):
+                _append_change_pr_link(home, card_id, run_id, run, result, worker)
+            set_state(home, card_id, run_id, NEEDS_REVIEW, worker, **links)
             _move_card(home, card_id, "review", worker)
             return {
                 "card_id": card_id,
@@ -710,6 +774,51 @@ def _move_card(home: Path, card_id: str, column: str, writer: str) -> None:
         CardStore(home).append_event(card_id, "move", writer, column=column)
     except Exception as exc:  # noqa: BLE001
         logger.debug("move after run failed: %s", exc)
+
+
+def _append_change_pr_link(
+    home: Path, card_id: str, run_id: str, run: dict, result: dict, worker: str
+) -> None:
+    """Fold a prepare run's draft PR onto the ITIL change record (CM P2.2).
+
+    The change record, not the card's ``agent_run`` meta, is canonical for CM
+    decisions (design doc section 10, risk 5): this is the edge that makes
+    the draft PR a property of the ticket, so CAB and the (future) deploy
+    executor read it from the change record, not the kanban card. Writer is
+    the run's agent (the drafter), matching ``_fold_change``'s ``prepared_by``
+    semantics and its no-self-approval guard.
+
+    Appending must never fail the run: any error here is caught, logged, and
+    surfaced as a visible ``error`` activity entry on the card instead, so
+    the missing change-linkage is visible without failing what is otherwise a
+    successful run.
+    """
+    links = result.get("links", {}) or {}
+    writer = run.get("agent") or worker
+    payload = {"url": links.get("pr"), "branch": links.get("branch"), "run_id": run_id}
+    head_sha = links.get("head_sha") or result.get("head_sha")
+    if head_sha:
+        payload["head_sha"] = head_sha
+    try:
+        from .itil import ITILManager
+
+        mgr = ITILManager(Path(home).expanduser())
+        rid = mgr._resolve_id(mgr.changes_dir, card_id)
+        if mgr._load_core(mgr.changes_dir, rid) is None:
+            raise ValueError(f"change record {card_id} not found")
+        mgr._append_event(mgr.changes_dir, rid, writer, "pr_link", **payload)
+    except Exception as exc:  # noqa: BLE001 - append failure must never fail the run
+        logger.warning("pr_link append failed for %s (run %s): %s", card_id, run_id, exc)
+        add_activity(
+            home,
+            card_id,
+            run_id,
+            "error",
+            "change-linkage failed: could not attach the draft PR "
+            f"({payload.get('url')}) to the ITIL change record ({exc}); the PR exists "
+            "but the change ticket does not reference it yet",
+            worker,
+        )
 
 
 def run_once(home: Path, worker: str = "ai-runner", dispatcher=None, limit: int = 5) -> list[dict]:

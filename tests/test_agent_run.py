@@ -159,13 +159,18 @@ def test_ensure_card_and_suggest_for_itil(tmp_path):
     assert ar.current_run(tmp_path, inc.id)["state"] == "queued"
 
 
-def test_change_suggestions_never_execute(tmp_path):
+def test_change_suggestions_execute_is_prepare_worded(tmp_path):
+    # CM P2.1: change-kind execute is no longer suppressed in the heuristic
+    # suggestions; it is worded as a prepare (draft-PR) action, matching the
+    # gate() carve-out for proposed/reviewing changes.
     from skcapstone.itil import ITILManager
 
     mgr = ITILManager(tmp_path)
     ch = mgr.propose_change(title="Gateway cutover", created_by="lumina")
     d = ar.suggest_next_steps(tmp_path, ch.id, use_llm=False)
-    assert all(s["mode"] != "execute" for s in d["suggestions"])
+    execute_suggestions = [s for s in d["suggestions"] if s["mode"] == "execute"]
+    assert execute_suggestions
+    assert "prepare" in execute_suggestions[0]["text"].lower()
 
 
 def test_suggestions_route(home):
