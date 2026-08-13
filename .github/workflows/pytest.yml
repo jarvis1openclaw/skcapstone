@@ -76,8 +76,15 @@ jobs:
         run: |
           pip install --force-reinstall --no-deps --no-cache-dir \
             "skcoord @ git+https://github.com/smilinTux/skcoord" \
-            "skdashboard @ git+https://github.com/smilinTux/skdashboard" \
-            "skharness @ git+https://github.com/smilinTux/skharness"
+            "skdashboard @ git+https://github.com/smilinTux/skdashboard"
+
+      # skharness comes from PyPI, NOT git: the repo is PRIVATE, so an
+      # unauthenticated runner cannot clone it. That means this one CAN lag its
+      # repo, unlike the siblings above. Accepted deliberately rather than
+      # putting a deploy key in CI for a test-only import; the alternative was
+      # leaving the tests reporting failure instead of running.
+      - name: Install skharness (private repo, so from PyPI)
+        run: pip install --no-deps --no-cache-dir skharness
 
       - name: Run unit tests (exclude integration + e2e via markers)
         run: |
