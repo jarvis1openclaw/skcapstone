@@ -511,6 +511,36 @@ def live_execution_enabled() -> bool:
 
 
 # ---------------------------------------------------------------------------
+# Execute-mode dispatch seam (R1, card 182b947f)
+# ---------------------------------------------------------------------------
+#
+# The raw ``claude_dispatcher`` runs an agent with real tools. Letting it handle
+# an EXECUTE run would be an ungraded agent making real changes. So execute must
+# route through a sandboxed, graded executor (skharness.autocode:
+# sandbox -> grade -> twin-gate -> draft PR), wired here explicitly. Until one is
+# wired, execute is FAIL-CLOSED: even with SKAI_RUNNER_LIVE=1 it is recorded as a
+# plan and moved to review, never dispatched. Propose/dry-run keep using the
+# passed-in dispatcher (no real side effects). See docs/runbooks/ai-runner-go-live.md.
+
+_execute_dispatcher = None  # Optional[Callable[[dict], dict]]
+
+
+def set_execute_dispatcher(fn) -> None:
+    """Wire (or clear, with ``None``) the sandboxed/graded execute dispatcher.
+
+    ``fn(context) -> {"summary", "activity", "links"}``, same shape as
+    ``claude_dispatcher``. Default ``None`` keeps execute fail-closed.
+    """
+    global _execute_dispatcher
+    _execute_dispatcher = fn
+
+
+def execute_dispatch_available() -> bool:
+    """True when a sandboxed execute dispatcher has been wired."""
+    return _execute_dispatcher is not None
+
+
+# ---------------------------------------------------------------------------
 # The runner step
 # ---------------------------------------------------------------------------
 
@@ -572,28 +602,64 @@ def process_one(home: Path, item: dict, worker: str = "runner", dispatcher=None)
         "mode": mode,
     }
 
-    if dispatcher is not None and live_execution_enabled():
-        try:
-            result = dispatcher(context)
-        except Exception as exc:  # noqa: BLE001
-            add_activity(home, card_id, run_id, "error", str(exc), worker)
-            set_state(home, card_id, run_id, FAILED, worker, last_error=str(exc))
-            return {"card_id": card_id, "run_id": run_id, "state": FAILED, "error": str(exc)}
-        for a in result.get("activity", []):
-            add_activity(
-                home, card_id, run_id, a.get("atype", "action"), a.get("text", ""), worker
-            )
-        add_activity(home, card_id, run_id, "response", result.get("summary", "done"), worker)
-        set_state(home, card_id, run_id, NEEDS_REVIEW, worker, **result.get("links", {}))
-        _move_card(home, card_id, "review", worker)
-        return {
-            "card_id": card_id,
-            "run_id": run_id,
-            "state": NEEDS_REVIEW,
-            "summary": result.get("summary", ""),
-        }
+    if live_execution_enabled():
+        # Pick the dispatcher by mode. Execute MUST use the wired sandboxed/graded
+        # executor and is fail-closed when none is set (R1); propose/dry-run use
+        # the passed-in dispatcher (no real side effects).
+        if mode == "execute":
+            run_dispatcher = _execute_dispatcher
+            if run_dispatcher is None:
+                add_activity(
+                    home,
+                    card_id,
+                    run_id,
+                    "elicitation",
+                    "execute gated (R1): requires the sandboxed skharness.autocode "
+                    "executor; none wired, so it was NOT dispatched. Recording plan only.",
+                    worker,
+                )
+                add_activity(
+                    home,
+                    card_id,
+                    run_id,
+                    "response",
+                    "execute NOT dispatched: sandboxed executor unavailable",
+                    worker,
+                )
+                set_state(home, card_id, run_id, NEEDS_REVIEW, worker)
+                _move_card(home, card_id, "review", worker)
+                return {
+                    "card_id": card_id,
+                    "run_id": run_id,
+                    "state": NEEDS_REVIEW,
+                    "gated": True,
+                    "reason": "execute requires the sandboxed executor (R1)",
+                }
+        else:
+            run_dispatcher = dispatcher
 
-    # No live execution: record a plan/proposal for a human to enact.
+        if run_dispatcher is not None:
+            try:
+                result = run_dispatcher(context)
+            except Exception as exc:  # noqa: BLE001
+                add_activity(home, card_id, run_id, "error", str(exc), worker)
+                set_state(home, card_id, run_id, FAILED, worker, last_error=str(exc))
+                return {"card_id": card_id, "run_id": run_id, "state": FAILED, "error": str(exc)}
+            for a in result.get("activity", []):
+                add_activity(
+                    home, card_id, run_id, a.get("atype", "action"), a.get("text", ""), worker
+                )
+            add_activity(home, card_id, run_id, "response", result.get("summary", "done"), worker)
+            set_state(home, card_id, run_id, NEEDS_REVIEW, worker, **result.get("links", {}))
+            _move_card(home, card_id, "review", worker)
+            return {
+                "card_id": card_id,
+                "run_id": run_id,
+                "state": NEEDS_REVIEW,
+                "summary": result.get("summary", ""),
+            }
+
+    # No live execution (or no dispatcher for propose/dry-run): record a plan.
     add_activity(
         home,
         card_id,
@@ -647,6 +713,16 @@ def claude_dispatcher(context: dict) -> dict:
 
     agent = context.get("agent") or "lumina"
     mode = context.get("mode", "propose")
+    if mode == "execute":
+        # Defense in depth (R1): the raw claude -p path must NEVER run an execute
+        # run, even if mis-wired as the execute dispatcher. Execute goes through
+        # the sandboxed skharness.autocode engine (set_execute_dispatcher).
+        return {
+            "summary": "raw claude dispatch refused for execute mode (R1: execute "
+            "requires the sandboxed skharness.autocode engine)",
+            "activity": [{"atype": "error", "text": "raw execute dispatch refused (R1)"}],
+            "links": {},
+        }
     prompt = (
         f"You are executing an AI next-step for card {context['card_id']} "
         f"({context['kind']}): {context['title']}.\n\n"
