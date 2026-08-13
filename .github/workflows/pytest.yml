@@ -64,11 +64,22 @@ jobs:
       # Pinning @master broke this job the day those repos were renamed to
       # main, and a CI step that breaks on someone else's rename is a step
       # that will break again.
+      # No @ref on purpose: pip then clones whatever the DEFAULT branch is.
+      # Pinning @master broke skchat CI the day those repos were renamed to
+      # main, with no commit from us in between.
+      #
+      # skharness is here because tests/test_cli_autopilot_cost.py imports
+      # skharness.autocode.autopilot_cost. It was never declared, so CI hit
+      # ModuleNotFoundError and those tests reported failure rather than
+      # running, while dev boxes (which have it installed) stayed green. It
+      # briefly came from PyPI because the repo was private; it is public as of
+      # 2026-08-13, so it joins the others and stops being able to lag.
       - name: Install extracted siblings from source
         run: |
           pip install --force-reinstall --no-deps --no-cache-dir \
-            "skcoord @ git+https://github.com/smilinTux/skcoord@main" \
-            "skdashboard @ git+https://github.com/smilinTux/skdashboard@main"
+            "skcoord @ git+https://github.com/smilinTux/skcoord" \
+            "skdashboard @ git+https://github.com/smilinTux/skdashboard" \
+            "skharness @ git+https://github.com/smilinTux/skharness"
 
       - name: Run unit tests (exclude integration + e2e via markers)
         run: |

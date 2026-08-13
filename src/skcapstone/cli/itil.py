@@ -475,6 +475,16 @@ def register_itil_commands(main: click.Group) -> None:
         """
         from ..itil import Change, ITILManager
 
+        # Enforce the verdict explicitly. click's `required=True` on a
+        # --passed/--failed flag PAIR is not honoured consistently across click
+        # versions: it raised locally and silently passed None in CI, so the
+        # command recorded a verdict of "neither" and exited 0. A validation
+        # verdict that records nothing while reporting success is worse than a
+        # refusal, so decide it here rather than depending on the library.
+        if passed is None:
+            console.print("\n  [red]Error:[/red] pass --passed or --failed to record a verdict\n")
+            raise SystemExit(2)
+
         mgr = ITILManager(Path(SHARED_ROOT).expanduser())
         rid = mgr._resolve_id(mgr.changes_dir, change_id)
         if mgr._load_core(mgr.changes_dir, rid) is None:

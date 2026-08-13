@@ -605,13 +605,26 @@ class TestSidebarNav:
         # the rail offsets page content by its own width
         assert "padding-left:var(--rail-w)" in css
 
+    # Icons are keyed by the tab's data-nav slug, NOT by href. The CSS moved to
+    # that scheme when the dashboard was extracted to skdashboard; this test
+    # still asserted `.tab[href="/"]`, which no longer appears anywhere in
+    # board.css, so it failed on every run and kept main red.
+    NAV_ICON_SLUGS = ("home", "cockpit", "cmdb", "board", "assistant", "trust")
+
     def test_nav_links_have_section_icons(self, agent_home):
         """Each destination gets an inline-SVG icon mask (icons + labels)."""
         css = self._client(agent_home).get("/static/css/board.css").text
         assert "--nav-ic" in css
         assert "mask:var(--nav-ic" in css
-        for link in self.NAV_LINKS:
-            assert f'.tab[href="{link}"]' in css, f"no icon for {link}"
+        for slug in self.NAV_ICON_SLUGS:
+            assert f'.tab[data-nav="{slug}"]' in css, f"no icon for {slug}"
+
+    def test_every_nav_link_carries_the_data_nav_the_css_keys_on(self, agent_home):
+        """The markup and the CSS have to agree on the slug, or an icon silently
+        renders blank. Asserting the CSS alone would not catch that."""
+        body = self._client(agent_home).get("/").text
+        for slug in self.NAV_ICON_SLUGS:
+            assert f'data-nav="{slug}"' in body, f"nav markup lost data-nav={slug}"
 
 
 class TestDoctorReportCache:

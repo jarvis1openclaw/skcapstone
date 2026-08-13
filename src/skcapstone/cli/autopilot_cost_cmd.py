@@ -34,6 +34,7 @@ def register_autopilot_cost_commands(main: click.Group) -> None:
         cap_usd = None
         try:
             from skharness.autocode.config import Config
+
             cap_usd = Config.load().caps.max_usd_per_day
         except Exception:  # noqa: BLE001 -- cap display is best-effort only
             cap_usd = None
@@ -55,9 +56,11 @@ def register_autopilot_cost_commands(main: click.Group) -> None:
 
 def _row(label: str, agg: dict) -> str:
     # Joules lead (the canonical SKWorld cost unit); USD follows in parens.
-    return (f"[bold]{label}:[/]".ljust(24)
-            + f"{agg['joules']:,} J  (${agg['cost_usd']:.2f})  "
-            + f"·  {agg['tokens']:,} tokens  ·  {agg['runs']} runs")
+    return (
+        f"[bold]{label}:[/]".ljust(24)
+        + f"{agg['joules']:,} J  (${agg['cost_usd']:.2f})  "
+        + f"·  {agg['tokens']:,} tokens  ·  {agg['runs']} runs"
+    )
 
 
 def _print_overview(data: dict, today: str) -> None:
@@ -100,8 +103,13 @@ def _print_overview(data: dict, today: str) -> None:
     table.add_column("Runs", justify="right")
 
     for repo, agg in sorted(by_repo.items(), key=lambda kv: -kv[1]["joules"]):
-        table.add_row(repo, f"{agg['joules']:,}", f"${agg['cost_usd']:.4f}",
-                      f"{agg['tokens']:,}", str(agg["runs"]))
+        table.add_row(
+            repo,
+            f"{agg['joules']:,}",
+            f"${agg['cost_usd']:.4f}",
+            f"{agg['tokens']:,}",
+            str(agg["runs"]),
+        )
 
     console.print(table)
     console.print()
