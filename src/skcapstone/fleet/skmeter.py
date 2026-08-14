@@ -126,14 +126,37 @@ class EnergyCounter:
         }
 
     def restore(self, state: dict | None) -> None:
-        """Rehydrate from a checkpoint. Unknown keys are ignored."""
+        """Rehydrate from a checkpoint. The checkpoint is untrusted input.
+
+        A missing key leaves the existing value untouched. A value that will
+        not coerce to the right type is ignored, also leaving the existing
+        value untouched, and this method never raises: a corrupt checkpoint
+        must degrade to "start from what we have", never to a crashed daemon.
+        A value that does coerce but is negative is floored at zero, because
+        nothing in this counter may ever go negative, checkpoint included.
+        """
         if not state:
             return
-        self._total_j = float(state.get("total_j", 0.0) or 0.0)
-        self._marginal_j = float(state.get("marginal_j", 0.0) or 0.0)
-        self._samples_n = int(state.get("samples_n", 0) or 0)
-        if state.get("idle_baseline_w") is not None:
-            self._idle_w = float(state["idle_baseline_w"])
+        self._total_j = self._coerce_field(state, "total_j", self._total_j, float)
+        self._marginal_j = self._coerce_field(state, "marginal_j", self._marginal_j, float)
+        self._samples_n = self._coerce_field(state, "samples_n", self._samples_n, int)
+        self._idle_w = self._coerce_field(state, "idle_baseline_w", self._idle_w, float)
+
+    @staticmethod
+    def _coerce_field(state: dict, key: str, current, cast):
+        """Coerce one checkpoint field, defensively.
+
+        Absent key or an uncoercible value: keep `current`. A coercible but
+        negative value: floor at zero rather than install it or keep current.
+        """
+        if key not in state:
+            return current
+        try:
+            value = cast(state[key])
+        except (TypeError, ValueError):
+            return current
+        zero = cast(0)
+        return value if value >= zero else zero
 
 
 DEFAULT_PORT = 9420
@@ -224,6 +247,28 @@ def should_rebaseline(last_ms, now_ms: int, interval_h: int = REBASELINE_INTERVA
     return (now_ms - int(last_ms)) > interval_h * 3600 * 1000
 
 
+def resolve_boot_idle_baseline(fresh_w: float, checkpoint: dict | None) -> float:
+    """Pick the idle baseline to use at boot: the fresh measurement wins.
+
+    We remeasure idle at every boot because ambient and hardware conditions
+    change between restarts, and the nightly re-baseline already keeps the
+    floor current going forward. Continuity of the counter matters, since
+    that is what the gateway deltas; continuity of the idle floor does not.
+    The checkpoint's baseline is only a fallback for when the fresh
+    measurement failed (returned 0.0). Do not "fix" this back to preferring
+    the checkpoint.
+    """
+    if fresh_w > 0:
+        return fresh_w
+    if checkpoint:
+        try:
+            saved = float(checkpoint.get("idle_baseline_w"))
+        except (TypeError, ValueError):
+            return 0.0
+        return saved if saved >= 0.0 else 0.0
+    return 0.0
+
+
 class _State:
     """Shared between the sampler thread and the HTTP handler."""
 
@@ -310,8 +355,13 @@ def serve(
     idle = measure_idle_baseline(one_sample, n=20)
 
     path = checkpoint_path(node)
+    checkpoint = load_checkpoint(path)
     counter = EnergyCounter(idle_w=idle)
-    counter.restore(load_checkpoint(path))
+    counter.restore(checkpoint)
+    # restore() just installed the checkpoint's idle_baseline_w, if any.
+    # Overrule it: the fresh boot measurement wins, the checkpoint is only a
+    # fallback. See resolve_boot_idle_baseline for why.
+    counter.set_idle_baseline(resolve_boot_idle_baseline(idle, checkpoint))
     state = _State(counter, device, node)
     last_baseline_ms = int(time.time() * 1000)
 

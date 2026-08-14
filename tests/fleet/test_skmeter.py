@@ -11,6 +11,7 @@ from skcapstone.fleet.skmeter import (
     load_checkpoint,
     measure_idle_baseline,
     parse_power_line,
+    resolve_boot_idle_baseline,
     save_checkpoint,
     should_rebaseline,
 )
@@ -242,6 +243,53 @@ class TestCheckpoint:
         c.restore({"marginal_j": 5.0, "nonsense": "x"})
         assert c.marginal_j == pytest.approx(5.0)
 
+    def test_restore_never_installs_negative_values(self):
+        # A hand-edited or partially-written checkpoint must not hand the
+        # gateway a negative counter after restart.
+        c = EnergyCounter(idle_w=10.0)
+        c.restore(
+            {
+                "total_j": -5.0,
+                "marginal_j": -999.0,
+                "samples_n": -3,
+                "idle_baseline_w": -1.0,
+            }
+        )
+        assert c.total_j == 0.0
+        assert c.marginal_j == 0.0
+        assert c.samples_n == 0
+        assert c.idle_baseline_w == 0.0
+
+    def test_restore_ignores_wrong_typed_values_without_raising(self):
+        # A syntactically valid file with the wrong types must not crash the
+        # daemon on boot; it degrades to "start from what we have".
+        c = EnergyCounter(idle_w=10.0)
+        c.observe(110.0, 5.0)
+        total_before = c.total_j
+        marginal_before = c.marginal_j
+        c.restore({"total_j": "abc", "marginal_j": [], "samples_n": {}})
+        assert c.total_j == pytest.approx(total_before)
+        assert c.marginal_j == pytest.approx(marginal_before)
+
+    def test_restore_survives_a_checkpoint_round_trip_of_garbage(self, tmp_path):
+        # Same path serve() takes: load_checkpoint then restore. Must not
+        # raise even when the file is syntactically valid but semantically
+        # garbage.
+        path = tmp_path / "garbage.json"
+        path.write_text(json.dumps({"total_j": "not a number", "marginal_j": -50.0}))
+        c = EnergyCounter(idle_w=5.0)
+        c.restore(load_checkpoint(path))
+        assert c.total_j == 0.0
+        assert c.marginal_j == 0.0
+
+    def test_restore_missing_key_leaves_existing_value_untouched(self):
+        c = EnergyCounter(idle_w=10.0)
+        c.observe(110.0, 5.0)  # accumulates real total_j and marginal_j
+        total_before = c.total_j
+        c.restore({"marginal_j": 999.0})  # total_j key absent
+        assert c.total_j == pytest.approx(total_before)
+        assert c.marginal_j == pytest.approx(999.0)
+
 
 class TestRebaseline:
     def test_due_after_the_interval(self):
@@ -254,3 +302,18 @@ class TestRebaseline:
     def test_never_baselined_is_due(self):
         assert should_rebaseline(0, 0) is False
         assert should_rebaseline(None, 12345) is True
+
+
+class TestBootIdleBaseline:
+    def test_fresh_measurement_wins_over_checkpoint(self):
+        assert resolve_boot_idle_baseline(9.5, {"idle_baseline_w": 3.0}) == pytest.approx(9.5)
+
+    def test_checkpoint_is_fallback_when_fresh_measurement_failed(self):
+        assert resolve_boot_idle_baseline(0.0, {"idle_baseline_w": 3.0}) == pytest.approx(3.0)
+
+    def test_zero_when_both_fresh_and_checkpoint_are_unusable(self):
+        assert resolve_boot_idle_baseline(0.0, None) == 0.0
+        assert resolve_boot_idle_baseline(0.0, {}) == 0.0
+
+    def test_negative_checkpoint_baseline_is_floored(self):
+        assert resolve_boot_idle_baseline(0.0, {"idle_baseline_w": -4.0}) == 0.0
