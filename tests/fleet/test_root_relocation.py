@@ -140,9 +140,7 @@ def test_the_real_fleet_tree_is_untouched(relocated: FleetPaths, monkeypatch) ->
     _drive_every_writer(relocated)
 
     after = _snapshot(real_root)
-    assert (
-        after - before == set()
-    ), f"the run created files in the REAL fleet tree: {after - before}"
+    assert after - before == set(), f"the run created files in the REAL fleet tree: {after - before}"
     assert relocated.root != real_root
 
 

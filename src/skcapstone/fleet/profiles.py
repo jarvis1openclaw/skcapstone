@@ -148,12 +148,15 @@ def normalize_profile_spec(spec: dict) -> dict:
             "and must be stated, never inferred"
         )
     if state_tier not in STATE_TIERS:
-        raise ProfileSpecError(f"unknown stateTier {state_tier!r} (known: {sorted(STATE_TIERS)})")
+        raise ProfileSpecError(
+            f"unknown stateTier {state_tier!r} (known: {sorted(STATE_TIERS)})"
+        )
 
     identity_class = spec.get("capauthIdentityClass")
     if identity_class is None:
         raise ProfileSpecError(
-            "spec.capauthIdentityClass is required (one of " f"{sorted(IDENTITY_CLASSES)})"
+            "spec.capauthIdentityClass is required (one of "
+            f"{sorted(IDENTITY_CLASSES)})"
         )
     if identity_class not in IDENTITY_CLASSES:
         raise ProfileSpecError(

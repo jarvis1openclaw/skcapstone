@@ -234,18 +234,107 @@ def ensure_shared_folder() -> Path:
     return AGENT_HOME
 
 
-def _write_stignore() -> Path:
-    """Write the .stignore file to the agent home directory.
+def _pattern_lines(text: str) -> list[str]:
+    """The actual ignore patterns in a .stignore, without comments or blanks."""
+    out = []
+    for raw in text.splitlines():
+        line = raw.strip()
+        if line and not line.startswith("//"):
+            out.append(line)
+    return out
 
-    Syncthing reads this to know which files should never propagate
-    to other nodes (private keys, cache files, etc.).
+
+def _merge_stignore(existing: str, template: str) -> str:
+    """Union the template's patterns into an existing .stignore.
+
+    Union is the only safe direction for an ignore file. Ignoring MORE than
+    intended costs a file that does not replicate. Ignoring LESS leaks
+    private keys onto every peer, floods the mesh with runtime state, or
+    replicates a live SQLite database into corruption. So the existing file
+    is authoritative and the template can only ADD.
+
+    Every existing line is preserved verbatim, including comment text: those
+    comments are the only record of WHY a rule exists (several name the
+    incident that bought them), and a rewrite that dropped them would make
+    the next person delete a rule they no longer understand.
+
+    Args:
+        existing: Current .stignore contents.
+        template: Bundled template contents.
+
+    Returns:
+        The merged contents, or ``existing`` unchanged when the template
+        contributes nothing new.
+    """
+    have = set(_pattern_lines(existing))
+    missing = [p for p in _pattern_lines(template) if p not in have]
+    if not missing:
+        return existing
+    body = existing if existing.endswith("\n") else existing + "\n"
+    return (
+        body
+        + "\n// --- added from the bundled skcapstone template ---\n"
+        + "\n".join(missing)
+        + "\n"
+    )
+
+
+def _write_stignore() -> Path:
+    """Install or extend the .stignore in the agent home directory.
+
+    Syncthing reads this to know which files must never propagate to other
+    nodes: private key material first, then derived and runtime state that
+    would either corrupt on replication or pin the scanner.
+
+    NON-DESTRUCTIVE. This used to be an unconditional write_text(), which
+    meant one `skcapstone sync setup` silently reverted a node to whatever
+    the bundled template happened to contain. The live rules had drifted
+    ~40 lines ahead of the template, and every one of those lines is an
+    incident someone already paid for: `**/comms/outbox` (the seed outbox
+    flood), the SQLite `-shm`/`-wal` and `agents/*/index.db` rules,
+    `**/memory/chroma`, `**/memory/archive`, and `(?d)**/*.tmp`, whose own
+    comment records the scanner-abort fix it came from.
+
+    Behaviour now:
+      * no file        -> write the template
+      * file exists    -> back it up, then union in any template patterns
+                          it lacks, preserving every existing line
+      * already covers -> no write at all, so re-running is free
 
     Returns:
         Path: The .stignore file path.
     """
     stignore_path = AGENT_HOME / ".stignore"
-    stignore_path.write_text(STIGNORE_CONTENTS, encoding="utf-8")
+    if not stignore_path.exists():
+        stignore_path.parent.mkdir(parents=True, exist_ok=True)
+        stignore_path.write_text(STIGNORE_CONTENTS, encoding="utf-8")
+        return stignore_path
+
+    try:
+        existing = stignore_path.read_text(encoding="utf-8")
+    except OSError:
+        # Unreadable but present: leave it alone. Overwriting rules we
+        # cannot read is exactly the failure this function now prevents.
+        return stignore_path
+
+    merged = _merge_stignore(existing, STIGNORE_CONTENTS)
+    if merged == existing:
+        return stignore_path
+
+    backup = stignore_path.with_name(f".stignore.bak-{_backup_stamp()}")
+    try:
+        backup.write_text(existing, encoding="utf-8")
+    except OSError:
+        return stignore_path  # cannot back up, so do not modify
+    stignore_path.write_text(merged, encoding="utf-8")
     return stignore_path
+
+
+def _backup_stamp() -> str:
+    """UTC timestamp for backup filenames."""
+    from datetime import datetime, timezone
+
+    return datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
 
 
 def configure_syncthing_folder() -> bool:
