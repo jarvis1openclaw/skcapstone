@@ -21,6 +21,7 @@ from . import (
     service_controller,
     store,
 )
+from . import profiles as profiles_mod
 from . import services as services_mod
 from . import sknoded as sknoded_mod
 from .explain import explain as explain_kind
@@ -195,6 +196,11 @@ def apply_cmd(file_path: str) -> None:
             services_mod.normalize_service_spec(spec)
         except services_mod.ServiceSpecError as exc:
             raise click.ClickException(f"invalid service spec: {exc}") from exc
+    if kind == "profile":
+        try:
+            profiles_mod.normalize_profile_spec(spec)
+        except profiles_mod.ProfileSpecError as exc:
+            raise click.ClickException(f"invalid profile spec: {exc}") from exc
     try:
         payload = store.write_spec(
             default_paths(), kind, name, spec, writer=_operator(), labels=doc.get("labels")
@@ -216,6 +222,58 @@ def services_cmd() -> None:
         click.echo(
             f"{r.name}\t-> {r.node or 'unplaced'}\t" f"state={r.state}\tready={r.ready}{flags}"
         )
+
+
+def _nodes_by_role(paths_) -> dict[str, list[str]]:
+    """Node names grouped by their bound spec.role.
+
+    spec.role is owned by card 8258517f; this only READS it, and a node
+    object that predates it simply contributes no binding rather than
+    erroring, so `get profiles` works before and after that card lands.
+    """
+    bound: dict[str, list[str]] = {}
+    for payload in store.list_specs(paths_, "node"):
+        role = (payload.get("spec") or {}).get("role")
+        if isinstance(role, str) and role:
+            bound.setdefault(role, []).append(payload["name"])
+    return {role: sorted(names) for role, names in bound.items()}
+
+
+def _profile_rows(paths_) -> list[dict]:
+    """One display row per Profile object, sorted by name.
+
+    A malformed profile is shown with its error rather than skipped: a
+    profile nobody can read is exactly the thing an operator needs to see.
+    """
+    bound = _nodes_by_role(paths_)
+    rows = []
+    for payload in store.list_specs(paths_, "profile"):
+        name = payload["name"]
+        try:
+            spec = profiles_mod.normalize_profile_spec(payload.get("spec", {}))
+        except profiles_mod.ProfileSpecError as exc:
+            rows.append(
+                {
+                    "name": name,
+                    "stateTier": "INVALID",
+                    "capauthIdentityClass": str(exc)[:40],
+                    "required": "-",
+                    "mustNot": "-",
+                    "nodes": ",".join(bound.get(name, [])),
+                }
+            )
+            continue
+        rows.append(
+            {
+                "name": name,
+                "stateTier": spec["stateTier"],
+                "capauthIdentityClass": spec["capauthIdentityClass"],
+                "required": len(spec["units"]["required"]),
+                "mustNot": len(spec["units"]["mustNot"]),
+                "nodes": ",".join(bound.get(name, [])),
+            }
+        )
+    return sorted(rows, key=lambda r: r["name"])
 
 
 @fleet.command("get")
@@ -267,8 +325,21 @@ def get_cmd(resource: str) -> None:
                 f"{r.drift}\t{r.rotation_overdue}"
             )
         return
+    if resource == "profiles":
+        rows = _profile_rows(default_paths())
+        if not rows:
+            click.echo("no profiles")
+            return
+        click.echo("NAME\tSTATE-TIER\tIDENTITY-CLASS\tREQUIRED\tMUSTNOT\tNODES")
+        for r in rows:
+            click.echo(
+                f"{r['name']}\t{r['stateTier']}\t{r['capauthIdentityClass']}\t"
+                f"{r['required']}\t{r['mustNot']}\t{r['nodes'] or '-'}"
+            )
+        return
     raise click.ClickException(
-        f"unknown resource: {resource!r} (known: cronjobs, modelservers, agents, configs)"
+        f"unknown resource: {resource!r} "
+        "(known: cronjobs, modelservers, agents, configs, profiles)"
     )
 
 

@@ -162,6 +162,52 @@ KINDS: dict[str, dict] = {
             "skfleet describe config <name>",
         ],
     },
+    "profile": {
+        "kind": "Profile",
+        "description": (
+            "An install profile: what a node of this role is supposed to have "
+            "installed, and how much sovereign state it carries."
+        ),
+        "spec": {
+            "description": "human-readable summary of the role",
+            "packages": (
+                "{required, allowed, mustNot} lists of distribution names; "
+                "required must also appear in allowed, and no name may be in "
+                "both allowed and mustNot"
+            ),
+            "units": "same three lists, for systemd --user unit names",
+            "unitsIgnore": (
+                "fnmatch patterns for units this profile takes no position on "
+                "(desktop sockets, distro baseline), so they never read as drift"
+            ),
+            "stateTier": (
+                "full-replica | control-bus | none; how much sovereign state "
+                "this role holds. Orthogonal to the service role, never derived "
+                "from it. Required: it has no default."
+            ),
+            "capauthIdentityClass": (
+                "operator | agent | worker | observer; the capauth identity "
+                "class the node's credential belongs to. Required."
+            ),
+            "syncFolders": "syncthing folder ids a node of this role joins",
+            "deleted": "tombstone; stops management, never uninstalls anything",
+        },
+        "status": {
+            "conditions": "list of {type, status, reason, message, lastTransition}",
+        },
+        "conditions": {
+            "ProfileDrift": (
+                "the node's observed units or packages disagree with the "
+                "profile it is bound to (REPORT ONLY: nothing is installed, "
+                "removed, enabled or disabled on the strength of this)"
+            ),
+        },
+        "actions": [
+            "skfleet get profiles",
+            "skfleet describe profile <name>",
+            "skfleet apply -f <file>",
+        ],
+    },
     "operatorapp": {
         "kind": "Operatorapp",
         "description": (

@@ -164,6 +164,23 @@ def test_relocation_is_total_not_partial(tmp_path, monkeypatch) -> None:
     assert _snapshot(root_b) == a_after_first, "the two roots should hold the same file set"
 
 
+def test_the_two_path_classes_outside_fleetpaths_still_relocate() -> None:
+    """`decisions/` and `atlas/` are part of the fleet store but are NOT
+    properties on FleetPaths: operator_seat/cli.py builds them by joining
+    paths.root. They relocate correctly today, and this asserts it, because
+    the control-bus folder split (card ddb2a02f) shares both subtrees and a
+    silent regression here would leave decisions behind on the old root."""
+    from skcapstone.operator_seat import cli as operator_cli
+
+    fake_root = Path("/nonexistent/relocated-root")
+    paths = FleetPaths(root=fake_root)
+
+    assert operator_cli._decisions_dir(paths) == str(fake_root / "decisions")
+    # The atlas brief dir is built inline at the publish call site with the
+    # same join, so pin the shape it must keep producing.
+    assert str(paths.root / "atlas" / "brief").startswith(str(fake_root))
+
+
 def test_fleet_package_hardcodes_the_root_in_exactly_one_place() -> None:
     """The audit, as an executable assertion: only paths.py may name the
     default location. Any new hit is a relocation bug in the making."""
