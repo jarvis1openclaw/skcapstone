@@ -8,13 +8,17 @@ and (only when execution is explicitly enabled) applies the auto ones.
 
 from __future__ import annotations
 
-from typing import Any
+from typing import Any, Callable
 
 from .policy import classify_change
 
 
 def plan_actions(
-    proposals: list[dict], explain: dict, *, author: str = "operator"
+    proposals: list[dict],
+    explain: dict,
+    *,
+    author: str = "operator",
+    target_known: Callable[[dict], bool] | None = None,
 ) -> list[dict[str, Any]]:
     """Classify and dispose each proposal.
 
@@ -37,11 +41,25 @@ def plan_actions(
             "author": author,
         }
         classification = classify_change(action)
+        disposition = "auto" if classification["auto_approvable"] else "escalate"
+        # Validate the TARGET, not just the action. The action is checked against
+        # the catalog above; without this the object was never checked at all, so
+        # a proposal naming something that does not exist still classified auto
+        # and was handed to the act verb. Escalating (never auto-applying) an
+        # unresolvable target keeps a human in the loop instead of failing at
+        # actuation time. Opt-in: callers without fleet access pass nothing and
+        # get the previous behavior exactly.
+        unresolved = bool(
+            disposition == "auto" and target_known is not None and not target_known(p)
+        )
+        if unresolved:
+            disposition = "escalate"
         planned.append(
             {
                 "proposal": p,
                 "classification": classification,
-                "disposition": "auto" if classification["auto_approvable"] else "escalate",
+                "disposition": disposition,
+                "unresolved_target": unresolved,
             }
         )
     return planned

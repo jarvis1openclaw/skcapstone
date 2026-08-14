@@ -193,6 +193,11 @@ def run_cmd(
         execute=execute,
         emit=click.echo,
         extra_observers=extra_observers,
+        # Validate the proposal's target against the live fleet before anything
+        # is auto-applied. The proposer works from a brief keyed on app label,
+        # so it can name an app ('skgateway') where the real objects are
+        # 'upstreams' and 'connection-pool'. Unresolvable targets escalate.
+        target_known=lambda p: fleet_adapter.fleet_target_known(paths, p),
     )
     if honor:
         click.echo("honor: ON (CR-9.1 step-1 physical actuation: fleet + skchat)")

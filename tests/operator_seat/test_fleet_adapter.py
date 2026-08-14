@@ -109,3 +109,76 @@ def test_fleet_act_unknown_object_raises(tmp_path, monkeypatch):
             {"change_class": "normal"},
             now_iso="2026-07-29T00:00:00Z",
         )
+
+
+def test_fleet_target_known_false_for_missing_object(tmp_path, monkeypatch):
+    paths, _ = _enroll(tmp_path, monkeypatch)
+    assert (
+        fleet_adapter.fleet_target_known(paths, {"action": "rerun_cronjob", "object": "ghost"})
+        is False
+    )
+
+
+def test_fleet_target_known_true_for_existing_object(tmp_path, monkeypatch):
+    from skcapstone.fleet import store
+
+    paths, op = _enroll(tmp_path, monkeypatch)
+    store.write_spec(paths, "service", "svc-x", {"unit": "svc-x.service"}, writer=op)
+    assert (
+        fleet_adapter.fleet_target_known(paths, {"action": "restart_service", "object": "svc-x"})
+        is True
+    )
+
+
+def test_fleet_target_known_true_for_unmapped_action(tmp_path, monkeypatch):
+    # Not an ops-channel action: the action-level catalog check already governs
+    # it, so target validation must not second-guess the disposition here.
+    paths, _ = _enroll(tmp_path, monkeypatch)
+    assert (
+        fleet_adapter.fleet_target_known(paths, {"action": "delete_object", "object": "x"}) is True
+    )
+
+
+def test_repeated_identical_action_collapses_instead_of_appending(tmp_path, monkeypatch):
+    # A standing condition (e.g. an app that is down, so its conditions read
+    # stale) re-proposes the same fix every pass. Escalations already dedupe on
+    # a content-based decision id; the act path appended a fresh entry every
+    # time, growing operatorActions without bound. Collapse the repeat.
+    from skcapstone.fleet import store
+
+    paths, op = _enroll(tmp_path, monkeypatch)
+    store.write_spec(paths, "service", "svc-x", {"unit": "svc-x.service"}, writer=op)
+    prop = {"action": "restart_service", "object": "svc-x", "rationale": "stale"}
+    cls = {"change_class": "standard"}
+
+    fleet_adapter.fleet_act(paths, prop, cls, now_iso="2026-07-29T00:00:00Z")
+    fleet_adapter.fleet_act(paths, prop, cls, now_iso="2026-07-29T00:15:00Z")
+    fleet_adapter.fleet_act(paths, prop, cls, now_iso="2026-07-29T00:30:00Z")
+
+    log = store.read_spec(paths, "service", "svc-x")["spec"]["operatorActions"]
+    assert len(log) == 1
+    assert log[0]["count"] == 3
+    assert log[0]["ts"] == "2026-07-29T00:00:00Z"  # first seen
+    assert log[0]["lastTs"] == "2026-07-29T00:30:00Z"  # most recent
+
+
+def test_a_different_action_still_appends(tmp_path, monkeypatch):
+    from skcapstone.fleet import store
+
+    paths, op = _enroll(tmp_path, monkeypatch)
+    store.write_spec(paths, "service", "svc-x", {"unit": "svc-x.service"}, writer=op)
+    cls = {"change_class": "standard"}
+    fleet_adapter.fleet_act(
+        paths,
+        {"action": "restart_service", "object": "svc-x"},
+        cls,
+        now_iso="2026-07-29T00:00:00Z",
+    )
+    fleet_adapter.fleet_act(
+        paths,
+        {"action": "replace_workload", "object": "svc-x"},
+        cls,
+        now_iso="2026-07-29T00:15:00Z",
+    )
+    log = store.read_spec(paths, "service", "svc-x")["spec"]["operatorActions"]
+    assert [e["action"] for e in log] == ["restart_service", "replace_workload"]

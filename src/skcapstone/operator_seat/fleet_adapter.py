@@ -150,6 +150,21 @@ def fleet_observe(paths, now_iso: str) -> dict:
     return {"conditions": conds}
 
 
+def fleet_target_known(paths, proposal: dict) -> bool:
+    """True when the proposal's object resolves to an existing fleet object.
+
+    The decision layer validates the ACTION against the catalog but had no way
+    to check the TARGET, so a proposal naming something that does not exist
+    still classified auto and was handed to the act verb, which then raised.
+    Actions with no ops-channel mapping return True: the action-level check
+    already governs those, and this must not second-guess that disposition.
+    """
+    kind = _ACTION_KIND.get(proposal.get("action"))
+    if kind is None:
+        return True
+    return store.read_spec(paths, kind, proposal.get("object")) is not None
+
+
 def fleet_act(paths, proposal: dict, classification: dict, *, now_iso: str, writer=None) -> dict:
     """Apply an operator proposal to the fleet: the act verb (ops channel).
 
@@ -173,15 +188,30 @@ def fleet_act(paths, proposal: dict, classification: dict, *, now_iso: str, writ
         raise ValueError(f"unknown {kind} object {name!r}")
     spec = dict(existing.get("spec", {}))
     log = list(spec.get("operatorActions", []))
-    log.append(
-        {
-            "action": action,
-            "ts": now_iso,
-            "by": "atlas",
-            "changeClass": classification.get("change_class"),
-            "rationale": proposal.get("rationale", ""),
-        }
-    )
+    entry = {
+        "action": action,
+        "ts": now_iso,
+        "by": "atlas",
+        "changeClass": classification.get("change_class"),
+        "rationale": proposal.get("rationale", ""),
+    }
+    # A standing condition (an app that is down reads stale, so the brief is
+    # never quiet) re-proposes the same fix every pass. Escalations already
+    # dedupe on a content-based decision id so a standing issue is ONE decision
+    # a human resolves once; the act path had no equivalent and appended a fresh
+    # entry every 15 minutes, growing operatorActions without bound. Collapse a
+    # repeat of the immediately preceding action into count + lastTs, so the
+    # signal survives ("still happening, N times") without the unbounded log.
+    prev = log[-1] if log else None
+    if prev and prev.get("action") == action and prev.get("changeClass") == entry["changeClass"]:
+        collapsed = dict(prev)
+        collapsed["count"] = int(collapsed.get("count", 1)) + 1
+        collapsed["lastTs"] = now_iso
+        collapsed["rationale"] = entry["rationale"]
+        log[-1] = collapsed
+    else:
+        entry["count"] = 1
+        log.append(entry)
     spec["operatorActions"] = log
     writer = writer or store.Writer(
         role="operator", node=self_node_name(), identity="operator", agent_seat=True
