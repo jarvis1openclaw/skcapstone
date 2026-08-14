@@ -1,13 +1,18 @@
 """Unit tests for the skmeter pure core. No GPU required."""
 
+import json
+
 import pytest
 
 from skcapstone.fleet.skmeter import (
     EnergyCounter,
     build_energy_response,
     integrate,
+    load_checkpoint,
     measure_idle_baseline,
     parse_power_line,
+    save_checkpoint,
+    should_rebaseline,
 )
 
 
@@ -185,3 +190,67 @@ class TestEnergyResponse:
         assert r["node"] == "dot100"
         assert r["ts"] == 1_700_000_000_000
         assert r["idle_baseline_w"] == pytest.approx(8.96)
+
+
+class TestCheckpoint:
+    def test_snapshot_restore_roundtrip(self):
+        c = EnergyCounter(idle_w=8.96)
+        c.observe(110.0, 2.0)
+        state = c.snapshot()
+
+        restored = EnergyCounter()
+        restored.restore(state)
+        assert restored.marginal_j == pytest.approx(c.marginal_j)
+        assert restored.total_j == pytest.approx(c.total_j)
+        assert restored.idle_baseline_w == pytest.approx(8.96)
+
+    def test_counter_survives_a_restart(self, tmp_path):
+        # The whole point: a restart must not rewind the counter, or every
+        # in-flight request straddling it loses its measurement.
+        path = tmp_path / "skmeter-state.json"
+        c = EnergyCounter(idle_w=10.0)
+        c.observe(110.0, 5.0)  # 500 J marginal
+        save_checkpoint(c, path)
+
+        revived = EnergyCounter()
+        revived.restore(load_checkpoint(path))
+        assert revived.marginal_j == pytest.approx(500.0)
+
+        revived.observe(110.0, 1.0)
+        assert revived.marginal_j == pytest.approx(600.0)
+
+    def test_load_checkpoint_missing_file_returns_none(self, tmp_path):
+        assert load_checkpoint(tmp_path / "nope.json") is None
+
+    def test_load_checkpoint_corrupt_file_returns_none(self, tmp_path):
+        path = tmp_path / "bad.json"
+        path.write_text("{not json")
+        assert load_checkpoint(path) is None
+
+    def test_save_is_atomic(self, tmp_path):
+        # A crash mid-write must not leave a truncated file that reads as a
+        # zero balance on the next boot.
+        path = tmp_path / "state.json"
+        c = EnergyCounter(idle_w=1.0)
+        c.observe(101.0, 1.0)
+        save_checkpoint(c, path)
+        assert json.loads(path.read_text())["marginal_j"] == pytest.approx(100.0)
+        assert not list(tmp_path.glob("*.tmp")), "temp file should be gone"
+
+    def test_restore_ignores_garbage_keys(self):
+        c = EnergyCounter()
+        c.restore({"marginal_j": 5.0, "nonsense": "x"})
+        assert c.marginal_j == pytest.approx(5.0)
+
+
+class TestRebaseline:
+    def test_due_after_the_interval(self):
+        day_ms = 24 * 3600 * 1000
+        assert should_rebaseline(0, day_ms + 1) is True
+
+    def test_not_due_before_the_interval(self):
+        assert should_rebaseline(0, 3600 * 1000) is False
+
+    def test_never_baselined_is_due(self):
+        assert should_rebaseline(0, 0) is False
+        assert should_rebaseline(None, 12345) is True

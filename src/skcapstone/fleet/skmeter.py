@@ -12,6 +12,8 @@ without a GPU present.
 from __future__ import annotations
 
 import json
+import os
+import pathlib
 import re
 import socket
 import subprocess
@@ -123,6 +125,16 @@ class EnergyCounter:
             "samples_n": self._samples_n,
         }
 
+    def restore(self, state: dict | None) -> None:
+        """Rehydrate from a checkpoint. Unknown keys are ignored."""
+        if not state:
+            return
+        self._total_j = float(state.get("total_j", 0.0) or 0.0)
+        self._marginal_j = float(state.get("marginal_j", 0.0) or 0.0)
+        self._samples_n = int(state.get("samples_n", 0) or 0)
+        if state.get("idle_baseline_w") is not None:
+            self._idle_w = float(state["idle_baseline_w"])
+
 
 DEFAULT_PORT = 9420
 DEFAULT_INTERVAL_MS = 200
@@ -171,6 +183,45 @@ def build_energy_response(
         "ts": now_ms,
         "samples_n": snap["samples_n"],
     }
+
+
+CHECKPOINT_INTERVAL_S = 30
+REBASELINE_INTERVAL_H = 24
+
+
+def checkpoint_path(node: str) -> pathlib.Path:
+    root = pathlib.Path.home() / ".skcapstone" / "skmeter"
+    root.mkdir(parents=True, exist_ok=True)
+    return root / f"{node}-state.json"
+
+
+def save_checkpoint(counter: EnergyCounter, path) -> None:
+    """Write the counter atomically.
+
+    Non-atomic writes are how the joule wallet loses balances: a truncated
+    file reads as zero on the next boot. Temp file plus os.replace, always.
+    """
+    path = pathlib.Path(path)
+    tmp = path.with_suffix(path.suffix + ".tmp")
+    payload = dict(counter.snapshot())
+    payload["saved_ms"] = int(time.time() * 1000)
+    tmp.write_text(json.dumps(payload), encoding="utf-8")
+    os.replace(tmp, path)
+
+
+def load_checkpoint(path) -> dict | None:
+    """Read a checkpoint. Returns None for missing or corrupt files."""
+    try:
+        return json.loads(pathlib.Path(path).read_text(encoding="utf-8"))
+    except Exception:
+        return None
+
+
+def should_rebaseline(last_ms, now_ms: int, interval_h: int = REBASELINE_INTERVAL_H) -> bool:
+    """True when the idle floor is stale. Never baselined counts as due."""
+    if last_ms is None:
+        return True
+    return (now_ms - int(last_ms)) > interval_h * 3600 * 1000
 
 
 class _State:
@@ -257,9 +308,29 @@ def serve(
         return parse_power_line(out.splitlines()[0] if out.splitlines() else "")
 
     idle = measure_idle_baseline(one_sample, n=20)
-    state = _State(EnergyCounter(idle_w=idle), device, node)
+
+    path = checkpoint_path(node)
+    counter = EnergyCounter(idle_w=idle)
+    counter.restore(load_checkpoint(path))
+    state = _State(counter, device, node)
+    last_baseline_ms = int(time.time() * 1000)
+
+    def _maintenance() -> None:
+        nonlocal last_baseline_ms
+        while True:
+            time.sleep(CHECKPOINT_INTERVAL_S)
+            now_ms = int(time.time() * 1000)
+            with state.lock:
+                save_checkpoint(state.counter, path)
+            if should_rebaseline(last_baseline_ms, now_ms):
+                fresh = measure_idle_baseline(one_sample, n=20)
+                if fresh > 0:
+                    with state.lock:
+                        state.counter.set_idle_baseline(fresh)
+                last_baseline_ms = now_ms
 
     threading.Thread(target=sample_loop, args=(state, interval_ms), daemon=True).start()
+    threading.Thread(target=_maintenance, daemon=True).start()
 
     HTTPServer(("127.0.0.1", port), _handler_factory(state)).serve_forever()
 
