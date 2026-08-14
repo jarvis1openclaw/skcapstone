@@ -173,3 +173,70 @@ def test_loop_frozen_never_applies_even_with_execute(tmp_path, monkeypatch):
         emit=lambda _s: None,
     )
     assert applied == []  # freeze wins even with execute=True
+
+
+def test_loop_failing_apply_does_not_abort_the_pass(tmp_path, monkeypatch):
+    # Blast radius: one bad proposal must not kill the proposals behind it.
+    paths, _ = _enroll(tmp_path, monkeypatch)
+    bad = {"action": "restart_service", "object": "nonexistent"}
+    good = {"action": "restart_service", "object": "web"}
+    applied = []
+
+    def apply_fn(p, c):
+        if p["object"] == "nonexistent":
+            raise ValueError("unknown service object 'nonexistent'")
+        applied.append(p)
+
+    res = loop.run_once(
+        paths,
+        now_iso="2026-07-29T00:00:00Z",
+        propose=lambda b, r: [bad, good],
+        apply_fn=apply_fn,
+        execute=True,
+        emit=lambda _s: None,
+    )
+    assert applied == [good]  # the proposal behind the failure still ran
+    assert res["outcomes"][0]["outcome"].startswith("failed")
+    assert "unknown service object" in res["outcomes"][0]["outcome"]
+    assert res["outcomes"][1]["outcome"] == "applied"
+
+
+def test_loop_failing_apply_still_parks_later_escalations(tmp_path, monkeypatch):
+    # The silent-loss bug: escalations queued behind a failure were never parked,
+    # so a human was never asked about them.
+    from skcapstone.operator_seat import decisions
+
+    paths, _ = _enroll(tmp_path, monkeypatch)
+    ddir = tmp_path / "decisions"
+    bad = {"action": "restart_service", "object": "nonexistent"}
+    escalation = {"action": "delete_object", "object": "web"}  # irreversible -> escalate
+
+    def apply_fn(p, c):
+        raise ValueError("unknown service object 'nonexistent'")
+
+    res = loop.run_once(
+        paths,
+        now_iso="2026-07-29T00:00:00Z",
+        propose=lambda b, r: [bad, escalation],
+        apply_fn=apply_fn,
+        execute=True,
+        decisions_dir=str(ddir),
+        emit=lambda _s: None,
+    )
+    assert res["outcomes"][1]["outcome"].startswith("escalated")
+    assert decisions.list_pending(str(ddir))  # the human actually got asked
+
+
+def test_loop_failing_apply_still_emits_a_report(tmp_path, monkeypatch):
+    # A pass that hits a failure must still tell someone what happened.
+    paths, _ = _enroll(tmp_path, monkeypatch)
+    out = []
+    loop.run_once(
+        paths,
+        now_iso="2026-07-29T00:00:00Z",
+        propose=lambda b, r: [{"action": "restart_service", "object": "nonexistent"}],
+        apply_fn=lambda p, c: (_ for _ in ()).throw(ValueError("boom")),
+        execute=True,
+        emit=out.append,
+    )
+    assert out and "restart_service" in out[0]
