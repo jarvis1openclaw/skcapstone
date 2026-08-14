@@ -29,6 +29,10 @@ class TestParsePowerLine:
     def test_garbage_returns_none(self):
         assert parse_power_line("nvidia-smi: command not found") is None
 
+    def test_negative_value_returns_none(self):
+        # Power draw cannot be negative; a negative reading is corruption.
+        assert parse_power_line("-5.0") is None
+
 
 class TestIntegrate:
     def test_constant_power(self):
@@ -98,8 +102,44 @@ class TestEnergyCounter:
     def test_delta_between_two_reads_is_the_energy_of_that_window(self):
         # This is exactly how the gateway will use it.
         c = EnergyCounter(idle_w=10.0)
-        c.observe(10.0, 1.0)          # idle before the request
+        c.observe(10.0, 1.0)  # idle before the request
         before = c.marginal_j
-        c.observe(110.0, 2.0)         # the request itself: 100 W x 2 s
+        c.observe(110.0, 2.0)  # the request itself: 100 W x 2 s
         after = c.marginal_j
         assert after - before == pytest.approx(200.0)
+
+    def test_negative_watts_leaves_counters_unchanged(self):
+        # Negative watts (corrupt sample) must not decrease either counter.
+        c = EnergyCounter(idle_w=10.0)
+        c.observe(100.0, 1.0)
+        total_before = c.total_j
+        marginal_before = c.marginal_j
+        c.observe(-50.0, 1.0)
+        assert c.total_j == total_before
+        assert c.marginal_j == marginal_before
+
+    def test_idle_baseline_w_reflects_constructor(self):
+        # idle_baseline_w property reflects the constructor argument.
+        c = EnergyCounter(idle_w=42.5)
+        assert c.idle_baseline_w == pytest.approx(42.5)
+
+    def test_set_idle_baseline_changes_future_observations(self):
+        # set_idle_baseline() changes what subsequent observe() calls treat as idle.
+        c = EnergyCounter(idle_w=10.0)
+        c.observe(100.0, 1.0)
+        marginal_first = c.marginal_j
+        c.set_idle_baseline(50.0)
+        c.observe(100.0, 1.0)
+        marginal_second = c.marginal_j
+        # First: (100-10)*1=90, Second: (100-50)*1=50
+        assert marginal_first == pytest.approx(90.0)
+        assert marginal_second == pytest.approx(140.0)
+
+    def test_set_idle_baseline_does_not_retroactively_alter(self):
+        # set_idle_baseline() does not retroactively alter accumulated marginal_j.
+        c = EnergyCounter(idle_w=10.0)
+        c.observe(100.0, 1.0)
+        accumulated = c.marginal_j
+        c.set_idle_baseline(50.0)
+        # marginal_j should not change retroactively
+        assert c.marginal_j == accumulated

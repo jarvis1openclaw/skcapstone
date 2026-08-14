@@ -19,9 +19,9 @@ _NUMBER = re.compile(r"-?\d+(?:\.\d+)?")
 def parse_power_line(line: str) -> float | None:
     """Parse one `nvidia-smi --query-gpu=power.draw` output line into watts.
 
-    Returns None for blanks, '[N/A]', and anything else unparseable. Tolerates
-    NUL padding, which appears when the sampler's output file is read while
-    nvidia-smi is still writing to it.
+    Returns None for blanks, '[N/A]', negative values (corrupt samples), and
+    anything else unparseable. Tolerates NUL padding, which appears when the
+    sampler's output file is read while nvidia-smi is still writing to it.
     """
     if not line:
         return None
@@ -32,7 +32,10 @@ def parse_power_line(line: str) -> float | None:
     if not match:
         return None
     try:
-        return float(match.group(0))
+        value = float(match.group(0))
+        if value < 0.0:
+            return None
+        return value
     except ValueError:
         return None
 
@@ -100,7 +103,8 @@ class EnergyCounter:
         self._idle_w = float(idle_w)
 
     def observe(self, watts: float, dt_s: float) -> None:
-        self._total_j += watts * dt_s
+        contribution_j = max(0.0, watts * dt_s)
+        self._total_j += contribution_j
         self._marginal_j += max(0.0, watts - self._idle_w) * dt_s
         self._samples_n += 1
 
