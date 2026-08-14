@@ -240,3 +240,27 @@ def test_loop_failing_apply_still_emits_a_report(tmp_path, monkeypatch):
         emit=out.append,
     )
     assert out and "restart_service" in out[0]
+
+
+def test_loop_unresolvable_target_parks_instead_of_applying(tmp_path, monkeypatch):
+    # The skoperator incident shape: the proposer named an object that does not
+    # exist. Rather than hand it to the act verb and fail at actuation, it must
+    # park for a human.
+    from skcapstone.operator_seat import decisions
+
+    paths, _ = _enroll(tmp_path, monkeypatch)
+    ddir = tmp_path / "decisions"
+    applied = []
+    res = loop.run_once(
+        paths,
+        now_iso="2026-07-29T00:00:00Z",
+        propose=lambda b, r: [{"action": "restart_service", "object": "ghost"}],
+        apply_fn=lambda p, c: applied.append(p),
+        execute=True,
+        decisions_dir=str(ddir),
+        target_known=lambda p: False,
+        emit=lambda _s: None,
+    )
+    assert applied == []  # never handed to the act verb
+    assert res["outcomes"][0]["outcome"].startswith("escalated")
+    assert decisions.list_pending(str(ddir))

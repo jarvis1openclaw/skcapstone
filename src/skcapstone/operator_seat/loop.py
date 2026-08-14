@@ -69,6 +69,7 @@ def run_once(
     execute: bool = False,
     emit: Callable[[str], Any] = print,
     extra_observers: dict[str, Callable[..., dict]] | None = None,
+    target_known: Callable[[dict], bool] | None = None,
 ) -> dict:
     """Run one operator pass.
 
@@ -114,7 +115,7 @@ def run_once(
     proposals = list(propose(the_brief, route))
 
     explain = explain if explain is not None else fleet_adapter.fleet_explain()
-    planned = plan.plan_actions(proposals, explain)
+    planned = plan.plan_actions(proposals, explain, target_known=target_known)
 
     outcomes: list[dict] = []
     for i, pl in enumerate(planned):
