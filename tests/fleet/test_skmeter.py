@@ -2,7 +2,13 @@
 
 import pytest
 
-from skcapstone.fleet.skmeter import EnergyCounter, integrate, parse_power_line
+from skcapstone.fleet.skmeter import (
+    EnergyCounter,
+    build_energy_response,
+    integrate,
+    measure_idle_baseline,
+    parse_power_line,
+)
 
 
 class TestParsePowerLine:
@@ -143,3 +149,39 @@ class TestEnergyCounter:
         c.set_idle_baseline(50.0)
         # marginal_j should not change retroactively
         assert c.marginal_j == accumulated
+
+
+class TestIdleBaseline:
+    def test_averages_the_samples(self):
+        vals = iter([8.9, 9.0, 8.8, 9.1])
+        assert measure_idle_baseline(lambda: next(vals), n=4) == pytest.approx(8.95)
+
+    def test_ignores_unparseable_samples(self):
+        vals = iter([8.9, None, 9.1, None])
+        assert measure_idle_baseline(lambda: next(vals), n=4) == pytest.approx(9.0)
+
+    def test_all_bad_samples_returns_zero_not_error(self):
+        # A zero baseline means we charge absolute energy, which is wrong but
+        # safe. Crashing the meter would be worse.
+        assert measure_idle_baseline(lambda: None, n=3) == 0.0
+
+
+class TestEnergyResponse:
+    def test_counter_j_is_the_marginal_counter(self):
+        c = EnergyCounter(idle_w=10.0)
+        c.observe(110.0, 1.0)  # 100 J marginal, 110 J total
+        r = build_energy_response(
+            c, watts_now=110.0, device="gpu0", node="dot100", now_ms=1_700_000_000_000
+        )
+        assert r["counter_j"] == pytest.approx(100.0)
+        assert r["total_j"] == pytest.approx(110.0)
+
+    def test_carries_identity_and_timestamp(self):
+        c = EnergyCounter(idle_w=8.96)
+        r = build_energy_response(
+            c, watts_now=9.0, device="gpu0", node="dot100", now_ms=1_700_000_000_000
+        )
+        assert r["device"] == "gpu0"
+        assert r["node"] == "dot100"
+        assert r["ts"] == 1_700_000_000_000
+        assert r["idle_baseline_w"] == pytest.approx(8.96)

@@ -11,7 +11,14 @@ without a GPU present.
 
 from __future__ import annotations
 
+import json
 import re
+import socket
+import subprocess
+import threading
+import time
+from http.server import BaseHTTPRequestHandler, HTTPServer
+from typing import Callable
 
 _NUMBER = re.compile(r"-?\d+(?:\.\d+)?")
 
@@ -115,3 +122,147 @@ class EnergyCounter:
             "idle_baseline_w": self._idle_w,
             "samples_n": self._samples_n,
         }
+
+
+DEFAULT_PORT = 9420
+DEFAULT_INTERVAL_MS = 200
+NVIDIA_SMI_CMD = [
+    "nvidia-smi",
+    "--query-gpu=power.draw",
+    "--format=csv,noheader,nounits",
+]
+
+
+def measure_idle_baseline(sample_fn: Callable[[], float | None], n: int = 50) -> float:
+    """Average n samples to establish the idle floor.
+
+    Returns 0.0 if nothing parseable arrives. A zero baseline charges absolute
+    energy, which is wrong but safe; crashing the meter would be worse.
+    """
+    good = []
+    for _ in range(n):
+        try:
+            value = sample_fn()
+        except Exception:
+            value = None
+        if value is not None:
+            good.append(float(value))
+    if not good:
+        return 0.0
+    return sum(good) / len(good)
+
+
+def build_energy_response(
+    counter: EnergyCounter,
+    watts_now: float,
+    device: str,
+    node: str,
+    now_ms: int,
+) -> dict:
+    """The GET /energy payload. `counter_j` is what the gateway deltas."""
+    snap = counter.snapshot()
+    return {
+        "counter_j": snap["marginal_j"],
+        "total_j": snap["total_j"],
+        "watts_now": watts_now,
+        "idle_baseline_w": snap["idle_baseline_w"],
+        "device": device,
+        "node": node,
+        "ts": now_ms,
+        "samples_n": snap["samples_n"],
+    }
+
+
+class _State:
+    """Shared between the sampler thread and the HTTP handler."""
+
+    def __init__(self, counter: EnergyCounter, device: str, node: str) -> None:
+        self.counter = counter
+        self.device = device
+        self.node = node
+        self.watts_now = 0.0
+        self.lock = threading.Lock()
+
+
+def sample_loop(state: _State, interval_ms: int = DEFAULT_INTERVAL_MS) -> None:
+    """Stream nvidia-smi output and feed the counter.
+
+    Uses one long-lived `nvidia-smi -lms` process rather than spawning per
+    sample, which would cost more than it measures.
+    """
+    dt_s = interval_ms / 1000.0
+    while True:
+        try:
+            proc = subprocess.Popen(
+                NVIDIA_SMI_CMD + ["-lms", str(interval_ms)],
+                stdout=subprocess.PIPE,
+                stderr=subprocess.DEVNULL,
+                text=True,
+                bufsize=1,
+            )
+            for line in proc.stdout:
+                watts = parse_power_line(line)
+                if watts is None:
+                    continue
+                with state.lock:
+                    state.counter.observe(watts, dt_s)
+                    state.watts_now = watts
+        except Exception:
+            pass
+        time.sleep(5.0)  # nvidia-smi died; back off and retry
+
+
+def _handler_factory(state: _State):
+    class Handler(BaseHTTPRequestHandler):
+        def do_GET(self):  # noqa: N802
+            if self.path.rstrip("/") != "/energy":
+                self.send_response(404)
+                self.end_headers()
+                return
+            with state.lock:
+                payload = build_energy_response(
+                    state.counter,
+                    state.watts_now,
+                    state.device,
+                    state.node,
+                    int(time.time() * 1000),
+                )
+            body = json.dumps(payload).encode()
+            self.send_response(200)
+            self.send_header("Content-Type", "application/json")
+            self.send_header("Content-Length", str(len(body)))
+            self.end_headers()
+            self.wfile.write(body)
+
+        def log_message(self, *args):  # silence per-request stderr noise
+            return
+
+    return Handler
+
+
+def serve(
+    port: int = DEFAULT_PORT,
+    device: str = "gpu0",
+    node: str = "",
+    interval_ms: int = DEFAULT_INTERVAL_MS,
+) -> None:
+    """Run the meter: baseline, sampler thread, then serve GET /energy."""
+    node = node or socket.gethostname()
+
+    def one_sample() -> float | None:
+        try:
+            out = subprocess.run(NVIDIA_SMI_CMD, capture_output=True, text=True, timeout=5).stdout
+        except Exception:
+            return None
+        return parse_power_line(out.splitlines()[0] if out.splitlines() else "")
+
+    idle = measure_idle_baseline(one_sample, n=20)
+    state = _State(EnergyCounter(idle_w=idle), device, node)
+
+    threading.Thread(target=sample_loop, args=(state, interval_ms), daemon=True).start()
+
+    HTTPServer(("127.0.0.1", port), _handler_factory(state)).serve_forever()
+
+
+if __name__ == "__main__":
+    serve()

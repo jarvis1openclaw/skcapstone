@@ -1,0 +1,16 @@
+[Unit]
+Description=skmeter: per-node GPU energy counter
+After=network.target
+
+[Service]
+Type=simple
+ExecStart=/home/cbrd21/.skenv/bin/python -m skcapstone.fleet.skmeter
+Restart=always
+RestartSec=10
+# StartLimitIntervalSec must exceed RestartSec x (Burst - 1), or the limiter
+# never trips. See the .100 13h outage.
+StartLimitIntervalSec=600
+StartLimitBurst=5
+
+[Install]
+WantedBy=default.target
