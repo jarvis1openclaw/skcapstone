@@ -45,6 +45,42 @@ of sovereign state across 29 agent directories** and a `.stfolder` marker,
 not because anyone decided a GPU worker should, but because receiving fleet
 specs was only available bundled with everything else.
 
+### One important exception: `.stignore` already carves out secrets
+
+The folder is not literally all-or-nothing. `~/.skcapstone/.stignore` opens
+with:
+
+```
+// Private key material must never leave this node
+*.key
+*.pem
+**/private.*
+```
+
+That is why .158 carries **11** `agents/*/capauth/identity/private.asc` while
+.100 carries **zero**, despite both sitting in the same `sendreceive` folder.
+Verified 2026-08-14: of the 29 `.asc` files on .100, not one contains a PGP
+PRIVATE KEY BLOCK. .41 holds 3 (opus, lumina, jarvis), installed locally for
+the agents that actually run there rather than received over sync.
+
+This exception matters twice over. It proves scoped exclusion inside this
+folder already works, which is evidence for the split rather than against it.
+And it is enforced in the right place: Syncthing does not scan or announce
+ignored files, so .158 never offers the keys at all. A peer cannot request
+what was never announced, so the control does not depend on receivers
+behaving correctly.
+
+🔴 **But the rule's own custody is the weak link.** `.stignore` is a local
+file that Syncthing does not replicate, is not in git, and is not rendered by
+any install path. The three copies agree today only because someone deployed
+them by hand, and nothing verifies they still do. If .158's copy lost those
+three lines, 11 agent private keys would begin announcing to every peer of
+the folder, including the hosted relay noted below, with no alert on that
+path. Card `20a1d4d3` makes the ruleset a profile-managed artifact checked by
+`node doctor`. Until then, treat the size argument above as the case for the
+split and this paragraph as the reason not to lean on `.stignore` as if it
+were a guarantee.
+
 Per-node state today:
 
 | node | `~/.skcapstone` | `agents/` | `fleet/` | agent dirs |
