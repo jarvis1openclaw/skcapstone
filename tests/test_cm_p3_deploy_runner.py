@@ -10,6 +10,7 @@ per-change lease prevents a double-fire.
 
 from __future__ import annotations
 
+import sys
 from datetime import datetime, timedelta, timezone
 
 import pytest
@@ -49,14 +50,29 @@ def _no_deploy_dispatcher():
     cd.set_deploy_dispatcher(None)
 
 
+@pytest.fixture
+def bridge_absent(monkeypatch):
+    """Simulate the skharness deploy bridge not being importable.
+
+    These tests assert the fail-closed path taken when the bridge is missing.
+    They originally relied on it genuinely not existing yet, which stopped
+    being true once skharness shipped change_deploy_bridge (P3.2): CI installs
+    siblings from git main, so the ambient environment silently flipped the
+    premise and the assertions started failing on main. Simulate absence
+    explicitly so the fail-closed path is tested either way.
+    """
+    monkeypatch.setitem(sys.modules, "skharness.autocode.change_deploy_bridge", None)
+
+
 def test_seam_defaults_unwired():
     assert cd.deploy_dispatch_available() is False
 
 
-def test_build_deploy_dispatcher_returns_none_without_bridge():
-    # skharness.autocode.change_deploy_bridge does not exist yet (P3.2 is a
-    # separate, later card): build_deploy_dispatcher must fail-close to None,
-    # a first-class outcome, not raise.
+def test_build_deploy_dispatcher_returns_none_without_bridge(bridge_absent):
+    # With the bridge not importable, build_deploy_dispatcher must fail-close
+    # to None, a first-class outcome, not raise. This passed incidentally once
+    # skharness shipped the bridge (it refuses to build without the flag), so
+    # it now states its premise explicitly.
     assert cd.build_deploy_dispatcher() is None
 
 
@@ -66,9 +82,11 @@ def test_maybe_wire_deploy_bridge_noop_without_flag(monkeypatch):
     assert cd.deploy_dispatch_available() is False
 
 
-def test_maybe_wire_deploy_bridge_noop_with_flag_but_no_bridge_installed(monkeypatch):
-    # Even with the flag set, the bridge module is not installed in this
-    # card, so wiring must still fail closed.
+def test_maybe_wire_deploy_bridge_noop_with_flag_but_no_bridge_installed(
+    monkeypatch, bridge_absent
+):
+    # Even with the flag set, wiring must fail closed when the bridge is
+    # not importable (see the bridge_absent fixture).
     monkeypatch.setenv("SKAI_DEPLOY_BRIDGE", "1")
     cd._maybe_wire_deploy_bridge()
     assert cd.deploy_dispatch_available() is False
@@ -216,7 +234,7 @@ def test_lease_expires_and_allows_reclaim(tmp_path):
     assert cd.claim_deploy_lease(tmp_path, chg.id, worker="c") is True
 
 
-def test_in_window_change_executes_nothing_with_seam_unwired(tmp_path, monkeypatch):
+def test_in_window_change_executes_nothing_with_seam_unwired(tmp_path, monkeypatch, bridge_absent):
     """Even with SKAI_DEPLOY_BRIDGE=1 set (but no bridge installed), an
     in-window scheduled change must still execute nothing: build returns
     None, the seam stays unwired, and the tick only records a plan."""
