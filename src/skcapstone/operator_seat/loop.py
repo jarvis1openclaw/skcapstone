@@ -120,8 +120,17 @@ def run_once(
     for i, pl in enumerate(planned):
         prop, disp = pl["proposal"], pl["disposition"]
         if disp == "auto" and execute and apply_fn is not None:
-            apply_fn(prop, pl["classification"])
-            outcome = "applied"
+            # Per-proposal isolation, mirroring the fail-safe observe side: one bad
+            # proposal must not abort the pass. Without this a single raise skipped
+            # every later proposal INCLUDING decisions.park, so escalations the human
+            # was supposed to rule on were silently never written, and no report was
+            # emitted at all. Broad by intent: any actuation failure is contained,
+            # recorded on the outcome, and reported.
+            try:
+                apply_fn(prop, pl["classification"])
+                outcome = "applied"
+            except Exception as exc:
+                outcome = f"failed: {exc}"
         elif disp == "auto":
             outcome = "auto-ready (execution off)"
         elif decisions_dir is not None:
