@@ -25,7 +25,11 @@ PRESETS: dict[str, dict] = {
     "node-41": {
         "labels": {"heavy-build": "true"},
         "role": "builder-standby",
-        "taints": [],  # travel taint applied by runbook when the box travels
+        # Born untainted. The travel taint is an operator action, not a
+        # preset: `skfleet taint node-41 travel=true:NoSchedule` when the
+        # laptop leaves, `skfleet untaint node-41 travel` when it is back.
+        # See docs/fleet/travel-taint-runbook.md.
+        "taints": [],
     },
     "node-100": {
         # NOT gpu=true on .41: the GPU box in this fleet is .100.

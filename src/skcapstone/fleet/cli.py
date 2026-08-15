@@ -511,6 +511,54 @@ def node_doctor_cmd(name: str | None, as_json: bool, all_nodes: bool, strict: bo
         raise SystemExit(1)
 
 
+def _parse_taint(spec: str) -> tuple[str, str, str]:
+    """Split a KEY=VALUE:EFFECT taint argument, e.g. travel=true:NoSchedule."""
+    key, sep, rest = spec.partition("=")
+    value, sep2, effect = rest.partition(":")
+    if not (sep and sep2) or not key:
+        raise click.ClickException(
+            f"malformed taint {spec!r}: want KEY=VALUE:EFFECT, e.g. travel=true:NoSchedule"
+        )
+    return key, value, effect
+
+
+@fleet.command("taint")
+@click.argument("name")
+@click.argument("taint")
+def taint_cmd(name: str, taint: str) -> None:
+    """Add or replace one taint on a node: KEY=VALUE:EFFECT.
+
+    Re-tainting a key replaces that entry, it never appends a duplicate.
+    """
+    key, value, effect = _parse_taint(taint)
+    try:
+        spec = node_controller.set_taint(
+            default_paths(), name, key, value, effect, writer=_operator()
+        )
+    except LookupError as exc:
+        raise click.ClickException(str(exc)) from exc
+    except ValueError as exc:
+        raise click.ClickException(str(exc)) from exc
+    click.echo(f"{name} tainted {key}={value}:{effect} (generation {spec['generation']})")
+
+
+@fleet.command("untaint")
+@click.argument("name")
+@click.argument("key")
+def untaint_cmd(name: str, key: str) -> None:
+    """Remove the taint with this KEY from a node (a no-op when absent)."""
+    paths_ = default_paths()
+    before = store.read_spec(paths_, "node", name)
+    try:
+        spec = node_controller.clear_taint(paths_, name, key, writer=_operator())
+    except LookupError as exc:
+        raise click.ClickException(str(exc)) from exc
+    if before is not None and spec["generation"] == before["generation"]:
+        click.echo(f"{name} has no {key} taint (nothing to do)")
+        return
+    click.echo(f"{name} untainted {key} (generation {spec['generation']})")
+
+
 def register_fleet_commands(main: click.Group) -> None:
     """Register the fleet group on the skcapstone CLI."""
     main.add_command(fleet)
