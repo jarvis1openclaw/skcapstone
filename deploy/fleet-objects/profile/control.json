@@ -6,7 +6,7 @@
   "name": "control",
   "spec": {
     "capauthIdentityClass": "operator",
-    "description": "The single control seat (.158, node-noroc2027). Holds the full sovereign tree and runs the control-plane loops. Changes almost nothing, which is the point. SK-managed units are those prefixed sk/capauth/cloud9, plus the fleet-adjacent syncthing and tailscaled units. Everything else on the box is desktop, distro or third-party and is listed in unitsIgnore, so it never reads as drift.",
+    "description": "The single control seat (.158, node-noroc2027). Holds the full sovereign tree and runs the control-plane loops. Changes almost nothing, which is the point. SK-managed units are those prefixed sk/capauth/cloud9, plus the fleet-adjacent syncthing and tailscaled units. Everything else on the box is desktop, distro or third-party and is listed in unitsIgnore, so it never reads as drift. Role model and the two orthogonal axes: docs/fleet/adr-node-role-model.md.",
     "packages": {
       "allowed": [
         "capauth",
