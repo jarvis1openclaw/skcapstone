@@ -22,6 +22,7 @@ from skcapstone.fleet.skmeter import (
     select_power_source,
     should_rebaseline,
     watts_from_rapl,
+    watts_probe_for,
 )
 
 
@@ -489,3 +490,27 @@ class TestPowerSourceSelection:
             raise RuntimeError("nvidia-smi exploded")
 
         assert select_power_source(boom, boom) == ("none", "none")
+
+
+class TestBaselineProbeMatchesSource:
+    """The idle baseline must be measured with the SAME source that feeds the
+    counter. Baselining a RAPL node with the nvidia probe gives an idle floor of
+    0.0, which silently turns absolute energy into "marginal" and over-reports
+    every reading. Observed live on .41 before this fix.
+    """
+
+    def test_nvidia_source_gets_the_nvidia_probe(self):
+        probe = watts_probe_for("nvidia", "gpu0")
+        assert probe is not None and callable(probe)
+
+    def test_rapl_source_gets_a_working_probe(self):
+        probe = watts_probe_for("rapl", RAPL_DEFAULT_DOMAIN)
+        assert callable(probe)
+
+    def test_no_source_probe_yields_none_and_does_not_raise(self):
+        probe = watts_probe_for("none", "none")
+        assert probe() is None
+
+    def test_a_none_probe_produces_a_zero_baseline_not_a_crash(self):
+        # measure_idle_baseline must survive a source that never answers.
+        assert measure_idle_baseline(watts_probe_for("none", "none"), n=3) == 0.0
