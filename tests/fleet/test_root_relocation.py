@@ -183,13 +183,56 @@ def test_the_two_path_classes_outside_fleetpaths_still_relocate() -> None:
     assert str(paths.root / "atlas" / "brief").startswith(str(fake_root))
 
 
-def test_fleet_package_hardcodes_the_root_in_exactly_one_place() -> None:
-    """The audit, as an executable assertion: only paths.py may name the
-    default location. Any new hit is a relocation bug in the making."""
-    fleet_dir = Path(__file__).resolve().parents[2] / "src" / "skcapstone" / "fleet"
+#: Modules in the fleet package that may name a `.skcapstone` path, and why.
+#: A file is exempt only for paths OUTSIDE the fleet tree. Adding an entry
+#: here is a deliberate act: it means "this path is not fleet state, and
+#: relocating SKFLEET_ROOT is not supposed to move it".
+_SKCAPSTONE_PATH_EXEMPT = {
+    "paths.py": "owns the SKFLEET_ROOT default; the one place allowed to name it",
+    "skmeter.py": "writes ~/.skcapstone/skmeter, a SIBLING of the fleet tree, not fleet state",
+}
+
+
+def _fleet_package_dir() -> Path:
+    return Path(__file__).resolve().parents[2] / "src" / "skcapstone" / "fleet"
+
+
+def test_only_paths_py_may_name_the_fleet_root() -> None:
+    """The load-bearing half of the audit, and it has no exemptions.
+
+    Naming the fleet ROOT anywhere but paths.py is a relocation bug by
+    construction: that module exists so SKFLEET_ROOT is the single thing
+    deciding where fleet state lives. A second hardcoded copy silently
+    stays behind when the tree moves, which is exactly what the control-bus
+    folder split (card ddb2a02f) cannot survive.
+    """
     offenders = {
         path.name
-        for path in sorted(fleet_dir.glob("*.py"))
+        for path in sorted(_fleet_package_dir().glob("*.py"))
+        if ".skcapstone/fleet" in path.read_text(encoding="utf-8")
+    }
+    assert offenders == {"paths.py"}, f"the fleet root is hardcoded outside paths.py: {offenders}"
+
+
+def test_any_other_skcapstone_path_is_a_named_exemption() -> None:
+    """The softer half: a `.skcapstone` path that is NOT the fleet tree is
+    allowed, but only once someone has written down why.
+
+    This started as a blunt "exactly one file" assertion and it fired the
+    day fleet/skmeter.py landed. That was a true positive about a real
+    property (skmeter ignores SKFLEET_ROOT) but a false alarm about the
+    invariant being defended (it never writes into the fleet tree). The fix
+    is to state the invariant precisely rather than to loosen the gate: a
+    new unlisted file still fails until it is justified here.
+    """
+    referencing = {
+        path.name
+        for path in sorted(_fleet_package_dir().glob("*.py"))
         if ".skcapstone" in path.read_text(encoding="utf-8")
     }
-    assert offenders == {"paths.py"}, f"hardcoded fleet paths outside paths.py: {offenders}"
+    unjustified = referencing - set(_SKCAPSTONE_PATH_EXEMPT)
+    assert not unjustified, (
+        f"module(s) naming a .skcapstone path with no recorded reason: {sorted(unjustified)}. "
+        "If the path is fleet state, route it through FleetPaths. If it is not, add it to "
+        "_SKCAPSTONE_PATH_EXEMPT with a one-line justification."
+    )
