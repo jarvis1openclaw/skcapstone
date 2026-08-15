@@ -6,6 +6,7 @@ import pytest
 
 from skcapstone.fleet.skmeter import (
     DEFAULT_BIND,
+    RAPL_DEFAULT_DOMAIN,
     EnergyCounter,
     build_energy_response,
     integrate,
@@ -13,10 +14,14 @@ from skcapstone.fleet.skmeter import (
     measure_idle_baseline,
     parse_power_line,
     plausible_baseline,
+    rapl_delta_uj,
+    read_rapl_uj,
     resolve_bind_address,
     resolve_boot_idle_baseline,
     save_checkpoint,
+    select_power_source,
     should_rebaseline,
+    watts_from_rapl,
 )
 
 
@@ -426,3 +431,61 @@ class TestMeteringUnavailable:
         r = build_energy_response(c, 10.0, "gpu0", "n1", 1_700_000_000_000)
         assert r["metering"] == "active"
         assert r["counter_j"] == pytest.approx(0.0)
+
+
+class TestRaplPrimitives:
+    """RAPL is already a cumulative hardware counter, unlike the GPU path.
+
+    The only real hazard is wrap: it rolls over at max_energy_range_uj, about
+    every 2.6 hours at 28 W, and a naive subtraction reports a huge negative.
+    """
+
+    def test_normal_delta(self):
+        assert rapl_delta_uj(100, 350, 1000) == 250
+
+    def test_wrapped_counter_is_corrected(self):
+        # 900 -> 50 with a max of 1000 is 150 consumed, not -850.
+        assert rapl_delta_uj(900, 50, 1000) == 150
+
+    def test_wrap_without_a_known_max_yields_zero_not_negative(self):
+        assert rapl_delta_uj(900, 50, 0) == 0
+
+    def test_watts_from_rapl(self):
+        # 20 J over 2 s is 10 W.
+        assert watts_from_rapl(0, 20_000_000, 262143328850, 2.0) == pytest.approx(10.0)
+
+    def test_watts_needs_a_positive_interval(self):
+        assert watts_from_rapl(0, 1_000_000, 1_000_000_000, 0.0) is None
+
+    def test_read_parses_an_injected_reading(self):
+        assert read_rapl_uj("intel-rapl:0", runner=lambda: "223221509484\n") == 223221509484
+
+    def test_read_returns_none_on_garbage(self):
+        assert read_rapl_uj("intel-rapl:0", runner=lambda: "permission denied") is None
+
+    def test_read_returns_none_when_the_reader_raises(self):
+        def boom():
+            raise OSError("sudo unavailable")
+
+        assert read_rapl_uj("intel-rapl:0", runner=boom) is None
+
+    def test_read_returns_none_on_empty(self):
+        assert read_rapl_uj("intel-rapl:0", runner=lambda: "") is None
+
+
+class TestPowerSourceSelection:
+    def test_nvidia_wins_when_present(self):
+        assert select_power_source(lambda: True, lambda: True) == ("nvidia", "gpu0")
+
+    def test_falls_back_to_rapl(self):
+        kind, label = select_power_source(lambda: False, lambda: True)
+        assert kind == "rapl" and label == RAPL_DEFAULT_DOMAIN
+
+    def test_neither_source_is_reported_honestly(self):
+        assert select_power_source(lambda: False, lambda: False) == ("none", "none")
+
+    def test_a_throwing_probe_does_not_crash_startup(self):
+        def boom():
+            raise RuntimeError("nvidia-smi exploded")
+
+        assert select_power_source(boom, boom) == ("none", "none")
