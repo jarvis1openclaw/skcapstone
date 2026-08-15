@@ -206,3 +206,65 @@ def test_cli_admit_reports_the_bound_role(paths) -> None:
     )
     assert result.exit_code == 0, result.output
     assert "role=worker-gpu" in result.output
+
+
+# ------------------------------------------------------- role gate (fdd17a01) ---
+
+
+def test_role_gate_is_off_by_default(monkeypatch) -> None:
+    """A fleet that is harder to join has failed at its own job. The gate
+    stays off until every live node carries a role."""
+    monkeypatch.delenv("SKFLEET_REQUIRE_ROLE", raising=False)
+    assert admission.role_gate_on() is False
+
+
+@pytest.mark.parametrize("value", ["1", "true", "TRUE", "on", " on "])
+def test_role_gate_reads_the_env_flag(monkeypatch, value: str) -> None:
+    monkeypatch.setenv("SKFLEET_REQUIRE_ROLE", value)
+    assert admission.role_gate_on() is True
+
+
+@pytest.mark.parametrize("value", ["", "0", "false", "off", "shadow"])
+def test_only_explicit_truthy_values_arm_the_gate(monkeypatch, value: str) -> None:
+    monkeypatch.setenv("SKFLEET_REQUIRE_ROLE", value)
+    assert admission.role_gate_on() is False
+
+
+def test_admit_without_a_role_is_refused_when_the_gate_is_on(paths, operator, monkeypatch) -> None:
+    monkeypatch.setenv("SKFLEET_REQUIRE_ROLE", "1")
+    with pytest.raises(admission.RoleRequiredError, match="has no role"):
+        admission.admit(paths, "node-fresh", writer=operator, bootstrap=True)
+    # The refusal must leave nothing behind: a half-admitted node is worse
+    # than a rejected one.
+    assert store.read_spec(paths, "node", "node-fresh") is None
+
+
+def test_admit_without_a_role_is_allowed_when_the_gate_is_off(
+    paths, operator, monkeypatch
+) -> None:
+    monkeypatch.delenv("SKFLEET_REQUIRE_ROLE", raising=False)
+    spec = admission.admit(paths, "node-fresh", writer=operator, bootstrap=True)
+    assert spec["spec"]["role"] == ""
+
+
+def test_the_gate_accepts_a_role_from_preset(paths, operator, monkeypatch) -> None:
+    monkeypatch.setenv("SKFLEET_REQUIRE_ROLE", "1")
+    spec = admission.admit(paths, "node-100", writer=operator, preset=True, bootstrap=True)
+    assert spec["spec"]["role"] == "worker-gpu"
+
+
+def test_the_gate_accepts_an_explicit_role(paths, operator, monkeypatch) -> None:
+    monkeypatch.setenv("SKFLEET_REQUIRE_ROLE", "1")
+    spec = admission.admit(paths, "node-fresh", writer=operator, role="observer", bootstrap=True)
+    assert spec["spec"]["role"] == "observer"
+
+
+def test_node_local_preset_has_no_role_so_the_gate_still_refuses_it(
+    paths, operator, monkeypatch
+) -> None:
+    """node-local is an interactive box with no fleet role. With the gate on
+    it must be given one explicitly rather than sliding through on a preset
+    that supplies an empty string."""
+    monkeypatch.setenv("SKFLEET_REQUIRE_ROLE", "1")
+    with pytest.raises(admission.RoleRequiredError):
+        admission.admit(paths, "node-local", writer=operator, preset=True, bootstrap=True)

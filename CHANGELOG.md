@@ -38,6 +38,16 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
     inference node, and `scripts/fleet/gen-node-disposition.py`.
 
 ### Fixed
+- **Build work could be scheduled onto the control box.** The live fleet store
+  carried `heavy-build=true` on BOTH `node-41` (20 cores, 739G disk) and
+  `node-noroc2027`, the control node, which has 4 cores and under 5G of free disk.
+  `scheduler.feasible()` filters on cores and ram only and never looks at disk, so a
+  build declaring modest requests but a large real disk footprint could legitimately
+  land on the small box and fill its root filesystem. Label removed from the control
+  node, with a regression test pinning the consequence using the real measured
+  capacity numbers. `node-41` also carried `gpu=true`; `nvidia-smi` fails there, there
+  is no `/dev/nvidia*`, and the only display device is Intel Iris Xe integrated
+  graphics, so that label was removed too. The GPU box in this fleet is .100.
 - **`admission.PRESETS` keys were dead.** They were keyed `node-158`, but
   `paths.self_node_name()` derives the node name from the hostname, so the live
   control node is `node-noroc2027` and `skfleet admit --preset` silently applied
