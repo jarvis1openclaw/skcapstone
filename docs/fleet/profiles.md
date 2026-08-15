@@ -163,6 +163,32 @@ correct reading before every node has been backfilled.
 The `spec.role` field and its `set-role` operator action are owned by card
 `8258517f`; admission requiring it and the live backfill are card `fdd17a01`.
 
+## The converge-side profile gate (`SKFLEET_PROFILE_GATE`)
+
+sknoded can consult a node's profile before it heals a unit. The rollout
+flag has the same three-mode shape as `SKFLEET_SIGNING`:
+
+| value     | behavior                                                        |
+| --------- | --------------------------------------------------------------- |
+| `off`     | default. The gate is never consulted, nothing changes.          |
+| `shadow`  | emits a `Degrade` / `OutsideProfile` event and condition only.  |
+| `enforce` | additionally refuses to **heal** a unit the role forbids.        |
+
+`enforce` never issues a stop verb. Refusing to heal is the entire
+enforcement: taking a running service down because a manifest disagrees with
+it would turn documentation debt into an outage, which is the failure mode
+this epic exists to avoid.
+
+Only `units.mustNot` denies. A unit no manifest mentions is permitted, and so
+is every unit when the role is unbound, the role is unknown, or the manifests
+are missing, unreadable or invalid. A gate that failed closed on a file that
+has not synced yet would stall services mid-install.
+
+Manifests are read from the first readable source of:
+`$SKFLEET_PROFILE_MANIFESTS` (authoritative when set), the fleet tree's
+`objects/profile/`, then the shipped `deploy/fleet-objects/profile/` in a
+source checkout.
+
 ## Discovering this kind at runtime
 
 ```console
