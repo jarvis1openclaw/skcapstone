@@ -293,6 +293,142 @@ def build_energy_response(
     return payload
 
 
+# RAPL: Intel's on-die energy counters. Unlike the GPU path this is already a
+# true cumulative counter, so nothing has to be integrated to synthesize one.
+# We still derive watts from consecutive reads and feed the same EnergyCounter,
+# so idle baselining, the plausibility guard, checkpointing, and the marginal
+# semantics all keep working through one code path.
+#
+# energy_uj is 0400 root-only on modern kernels (CVE-2020-8694, PLATYPUS: power
+# traces can leak crypto keys). We read it with `sudo -n` rather than loosening
+# the file, because on a host that also runs containers and other service
+# accounts, world-readable would hand that side-channel to all of them. A
+# passwordless-sudo user already has this capability, so reading it this way
+# grants nothing new.
+RAPL_ROOT = "/sys/class/powercap"
+RAPL_DEFAULT_DOMAIN = "intel-rapl:0"
+
+
+def rapl_delta_uj(prev_uj: int, curr_uj: int, max_uj: int) -> int:
+    """Microjoules consumed between two reads, correcting for counter wrap.
+
+    RAPL wraps at max_energy_range_uj (about 262 kJ, roughly every 2.6 hours at
+    28 W). A naive subtraction would report a huge negative number at wrap.
+    """
+    if curr_uj >= prev_uj:
+        return curr_uj - prev_uj
+    if max_uj <= 0:
+        return 0
+    return (max_uj - prev_uj) + curr_uj
+
+
+def watts_from_rapl(prev_uj: int, curr_uj: int, max_uj: int, dt_s: float) -> float | None:
+    """Average watts across a RAPL sampling interval. None if not computable."""
+    if dt_s <= 0:
+        return None
+    delta = rapl_delta_uj(prev_uj, curr_uj, max_uj)
+    return (delta / 1e6) / dt_s
+
+
+def read_rapl_uj(domain: str = RAPL_DEFAULT_DOMAIN, runner=None) -> int | None:
+    """Read one RAPL domain's cumulative energy counter, or None."""
+    path = f"{RAPL_ROOT}/{domain}/energy_uj"
+    run = runner or (
+        lambda: subprocess.run(
+            ["sudo", "-n", "cat", path], capture_output=True, text=True, timeout=5
+        ).stdout
+    )
+    try:
+        raw = run()
+    except Exception:
+        return None
+    if not raw:
+        return None
+    try:
+        return int(str(raw).strip())
+    except (TypeError, ValueError):
+        return None
+
+
+def read_rapl_max_uj(domain: str = RAPL_DEFAULT_DOMAIN) -> int:
+    """The wrap point for a domain. 0 when unreadable."""
+    try:
+        return int(
+            pathlib.Path(f"{RAPL_ROOT}/{domain}/max_energy_range_uj")
+            .read_text(encoding="utf-8")
+            .strip()
+        )
+    except Exception:
+        return 0
+
+
+def rapl_available(domain: str = RAPL_DEFAULT_DOMAIN) -> bool:
+    """True when this node can actually be metered through RAPL."""
+    return read_rapl_uj(domain) is not None
+
+
+def rapl_sample_loop(
+    state: "_State",
+    domain: str = RAPL_DEFAULT_DOMAIN,
+    interval_ms: int = DEFAULT_INTERVAL_MS,
+) -> None:
+    """Feed the counter from RAPL by differencing its cumulative counter.
+
+    Sampled far slower than the GPU path: RAPL is already cumulative, so the
+    only reason to sample at all is to derive a watts figure for the idle
+    baseline and the plausibility guard. Each read shells out through sudo, so
+    sampling fast would cost more than it measures.
+    """
+    max_uj = read_rapl_max_uj(domain)
+    dt_s = max(1.0, interval_ms / 1000.0)
+    prev = read_rapl_uj(domain)
+    while True:
+        time.sleep(dt_s)
+        curr = read_rapl_uj(domain)
+        if prev is None or curr is None:
+            prev = curr
+            continue
+        watts = watts_from_rapl(prev, curr, max_uj, dt_s)
+        prev = curr
+        if watts is None:
+            continue
+        with state.lock:
+            state.counter.observe(watts, dt_s)
+            state.watts_now = watts
+
+
+def select_power_source(nvidia_probe=None, rapl_probe=None) -> tuple[str, str]:
+    """Pick the power source for this node. Returns (kind, label).
+
+    NVIDIA first because on a node with a discrete GPU that is where inference
+    runs. RAPL second: it covers CPU and integrated graphics, which is the only
+    thing to measure on a node with no discrete card. Neither means this node
+    cannot be metered, and the endpoint says so rather than reporting zeros.
+    """
+    nv = nvidia_probe if nvidia_probe is not None else _nvidia_probe_default
+    rp = rapl_probe if rapl_probe is not None else rapl_available
+    try:
+        if nv():
+            return ("nvidia", "gpu0")
+    except Exception:
+        pass
+    try:
+        if rp():
+            return ("rapl", RAPL_DEFAULT_DOMAIN)
+    except Exception:
+        pass
+    return ("none", "none")
+
+
+def _nvidia_probe_default() -> bool:
+    try:
+        out = subprocess.run(NVIDIA_SMI_CMD, capture_output=True, text=True, timeout=5).stdout
+    except Exception:
+        return False
+    lines = out.splitlines()
+    return bool(lines) and parse_power_line(lines[0]) is not None
+
+
 CHECKPOINT_INTERVAL_S = 30
 REBASELINE_INTERVAL_H = 24
 
@@ -398,6 +534,7 @@ class _State:
         self.counter = counter
         self.device = device
         self.node = node
+        self.source = "unknown"
         self.watts_now = 0.0
         self.lock = threading.Lock()
 
@@ -524,7 +661,25 @@ def serve(
                         )
                 last_baseline_ms = now_ms
 
-    threading.Thread(target=sample_loop, args=(state, interval_ms), daemon=True).start()
+    # Pick whatever this node can actually be metered with. A node with a
+    # discrete GPU runs its inference there; a node without one still has CPU
+    # and integrated graphics, which RAPL covers. Neither available means the
+    # endpoint reports metering "unavailable" instead of a stream of zeros.
+    kind, label = select_power_source()
+    state.device = label
+    state.source = kind
+    if kind == "nvidia":
+        threading.Thread(target=sample_loop, args=(state, interval_ms), daemon=True).start()
+    elif kind == "rapl":
+        threading.Thread(target=rapl_sample_loop, args=(state, label, 1000), daemon=True).start()
+    else:
+        print(
+            "[skmeter] no power source on this node: nvidia-smi returned nothing "
+            "usable and RAPL is unreadable. Serving metering=unavailable so the "
+            "gateway treats readings as unknown rather than as a measured zero.",
+            file=sys.stderr,
+            flush=True,
+        )
     threading.Thread(target=_maintenance, daemon=True).start()
 
     HTTPServer((bind_addr, port), _handler_factory(state)).serve_forever()
