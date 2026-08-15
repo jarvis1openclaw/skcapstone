@@ -428,8 +428,22 @@ def _profile_for(paths_, role: str):
         return None
 
 
-def _doctor_one(paths_, name: str, inventory: dict) -> tuple[dict | None, str]:
-    """(report dict, note). A skip returns (None, reason)."""
+def _doctor_one(paths_, name: str, inventory: dict | None) -> tuple[dict | None, str]:
+    """(report dict, note). A skip returns (None, reason).
+
+    Args:
+        inventory: Observed inventory, or None when the node has published
+            none. None and {} are DIFFERENT answers and must not be
+            conflated: an empty inventory is a real observation ("nothing is
+            enabled here"), while an absent one means the node has not
+            reported yet. Passing an absent inventory to the diff would grade
+            a healthy node as missing everything, which is the one verdict
+            nodeinventory exists to never produce.
+
+    The checks are ordered by how actionable they are. A node with no role
+    cannot be graded no matter what it published, so that note wins over the
+    inventory note.
+    """
     from . import profile_doctor
 
     views = {v.name: v for v in node_controller.node_views(paths_)}
@@ -441,6 +455,11 @@ def _doctor_one(paths_, name: str, inventory: dict) -> tuple[dict | None, str]:
     profile = _profile_for(paths_, view.role)
     if profile is None:
         return None, f"{name}: no valid profile object named {view.role!r}"
+    if inventory is None:
+        return None, (
+            f"{name}: has published no inventory yet "
+            "(needs a sknoded pass on a build carrying card 1f5397f0)"
+        )
     report = profile_doctor.diff(inventory, profile)
     payload = report.as_dict()
     payload["node"] = name
@@ -471,9 +490,10 @@ def node_doctor_cmd(name: str | None, as_json: bool, all_nodes: bool, strict: bo
 
     if all_nodes:
         for view in node_controller.node_views(paths_):
-            published = (store.read_node_file(paths_, view.name, "node.json") or {}).get(
-                "status", {}
-            ).get("inventory") or {}
+            status = (store.read_node_file(paths_, view.name, "node.json") or {}).get("status", {})
+            # `.get("inventory")` would collapse absent into empty; see the
+            # note in _doctor_one for why that grades healthy nodes as broken.
+            published = status["inventory"] if "inventory" in status else None
             report, note = _doctor_one(paths_, view.name, published)
             (reports.append(report) if report else notes.append(note))
     else:
