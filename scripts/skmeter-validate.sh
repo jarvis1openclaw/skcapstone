@@ -53,16 +53,41 @@ print(f'  ok: {a:.1f} -> {b:.1f} J')
 echo
 echo "=== spec 4.7 item 1: repeatability, $N identical local inferences ==="
 : > /tmp/skmeter-runs.txt
+FAILED=0
 for i in $(seq 1 "$N"); do
-  BEFORE=$(curl -s --max-time 3 "$METER" | python3 -c 'import json,sys;print(json.load(sys.stdin)["counter_j"])')
+  # A transient failure must not abort a 40 run measurement. The first version
+  # of this script ran under set -e, so one failed curl killed it after 13 runs
+  # and left a log that simply stopped, which reads exactly like "still going".
+  # Silence must never look like progress in a validation gate.
+  BEFORE=$(curl -s --max-time 5 "$METER" \
+    | python3 -c 'import json,sys
+try: print(json.load(sys.stdin)["counter_j"])
+except Exception: print("")' 2>/dev/null || true)
   curl -s --max-time 120 "$GATEWAY/v1/chat/completions" \
     -H 'Content-Type: application/json' \
     -d '{"model":"ornith-1.0-9b","max_tokens":200,"temperature":0,
-         "messages":[{"role":"user","content":"Count from 1 to 100."}]}' >/dev/null
-  AFTER=$(curl -s --max-time 3 "$METER" | python3 -c 'import json,sys;print(json.load(sys.stdin)["counter_j"])')
-  python3 -c "print(f'{$AFTER-$BEFORE:.1f}')" >> /tmp/skmeter-runs.txt
-  printf '.'
+         "messages":[{"role":"user","content":"Count from 1 to 100."}]}' >/dev/null 2>&1 || true
+  AFTER=$(curl -s --max-time 5 "$METER" \
+    | python3 -c 'import json,sys
+try: print(json.load(sys.stdin)["counter_j"])
+except Exception: print("")' 2>/dev/null || true)
+  if [ -z "$BEFORE" ] || [ -z "$AFTER" ]; then
+    FAILED=$((FAILED+1)); printf 'x'
+  else
+    python3 -c "print(f'{$AFTER-$BEFORE:.1f}')" >> /tmp/skmeter-runs.txt
+    printf '.'
+  fi
 done
+echo
+if [ "$FAILED" -gt 0 ]; then
+  echo "  note: $FAILED of $N runs failed to produce a reading (shown as x) and were"
+  echo "        excluded. Reported loudly rather than silently dropped."
+fi
+GOOD=$(wc -l < /tmp/skmeter-runs.txt)
+if [ "$GOOD" -lt $(( N / 2 )) ]; then
+  echo "  FAIL: only $GOOD of $N runs produced a reading. Too few to certify anything."
+  exit 1
+fi
 echo
 python3 - <<'PY'
 vals=[float(x) for x in open('/tmp/skmeter-runs.txt') if x.strip()]
