@@ -265,18 +265,32 @@ def build_energy_response(
     node: str,
     now_ms: int,
 ) -> dict:
-    """The GET /energy payload. `counter_j` is what the gateway deltas."""
+    """The GET /energy payload. `counter_j` is what the gateway deltas.
+
+    When the meter has never observed a sample there is no power source on this
+    node, and `counter_j` and `total_j` are OMITTED rather than sent as 0.0.
+
+    That distinction is the whole point. A meter with no data source reporting
+    0.0 makes the gateway compute a delta of zero and record
+    `joules: 0, basis: measured_gpu`, a confident measured-zero for work that
+    really consumed power. Omitting the field makes the reading unknowable
+    instead, which is the honest answer and the one the gateway already handles
+    by returning null. Found by deploying to a node with no GPU.
+    """
     snap = counter.snapshot()
-    return {
-        "counter_j": snap["marginal_j"],
-        "total_j": snap["total_j"],
+    payload = {
         "watts_now": watts_now,
         "idle_baseline_w": snap["idle_baseline_w"],
         "device": device,
         "node": node,
         "ts": now_ms,
         "samples_n": snap["samples_n"],
+        "metering": "active" if snap["samples_n"] > 0 else "unavailable",
     }
+    if snap["samples_n"] > 0:
+        payload["counter_j"] = snap["marginal_j"]
+        payload["total_j"] = snap["total_j"]
+    return payload
 
 
 CHECKPOINT_INTERVAL_S = 30

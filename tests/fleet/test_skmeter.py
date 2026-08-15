@@ -392,3 +392,37 @@ class TestBootIdleBaseline:
         # Nothing to compare against, so even a high reading is adopted: it is
         # the best fact available and refusing it charges absolute energy.
         assert resolve_boot_idle_baseline(99.0, None) == pytest.approx(99.0)
+
+
+class TestMeteringUnavailable:
+    """A meter with no power source must not look like a meter reading zero.
+
+    Regression for a bug found by deploying to a node with no GPU: the payload
+    carried counter_j 0.0, the gateway computed a delta of 0, and recorded
+    joules 0 with basis measured_gpu for work that really consumed power.
+    """
+
+    def test_no_samples_omits_the_counter_entirely(self):
+        c = EnergyCounter(idle_w=0.0)
+        r = build_energy_response(c, 0.0, "gpu0", "n1", 1_700_000_000_000)
+        assert "counter_j" not in r
+        assert "total_j" not in r
+        assert r["metering"] == "unavailable"
+        assert r["samples_n"] == 0
+
+    def test_a_single_sample_makes_it_active(self):
+        c = EnergyCounter(idle_w=10.0)
+        c.observe(110.0, 1.0)
+        r = build_energy_response(c, 110.0, "gpu0", "n1", 1_700_000_000_000)
+        assert r["metering"] == "active"
+        assert r["counter_j"] == pytest.approx(100.0)
+        assert r["total_j"] == pytest.approx(110.0)
+
+    def test_a_genuine_idle_zero_still_reports_active(self):
+        # The GPU was sampled and genuinely did nothing. That is a real
+        # measurement of zero and must remain distinguishable from no data.
+        c = EnergyCounter(idle_w=10.0)
+        c.observe(10.0, 1.0)
+        r = build_energy_response(c, 10.0, "gpu0", "n1", 1_700_000_000_000)
+        assert r["metering"] == "active"
+        assert r["counter_j"] == pytest.approx(0.0)
