@@ -37,7 +37,41 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   - `scripts/fleet/dot100-inference-smoke.sh`, the before/after gate for the
     inference node, and `scripts/fleet/gen-node-disposition.py`.
 
+### Added
+- **Node roles wave 3** (epic `3bbf39ea`): the profile layer gains its enforcement
+  path, its budget guard and its ADRs. Everything remains report-only by default.
+  - `skfleet node doctor` now works fleet-wide with no ssh: `sknoded` publishes a
+    bounded `status.inventory` block into `node.json`. Collected on a 15 minute
+    cadence rather than the 60s heartbeat, sorted, capped, and stripped of its
+    timestamp before the write-on-change comparison, so an unchanged node writes
+    nothing and cannot flood the control-bus folder.
+  - `SKFLEET_PROFILE_GATE` (`off` default, `shadow`, `enforce`) in `converge`,
+    modelled on the existing `SKFLEET_SIGNING` rollout. Enforce refuses to HEAL a
+    unit the role forbids and never issues a stop verb: stopping a running service
+    over a manifest disagreement is the failure this layer exists to avoid.
+  - `skfleet taint` / `skfleet untaint`. `NoExecute` is deliberately rejected
+    because nothing in this fleet evicts a running workload, so accepting it would
+    be policy that reads like eviction and does nothing.
+  - `skfleet control-bus audit`, enforcing the 10MB scope contract and naming the
+    two growth risks by name. It reports that `events.jsonl` is capped at 2MB per
+    node, so five nodes at the cap would spend the entire budget.
+  - ADRs: `docs/fleet/adr-node-role-model.md` (the two axes, the four roles, the
+    accepted single-management-seat SPOF, norpv1300 left unmanaged) and
+    `docs/fleet/adr-edge-device-class.md` (an auth-only device is a capauth device
+    class, not a node role).
+
 ### Fixed
+- **`skfleet node doctor` read an absent inventory as total drift.** `.get("inventory")
+  or {}` collapsed ABSENT into EMPTY, so a node that had simply not published yet
+  graded as missing every required unit. During a rollout that is every node not
+  upgraded. Absent now skips with a note, while a genuinely empty published
+  inventory is still graded, since fixing only the first half would have hidden
+  real findings.
+- **`worker-gpu` declared `stateTier: none` while joining `skfleet-control`.**
+  Self-contradictory: `none` means the node holds no SK state, and that folder is
+  the fleet store. Corrected to `control-bus`, matching what both design documents
+  already said, with a test pinning the general rule that a tier and the folders it
+  joins must agree.
 - **Build work could be scheduled onto the control box.** The live fleet store
   carried `heavy-build=true` on BOTH `node-41` (20 cores, 739G disk) and
   `node-noroc2027`, the control node, which has 4 cores and under 5G of free disk.
