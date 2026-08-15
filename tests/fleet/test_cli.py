@@ -81,9 +81,13 @@ def test_cli_admit_bootstrap_and_preset(paths) -> None:
     runner = CliRunner()
     out = runner.invoke(fleet, ["admit", "node-158", "--bootstrap", "--preset"], env=_env(paths))
     assert out.exit_code == 0
-    assert "admitted node-158 (generation 1)" in out.output
+    # `node-158` is now an ALIAS (card 8258517f): the preset is keyed by the
+    # real node name, node-noroc2027, so this asserts the alias resolves and
+    # the labels actually land rather than silently applying nothing.
+    assert "admitted node-158 (generation 1, role=control)" in out.output
     spec = store.read_spec(paths, "node", "node-158")
     assert spec["labels"]["control-plane"] == "true"
+    assert spec["spec"]["role"] == "control"
 
 
 def test_cli_admit_with_explicit_labels(paths) -> None:
