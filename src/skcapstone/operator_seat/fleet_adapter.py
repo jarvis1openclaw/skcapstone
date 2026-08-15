@@ -260,7 +260,10 @@ def fleet_act(paths, proposal: dict, classification: dict, *, now_iso: str, writ
         log.append(entry)
     spec["operatorActions"] = log
     writer = writer or store.Writer(
-        role="operator", node=self_node_name(), identity="operator", agent_seat=True
+        role="operator",
+        node=self_node_name(),
+        identity=store.resolved_writer_identity(),
+        agent_seat=True,
     )
     return store.write_spec(paths, kind, name, spec, writer=writer)
 

@@ -191,3 +191,61 @@ def test_a_different_action_still_appends(tmp_path, monkeypatch):
     )
     log = store.read_spec(paths, "service", "svc-x")["spec"]["operatorActions"]
     assert [e["action"] for e in log] == ["restart_service", "replace_workload"]
+
+
+# ── writer.identity: resolved subject, never the literal "operator" ────────
+# Coord card N9 (`c974fa98`): `fleet_act`'s default writer used to hardcode
+# `identity="operator"`, the exact literal the spec calls out
+# (docs/specs/2026-08-14-signed-provenance-envelope-arch.md:224-227). It now
+# resolves through `store.resolved_writer_identity()`.
+
+
+def test_fleet_act_default_writer_identity_is_never_the_literal_operator(tmp_path, monkeypatch):
+    paths, op = _enroll(tmp_path, monkeypatch)
+    store.write_spec(paths, "service", "svc-y", {"unit": "svc-y.service"}, writer=op)
+    fleet_adapter.fleet_act(
+        paths,
+        {"action": "restart_service", "object": "svc-y"},
+        {"change_class": "standard"},
+        now_iso="2026-07-29T00:00:00Z",
+    )
+    written = store.read_spec(paths, "service", "svc-y")["writer"]
+    assert written["identity"] != "operator"
+    assert written["identity"], "an unattributed write still says something, never nothing"
+
+
+def test_fleet_act_default_writer_identity_resolves_when_capauth_available(tmp_path, monkeypatch):
+    paths, op = _enroll(tmp_path, monkeypatch)
+    store.write_spec(paths, "service", "svc-z", {"unit": "svc-z.service"}, writer=op)
+    monkeypatch.setattr(
+        "capauth.resolve_agent_identity",
+        lambda: type(
+            "Ident", (), {"capauth_uri": "capauth:lumina@skworld.io", "agent": "lumina"}
+        )(),
+    )
+    fleet_adapter.fleet_act(
+        paths,
+        {"action": "restart_service", "object": "svc-z"},
+        {"change_class": "standard"},
+        now_iso="2026-07-29T00:00:00Z",
+    )
+    written = store.read_spec(paths, "service", "svc-z")["writer"]
+    assert written["identity"] == "lumina@chef.skworld.io"
+
+
+def test_fleet_act_default_writer_identity_degrades_when_resolver_fails(tmp_path, monkeypatch):
+    paths, op = _enroll(tmp_path, monkeypatch)
+    store.write_spec(paths, "service", "svc-w", {"unit": "svc-w.service"}, writer=op)
+
+    def _boom():
+        raise RuntimeError("capauth unavailable")
+
+    monkeypatch.setattr("capauth.resolve_agent_identity", _boom)
+    fleet_adapter.fleet_act(
+        paths,
+        {"action": "restart_service", "object": "svc-w"},
+        {"change_class": "standard"},
+        now_iso="2026-07-29T00:00:00Z",
+    )
+    written = store.read_spec(paths, "service", "svc-w")["writer"]
+    assert written["identity"] == "unattributed"

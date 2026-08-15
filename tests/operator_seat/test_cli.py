@@ -191,3 +191,38 @@ def test_apps_register_list_and_ratify(tmp_path, monkeypatch):
     # Ratifying an unproposed action is a clean error, not a crash.
     bad = r.invoke(cli.operator, ["apps", "ratify", "skchat", "purge-outbox"])
     assert bad.exit_code != 0
+
+
+# ── _seat_writer identity: resolved subject, never the literal "operator" ──
+# Coord card N9 (`c974fa98`): the autonomous seat writer used to hardcode
+# `identity="operator"`. It now resolves via `store.resolved_writer_identity()`,
+# same convention as `operator_seat/fleet_adapter.py`.
+
+
+def test_seat_writer_identity_is_never_the_literal_operator(tmp_path, monkeypatch):
+    _enroll(tmp_path, monkeypatch)
+    writer = cli._seat_writer()
+    assert writer.identity != "operator"
+    assert writer.agent_seat is True
+    assert writer.role == "operator"
+
+
+def test_seat_writer_identity_resolves_when_capauth_available(tmp_path, monkeypatch):
+    _enroll(tmp_path, monkeypatch)
+    monkeypatch.setattr(
+        "capauth.resolve_agent_identity",
+        lambda: type(
+            "Ident", (), {"capauth_uri": "capauth:lumina@skworld.io", "agent": "lumina"}
+        )(),
+    )
+    assert cli._seat_writer().identity == "lumina@chef.skworld.io"
+
+
+def test_seat_writer_identity_degrades_to_unattributed_never_raises(tmp_path, monkeypatch):
+    _enroll(tmp_path, monkeypatch)
+
+    def _boom():
+        raise RuntimeError("capauth unavailable")
+
+    monkeypatch.setattr("capauth.resolve_agent_identity", _boom)
+    assert cli._seat_writer().identity == "unattributed"
