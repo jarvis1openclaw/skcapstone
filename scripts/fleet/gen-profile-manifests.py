@@ -272,7 +272,14 @@ def build_worker_gpu() -> dict:
             # have: the worker is being slimmed TO this, so the manifest states
             # the target and the drift report names the gap.
             "packages": _units_block(["capauth", "skcapstone"], [], SOVEREIGN_PACKAGES),
-            "stateTier": "none",
+            # control-bus, NOT none. The tier says how much state the node
+            # holds, and this one holds the fleet store: syncFolders below is
+            # exactly ["skfleet-control"]. `none` means holds no SK state at
+            # all and runs no node agent, which is the observer. Declaring
+            # tier `none` while joining a state folder is self-contradictory,
+            # and it disagreed with both docs/fleet/profiles.md and the share
+            # matrix in docs/fleet/control-bus-folder.md.
+            "stateTier": "control-bus",
             "capauthIdentityClass": "worker",
             "syncFolders": ["skfleet-control"],
         },

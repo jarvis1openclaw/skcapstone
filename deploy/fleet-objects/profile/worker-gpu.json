@@ -23,7 +23,7 @@
       ],
       "required": []
     },
-    "stateTier": "none",
+    "stateTier": "control-bus",
     "syncFolders": [
       "skfleet-control"
     ],
