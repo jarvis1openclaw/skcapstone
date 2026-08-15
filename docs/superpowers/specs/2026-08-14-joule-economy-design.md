@@ -139,8 +139,9 @@ exactly. Optional, with defaults, so existing cards are untouched.
 "meta": {
   "autopilot": { /* unchanged */ },
   "grade": {
-    "size": "M",                       // S|M|L|XL
-    "risk": "high",                    // low|med|high|crit
+    "size": "M",                       // S|M|L|XL   reasoning difficulty
+    "risk": "high",                    // low|med|high|crit   blast radius
+    "sensitivity": "internal",         // public|internal|secret   data exposure
     "model_class": "L",                // derived, stored for queryability
     "joule_estimate": 42000,           // expected marginal joules
     "joule_bounty": 46200,             // estimate + margin; what the worker competes for
@@ -153,6 +154,44 @@ exactly. Optional, with defaults, so existing cards are untouched.
   }
 }
 ```
+
+### 3.4.1 Sensitivity is a third field, not a third rank
+
+`size` and `risk` decide how much model the work needs. Neither says anything
+about where the work may be sent, and that is a real gap: **blast radius and
+confidentiality are different axes.** A docs card written against the private
+legal corpus is `risk: LOW` and must still never reach a free remote provider.
+Conversely a card that deletes stale files in a public repo is `risk: CRIT` on
+entirely public data.
+
+So the grade carries `sensitivity` alongside them:
+
+| Value | Meaning |
+|---|---|
+| `public` | nothing in the payload that could not be posted publicly |
+| `internal` | fleet or business context, code, ops detail. The default for agent traffic |
+| `secret` | credentials, keys, private corpora (legal/medical), soul or memory content, anything under seal |
+
+It does NOT feed `model_class`. `model_class` stays `max(size, risk)` exactly as
+D1 defines. Sensitivity resolves separately, through a policy map, to a ceiling
+on which providers are eligible at all, so a request can fail closed rather than
+silently cross into a less trusted zone.
+
+**Why it lives inside `meta.grade` rather than beside it.** The grade block is
+everything the grader-of-record decided about this card, and sensitivity is a
+grading judgment made at the same moment, by the same actor, from the same card
+text. It needs the same provenance the other fields already carry
+(`graded_by`, `rubric_version`, `confidence`). A sibling `meta.sensitivity`
+would mean two writers, two provenance trails, and no way to arbitrate when the
+grade and the sibling disagree.
+
+This answers **Q3** of the companion gateway spec,
+`skgateway/docs/specs/2026-08-14-model-metadata-risk-job-matching-arch.md`,
+which consumes this grade to match work against models. That spec owns the
+model side (`size_class`, `trust_zone`, `latency_class`) and the matching gate;
+this one owns the job side and the vocabulary. Neither reinvents the other's
+half: the enums, the `max()` rule, and the floor/ceiling semantics are defined
+here and consumed there verbatim.
 
 ### 3.5 The grader
 
