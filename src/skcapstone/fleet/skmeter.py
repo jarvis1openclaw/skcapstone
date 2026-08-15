@@ -17,6 +17,7 @@ import pathlib
 import re
 import socket
 import subprocess
+import sys
 import threading
 import time
 from http.server import BaseHTTPRequestHandler, HTTPServer
@@ -160,6 +161,7 @@ class EnergyCounter:
 
 
 DEFAULT_PORT = 9420
+DEFAULT_BIND = "127.0.0.1"
 DEFAULT_INTERVAL_MS = 200
 NVIDIA_SMI_CMD = [
     "nvidia-smi",
@@ -168,8 +170,28 @@ NVIDIA_SMI_CMD = [
 ]
 
 
+IDLE_QUANTILE = 0.10
+IDLE_MAX_RATIO = 1.5
+IDLE_MAX_DELTA_W = 15.0
+
+
 def measure_idle_baseline(sample_fn: Callable[[], float | None], n: int = 50) -> float:
-    """Average n samples to establish the idle floor.
+    """Take n samples and return a low quantile of them as the idle floor.
+
+    A low quantile, not the mean. The mean of a window that happened to
+    contain real work is a BUSY number, and a busy baseline is the worst
+    possible failure here: observe() floors marginal energy at zero per
+    sample, so the gateway would record `joules: 0, basis: measured_gpu` for
+    work that really burned power. That is an invented number wearing a
+    measured label, which is exactly what this whole component exists to
+    prevent. The idle floor is a floor, so the low end of the distribution is
+    the honest estimator of it; the high end is whatever else the card was
+    doing.
+
+    The 10th percentile rather than the strict minimum, so one anomalously low
+    reading (a driver hiccup, a truncated line that still parsed) cannot drag
+    the floor down on its own. Nearest-rank, so it always returns an actual
+    observed sample rather than an interpolated value that was never measured.
 
     Returns 0.0 if nothing parseable arrives. A zero baseline charges absolute
     energy, which is wrong but safe; crashing the meter would be worse.
@@ -184,7 +206,56 @@ def measure_idle_baseline(sample_fn: Callable[[], float | None], n: int = 50) ->
             good.append(float(value))
     if not good:
         return 0.0
-    return sum(good) / len(good)
+    good.sort()
+    idx = int(IDLE_QUANTILE * (len(good) - 1))
+    return good[idx]
+
+
+def plausible_baseline(
+    candidate_w: float,
+    known_good_w: float,
+    max_ratio: float = IDLE_MAX_RATIO,
+    max_delta_w: float = IDLE_MAX_DELTA_W,
+) -> float:
+    """Accept a candidate idle baseline, or fall back to the known-good one.
+
+    Baselining has no way to ask the GPU "are you idle right now?", so a
+    re-baseline tick (or a daemon restart) that lands under load measures the
+    LOAD and calls it idle. Installing that number silently zeroes the
+    marginal energy of every subsequent request while still labelling it
+    `measured_gpu`. The guard exists so that failure is refused rather than
+    recorded.
+
+    The rule: reject only when the candidate exceeds the known-good baseline
+    on BOTH axes at once, ratio and absolute watts. Either test alone is
+    wrong here:
+
+      * ratio alone rejects benign drift on a low-idle card, e.g. 3.0 W ->
+        9.5 W, which is a real idle shift we deliberately want to adopt (see
+        resolve_boot_idle_baseline: the fresh measurement is meant to win).
+      * absolute delta alone would let a proportionally huge jump through on
+        a card whose idle is already high.
+
+    Together they catch the case that actually matters, the ~9 W idle floor
+    being replaced by a ~99 W under-load reading, while leaving ordinary
+    ambient and driver drift alone.
+
+    With no prior known-good baseline (0.0) there is nothing to compare
+    against, so the candidate is accepted: a first measurement is the best
+    fact available, and refusing it would leave the meter charging absolute
+    energy forever.
+    """
+    candidate = float(candidate_w)
+    known_good = float(known_good_w)
+    if candidate <= 0.0:
+        return known_good if known_good > 0.0 else 0.0
+    if known_good <= 0.0:
+        return candidate
+    too_high_by_ratio = candidate > known_good * max_ratio
+    too_high_by_watts = candidate > known_good + max_delta_w
+    if too_high_by_ratio and too_high_by_watts:
+        return known_good
+    return candidate
 
 
 def build_energy_response(
@@ -247,6 +318,21 @@ def should_rebaseline(last_ms, now_ms: int, interval_h: int = REBASELINE_INTERVA
     return (now_ms - int(last_ms)) > interval_h * 3600 * 1000
 
 
+def checkpoint_idle_baseline(checkpoint: dict | None) -> float:
+    """The last known-good idle baseline off a checkpoint, or 0.0.
+
+    Untrusted input, same contract as EnergyCounter.restore: never raises,
+    never returns a negative.
+    """
+    if not checkpoint:
+        return 0.0
+    try:
+        saved = float(checkpoint.get("idle_baseline_w"))
+    except (TypeError, ValueError):
+        return 0.0
+    return saved if saved >= 0.0 else 0.0
+
+
 def resolve_boot_idle_baseline(fresh_w: float, checkpoint: dict | None) -> float:
     """Pick the idle baseline to use at boot: the fresh measurement wins.
 
@@ -257,16 +343,38 @@ def resolve_boot_idle_baseline(fresh_w: float, checkpoint: dict | None) -> float
     The checkpoint's baseline is only a fallback for when the fresh
     measurement failed (returned 0.0). Do not "fix" this back to preferring
     the checkpoint.
+
+    One exception, and only one: a restart that lands while the card is under
+    load measures the load, not idle. plausible_baseline() refuses a candidate
+    that towers over the checkpointed known-good floor and keeps the
+    checkpointed value instead. Every plausible fresh measurement still wins,
+    so the rule above is intact.
     """
+    saved = checkpoint_idle_baseline(checkpoint)
     if fresh_w > 0:
-        return fresh_w
-    if checkpoint:
-        try:
-            saved = float(checkpoint.get("idle_baseline_w"))
-        except (TypeError, ValueError):
-            return 0.0
-        return saved if saved >= 0.0 else 0.0
-    return 0.0
+        return plausible_baseline(fresh_w, saved)
+    return saved
+
+
+def resolve_bind_address(bind: str | None = None, env: dict | None = None) -> str:
+    """Pick the address the meter listens on. Loopback unless told otherwise.
+
+    Precedence: explicit argument, then SKMETER_BIND, then loopback.
+
+    The default is deliberately 127.0.0.1 and must stay that way. The gateway
+    that reads this meter does not necessarily run on the GPU node, so a real
+    deployment often does need a wider bind, but exposing per-node power
+    telemetry on the network is a deployment decision an operator makes on
+    purpose, not something this daemon does for them by default. See the
+    comment in systemd/skmeter.service for how to widen it.
+    """
+    if bind:
+        return str(bind)
+    source = os.environ if env is None else env
+    from_env = source.get("SKMETER_BIND")
+    if from_env:
+        return str(from_env)
+    return DEFAULT_BIND
 
 
 class _State:
@@ -341,9 +449,16 @@ def serve(
     device: str = "gpu0",
     node: str = "",
     interval_ms: int = DEFAULT_INTERVAL_MS,
+    bind: str | None = None,
 ) -> None:
-    """Run the meter: baseline, sampler thread, then serve GET /energy."""
+    """Run the meter: baseline, sampler thread, then serve GET /energy.
+
+    `bind` defaults to loopback (see resolve_bind_address). The meter must be
+    reachable from whichever host runs skgateway, which on this fleet is not
+    the GPU node, so a real deployment sets SKMETER_BIND explicitly.
+    """
     node = node or socket.gethostname()
+    bind_addr = resolve_bind_address(bind)
 
     def one_sample() -> float | None:
         try:
@@ -376,13 +491,29 @@ def serve(
                 fresh = measure_idle_baseline(one_sample, n=20)
                 if fresh > 0:
                     with state.lock:
-                        state.counter.set_idle_baseline(fresh)
+                        # Nothing tells this tick whether the card is idle, so
+                        # run the candidate past the plausibility guard rather
+                        # than installing a possibly-under-load reading as the
+                        # idle floor. A rejected candidate is announced, never
+                        # swallowed: a meter quietly refusing to re-baseline
+                        # for weeks is its own kind of invisible wrong number.
+                        known_good = state.counter.idle_baseline_w
+                        accepted = plausible_baseline(fresh, known_good)
+                        state.counter.set_idle_baseline(accepted)
+                    if accepted != fresh:
+                        print(
+                            f"[skmeter] rejected implausible idle baseline "
+                            f"{fresh:.2f} W (known good {known_good:.2f} W); "
+                            f"the GPU was probably busy. Keeping {accepted:.2f} W.",
+                            file=sys.stderr,
+                            flush=True,
+                        )
                 last_baseline_ms = now_ms
 
     threading.Thread(target=sample_loop, args=(state, interval_ms), daemon=True).start()
     threading.Thread(target=_maintenance, daemon=True).start()
 
-    HTTPServer(("127.0.0.1", port), _handler_factory(state)).serve_forever()
+    HTTPServer((bind_addr, port), _handler_factory(state)).serve_forever()
 
 
 if __name__ == "__main__":

@@ -5,12 +5,15 @@ import json
 import pytest
 
 from skcapstone.fleet.skmeter import (
+    DEFAULT_BIND,
     EnergyCounter,
     build_energy_response,
     integrate,
     load_checkpoint,
     measure_idle_baseline,
     parse_power_line,
+    plausible_baseline,
+    resolve_bind_address,
     resolve_boot_idle_baseline,
     save_checkpoint,
     should_rebaseline,
@@ -158,18 +161,79 @@ class TestEnergyCounter:
 
 
 class TestIdleBaseline:
-    def test_averages_the_samples(self):
+    def test_takes_a_low_quantile_not_the_mean(self):
+        # Idle is a FLOOR. The mean of a window is pulled up by anything the
+        # card was doing, and a busy baseline silently zeroes real work.
         vals = iter([8.9, 9.0, 8.8, 9.1])
-        assert measure_idle_baseline(lambda: next(vals), n=4) == pytest.approx(8.95)
+        assert measure_idle_baseline(lambda: next(vals), n=4) == pytest.approx(8.8)
+
+    def test_a_busy_window_does_not_produce_a_busy_baseline(self):
+        # The failure this guards: a re-baseline tick landing under load. The
+        # mean here is ~74 W, which as an idle floor would floor marginal
+        # energy at zero for anything under 74 W and label it measured_gpu.
+        vals = iter([9.0, 99.0, 120.0, 140.0, 8.9, 101.0, 95.0, 130.0, 99.0, 88.0])
+        assert measure_idle_baseline(lambda: next(vals), n=10) == pytest.approx(8.9)
 
     def test_ignores_unparseable_samples(self):
         vals = iter([8.9, None, 9.1, None])
-        assert measure_idle_baseline(lambda: next(vals), n=4) == pytest.approx(9.0)
+        assert measure_idle_baseline(lambda: next(vals), n=4) == pytest.approx(8.9)
 
     def test_all_bad_samples_returns_zero_not_error(self):
         # A zero baseline means we charge absolute energy, which is wrong but
         # safe. Crashing the meter would be worse.
         assert measure_idle_baseline(lambda: None, n=3) == 0.0
+
+
+class TestPlausibleBaseline:
+    def test_a_normal_candidate_is_accepted(self):
+        assert plausible_baseline(9.1, 8.96) == pytest.approx(9.1)
+
+    def test_an_under_load_candidate_is_rejected_for_the_known_good(self):
+        # 99 W is the mean draw of a real inference (spec 4.8), not an idle
+        # floor. Installing it would record joules: 0, basis: measured_gpu.
+        assert plausible_baseline(99.0, 8.96) == pytest.approx(8.96)
+
+    def test_benign_drift_on_a_low_idle_card_still_wins(self):
+        # 3.0 -> 9.5 W trips the ratio test but not the absolute-watts test,
+        # so it is adopted. Rejecting it would break the deliberate rule that
+        # a fresh measurement beats the checkpoint.
+        assert plausible_baseline(9.5, 3.0) == pytest.approx(9.5)
+
+    def test_no_prior_known_good_accepts_the_candidate(self):
+        assert plausible_baseline(8.96, 0.0) == pytest.approx(8.96)
+
+    def test_a_useless_candidate_keeps_the_known_good(self):
+        assert plausible_baseline(0.0, 8.96) == pytest.approx(8.96)
+        assert plausible_baseline(0.0, 0.0) == 0.0
+
+
+class TestBindAddress:
+    def test_defaults_to_loopback(self):
+        # Safe by default: fleet power telemetry is not published to the
+        # network unless an operator says so.
+        assert resolve_bind_address(env={}) == "127.0.0.1"
+        assert DEFAULT_BIND == "127.0.0.1"
+
+    def test_env_override_is_honoured(self):
+        assert resolve_bind_address(env={"SKMETER_BIND": "192.168.0.100"}) == "192.168.0.100"
+
+    def test_explicit_argument_beats_the_env(self):
+        assert resolve_bind_address("0.0.0.0", env={"SKMETER_BIND": "10.0.0.1"}) == "0.0.0.0"
+
+    def test_empty_env_value_falls_back_to_loopback(self):
+        assert resolve_bind_address(env={"SKMETER_BIND": ""}) == "127.0.0.1"
+
+    def test_serve_accepts_a_bind_parameter(self):
+        # The bind must be reachable from the gateway host, so it has to be a
+        # real knob and not a hardcoded literal buried in serve().
+        import inspect
+
+        from skcapstone.fleet import skmeter
+
+        params = inspect.signature(skmeter.serve).parameters
+        assert "bind" in params
+        assert params["bind"].default is None
+        assert "127.0.0.1" not in inspect.getsource(skmeter.serve)
 
 
 class TestEnergyResponse:
@@ -317,3 +381,14 @@ class TestBootIdleBaseline:
 
     def test_negative_checkpoint_baseline_is_floored(self):
         assert resolve_boot_idle_baseline(0.0, {"idle_baseline_w": -4.0}) == 0.0
+
+    def test_a_restart_under_load_keeps_the_checkpointed_floor(self):
+        # A daemon restart while the card is working measures the work. The
+        # only exception to "fresh wins": an implausible candidate falls back
+        # to the last known-good floor rather than zeroing every future row.
+        assert resolve_boot_idle_baseline(99.0, {"idle_baseline_w": 8.96}) == pytest.approx(8.96)
+
+    def test_no_checkpoint_means_the_fresh_measurement_is_all_we_have(self):
+        # Nothing to compare against, so even a high reading is adopted: it is
+        # the best fact available and refusing it charges absolute energy.
+        assert resolve_boot_idle_baseline(99.0, None) == pytest.approx(99.0)
