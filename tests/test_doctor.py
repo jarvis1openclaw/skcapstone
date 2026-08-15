@@ -33,6 +33,7 @@ from skcapstone.doctor import (
     _check_yolo,
     _provisioned_agents,
     _scan_capauth_local,
+    _scan_pairing_subjects,
     run_diagnostics,
     run_fixes,
 )
@@ -726,6 +727,92 @@ class TestScanCapauthLocal:
         assert any("stale" in h for h in hits)
 
 
+def _add_paired_device(home, subject, device_id):
+    """Enroll one approved device under ``subject`` in the pairing store at *home*.
+
+    Uses ``capauth.pairing.PairingStore`` directly (not the kernel functions)
+    so a test can plant an arbitrary, possibly non-canonical, subject string
+    without going through enrollment approval flow.
+    """
+    from capauth.pairing import DeviceRecord, EnrollmentMode, PairingStore
+
+    PairingStore(base_dir=home).upsert_device(
+        DeviceRecord(
+            device_id=device_id,
+            subject=subject,
+            pubkey="fake-test-pubkey",
+            mode=EnrollmentMode.VERIFIED,
+            approved_by="tester",
+        )
+    )
+
+
+class TestScanPairingSubjects:
+    """_scan_pairing_subjects: judges the capauth pairing store via canonical_subject()."""
+
+    def test_empty_store_is_clean(self, identity_home):
+        findings, err = _scan_pairing_subjects(identity_home)
+        assert err is None
+        assert findings == []
+
+    def test_canonical_subject_not_flagged(self, identity_home):
+        _add_paired_device(identity_home, "lumina@chef.skworld.io", "dev-canonical")
+        findings, err = _scan_pairing_subjects(identity_home)
+        assert err is None
+        assert findings == []
+
+    def test_operator_prefix_flagged_and_translated(self, identity_home):
+        """The store's dominant legacy shape: operator:<fp> -> device:<fp>."""
+        _add_paired_device(identity_home, "operator:0a1b2c3d4e5f6789", "dev-operator")
+        findings, err = _scan_pairing_subjects(identity_home)
+        assert err is None
+        assert len(findings) == 1
+        assert "operator:0a1b2c3d4e5f6789" in findings[0]
+        assert "device:0a1b2c3d4e5f6789" in findings[0]
+
+    def test_retired_skcapstone_local_tier_is_translated_not_rejected(self, identity_home):
+        """@skcapstone.local is a REAL retired sovereign tier (seven live swarm
+        agent keys carry it): canonical_subject() collapses it onto the
+        operator domain, it does not reject it like a placeholder."""
+        _add_paired_device(identity_home, "swarm-agent@skcapstone.local", "dev-swarm")
+        findings, err = _scan_pairing_subjects(identity_home)
+        assert err is None
+        assert len(findings) == 1
+        assert "skcapstone.local" in findings[0]
+        assert "chef.skworld.io" in findings[0]
+        assert "rejected" not in findings[0]
+
+    def test_capauth_local_placeholder_is_rejected_not_translated(self, identity_home):
+        """@capauth.local is the BANNED placeholder marker (separate concern
+        from identity:no-placeholder above, but this scan also catches it):
+        canonical_subject() has no alias for it, so it is rejected outright,
+        never conflated with the real @skcapstone.local tier."""
+        _add_paired_device(identity_home, "stale@capauth.local", "dev-stale")
+        findings, err = _scan_pairing_subjects(identity_home)
+        assert err is None
+        assert len(findings) == 1
+        assert "rejected" in findings[0]
+
+    def test_import_error_reports_unknown_not_crash(self, identity_home, monkeypatch):
+        """capauth not importable must surface as an (findings=None, error)
+        pair the caller turns into an `unknown` Check, never an exception
+        that blows up the whole doctor run."""
+        import builtins
+
+        real_import = builtins.__import__
+
+        def fake_import(name, *args, **kwargs):
+            if name == "capauth" or name.startswith("capauth."):
+                raise ImportError("simulated: capauth not installed")
+            return real_import(name, *args, **kwargs)
+
+        monkeypatch.setattr(builtins, "__import__", fake_import)
+        findings, err = _scan_pairing_subjects(identity_home)
+        assert findings is None
+        assert err is not None
+        assert "simulated" in err
+
+
 class TestIdentityConsistency:
     """_check_identity_consistency: the unified identity layer (skos T6)."""
 
@@ -779,6 +866,40 @@ class TestIdentityConsistency:
         assert "identity:resolver" in by
         # capauth is a hard dependency of the suite; resolver must import.
         assert by["identity:resolver"].passed is True
+
+    def test_subject_canonical_passes_on_clean_store(self, identity_home):
+        by = self._by_name(_check_identity_consistency(identity_home))
+        assert by["identity:subject-canonical"].passed is True
+        assert "clean" in by["identity:subject-canonical"].detail
+
+    def test_subject_canonical_fails_on_non_canonical_pairing_subject(self, identity_home):
+        _add_paired_device(identity_home, "operator:0a1b2c3d4e5f6789", "dev-operator")
+        by = self._by_name(_check_identity_consistency(identity_home))
+        assert by["identity:subject-canonical"].passed is False
+        assert "operator:0a1b2c3d4e5f6789" in by["identity:subject-canonical"].detail
+        # An unrelated finding here must not perturb the placeholder ban.
+        assert by["identity:no-placeholder"].passed is True
+
+    def test_capauth_local_and_skcapstone_local_not_conflated(self, identity_home):
+        """@capauth.local (banned placeholder) and @skcapstone.local (real,
+        migrating tier) are judged by two different checks, for two
+        different reasons: the placeholder ban fires ONLY on the former, the
+        canonical-subject scan fires on both but the store here only carries
+        the latter, so its detail must never mention the placeholder."""
+        _mk_agent(
+            identity_home,
+            "stale",
+            identity_payload={"name": "Stale", "email": "stale@capauth.local"},
+        )
+        _add_paired_device(identity_home, "swarm-agent@skcapstone.local", "dev-swarm")
+
+        by = self._by_name(_check_identity_consistency(identity_home))
+        assert by["identity:no-placeholder"].passed is False
+        assert "stale" in by["identity:no-placeholder"].detail
+
+        assert by["identity:subject-canonical"].passed is False
+        assert "skcapstone.local" in by["identity:subject-canonical"].detail
+        assert "capauth.local" not in by["identity:subject-canonical"].detail
 
 
 class TestTransportCheckNoThreadLeak:

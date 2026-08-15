@@ -959,11 +959,77 @@ def _scan_capauth_local(home: Path) -> list[str]:
     return hits
 
 
+def _scan_pairing_subjects(home: Path) -> tuple[Optional[list[str]], Optional[str]]:
+    """Scan the capauth pairing store for subjects that are not canonical.
+
+    Judges canonicality by calling ``capauth.canonical_subject`` (the ONE
+    normalizer for the Identity Naming Standard's fqid grammar,
+    ``sk-standards/standards/IDENTITY_NAMING_STANDARD.md``) rather than
+    reimplementing the grammar here, so this check and the deployment's one
+    normalizer can never quietly disagree about what "canonical" means.
+
+    Deliberately separate in kind from ``_scan_capauth_local`` above. That
+    check bans the ``@capauth.local`` PLACEHOLDER marker outright: a fake
+    identity minted before a real profile existed, that should never be
+    present at all. This scan is broader: it reports every subject not yet
+    spelled in its one canonical form, which also includes real,
+    legitimately-enrolled identities mid-migration, such as the
+    ``@skcapstone.local`` retired sovereign tier (real swarm agent keys
+    currently carry it; ``canonical_subject()`` collapses it to the operator
+    domain, it does not reject it like a placeholder) and the
+    ``operator:<fingerprint>`` device-seat prefix (the store's dominant
+    shape, being renamed to ``device:<fingerprint>`` by a separate card).
+    Neither check subsumes the other in general, but every ``@capauth.local``
+    hit is also a hit here, because that suffix is not in
+    ``canonical_subject()``'s alias table and so is never collapsed to
+    something canonical.
+
+    Args:
+        home: Shared root directory (~/.skcapstone), used as the pairing
+            store's ``base_dir``.
+
+    Returns:
+        A ``(findings, import_error)`` pair. On success, ``findings`` is a
+        sorted list of ``"<subject> (<reason>)"`` strings, one per distinct
+        non-canonical subject found in the store (empty when every enrolled
+        subject is already canonical), and ``import_error`` is None. If
+        capauth or its pairing store cannot be imported, ``findings`` is
+        None and ``import_error`` carries the exception text so the caller
+        can report an ``unknown`` check instead of crashing the doctor run.
+    """
+    try:
+        from capauth import SubjectNamingError, canonical_subject
+        from capauth.pairing import PairingStore
+    except ImportError as exc:
+        return None, str(exc)
+
+    store = PairingStore(base_dir=home)
+    findings: dict[str, str] = {}
+    try:
+        devices = store.iter_devices()
+    except OSError as exc:
+        return None, str(exc)
+
+    for _path, device in devices:
+        subject = device.subject
+        if not subject or subject in findings:
+            continue
+        try:
+            canonical = canonical_subject(subject)
+        except SubjectNamingError as exc:
+            findings[subject] = f"rejected: {exc}"
+            continue
+        if canonical != subject:
+            findings[subject] = f"-> {canonical}"
+
+    return [f"{subj} ({reason})" for subj, reason in sorted(findings.items())], None
+
+
 def _check_identity_consistency(home: Path) -> list[Check]:
     """Validate the unified identity layer (epic 2b264064 / skos T6).
 
     Locks in the single agent-aware resolver and the shared-operator /
-    per-agent-wire split. Five checks in the ``identity`` category:
+    per-agent-wire split. Six checks in the ``identity`` category:
 
     1. ``identity:resolver`` - ``capauth.resolve_agent_identity`` is importable
        (the single canonical resolver every SK package delegates to).
@@ -975,12 +1041,19 @@ def _check_identity_consistency(home: Path) -> list[Check]:
        ``@capauth.local`` placeholder email.
     5. ``identity:per-agent`` - every provisioned agent (one with a CapAuth home)
        has its own per-agent ``identity/identity.json``.
+    6. ``identity:subject-canonical`` - every subject enrolled in the capauth
+       pairing store matches ``capauth.canonical_subject`` (Identity Naming
+       Standard). Distinct from check 4: ``@capauth.local`` is a banned
+       placeholder that should never exist, while a non-canonical pairing
+       subject (e.g. ``operator:<fp>``, ``@skcapstone.local``) is a real,
+       legitimately-enrolled identity mid-migration to its one canonical
+       spelling.
 
     Args:
         home: Shared root directory (~/.skcapstone).
 
     Returns:
-        Up to five Check results in the ``identity`` category.
+        Up to six Check results in the ``identity`` category.
     """
     checks: list[Check] = []
 
@@ -1129,6 +1202,44 @@ def _check_identity_consistency(home: Path) -> list[Check]:
                     if not missing
                     else "Run `capauth init` for the listed agents so each has a "
                     "per-agent identity/identity.json"
+                ),
+                category="identity",
+            )
+        )
+
+    # 6. Every subject enrolled in the capauth pairing store is canonical.
+    subject_findings, subject_import_error = _scan_pairing_subjects(home)
+    if subject_import_error is not None:
+        checks.append(
+            Check(
+                name="identity:subject-canonical",
+                description="Pairing store subjects match the canonical fqid grammar",
+                passed=False,
+                unknown=True,
+                detail=f"UNKNOWN: capauth.canonical_subject not importable: {subject_import_error}",
+                category="identity",
+            )
+        )
+    else:
+        checks.append(
+            Check(
+                name="identity:subject-canonical",
+                description="Pairing store subjects match the canonical fqid grammar",
+                passed=not subject_findings,
+                detail=(
+                    "clean - every enrolled subject is canonical"
+                    if not subject_findings
+                    else f"{len(subject_findings)} non-canonical subject(s): "
+                    + "; ".join(subject_findings[:3])
+                    + (" ..." if len(subject_findings) > 3 else "")
+                ),
+                fix=(
+                    ""
+                    if not subject_findings
+                    else "Re-enroll the listed device(s) (capauth.pairing.enroll_device "
+                    "canonicalizes at write time) or wait for the pairing-store "
+                    "canonical-subject migration to backfill them "
+                    "(IDENTITY_NAMING_STANDARD.md; capauth.canonical_subject)"
                 ),
                 category="identity",
             )
