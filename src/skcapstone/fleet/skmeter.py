@@ -306,7 +306,13 @@ def build_energy_response(
 # passwordless-sudo user already has this capability, so reading it this way
 # grants nothing new.
 RAPL_ROOT = "/sys/class/powercap"
-RAPL_DEFAULT_DOMAIN = "intel-rapl:0"
+# psys ("platform") measures the WHOLE BOARD, not just the CPU package, so it is
+# much closer to the wall power that actually maps to an electricity bill.
+# package-0 misses everything outside the package. Not every chip exposes psys,
+# so we fall back to the package domain when it is absent.
+RAPL_PSYS_DOMAIN = "intel-rapl:1"
+RAPL_PACKAGE_DOMAIN = "intel-rapl:0"
+RAPL_DEFAULT_DOMAIN = RAPL_PSYS_DOMAIN
 
 
 def rapl_delta_uj(prev_uj: int, curr_uj: int, max_uj: int) -> int:
@@ -367,6 +373,19 @@ def rapl_available(domain: str = RAPL_DEFAULT_DOMAIN) -> bool:
     return read_rapl_uj(domain) is not None
 
 
+def best_rapl_domain() -> str | None:
+    """Prefer psys (whole platform) over the CPU package, else None.
+
+    psys is the number that maps to the electricity bill; package-0 misses
+    everything outside the CPU package. Older or server chips often expose no
+    psys domain at all, so this degrades rather than assuming.
+    """
+    for domain in (RAPL_PSYS_DOMAIN, RAPL_PACKAGE_DOMAIN):
+        if read_rapl_uj(domain) is not None:
+            return domain
+    return None
+
+
 def rapl_sample_loop(
     state: "_State",
     domain: str = RAPL_DEFAULT_DOMAIN,
@@ -414,7 +433,8 @@ def select_power_source(nvidia_probe=None, rapl_probe=None) -> tuple[str, str]:
         pass
     try:
         if rp():
-            return ("rapl", RAPL_DEFAULT_DOMAIN)
+            domain = best_rapl_domain() or RAPL_PACKAGE_DOMAIN
+            return ("rapl", domain)
     except Exception:
         pass
     return ("none", "none")

@@ -7,6 +7,8 @@ import pytest
 from skcapstone.fleet.skmeter import (
     DEFAULT_BIND,
     RAPL_DEFAULT_DOMAIN,
+    RAPL_PACKAGE_DOMAIN,
+    RAPL_PSYS_DOMAIN,
     EnergyCounter,
     build_energy_response,
     integrate,
@@ -479,8 +481,11 @@ class TestPowerSourceSelection:
         assert select_power_source(lambda: True, lambda: True) == ("nvidia", "gpu0")
 
     def test_falls_back_to_rapl(self):
+        # The domain is resolved at runtime (psys preferred, package fallback),
+        # so assert it is one of the two real domains rather than a fixed one.
         kind, label = select_power_source(lambda: False, lambda: True)
-        assert kind == "rapl" and label == RAPL_DEFAULT_DOMAIN
+        assert kind == "rapl"
+        assert label in (RAPL_PSYS_DOMAIN, RAPL_PACKAGE_DOMAIN)
 
     def test_neither_source_is_reported_honestly(self):
         assert select_power_source(lambda: False, lambda: False) == ("none", "none")
@@ -514,3 +519,16 @@ class TestBaselineProbeMatchesSource:
     def test_a_none_probe_produces_a_zero_baseline_not_a_crash(self):
         # measure_idle_baseline must survive a source that never answers.
         assert measure_idle_baseline(watts_probe_for("none", "none"), n=3) == 0.0
+
+
+class TestRaplDomainPreference:
+    """psys (whole platform) is the number that maps to the electricity bill.
+    package-0 misses everything outside the CPU package, so prefer psys and
+    fall back only when the chip does not expose it.
+    """
+
+    def test_psys_is_the_default_domain(self):
+        assert RAPL_DEFAULT_DOMAIN == RAPL_PSYS_DOMAIN == "intel-rapl:1"
+
+    def test_package_is_the_documented_fallback(self):
+        assert RAPL_PACKAGE_DOMAIN == "intel-rapl:0"
