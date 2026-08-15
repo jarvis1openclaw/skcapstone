@@ -7,11 +7,13 @@ agent that lives in `~/.skcapstone/`. Driven by the `skcapstone` CLI and the
 `skcapstone-mcp` MCP server.
 
 > Compliance: this SOP follows the smilinTux
-> [SK Repo Doc Standard](https://github.com/smilinTux/sk-standards). skcapstone holds
-> **no key material of its own** — it delegates all identity/crypto to
-> [capauth](https://github.com/smilinTux/capauth) — so it is a **non-crypto** repo
-> (see §9). Every capability claim below is scoped to a surface and backed by code,
-> a self-report command, or a test.
+> [SK Repo Doc Standard](https://github.com/smilinTux/sk-standards). skcapstone
+> delegates **PGP identity** (keypairs, DIDs, challenge-response, the trust store) to
+> [capauth](https://github.com/smilinTux/capauth), but it is **not** key-material-free:
+> it generates and stores its own TLS private key, and it drives signing and encryption
+> over capauth-held keys. Maturity tier **T0**, with the surfaces enumerated in §9.
+> Every capability claim below is scoped to a surface and backed by code, a self-report
+> command, or a test.
 
 ---
 
@@ -34,13 +36,16 @@ sync — behind one CLI and one MCP server.
   **ITIL** ops tools (reused by [skops](https://github.com/smilinTux/skops)).
 - The **pillar initializers** (`pillars/identity|memory|trust|security|sync`) that wire
   the sibling `sk*` packages into a single `~/.skcapstone/` home.
-- The `skcapstone` CLI command tree and the `skcapstone-mcp` server (80+ tools).
+- The `skcapstone` CLI command tree and the `skcapstone-mcp` server (130+ tools; §7
+  gives the command that counts them).
 
 **What it explicitly does NOT do.**
-- It does **not** implement cryptographic identity. PGP keypairs, DID documents,
+- It does **not** implement cryptographic *identity*. PGP keypairs, DID documents,
   challenge-response auth and the trust store are owned by
-  [capauth](https://github.com/smilinTux/capauth); skcapstone orchestrates but never
-  generates or stores key material itself.
+  [capauth](https://github.com/smilinTux/capauth); skcapstone orchestrates those but
+  never generates a PGP identity key. **This is not the same as holding no key
+  material at all**: skcapstone does generate and store an RSA-2048 TLS key of its
+  own. See §9 for the exact inventory.
 - It does **not** implement the memory store, embeddings, or vector/graph search — that
   is [skmemory](https://github.com/smilinTux/skmemory).
 - It does **not** implement message transport or the chat protocol — those are
@@ -61,8 +66,8 @@ engine; the pillars wire in the sibling `sk*` packages.
 graph TB
     subgraph clients["Clients"]
         CLI["skcapstone CLI"]
-        MCP["skcapstone-mcp<br/>(MCP server, 80+ tools)"]
-        HTTP["HTTP API client<br/>(127.0.0.1:7777)"]
+        MCP["skcapstone-mcp<br/>(MCP server, 130+ tools)"]
+        HTTP["HTTP API client<br/>(127.0.0.1:&lt;per-agent port&gt;)"]
     end
 
     subgraph daemon["DaemonService (daemon.py)"]
@@ -134,7 +139,8 @@ graph TB
 
 **Start here** (the files to open first):
 - `src/skcapstone/daemon.py` — `DaemonService`: owns every background thread and the
-  HTTP API (bind `127.0.0.1:7777`). The process entrypoint.
+  HTTP API (bind `127.0.0.1:<port>`, per agent; see the port rules in §5). The
+  process entrypoint.
 - `src/skcapstone/consciousness_loop.py` — `ConsciousnessLoop` + `InboxHandler` +
   `LLMBridge` + `SystemPromptBuilder`: the inbox → classify → route → respond engine.
 - `src/skcapstone/model_router.py` — `ModelRouter`: `TaskSignal` → `RouteDecision`
@@ -145,6 +151,22 @@ graph TB
   self-healing, daemon lifecycle) this SOP summarizes.
 - `src/skcapstone/context_window.py`: `ContextWindowManager`, per-sender token
   tracking + LLM history compression at 80% of the context budget.
+
+**⚠️ coordination / ITIL / cards no longer live here.** `skcoord>=0.1.0` is a **hard
+runtime dependency** (`pyproject.toml`), and `skcapstone.coordination`,
+`skcapstone.card_store`, and `skcapstone.itil` are **transparent re-export shims** over
+`skcoord.*` (the CR-4.1 extraction). Each aliases the real module into `sys.modules`, so
+importers, attribute access, and `monkeypatch.setattr` on a class **or** a module global
+all reach the same object. Consequences worth knowing before you debug:
+
+- The code you want to read or patch is in **skcoord**, not here. Editing the shim body
+  changes nothing.
+- New code should `import skcoord` directly.
+- `import skcapstone` succeeds without skcoord installed, but
+  `from skcapstone.coordination import Board` does not. That asymmetry is why CI installs
+  skcoord explicitly `--no-deps`.
+- `ci.yml` runs `scripts/check-no-shim-imports.sh`, which fails the build on retired
+  capauth shim imports. It is a lint gate, not a test.
 
 **Consciousness loop: context-window + memory-promotion gates.**
 - **Context-window management.** After each reply, `ConsciousnessLoop._process` calls
@@ -183,10 +205,22 @@ pip install -e ".[all]"          # runtime + every optional sibling (capauth, sk
   `skmemory`, `skskills`, `cloud9`.
 - **Optional extras (opt-in):** `identity` (capauth), `security` (sksecurity),
   `memory`, `seed`, `chat`, `comm`, `consciousness`, `fuse`, `cloud`, `all`.
-- **Build a wheel:** `python -m build` → `dist/skcapstone-0.13.0-*.whl`.
-- **Console scripts:** `skcapstone`, `skcapstone-mcp`, `crush`.
+- **Build a wheel:** `python -m build` → `dist/skcapstone-<version>-*.whl`, where
+  `<version>` is derived from the git tag at build time (see §9). Do not expect a
+  literal you can predict from the tree.
+- **Console scripts: there are five**, not three (`pyproject.toml`
+  `[project.scripts]`):
 
-Verify: `skcapstone --version` → `0.13.0`.
+  | Script | Target |
+  |---|---|
+  | `skcapstone` | `skcapstone.cli:main` |
+  | `skcapstone-mcp` | `skcapstone.mcp_server:main` |
+  | `crush` | `skcapstone.crush_shim:main` |
+  | `skfleet` | `skcapstone.fleet.cli:main` |
+  | `skoperator` | `skcapstone.operator_seat.cli:main` |
+
+Verify with `skcapstone --version`, and expect a **setuptools-scm** string such as
+`0.15.15.dev25+g90df5e0` on a dev checkout, not a clean release number. See §9.
 
 ---
 
@@ -195,20 +229,33 @@ Verify: `skcapstone --version` → `0.13.0`.
 The green-bar gate is **pytest**. Config in `pyproject.toml` (`testpaths=["tests"]`,
 `pythonpath=["src"]`).
 
+⚠️ **The test gate is `.github/workflows/pytest.yml`, NOT `ci.yml`.** This repo has two
+workflows with confusingly similar names and only one of them runs tests:
+
+| Workflow | What it actually runs | Is it a test gate? |
+|---|---|---|
+| `pytest.yml` | `python -m pytest tests/ --strict-markers -m "not integration and not e2e"` on 3.11 + 3.12 | **yes, this is the gate** |
+| `ci.yml` | `black --check src/ tests/`, `ruff check src/`, `scripts/check-no-shim-imports.sh`, `python -m build` + `twine check` | **no. It runs zero tests** |
+
+Do not cite `ci.yml` as evidence that tests passed. A green `ci.yml` means the code is
+formatted and builds, nothing more. Neither workflow masks failures with `|| true`.
+
+Reproduce the gate locally:
+
 ```bash
 pip install -e ".[dev]"
-pytest                    # default unit run (~160 test modules under tests/)
-pytest -q                 # quiet
-pytest --cov=skcapstone   # with coverage (pytest-cov)
+python -m pytest tests/ --strict-markers -m "not integration and not e2e"   # the gate
+black --check src/ tests/ && ruff check src/                                # ci.yml lint
+pytest --cov=skcapstone                                                     # with coverage
 ```
 
 - **Markers:** `integration` (cross-component, needs real services/network) and `e2e`
-  (needs an installed CLI / running daemon) are **excluded** from the default CI unit
-  run. Run them explicitly: `pytest -m integration` / `pytest -m e2e`.
-- **Lint/format gate:** `ruff check src tests` and `black --check src tests`
-  (line-length 99).
-- **Gate rule:** a release is blocked unless the default `pytest` run is green and
-  `ruff`/`black` pass. Do not tag a version whose Build/Test steps here don't reproduce.
+  (needs an installed CLI / running daemon) are **excluded** from the gate, honestly, via
+  registered markers plus `--strict-markers` (so a typo'd marker errors instead of
+  silently selecting nothing). Run them explicitly: `pytest -m integration` /
+  `pytest -m e2e`.
+- **Gate rule:** a release is blocked unless `pytest.yml` is green **and** `ci.yml` lint
+  passes. Do not tag a version whose Build/Test steps here do not reproduce.
 
 ---
 
@@ -216,17 +263,24 @@ pytest --cov=skcapstone   # with coverage (pytest-cov)
 
 skcapstone ships as **both** a service (the daemon) and a Python package.
 
-**Package release (PyPI):**
-1. Bump `version` in `pyproject.toml` (SemVer) + mirror in `package.json`.
-2. Add a dated `CHANGELOG.md` entry (Keep-a-Changelog).
-3. `pytest` green + `ruff`/`black` clean (§4).
-4. `python -m build` → `twine upload dist/*`.
-5. `git tag vX.Y.Z` and verify the published version installs.
+**Package release (PyPI).** ⚠️ **Do not edit a version number anywhere.** There is no
+`version` field to bump in `pyproject.toml` (it is `dynamic = ["version"]`) and this
+repo has **no `package.json`** to mirror it into. The **tag is** the version.
+
+1. Add a dated `CHANGELOG.md` entry (Keep-a-Changelog).
+2. `pytest.yml` green + `ci.yml` lint clean (§4).
+3. Merge to `main`. `.github/workflows/publish.yml` **cuts the next patch tag itself**
+   when HEAD is not already tagged, then builds and publishes on the `v*` tag. It
+   refuses to publish a tag that is not on `main`, and refuses a non-release version
+   string. To pick the number yourself, tag before merging.
+4. Verify the published version **on PyPI**, not from a green workflow run: a skipped
+   job propagates through the job graph, so a run can go green having published
+   nothing.
 
 **Service deploy (the daemon):**
 ```bash
 skcapstone daemon start          # foreground / detach per flags
-skcapstone daemon status         # or: curl http://127.0.0.1:7777/status
+skcapstone daemon status         # or: curl http://127.0.0.1:<port>/status
 skcapstone daemon stop           # SIGTERM → graceful loop shutdown
 # systemd unit templates: systemd/  (per-agent daemon)
 ```
@@ -269,26 +323,71 @@ Verify a template edit before deploy with `systemd-analyze verify systemd/skcaps
 > before the exponential backoff catches it) can leave a stale PID whose number was
 > reused by an unrelated process, so `skcapstone daemon status` can read "running" while
 > the port is dead. If a start refuses because the port looks busy, confirm with
-> `curl -s 127.0.0.1:7777/ping` and clear the orphan pidfile before restarting.
+> `curl -s 127.0.0.1:<port>/ping` (resolve <port> per §5) and clear the orphan pidfile
+> before restarting.
 
 **Front-end / Exposure.** The daemon exposes a local HTTP API. Per the Unified Ingress
 Standard:
-- **Bind address:** `127.0.0.1:7777` (loopback only — hard-coded
-  `ThreadingHTTPServer(("127.0.0.1", config.port), ...)` in `daemon.py`). Optional
-  self-signed TLS (`daemon.tls`) upgrades the scheme to `https://127.0.0.1:7777` but the
-  bind stays on loopback. **It is NEVER bound to a public interface or a public `:443`
-  port.** Remote access is via the operator's own **tailnet** or an SSH tunnel only; the
-  tunnel/mesh is the sole ingress.
-- **Tier:** N/A for public routing — this is an operator-local control/status surface,
+
+- **Tier:** N/A for public routing. This is an operator-local control/status surface,
   not a `:443`-fronted service.
+- **Bind interface:** **always `127.0.0.1`**, and that half really is hard-coded:
+  `ThreadingHTTPServer(("127.0.0.1", ...), handler)` in `daemon.py` (`:2879`, and the
+  fallback at `:2891`). Optional self-signed TLS (`daemon.tls`) upgrades the scheme to
+  `https://` but never moves the bind. **It is NEVER bound to a public interface or a
+  public `:443` port.** Remote access is via the operator's own **tailnet** or an SSH
+  tunnel only.
+- **Port: do NOT assume 7777.** ⚠️ The port is **per agent**, and on a fleet node it is
+  not 7777. `skcapstone/cli/daemon.py::_resolve_agent_port` resolves, in order:
+
+  1. an explicit `--port`, which always wins;
+  2. a **known agent** gets its registered port from `AGENT_PORTS`
+     (`src/skcapstone/__init__.py`): **`lumina` 9383, `opus` 9389, `jarvis` 9391**;
+  3. an **unknown agent** gets a stable SHA-256-derived port in the dedicated dynamic
+     range **9400-9499** (`hashed_agent_port`), which is guaranteed to miss both the
+     known-agent ports and `FLEET_RESERVED_PORTS` (9384 skcomms, 9385/9388 skchat,
+     9386 sk-access, 9387 jarvis-heartbeat, 9390 signaling);
+  4. only the **no-agent, single-daemon** path falls through to the package
+     `DEFAULT_PORT`.
+
+  Two constants are both named `DEFAULT_PORT` and they **do not agree**, which is the
+  trap: `daemon.py:60` sets `7777`, while `__init__.py` sets
+  `int(os.environ.get("SKCAPSTONE_PORT", "9383"))` and that is the one
+  `cli/daemon.py` imports. Because the fleet unit runs
+  `skcapstone daemon start --agent lumina`, the live bind on this node is
+  **`127.0.0.1:9383`**, and nothing answers on 7777.
+
+  **Never hardcode the port in a runbook or a monitor. Resolve it:**
+
+  ```bash
+  systemctl --user show skcapstone@<agent>.service -p ExecStart   # the --agent it runs as
+  ss -ltnp | grep skcapstone                                      # what it actually bound
+  skcapstone daemon status --agent <agent>                        # resolves the port for you
+  ```
+
+  Every `127.0.0.1:7777` URL elsewhere in this document is written as
+  `127.0.0.1:<port>`; substitute the resolved port.
 
 ---
 
 ## 6. Configuration / Usage
 
-**Home.** All state lives under `~/.skcapstone/` (override with `SKCAPSTONE_ROOT`).
-Multi-agent mode: `SKCAPSTONE_AGENT=<name>` → `~/.skcapstone/agents/<name>/` (private)
-over a shared `~/.skcapstone/` root (coord, heartbeats, peers).
+**Home.** All state lives under `~/.skcapstone/` (`_default_home()` in
+`src/skcapstone/__init__.py`; on Windows, `%LOCALAPPDATA%\skcapstone`).
+
+⚠️ **`SKCAPSTONE_HOME` is the override that actually moves the home**, not
+`SKCAPSTONE_ROOT`. `AGENT_HOME = os.environ.get("SKCAPSTONE_HOME", _default_home())`,
+and `SKCAPSTONE_ROOT` / `SKCAPSTONE_SHARED_ROOT` are backwards-compatible aliases that
+**default to `AGENT_HOME`**. Setting only `SKCAPSTONE_ROOT` therefore relocates the
+aliases while the real home stays put, which looks like it worked and is not. Set
+`SKCAPSTONE_HOME`.
+
+Multi-agent mode: `SKAGENT` (checked first) or `SKCAPSTONE_AGENT` → an agent home at
+`~/.skcapstone/agents/<name>/` (private) over the shared root (coord, heartbeats,
+peers). With neither set, the active agent falls back to `SK_DEFAULT_AGENT` if that
+directory exists, else the first non-`*-template` directory under `agents/`
+alphabetically. That fallback means **an unset `SKAGENT` does not mean "no agent"**;
+it can silently select one, which in turn selects a different daemon port (§5).
 
 **Config files** (`{home}/config/`, resolved first-wins over built-in defaults):
 
@@ -303,8 +402,10 @@ over a shared `~/.skcapstone/` root (coord, heartbeats, peers).
 
 | Variable | Effect |
 |---|---|
-| `SKCAPSTONE_ROOT` | shared root (default `~/.skcapstone`) |
-| `SKCAPSTONE_AGENT` | agent name; enables multi-agent household layout |
+| `SKCAPSTONE_HOME` | **the real home override** (default `~/.skcapstone`) |
+| `SKCAPSTONE_ROOT` / `SKCAPSTONE_SHARED_ROOT` | backwards-compatible aliases; both default to `SKCAPSTONE_HOME`, neither moves the home on its own |
+| `SKAGENT` / `SKCAPSTONE_AGENT` | agent name (`SKAGENT` wins); enables the multi-agent household layout **and selects the daemon port** (§5) |
+| `SKCAPSTONE_PORT` | overrides the package `DEFAULT_PORT` (default `9383`) |
 | `OLLAMA_HOST` | Ollama API base (default `http://localhost:11434`) |
 | `ANTHROPIC_API_KEY` / `OPENAI_API_KEY` / `XAI_API_KEY` / `MOONSHOT_API_KEY` / `NVIDIA_API_KEY` | enable the corresponding cloud backend (presence = availability) |
 | `CAPAUTH_API_URL` | remote CapAuth validation endpoint |
@@ -350,7 +451,8 @@ skcapstone mcp           # run the MCP server (skcapstone-mcp)
 | `doctor` / `preflight` / `metrics` / `logs` | health + observability |
 | `agents` / `agent` | team blueprints + per-agent capability manifest |
 
-**Daemon HTTP endpoints** (bind `127.0.0.1:7777`; JSON unless noted):
+**Daemon HTTP endpoints** (bind `127.0.0.1:<port>`, per agent; **9383 for `lumina`**,
+not 7777; see §5; JSON unless noted):
 
 | Endpoint | Returns |
 |---|---|
@@ -366,9 +468,17 @@ skcapstone mcp           # run the MCP server (skcapstone-mcp)
 | `GET /`, `/dashboard` | HTML status dashboard |
 | `GET /api/v1/logs` (WebSocket) | log stream — **CapAuth required** |
 
-**MCP server** (`skcapstone-mcp`): 125 tools proxying every subsystem (memory, coord,
+**MCP server** (`skcapstone-mcp`): tools proxying every subsystem (memory, coord,
 did, soul, comm, itil, gtd, trust, …) to Claude Code and other MCP clients — see
-`src/skcapstone/mcp_tools/`. Includes `context_stats` (per-sender token/message counts,
+`src/skcapstone/mcp_tools/` (39 modules). The count moves with every release, so
+**count it rather than trusting a number in a doc** (earlier revisions of this SOP
+claimed both "80+" and "125" in the same file):
+
+```bash
+grep -rhoE '^\s+name="[a-z_0-9]+",' src/skcapstone/mcp_tools/*.py | wc -l   # 136 at this revision
+```
+
+Includes `context_stats` (per-sender token/message counts,
 percent of the context budget, last-compressed timestamp). GTD write tools
 (`gtd_capture` / `clarify` / `move` / `done`) route through the shared locked, atomic,
 deduped `skos.gtd_ingest` sink so concurrent MCP + cron + skos writers cannot lose or
@@ -396,7 +506,7 @@ skcapstone coord parity --check         # re-verify (exit non-zero on any residu
 | Symptom | Check |
 |---|---|
 | `skcapstone: command not found` | `~/.skenv/bin` on `PATH`? Re-run `bash scripts/install.sh`. |
-| Daemon won't start / port busy | Another daemon on `127.0.0.1:7777`? `curl -s 127.0.0.1:7777/ping`; check `~/.skcapstone/daemon.pid` for a stale PID. |
+| Daemon won't start / port busy | Resolve the agent's port first (§5), do not assume 7777: `ss -ltnp \| grep skcapstone`. Then `curl -s 127.0.0.1:<port>/ping`; check `~/.skcapstone/daemon.pid` for a stale PID. |
 | No response to inbound messages | Is the daemon running (`skcapstone daemon status`)? Are files landing in `sync/comms/inbox/` as `*.skc.json`? Check `GET /consciousness` stats + `logs/daemon.log`. |
 | Every LLM call fails | Backends probed? `GET /status` shows availability. Ollama up (`OLLAMA_HOST`/`localhost:11434/api/tags`)? Cloud keys set in env? |
 | Slow / timing-out responses | CPU-only Ollama is slow; tier timeouts are 180–300s. Check `benchmark`. Fallback cascade continues to next backend on timeout. |
@@ -405,24 +515,90 @@ skcapstone coord parity --check         # re-verify (exit non-zero on any residu
 | Multi-agent state confusion | Confirm `SKCAPSTONE_AGENT` / `SKCAPSTONE_ROOT`; per-agent home is `~/.skcapstone/agents/<name>/`. |
 | `coord status` open-count looks wrong | Store fold vs legacy drift. `skcapstone coord parity` (PARITY ALERT on open-count drift), then `coord migrate` → `coord reconcile --apply` → `coord parity --check`. |
 | Agent unit keeps restarting then goes `failed` | Expected crash-loop guard: `StartLimitBurst=6` inside `StartLimitIntervalSec=1800` gives up on a persistent failure. Check the `skcapstone-alert` page + `journalctl --user -u skcapstone@<agent>` for the root cause; `systemctl --user reset-failed skcapstone@<agent>` after the fix. |
-| `daemon status` says running but port is dead | Stale/orphan `~/.skcapstone/daemon.pid` (reused PID). `curl -s 127.0.0.1:7777/ping`; clear the pidfile and restart. |
+| `daemon status` says running but port is dead | Stale/orphan `~/.skcapstone/daemon.pid` (reused PID). `curl -s 127.0.0.1:<port>/ping`; clear the pidfile and restart. |
 | API key leaked into a shell | Rotate at the provider; keys are env-sourced — never commit them. See `SECURITY.md`. |
+| `curl 127.0.0.1:7777/...` → connection refused, but the daemon is up | **7777 is not the fleet port.** A daemon started with `--agent` binds its per-agent port (`lumina` 9383, `opus` 9389, `jarvis` 9391, unknown agents 9400-9499). Resolve it: `ss -ltnp \| grep skcapstone`. See §5. |
+| Two daemons, one silently has no status API | Two agents resolved to the same port, so the second bind failed. Confirm each unit's `--agent` and check `AGENT_PORTS` / `FLEET_RESERVED_PORTS` in `src/skcapstone/__init__.py`. |
+| `SKCAPSTONE_ROOT` set but state still lands in `~/.skcapstone` | `SKCAPSTONE_ROOT` is a backwards-compatible alias that defaults to `SKCAPSTONE_HOME`. Set **`SKCAPSTONE_HOME`** to move the home. See §6. |
+| CI is green but a test regression shipped | You read `ci.yml`, which **runs no tests** (black, ruff, shim-import check, build). The test gate is `pytest.yml`. See §4. |
+| `git push` / `git log origin/main` behaves unexpectedly | This repo has **two remotes**: `origin` (GitHub, `smilinTux/skcapstone`) and `laptop` (`192.168.0.41:clawd/skcapstone-repos/skcapstone`). Always qualify the remote; a bare `main` may not mean what you assume. |
+| Patching `skcapstone.coordination` / `.itil` / `.card_store` has no effect | Those are transparent re-export shims over **skcoord**. Edit and patch there. See §2. |
 
 ---
 
 ## 9. Maturity-tier + Version reference
 
-- **Maturity tier:** `T0 — N/A (no key material; delegates identity/crypto to capauth)`.
-  skcapstone generates, exchanges, signs, and stores **no** key material of its own — all
-  cryptographic identity (PGP keypairs, DID documents, challenge-response, trust store)
-  is owned by [capauth](https://github.com/smilinTux/capauth). Therefore skcapstone is a
-  **non-crypto** repo under the SK Repo Doc Standard and carries no crypto-architecture
-  doc or CRYPTOGRAPHY_STANDARD compliance obligation of its own; those live in capauth.
-- **VERSION_LIFECYCLE phase:** **Active v2** — the current, maintained core runtime line
-  (security fixes target the latest `0.13.x`).
-- **Current version:** **0.13.0** (SemVer; `pyproject.toml` / `package.json`).
+- **Maturity tier: `T0`.** Every key and algorithm on skcapstone's surfaces is
+  **classical**, so T0 is the right tier and there is no post-quantum claim to make.
+  - ⚠️ **Corrected 2026-08-15.** This entry previously read
+    `T0 / N/A (no key material; delegates identity/crypto to capauth)` and asserted
+    that skcapstone "generates, exchanges, signs, and stores **no** key material of its
+    own". **The second half was false and has been removed.** The delegation half is
+    true (PGP identity really does belong to capauth); the "no key material" half is
+    contradicted by the code, and a doc that tells a reviewer there is nothing to look
+    at is exactly the kind of doc that gets trusted and skipped.
+  - **Key material skcapstone owns outright:** `src/skcapstone/tls.py` generates an
+    **RSA-2048** private key and writes it to **`~/.skcapstone/tls/daemon.key`**,
+    unencrypted on disk (`NoEncryption()`), mode `0600` in a `0700` directory, paired
+    with a 10-year self-signed cert (`daemon.crt`). capauth is not involved. This is
+    opt-in, gated on `SKCAPSTONE_TLS=true`, and only ever wraps the loopback socket, so
+    the exposure is small, but it is not zero and it is not nothing.
+  - **Crypto skcapstone operates over capauth-held keys** (skcapstone does not hold
+    these keys, but it does drive the operations, so they are in scope for review):
+    - `src/skcapstone/sync/vault.py` PGP-**encrypts** state bundles and applies a
+      **GPG detached signature** to the vault manifest, via `capauth.crypto.get_backend()`
+      with a fallback to system `gpg`.
+    - `src/skcapstone/fleet/signing.py` produces and verifies **detached capauth
+      signatures** over canonical payload bytes, and carries an explicit suite id so an
+      old signature stays attributable to the suite that made it.
+  - **What this means for the standard:** skcapstone still carries no
+    CRYPTOGRAPHY_STANDARD *design* obligation (it defines no primitive, no combiner, no
+    suite; those live in capauth). It **is** in scope for key-handling review on the
+    surfaces above.
+- **VERSION_LIFECYCLE phase:** **Active v2**, the current maintained core runtime line.
+- **Version: do not quote a number, and do not trust one you find in the tree.**
+  `pyproject.toml` declares `dynamic = ["version"]`, so **the git tag IS the version**,
+  derived at build time by `setuptools-scm` under `[tool.setuptools_scm]` with
+  `tag_regex` restricted to release tags (this repo also carries non-semver tags that
+  would otherwise win). There is **no `package.json`** in this repo to mirror a version
+  into; earlier revisions of this SOP told you to bump one.
+  - Read the real version with `git describe --tags --match 'v[0-9]*'` or
+    `skcapstone --version`, or check PyPI.
+  - For reference only, at this revision: newest release tag `v0.15.14`, and an editable
+    dev install reports `0.15.15.dev25+g90df5e0`. The previously documented `0.13.0`
+    matched nothing.
 - **License:** GPL-3.0-or-later (recorded as-is; not relicensed).
-- **Honest-claims note:** the only crypto surface skcapstone touches is *orchestrating*
-  capauth-signed envelopes and encrypted seed sync — it makes **no** post-quantum claim
-  and uses none of the forbidden crypto terms. Any PQ posture is a property of capauth /
-  sk_pgp, not this repo.
+- **Honest-claims note:** skcapstone makes **no** post-quantum claim and uses none of the
+  forbidden crypto terms. Its own TLS key is RSA-2048 and its delegated signing is
+  whatever capauth's backend provides (classical Ed25519 / RSA today). Any PQ posture is
+  a property of capauth / sk_pgp, not this repo.
+
+<!-- docs-evidence
+verified: 2026-08-15
+checks:
+  - name: all five console scripts exist and there are still exactly five (section 3)
+    run: test $(grep -cE '^[a-z-]+ = "skcapstone\.' pyproject.toml) -eq 5 && grep -qxF 'skcapstone = "skcapstone.cli:main"' pyproject.toml && grep -qxF 'skfleet = "skcapstone.fleet.cli:main"' pyproject.toml && grep -qxF 'skoperator = "skcapstone.operator_seat.cli:main"' pyproject.toml
+  - name: the two disagreeing DEFAULT_PORT constants are still what section 5 describes
+    run: grep -qxF 'DEFAULT_PORT = 7777' src/skcapstone/daemon.py && grep -qxF 'DEFAULT_PORT = int(os.environ.get("SKCAPSTONE_PORT", "9383"))' src/skcapstone/__init__.py
+  - name: the per-agent port map still matches the ports section 5 tells operators to expect
+    run: grep -qE '"lumina": 9383,' src/skcapstone/__init__.py && grep -qE '"opus": 9389,' src/skcapstone/__init__.py && grep -qE '"jarvis": 9391,' src/skcapstone/__init__.py
+  - name: the daemon HTTP server still binds loopback ONLY, never 0.0.0.0
+    run: grep -qE 'ThreadingHTTPServer\(\("127\.0\.0\.1"' src/skcapstone/daemon.py && ! grep -qE 'ThreadingHTTPServer\(\("0\.0\.0\.0"' src/skcapstone/daemon.py
+  - name: the /ping handler section 7 documents still exists
+    run: grep -qE '^\s+elif self\.path == "/ping":' src/skcapstone/daemon.py && grep -qE '"pong": True' src/skcapstone/daemon.py
+  - name: section 9 key-material inventory is still accurate (RSA-2048 TLS key on disk)
+    run: grep -qE 'rsa\.generate_private_key\(public_exponent=65537, key_size=2048\)' src/skcapstone/tls.py && grep -qxF '_KEY_FILENAME = "daemon.key"' src/skcapstone/tls.py
+  - name: section 9 vault + fleet signing surfaces still exist
+    run: test -f src/skcapstone/sync/vault.py && test -f src/skcapstone/fleet/signing.py && grep -qE '^\s+def _sign_manifest\(self' src/skcapstone/sync/vault.py && grep -qE '^def verify_payload\(' src/skcapstone/fleet/signing.py
+  - name: version stays setuptools-scm derived, no literal, and still no package.json
+    run: grep -qxF 'dynamic = ["version"]' pyproject.toml && ! grep -qE '^version\s*=' pyproject.toml && ! test -f package.json
+  - name: pytest.yml is still the real test gate and is not masked
+    run: grep -qF 'python -m pytest tests/' .github/workflows/pytest.yml && grep -qF 'not integration and not e2e' .github/workflows/pytest.yml && ! grep -vE '^\s*#' .github/workflows/pytest.yml | grep -qE '\|\| true|continue-on-error:\s*true'
+  - name: ci.yml still runs NO tests, as section 4 warns
+    run: ! grep -qE '^\s+run:.*pytest' .github/workflows/ci.yml
+  - name: skcoord is still a hard dep and coordination is still a shim over it
+    run: grep -qE '^\s+"skcoord>=' pyproject.toml && grep -qxF 'import skcoord.coordination as _src' src/skcapstone/coordination.py && grep -qxF 'sys.modules[__name__] = _src' src/skcapstone/coordination.py
+  - name: SKCAPSTONE_HOME is still the real home override, per section 6
+    run: grep -qxF 'AGENT_HOME = os.environ.get("SKCAPSTONE_HOME", _default_home())' src/skcapstone/__init__.py
+-->
+

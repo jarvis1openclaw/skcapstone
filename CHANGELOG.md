@@ -7,7 +7,47 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased]
 
+### Fixed
+- **Docs claimed skcapstone holds no key material. It does.** `SOP.md` §9 and
+  `README.md` both declared the maturity tier as
+  `T0 / N/A (no key material; delegates identity/crypto to capauth)`. The delegation
+  half is true, the "no key material" half is not: `src/skcapstone/tls.py` generates an
+  RSA-2048 private key and writes it unencrypted to `~/.skcapstone/tls/daemon.key`
+  (0600), `src/skcapstone/sync/vault.py` PGP-encrypts and GPG-detached-signs state
+  bundles, and `src/skcapstone/fleet/signing.py` produces and verifies detached capauth
+  signatures. The tier stays **T0** (everything is classical), but the false clause is
+  gone and §9 now carries the actual per-surface inventory.
+- **Docs sent operators to the wrong port.** The SOP asserted `127.0.0.1:7777`
+  throughout. On a fleet node the daemon binds a **per-agent** port resolved by
+  `_resolve_agent_port` (`lumina` 9383, `opus` 9389, `jarvis` 9391, unknown agents
+  9400-9499); the live daemon here answers on **9383** and nothing listens on 7777.
+  Two constants named `DEFAULT_PORT` disagree (`daemon.py` 7777 vs `__init__.py` 9383)
+  and the CLI imports the latter. §5 now documents the resolution order and how to
+  resolve the port instead of assuming it.
+- **`SKCAPSTONE_ROOT` documented as the home override.** It is not;
+  `SKCAPSTONE_HOME` is. `SKCAPSTONE_ROOT` and `SKCAPSTONE_SHARED_ROOT` are
+  backwards-compatible aliases that default to `SKCAPSTONE_HOME`, so setting only
+  `SKCAPSTONE_ROOT` silently fails to move anything.
+- **Version and release steps were impossible to follow.** §5 said to bump `version`
+  in `pyproject.toml` and mirror it in `package.json`. `pyproject.toml` is
+  `dynamic = ["version"]` (setuptools-scm, the tag is the version) and there is **no
+  `package.json`** in this repo. The quoted `0.13.0` matched nothing (newest tag
+  `v0.15.14`). §3/§5/§9 now describe the real flow.
+- **`ci.yml` was implied to be a test gate. It runs no tests** (black, ruff, a
+  shim-import check, build). The gate is `pytest.yml`. §4 now contrasts the two.
+- Console scripts listed as three; there are **five** (`skfleet` and `skoperator` were
+  missing). MCP tool count was stated as both "80+" and "125" in the same document.
+- Documented that `skcapstone.coordination` / `.card_store` / `.itil` are transparent
+  re-export shims over the hard dependency `skcoord`, so patching them here does
+  nothing.
+
 ### Added
+- **`docs-evidence` block + `.github/workflows/docs-check.yml`** (tiers 1,2). Twelve
+  executable checks pin the five entry points, both `DEFAULT_PORT` constants, the
+  per-agent port map, the loopback-only bind, the `/ping` handler, the TLS key
+  inventory, the version source, the skcoord shim, `SKCAPSTONE_HOME`, and the fact
+  that `ci.yml` runs no tests. Negative-tested with 25 mutations, all correctly
+  non-zero.
 - **GFS backup job + staleness monitor** (`gfs_backup.py`). A scheduled backup
   built on the existing `backup.create_backup` primitive with Grandfather-Father-Son
   retention and a health monitor. `select_gfs_retention()` is a pure function that,
