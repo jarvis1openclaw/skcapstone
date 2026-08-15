@@ -83,7 +83,9 @@ def test_evidence_backed_verdicts_say_so() -> None:
 def test_snapd_mount_units_are_baseline_not_review_material() -> None:
     """58 of .41's 108 enabled units are snap mounts. If they land in the
     review list the table is noise and Chef cannot use it."""
-    disposition, _ = gen.classify("var-lib-snapd-snap-core24-1643.mount", "system", "builder-standby")
+    disposition, _ = gen.classify(
+        "var-lib-snapd-snap-core24-1643.mount", "system", "builder-standby"
+    )
     assert disposition == "out-of-scope"
 
 
@@ -93,7 +95,9 @@ def test_always_in_scope_beats_a_broad_baseline_glob() -> None:
     disposition, _ = gen.classify("systemd-oomd.service", "system", "builder-standby")
     assert disposition == "standby"
     # ...while its siblings stay filtered.
-    assert gen.classify("systemd-resolved.service", "system", "builder-standby")[0] == "out-of-scope"
+    assert (
+        gen.classify("systemd-resolved.service", "system", "builder-standby")[0] == "out-of-scope"
+    )
 
 
 def test_lxd_installer_is_baseline_but_lxd_itself_is_not() -> None:
@@ -198,7 +202,9 @@ def test_markdown_reports_the_real_control_node_name(fixture_inventories) -> Non
 # ---------------------------------------------------------------- guard ---
 
 
-def test_a_disable_with_no_rationale_is_rejected(monkeypatch, fixture_inventories, tmp_path) -> None:
+def test_a_disable_with_no_rationale_is_rejected(
+    monkeypatch, fixture_inventories, tmp_path
+) -> None:
     """The guard that caught lxd-installer.socket. A silent fallthrough into
     `disable` is how a load-bearing unit gets switched off because no rule
     happened to name it."""
@@ -271,7 +277,14 @@ def test_no_ssh_anywhere_in_the_generator() -> None:
     # No way to run anything at all. `sshd.service` appears as a unit NAME in
     # the rules table, which is data, so match on invocation shapes instead
     # of on the substring "ssh".
-    for token in ("import subprocess", "paramiko", "os.system", "Popen", "check_output", "os.exec"):
+    for token in (
+        "import subprocess",
+        "paramiko",
+        "os.system",
+        "Popen",
+        "check_output",
+        "os.exec",
+    ):
         assert token not in source, f"{token!r} found in the generator"
     for shape in ('"ssh"', "'ssh'", '"ssh ', "ssh -o", "ssh cbrd21@"):
         assert shape not in source, f"ssh invocation {shape!r} found in the generator"
