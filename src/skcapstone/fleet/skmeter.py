@@ -420,6 +420,45 @@ def select_power_source(nvidia_probe=None, rapl_probe=None) -> tuple[str, str]:
     return ("none", "none")
 
 
+def rapl_watts_probe(domain: str = RAPL_DEFAULT_DOMAIN, window_s: float = 0.5) -> float | None:
+    """One instantaneous-ish watts reading from RAPL, for idle baselining.
+
+    RAPL reports cumulative energy, so a watts figure needs two reads spaced
+    apart. That is the only reason this waits.
+    """
+    max_uj = read_rapl_max_uj(domain)
+    a = read_rapl_uj(domain)
+    if a is None:
+        return None
+    time.sleep(window_s)
+    b = read_rapl_uj(domain)
+    if b is None:
+        return None
+    return watts_from_rapl(a, b, max_uj, window_s)
+
+
+def watts_probe_for(kind: str, label: str):
+    """The idle-baseline probe matching the selected power source.
+
+    Baselining with the wrong source is how a RAPL node ends up with an idle
+    floor of 0.0 and reports absolute energy as if it were marginal.
+    """
+    if kind == "nvidia":
+        return _nvidia_watts_probe
+    if kind == "rapl":
+        return lambda: rapl_watts_probe(label)
+    return lambda: None
+
+
+def _nvidia_watts_probe() -> float | None:
+    try:
+        out = subprocess.run(NVIDIA_SMI_CMD, capture_output=True, text=True, timeout=5).stdout
+    except Exception:
+        return None
+    lines = out.splitlines()
+    return parse_power_line(lines[0]) if lines else None
+
+
 def _nvidia_probe_default() -> bool:
     try:
         out = subprocess.run(NVIDIA_SMI_CMD, capture_output=True, text=True, timeout=5).stdout
@@ -611,14 +650,15 @@ def serve(
     node = node or socket.gethostname()
     bind_addr = resolve_bind_address(bind)
 
-    def one_sample() -> float | None:
-        try:
-            out = subprocess.run(NVIDIA_SMI_CMD, capture_output=True, text=True, timeout=5).stdout
-        except Exception:
-            return None
-        return parse_power_line(out.splitlines()[0] if out.splitlines() else "")
-
-    idle = measure_idle_baseline(one_sample, n=20)
+    # Select the power source FIRST: the idle baseline has to be measured with
+    # the same source that will feed the counter. Baselining a RAPL node with
+    # the nvidia probe yields an idle floor of 0.0, which silently turns
+    # absolute energy into "marginal" energy and over-reports every reading.
+    kind, label = select_power_source()
+    one_sample = watts_probe_for(kind, label)
+    # RAPL probes cost a sudo round trip and half a second each, so sample it
+    # fewer times than the nearly free nvidia-smi path.
+    idle = measure_idle_baseline(one_sample, n=20 if kind == "nvidia" else 6)
 
     path = checkpoint_path(node)
     checkpoint = load_checkpoint(path)
@@ -665,7 +705,6 @@ def serve(
     # discrete GPU runs its inference there; a node without one still has CPU
     # and integrated graphics, which RAPL covers. Neither available means the
     # endpoint reports metering "unavailable" instead of a stream of zeros.
-    kind, label = select_power_source()
     state.device = label
     state.source = kind
     if kind == "nvidia":
