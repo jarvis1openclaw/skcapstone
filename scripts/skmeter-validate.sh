@@ -22,6 +22,24 @@ GATEWAY="${2:-http://localhost:18780}"
 # sample than the gate specifies, so 100 is the default, not a suggestion.
 N="${3:-100}"
 
+echo "=== precheck: does this node have a power source at all? ==="
+RAW=$(curl -s --max-time 5 "$METER" || true)
+if [ -z "$RAW" ]; then
+  echo "  FAIL: meter at $METER did not respond. Is skmeter running?"
+  exit 1
+fi
+METERING=$(printf '%s' "$RAW" | python3 -c 'import json,sys;print(json.load(sys.stdin).get("metering","active"))' 2>/dev/null || echo "unparseable")
+if [ "$METERING" != "active" ]; then
+  echo "  FAIL: meter reports metering=$METERING."
+  echo "  This node has no usable power source, so nothing here can be certified"
+  echo "  as measured_gpu. Check that nvidia-smi works on this host:"
+  echo "    nvidia-smi --query-gpu=power.draw --format=csv,noheader,nounits"
+  echo "  A node without an NVIDIA GPU cannot run this gate. Run it where the"
+  echo "  metered backend actually executes."
+  exit 1
+fi
+echo "  ok: metering=active"
+
 echo "=== precheck: meter is alive and monotonic ==="
 A=$(curl -s --max-time 3 "$METER" | python3 -c 'import json,sys;print(json.load(sys.stdin)["counter_j"])')
 sleep 2
