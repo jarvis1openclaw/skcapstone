@@ -7,7 +7,51 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased]
 
+### Added
+- **Fleet install profiles: a node can now say what it is, and be checked against
+  it** (epic `3bbf39ea`, waves 1 and 2). The fleet could already schedule work onto
+  nodes; nothing said what a node of a given role was *supposed to have installed*.
+  - `fleet/profiles.py` defines the `Profile` kind. Service role and state tier are
+    **orthogonal** fields, neither derived from the other, because conflating them is
+    how a GPU worker ended up holding agent memories and stale checkouts it never
+    needed. `stateTier` and `capauthIdentityClass` have no default: a profile that
+    will not say how much state it holds is one nobody should converge against.
+    Contradictions (a name both allowed and forbidden, or required but not allowed)
+    raise rather than resolve, so a drift verdict is never non-deterministic.
+  - `fleet/nodeinventory.py` does read-only observation of enabled units and installed
+    SK packages, through the injectable runner from `actuation.py`. Degrades to empty
+    rather than raising, so an uninventoriable node reports nothing instead of
+    reading as "everything is missing".
+  - `fleet/profile_doctor.py` is the pure six-category diff. Severity is deliberately
+    asymmetric: `forbidden` is the only error grade, `missing_required` is warn, and
+    `unexpected` is info, because grading a lagging manifest as an error trains
+    everyone to ignore the report.
+  - `Node.spec.role` plus `skfleet set-role` and `admit --role`, binding a node to a
+    profile. An unbound node is a legitimate state that the doctor skips, not an error.
+  - `skfleet node doctor [--json] [--all] [--strict]`. Report only: exits 0 with
+    drift unless `--strict`, and performs zero writes.
+  - `skfleet get profiles` and `skfleet explain profile`.
+  - Four generated manifests under `deploy/fleet-objects/profile/` (control,
+    builder-standby, worker-gpu, observer), produced from real read-only node
+    inventories rather than hand-typed.
+  - `scripts/fleet/dot100-inference-smoke.sh`, the before/after gate for the
+    inference node, and `scripts/fleet/gen-node-disposition.py`.
+
 ### Fixed
+- **`admission.PRESETS` keys were dead.** They were keyed `node-158`, but
+  `paths.self_node_name()` derives the node name from the hostname, so the live
+  control node is `node-noroc2027` and `skfleet admit --preset` silently applied
+  **nothing** there. Rekeyed to real node names, with `PRESET_ALIASES` keeping the
+  old spelling working. The existing test asserted the broken key set, so it was
+  pinning the defect rather than catching it.
+- **`syncthing_setup._write_stignore()` silently reverted a node's ignore rules.**
+  It was an unconditional `write_text()` of the bundled template, so one
+  `skcapstone sync setup` reverted that node to whatever the packaged template held.
+  The live rules had drifted ~40 lines ahead, and each of those lines is an incident
+  someone already paid for (`**/comms/outbox`, the SQLite `-shm`/`-wal` rules,
+  `**/memory/chroma`, `(?d)**/*.tmp`). Now non-destructive: union only, back up
+  first, no write when already covered. Union is the only safe direction for an
+  ignore file, since ignoring less leaks keys and floods the mesh.
 - **Docs claimed skcapstone holds no key material. It does.** `SOP.md` §9 and
   `README.md` both declared the maturity tier as
   `T0 / N/A (no key material; delegates identity/crypto to capauth)`. The delegation
