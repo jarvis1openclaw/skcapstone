@@ -559,6 +559,43 @@ def untaint_cmd(name: str, key: str) -> None:
     click.echo(f"{name} untainted {key} (generation {spec['generation']})")
 
 
+@fleet.group("control-bus")
+def control_bus_group() -> None:
+    """The scoped skfleet-control folder: its scope contract and its budget."""
+
+
+@control_bus_group.command("audit")
+@click.option("--budget", "budget", default=None, help="Byte budget, e.g. 10MB, 512KB or 4096.")
+@click.option("--top", default=10, show_default=True, help="How many largest files to name.")
+@click.option("--json", "as_json", is_flag=True, help="Machine-readable output.")
+@click.option("--stignore", is_flag=True, help="Print a recommended .stignore body and exit.")
+def control_bus_audit_cmd(budget: str | None, top: int, as_json: bool, stignore: bool) -> None:
+    """Measure the fleet tree against the control-bus budget and scope.
+
+    READ ONLY: writes nothing, so it is safe on any node including the one
+    it is judging. Exits 1 when the tree is over budget or when any path
+    outside the five known classes appears.
+    """
+    from . import control_bus_audit as audit_mod
+
+    if stignore:
+        click.echo(audit_mod.stignore_body(), nl=False)
+        return
+
+    try:
+        limit = audit_mod.parse_size(budget) if budget else audit_mod.DEFAULT_BUDGET_BYTES
+    except ValueError as exc:
+        raise click.BadParameter(str(exc), param_hint="--budget") from exc
+
+    report = audit_mod.audit(default_paths(), budget=limit, top=top)
+    if as_json:
+        click.echo(jsonlib.dumps(report.as_dict(), indent=2, sort_keys=True))
+    else:
+        click.echo(audit_mod.render(report))
+    if not report.ok:
+        raise SystemExit(1)
+
+
 def register_fleet_commands(main: click.Group) -> None:
     """Register the fleet group on the skcapstone CLI."""
     main.add_command(fleet)
