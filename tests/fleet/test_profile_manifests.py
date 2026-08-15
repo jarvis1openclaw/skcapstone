@@ -118,14 +118,17 @@ def test_full_replica_is_exactly_control_and_builder_standby() -> None:
         "control",
         "builder-standby",
     }
-    assert tiers["worker-gpu"] == "none"
+    # worker-gpu is control-bus, NOT none: it joins the scoped skfleet-control
+    # folder, so it does hold the fleet store. `none` is reserved for the node
+    # that holds no SK state at all, which is the observer.
+    assert tiers["worker-gpu"] == "control-bus"
     assert tiers["observer"] == "none"
 
 
 def test_the_worker_holds_no_state_and_joins_no_sovereign_folder() -> None:
     """The load-bearing property of the whole epic."""
     spec = normalize_profile_spec(_load(MANIFEST_DIR / "worker-gpu.json")["spec"])
-    assert spec["stateTier"] == "none"
+    assert spec["stateTier"] == "control-bus"
     assert spec["capauthIdentityClass"] == "worker"
     assert spec["syncFolders"] == ["skfleet-control"]
     assert "skcapstone-sync" not in spec["syncFolders"]
@@ -175,3 +178,26 @@ def test_manifests_match_their_generator() -> None:
         cwd=repo,
     )
     assert result.returncode == 0, f"manifests differ from the generator:\n{result.stdout}"
+
+
+def test_the_tier_agrees_with_the_folders_the_role_actually_joins() -> None:
+    """A tier is a claim about how much state a node holds, and syncFolders is
+    the mechanism that makes the claim true or false. They must not disagree.
+
+    worker-gpu shipped as `none` while joining `skfleet-control`, which is
+    self-contradictory: it does hold the fleet store. This pins the rule so
+    the two cannot drift apart again.
+    """
+    for path in _manifest_paths():
+        spec = normalize_profile_spec(_load(path)["spec"])
+        tier, folders = spec["stateTier"], spec["syncFolders"]
+        if tier == "none":
+            assert not folders, (
+                f"{path.stem} claims tier 'none' but joins {folders}; a node that "
+                "joins a state folder is not holding no state"
+            )
+        else:
+            assert folders, (
+                f"{path.stem} claims tier {tier!r} but joins no folder, so nothing "
+                "delivers the state the tier promises"
+            )

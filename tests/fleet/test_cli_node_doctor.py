@@ -35,6 +35,15 @@ def _env(paths) -> dict:
     return {"SKFLEET_ROOT": str(paths.root), "SKFLEET_NODE": "node-under-test"}
 
 
+def _json_payload(output: str) -> list:
+    """Parse the JSON array out of mixed stdout+stderr.
+
+    CliRunner does not separate the streams, so skip notes (written to
+    stderr) land ahead of the JSON in `result.output`.
+    """
+    return json.loads(output[output.index("[") :])
+
+
 def _snapshot(root):
     return {p: (p.stat().st_mtime_ns, p.stat().st_size) for p in root.rglob("*") if p.is_file()}
 
@@ -212,3 +221,62 @@ def test_doctor_never_bumps_a_generation(fleet_tree) -> None:
     before = store.read_spec(fleet_tree, "node", "node-under-test")["generation"]
     CliRunner().invoke(fleet, ["node", "doctor"], env=_env(fleet_tree))
     assert store.read_spec(fleet_tree, "node", "node-under-test")["generation"] == before
+
+
+def test_a_node_that_has_published_no_inventory_is_skipped_not_graded(
+    fleet_tree, operator
+) -> None:
+    """ABSENT and EMPTY are different answers.
+
+    During rollout every node not yet carrying the inventory publisher has no
+    `status.inventory` at all. Feeding that to the diff as {} makes a healthy
+    node read as "everything is missing" and grades it WARN, which is the one
+    verdict nodeinventory exists to never produce.
+    """
+    store.write_spec(
+        fleet_tree, "node", "node-not-upgraded", {"role": "worker-gpu"}, writer=operator
+    )
+    sknoded = store.Writer(role="sknoded", node="node-not-upgraded", identity="")
+    store.write_node_file(
+        fleet_tree,
+        sknoded,
+        "node.json",
+        {
+            "kind": "Node",
+            "name": "node-not-upgraded",
+            "node": "node-not-upgraded",
+            "status": {"capacity": {"cores": 4}},  # no inventory key at all
+        },
+    )
+
+    result = CliRunner().invoke(fleet, ["node", "doctor", "--all", "--json"], env=_env(fleet_tree))
+    assert result.exit_code == 0, result.output
+    graded = {r["node"] for r in _json_payload(result.output)}
+    assert "node-not-upgraded" not in graded
+    assert "published no inventory yet" in result.output
+
+
+def test_a_node_publishing_a_genuinely_empty_inventory_is_still_graded(
+    fleet_tree, operator
+) -> None:
+    """The other half of the distinction: a node that HAS published, and
+    really has nothing enabled, is a real finding and must not be skipped."""
+    store.write_spec(fleet_tree, "node", "node-bare", {"role": "worker-gpu"}, writer=operator)
+    sknoded = store.Writer(role="sknoded", node="node-bare", identity="")
+    store.write_node_file(
+        fleet_tree,
+        sknoded,
+        "node.json",
+        {
+            "kind": "Node",
+            "name": "node-bare",
+            "node": "node-bare",
+            "status": {"inventory": {"units": {"user": {}}, "packages": {}}},
+        },
+    )
+
+    result = CliRunner().invoke(fleet, ["node", "doctor", "--all", "--json"], env=_env(fleet_tree))
+    assert result.exit_code == 0, result.output
+    reports = {r["node"]: r for r in _json_payload(result.output)}
+    assert "node-bare" in reports
+    assert reports["node-bare"]["missing_required_units"] == ["skai-beellama.service"]

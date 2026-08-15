@@ -15,6 +15,14 @@ from .paths import FleetPaths, valid_name
 NOT_READY_AFTER_S = 180
 DEAD_AFTER_S = 300
 
+#: The taint effects the scheduler actually implements, so the setter cannot
+#: mint one that reads like policy and enforces nothing. NoSchedule is the
+#: hard filter in scheduler.feasible(); PreferNoSchedule is the soft-avoid
+#: ranking in scheduler.select(). NoExecute is deliberately absent: nothing
+#: in this fleet evicts an already-running workload, so accepting it would
+#: write a taint an operator would reasonably read as "get off this box".
+TAINT_EFFECTS: tuple[str, ...] = ("NoSchedule", "PreferNoSchedule")
+
 
 @dataclass
 class NodeView:
@@ -122,6 +130,95 @@ def set_role(paths: FleetPaths, name: str, role: str, *, writer: store.Writer) -
     if current is None:
         raise LookupError(f"no such node object: {name!r}")
     new_spec = dict(current.get("spec", {}), role=role)
+    return store.write_spec(
+        paths, "node", name, new_spec, writer=writer, labels=current.get("labels", {})
+    )
+
+
+def set_taint(
+    paths: FleetPaths,
+    name: str,
+    key: str,
+    value: str,
+    effect: str,
+    *,
+    writer: store.Writer,
+) -> dict:
+    """Add or replace one taint on a node spec (operator action).
+
+    Mirrors set_role and set_actuation: read the current spec, overlay one
+    field, rewrite through store.write_spec preserving labels, so every other
+    spec field survives and the generation bumps by exactly one. The taint
+    list is never hand-edited on disk, which would bypass both the generation
+    bump and the SPE writer block.
+
+    Idempotent on the key: re-tainting an existing key REPLACES that entry in
+    place rather than appending a second one. Two entries sharing a key would
+    make scheduler.feasible() depend on list order, which is not a property
+    an operator can see or reason about.
+
+    Write-on-change: setting a taint that is already exactly present returns
+    the current payload untouched. A runbook that re-asserts the same taint
+    on every suspend must not churn the generation, and this tree is a live
+    Syncthing folder where every write fans out to the whole fleet.
+
+    Args:
+        key: Taint key, e.g. "travel".
+        value: Taint value, matched exactly by a toleration that names one.
+        effect: One of TAINT_EFFECTS.
+
+    Returns:
+        The full node payload as on disk.
+
+    Raises:
+        LookupError: no node object of that name.
+        ValueError: unsafe key, or an effect the scheduler does not honor.
+    """
+    if not valid_name(key):
+        raise ValueError(f"invalid taint key: {key!r}")
+    if effect not in TAINT_EFFECTS:
+        raise ValueError(
+            f"invalid taint effect: {effect!r} (want one of {', '.join(TAINT_EFFECTS)})"
+        )
+    current = store.read_spec(paths, "node", name)
+    if current is None:
+        raise LookupError(f"no such node object: {name!r}")
+    entry = {"key": key, "value": value, "effect": effect}
+    existing = list(current.get("spec", {}).get("taints", []) or [])
+    taints = [t for t in existing if t.get("key") != key]
+    replaced_at = next((i for i, t in enumerate(existing) if t.get("key") == key), None)
+    # Keep a replaced taint where it was, so a re-taint never silently
+    # reorders the list an operator is reading in `describe`.
+    taints.insert(len(taints) if replaced_at is None else replaced_at, entry)
+    if taints == existing:
+        return current
+    new_spec = dict(current.get("spec", {}), taints=taints)
+    return store.write_spec(
+        paths, "node", name, new_spec, writer=writer, labels=current.get("labels", {})
+    )
+
+
+def clear_taint(paths: FleetPaths, name: str, key: str, *, writer: store.Writer) -> dict:
+    """Remove every taint with this key from a node spec (operator action).
+
+    Write-on-change for the same reason set_taint is: clearing a key that is
+    not there is the normal resume-path case for a runbook, and it must be a
+    silent no-op rather than a generation bump or an error.
+
+    Returns:
+        The full node payload as on disk, unchanged when the key was absent.
+
+    Raises:
+        LookupError: no node object of that name.
+    """
+    current = store.read_spec(paths, "node", name)
+    if current is None:
+        raise LookupError(f"no such node object: {name!r}")
+    existing = list(current.get("spec", {}).get("taints", []) or [])
+    taints = [t for t in existing if t.get("key") != key]
+    if taints == existing:
+        return current
+    new_spec = dict(current.get("spec", {}), taints=taints)
     return store.write_spec(
         paths, "node", name, new_spec, writer=writer, labels=current.get("labels", {})
     )

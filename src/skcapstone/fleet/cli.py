@@ -428,8 +428,22 @@ def _profile_for(paths_, role: str):
         return None
 
 
-def _doctor_one(paths_, name: str, inventory: dict) -> tuple[dict | None, str]:
-    """(report dict, note). A skip returns (None, reason)."""
+def _doctor_one(paths_, name: str, inventory: dict | None) -> tuple[dict | None, str]:
+    """(report dict, note). A skip returns (None, reason).
+
+    Args:
+        inventory: Observed inventory, or None when the node has published
+            none. None and {} are DIFFERENT answers and must not be
+            conflated: an empty inventory is a real observation ("nothing is
+            enabled here"), while an absent one means the node has not
+            reported yet. Passing an absent inventory to the diff would grade
+            a healthy node as missing everything, which is the one verdict
+            nodeinventory exists to never produce.
+
+    The checks are ordered by how actionable they are. A node with no role
+    cannot be graded no matter what it published, so that note wins over the
+    inventory note.
+    """
     from . import profile_doctor
 
     views = {v.name: v for v in node_controller.node_views(paths_)}
@@ -441,6 +455,11 @@ def _doctor_one(paths_, name: str, inventory: dict) -> tuple[dict | None, str]:
     profile = _profile_for(paths_, view.role)
     if profile is None:
         return None, f"{name}: no valid profile object named {view.role!r}"
+    if inventory is None:
+        return None, (
+            f"{name}: has published no inventory yet "
+            "(needs a sknoded pass on a build carrying card 1f5397f0)"
+        )
     report = profile_doctor.diff(inventory, profile)
     payload = report.as_dict()
     payload["node"] = name
@@ -471,9 +490,10 @@ def node_doctor_cmd(name: str | None, as_json: bool, all_nodes: bool, strict: bo
 
     if all_nodes:
         for view in node_controller.node_views(paths_):
-            published = (store.read_node_file(paths_, view.name, "node.json") or {}).get(
-                "status", {}
-            ).get("inventory") or {}
+            status = (store.read_node_file(paths_, view.name, "node.json") or {}).get("status", {})
+            # `.get("inventory")` would collapse absent into empty; see the
+            # note in _doctor_one for why that grades healthy nodes as broken.
+            published = status["inventory"] if "inventory" in status else None
             report, note = _doctor_one(paths_, view.name, published)
             (reports.append(report) if report else notes.append(note))
     else:
@@ -508,6 +528,91 @@ def node_doctor_cmd(name: str | None, as_json: bool, all_nodes: bool, strict: bo
     # Report-only by default: drift is information, not a failure. --strict
     # is the opt-in that makes error-grade findings gate something.
     if strict and any(p["severity"] == "error" for p in reports):
+        raise SystemExit(1)
+
+
+def _parse_taint(spec: str) -> tuple[str, str, str]:
+    """Split a KEY=VALUE:EFFECT taint argument, e.g. travel=true:NoSchedule."""
+    key, sep, rest = spec.partition("=")
+    value, sep2, effect = rest.partition(":")
+    if not (sep and sep2) or not key:
+        raise click.ClickException(
+            f"malformed taint {spec!r}: want KEY=VALUE:EFFECT, e.g. travel=true:NoSchedule"
+        )
+    return key, value, effect
+
+
+@fleet.command("taint")
+@click.argument("name")
+@click.argument("taint")
+def taint_cmd(name: str, taint: str) -> None:
+    """Add or replace one taint on a node: KEY=VALUE:EFFECT.
+
+    Re-tainting a key replaces that entry, it never appends a duplicate.
+    """
+    key, value, effect = _parse_taint(taint)
+    try:
+        spec = node_controller.set_taint(
+            default_paths(), name, key, value, effect, writer=_operator()
+        )
+    except LookupError as exc:
+        raise click.ClickException(str(exc)) from exc
+    except ValueError as exc:
+        raise click.ClickException(str(exc)) from exc
+    click.echo(f"{name} tainted {key}={value}:{effect} (generation {spec['generation']})")
+
+
+@fleet.command("untaint")
+@click.argument("name")
+@click.argument("key")
+def untaint_cmd(name: str, key: str) -> None:
+    """Remove the taint with this KEY from a node (a no-op when absent)."""
+    paths_ = default_paths()
+    before = store.read_spec(paths_, "node", name)
+    try:
+        spec = node_controller.clear_taint(paths_, name, key, writer=_operator())
+    except LookupError as exc:
+        raise click.ClickException(str(exc)) from exc
+    if before is not None and spec["generation"] == before["generation"]:
+        click.echo(f"{name} has no {key} taint (nothing to do)")
+        return
+    click.echo(f"{name} untainted {key} (generation {spec['generation']})")
+
+
+@fleet.group("control-bus")
+def control_bus_group() -> None:
+    """The scoped skfleet-control folder: its scope contract and its budget."""
+
+
+@control_bus_group.command("audit")
+@click.option("--budget", "budget", default=None, help="Byte budget, e.g. 10MB, 512KB or 4096.")
+@click.option("--top", default=10, show_default=True, help="How many largest files to name.")
+@click.option("--json", "as_json", is_flag=True, help="Machine-readable output.")
+@click.option("--stignore", is_flag=True, help="Print a recommended .stignore body and exit.")
+def control_bus_audit_cmd(budget: str | None, top: int, as_json: bool, stignore: bool) -> None:
+    """Measure the fleet tree against the control-bus budget and scope.
+
+    READ ONLY: writes nothing, so it is safe on any node including the one
+    it is judging. Exits 1 when the tree is over budget or when any path
+    outside the five known classes appears.
+    """
+    from . import control_bus_audit as audit_mod
+
+    if stignore:
+        click.echo(audit_mod.stignore_body(), nl=False)
+        return
+
+    try:
+        limit = audit_mod.parse_size(budget) if budget else audit_mod.DEFAULT_BUDGET_BYTES
+    except ValueError as exc:
+        raise click.BadParameter(str(exc), param_hint="--budget") from exc
+
+    report = audit_mod.audit(default_paths(), budget=limit, top=top)
+    if as_json:
+        click.echo(jsonlib.dumps(report.as_dict(), indent=2, sort_keys=True))
+    else:
+        click.echo(audit_mod.render(report))
+    if not report.ok:
         raise SystemExit(1)
 
 

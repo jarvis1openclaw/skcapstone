@@ -7,6 +7,8 @@ managed fleet.
 
 from __future__ import annotations
 
+import os
+
 from . import store
 from .paths import FleetPaths
 
@@ -25,7 +27,11 @@ PRESETS: dict[str, dict] = {
     "node-41": {
         "labels": {"heavy-build": "true"},
         "role": "builder-standby",
-        "taints": [],  # travel taint applied by runbook when the box travels
+        # Born untainted. The travel taint is an operator action, not a
+        # preset: `skfleet taint node-41 travel=true:NoSchedule` when the
+        # laptop leaves, `skfleet untaint node-41 travel` when it is back.
+        # See docs/fleet/travel-taint-runbook.md.
+        "taints": [],
     },
     "node-100": {
         # NOT gpu=true on .41: the GPU box in this fleet is .100.
@@ -50,6 +56,22 @@ PRESET_ALIASES: dict[str, str] = {
 def resolve_preset(node: str) -> dict | None:
     """The preset for a node name, following aliases. None when unknown."""
     return PRESETS.get(PRESET_ALIASES.get(node, node))
+
+
+class RoleRequiredError(ValueError):
+    """A node was admitted with no role while the role gate is on."""
+
+
+def role_gate_on() -> bool:
+    """True when admission must refuse a role-less node.
+
+    Off by default, and deliberately so. Turning it on before every live node
+    carries a role would refuse to admit a box that is otherwise healthy, and
+    an epic that makes the fleet harder to join has failed at its own job.
+    Flip it once the backfill is done (card fdd17a01), the same shadow-then-
+    enforce shape used for signing and the profile gate.
+    """
+    return os.environ.get("SKFLEET_REQUIRE_ROLE", "").strip().lower() in {"1", "true", "on"}
 
 
 def pending_joins(paths: FleetPaths) -> list[dict]:
@@ -100,6 +122,11 @@ def admit(
             labels = labels if labels is not None else chosen["labels"]
             taints = taints if taints is not None else chosen["taints"]
             role = role if role is not None else chosen.get("role", "")
+    if not role and role_gate_on():
+        raise RoleRequiredError(
+            f"{node!r} has no role and SKFLEET_REQUIRE_ROLE is on; pass --role "
+            "<profile> or --preset so a fresh box cannot join role-less"
+        )
     spec = {
         "taints": taints or [],
         "cordoned": False,

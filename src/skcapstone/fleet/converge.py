@@ -11,7 +11,7 @@ import socket
 import time
 from typing import Callable
 
-from . import actuation, alerts, backoff, events, signing, store
+from . import actuation, alerts, backoff, events, profiles, signing, store
 from .paths import FleetPaths
 from .services import ServiceSpecError, normalize_service_spec
 
@@ -188,8 +188,17 @@ def converge_service(
     now: float,
     sig_mode: str = "off",
     verification: tuple[bool, str] = (True, ""),
+    role: str = "",
+    profile_gate: str = "off",
 ) -> dict:
-    """Converge one locally placed service. Returns a summary dict."""
+    """Converge one locally placed service. Returns a summary dict.
+
+    Args:
+        role: The node's install profile name, "" when unbound.
+        profile_gate: off (default) | shadow | enforce, the same rollout
+            shape as sig_mode. shadow reports only; enforce additionally
+            refuses to heal, and never stops anything.
+    """
     now_iso = _now_iso(now)
     if spec_payload is None:
         events.emit(
@@ -239,6 +248,27 @@ def converge_service(
                     f"fleet: service {name} on {node} REFUSED actuation: {verify_detail}",
                     level="error",
                 )
+
+    outside_profile = False
+    if profile_gate != "off":
+        outside_profile = not profiles.unit_allowed(
+            role, spec["unit"], manifests=profiles.manifest_dir(paths)
+        )
+        if outside_profile:
+            events.emit(
+                paths,
+                writer,
+                kind="service",
+                name=name,
+                type="Degrade",
+                reason="OutsideProfile",
+                message=(
+                    f"unit={spec['unit']} is forbidden for role {role!r}; "
+                    + ("healing suppressed" if profile_gate == "enforce" else "report only")
+                ),
+                now=now,
+            )
+
     probe_ok = True
     if spec["healthCheck"] is not None and state.state == "active":
         probe_ok = prober(spec["healthCheck"])
@@ -248,9 +278,16 @@ def converge_service(
     if healthy:
         backoff.record_healthy(track, now)
     unhealthy_unit = state.state in {"failed", "inactive", "missing"}
+    # Enforcement is the REFUSAL TO HEAL and nothing more. There is
+    # deliberately no stop verb anywhere on this path: stopping a running
+    # service because a manifest disagrees with it is precisely the outage
+    # this epic exists to prevent, and a stale manifest is the likeliest
+    # cause of the disagreement.
+    blocked_by_profile = profile_gate == "enforce" and outside_profile
     may_heal = (
         mode == "actuate"
         and not (sig_mode == "enforce" and not verified_ok)
+        and not blocked_by_profile
         and not spec["paused"]
         and spec["restartPolicy"] == "on-failure"
         and unhealthy_unit
@@ -280,6 +317,8 @@ def converge_service(
             acted = "backoff-wait"
     if mode == "actuate" and sig_mode == "enforce" and not verified_ok:
         acted = "unverified"
+    elif mode == "actuate" and blocked_by_profile:
+        acted = "outside-profile"
 
     if healthy:
         ready = _cond("Ready", True, "UnitActive", f"unit {spec['unit']} active", now_iso)
@@ -335,6 +374,19 @@ def converge_service(
             if sig_mode != "off"
             else []
         ),
+        *(
+            [
+                _cond(
+                    "OutsideProfile",
+                    outside_profile,
+                    "UnitForbiddenForRole" if outside_profile else "UnitPermitted",
+                    f"role={role or 'unbound'} unit={spec['unit']} gate={profile_gate}",
+                    now_iso,
+                )
+            ]
+            if profile_gate != "off"
+            else []
+        ),
     ]
     generation = int(spec_payload.get("generation", 0))
     _write_service_status(paths, writer, name, state, spec, generation, conds, track)
@@ -355,8 +407,10 @@ def converge_once(
     prober = tcp_probe if prober is None else prober
     now = time.time() if now is None else now
     sig_mode = signing.signing_mode()
+    profile_gate = profiles.gate_mode()
     if sig_mode != "off" and verifier is None:
         verifier = signing.capauth_verifier()
+    role = ""
     try:
         if not store.actuation_allowed(paths):
             mode = "frozen"
@@ -364,6 +418,8 @@ def converge_once(
             mode = "actuate"
         else:
             mode = "report-only"
+        if profile_gate != "off":
+            role = profiles.profile_of(store.read_spec(paths, "node", node)) or ""
         entries = local_services(paths, node)
     except OSError:
         return {"mode": "degraded", "services": {}}
@@ -385,5 +441,7 @@ def converge_once(
             now=now,
             sig_mode=sig_mode,
             verification=verification,
+            role=role,
+            profile_gate=profile_gate,
         )
     return {"mode": mode, "services": results}

@@ -114,6 +114,11 @@ DESKTOP_IGNORE = [
     "xdg-*",
 ]
 
+#: Every manifest points back at the decision record that explains WHY the
+#: role exists and why its state tier is what it is. A manifest read on its
+#: own answers "what", and the ADR is the only place that answers "why".
+_ADR_LINK = "Role model and the two orthogonal axes: docs/fleet/adr-node-role-model.md."
+
 _IGNORE_RULE = (
     "SK-managed units are those prefixed sk/capauth/cloud9, plus the "
     "fleet-adjacent syncthing and tailscaled units. Everything else on the "
@@ -195,7 +200,7 @@ def build_control() -> dict:
             "description": (
                 "The single control seat (.158, node-noroc2027). Holds the full "
                 "sovereign tree and runs the control-plane loops. Changes almost "
-                "nothing, which is the point. " + _IGNORE_RULE
+                "nothing, which is the point. " + _IGNORE_RULE + " " + _ADR_LINK
             ),
             "units": _units_block(allowed, CONTROL_REQUIRED, MODEL_SERVING),
             "unitsIgnore": sorted(DESKTOP_IGNORE),
@@ -219,7 +224,7 @@ def build_builder_standby() -> dict:
                 "a full replica and is the promotion target, but it does not run "
                 "the control-plane loops. A laptop that sleeps cannot honor "
                 "always-on services, and the half-alive duplicates are the proven "
-                "source of comms pileups and outbox floods. " + _IGNORE_RULE
+                "source of comms pileups and outbox floods. " + _IGNORE_RULE + " " + _ADR_LINK
             ),
             "units": _units_block(
                 allowed, ["sknoded.service"], sorted(set(CONTROL_PLANE_LOOPS) | set(MODEL_SERVING))
@@ -245,7 +250,7 @@ def build_worker_gpu() -> dict:
                 "daemon, no agent runtime, no coordination writer, and no "
                 "membership in the sovereign Syncthing folder. The sovereign tree "
                 "is 19G, 13G of it agent state, and an outbox incident once "
-                "reached 83G. " + _IGNORE_RULE
+                "reached 83G. " + _IGNORE_RULE + " " + _ADR_LINK
             ),
             "units": _units_block(
                 allowed,
@@ -267,7 +272,14 @@ def build_worker_gpu() -> dict:
             # have: the worker is being slimmed TO this, so the manifest states
             # the target and the drift report names the gap.
             "packages": _units_block(["capauth", "skcapstone"], [], SOVEREIGN_PACKAGES),
-            "stateTier": "none",
+            # control-bus, NOT none. The tier says how much state the node
+            # holds, and this one holds the fleet store: syncFolders below is
+            # exactly ["skfleet-control"]. `none` means holds no SK state at
+            # all and runs no node agent, which is the observer. Declaring
+            # tier `none` while joining a state folder is self-contradictory,
+            # and it disagreed with both docs/fleet/profiles.md and the share
+            # matrix in docs/fleet/control-bus-folder.md.
+            "stateTier": "control-bus",
             "capauthIdentityClass": "worker",
             "syncFolders": ["skfleet-control"],
         },
@@ -286,7 +298,8 @@ def build_observer() -> dict:
                 "sknoded, which is the ssh-pull fallback in docs/fleet/"
                 "control-bus-folder.md. Putting SK software on the box that hosts "
                 "the node adds risk for near-zero benefit. This manifest exists so "
-                "that 'not managed' is a recorded decision rather than an omission."
+                "that 'not managed' is a recorded decision rather than an omission. "
+                + _ADR_LINK
             ),
             "units": _units_block(
                 [],
