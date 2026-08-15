@@ -51,6 +51,36 @@ def writer_identity() -> str:
         return ""
 
 
+def resolved_writer_identity() -> str:
+    """The canonical subject for a seat Writer's `identity` field (SPE P3).
+
+    The autonomous operator seat used to hardcode the literal string
+    ``"operator"`` here (`operator_seat/cli.py::_seat_writer`,
+    `operator_seat/fleet_adapter.py::fleet_act`'s default writer). That is
+    the same anti-pattern the spec names for `fleet_act`'s `by` field
+    (`operator_seat/fleet_adapter.py::_operator_action_entry`): an identity
+    claim nothing can back asserts nothing, so a resolver failure degrades
+    to the literal ``"unattributed"``, never a synthesized placeholder like
+    ``"operator"`` or ``"mcp:<agent>"``. This function NEVER raises:
+    provenance is best-effort and must not be able to block a spec write.
+
+    Returns:
+        The canonical fqid subject (``capauth.canonical_subject``) for the
+        resolved identity, or ``"unattributed"`` when resolution or
+        canonicalization fails.
+    """
+    try:
+        from capauth import canonical_subject, resolve_agent_identity
+
+        ident = resolve_agent_identity()
+        raw = getattr(ident, "capauth_uri", "") or getattr(ident, "agent", "") or ""
+        if not raw:
+            return "unattributed"
+        return canonical_subject(raw)
+    except Exception:
+        return "unattributed"
+
+
 def _now_iso() -> str:
     return datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
 

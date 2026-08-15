@@ -63,7 +63,7 @@ def _seat_writer() -> store.Writer:
     return store.Writer(
         role="operator",
         node=fleet_adapter.self_node_name(),
-        identity="operator",
+        identity=store.resolved_writer_identity(),
         agent_seat=True,
     )
 
