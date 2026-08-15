@@ -1216,7 +1216,9 @@ def _check_identity_consistency(home: Path) -> list[Check]:
                 description="Pairing store subjects match the canonical fqid grammar",
                 passed=False,
                 unknown=True,
-                detail=f"UNKNOWN: capauth.canonical_subject not importable: {subject_import_error}",
+                detail=(
+                    "UNKNOWN: capauth.canonical_subject not importable: " f"{subject_import_error}"
+                ),
                 category="identity",
             )
         )

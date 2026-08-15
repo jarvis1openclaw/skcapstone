@@ -49,7 +49,7 @@ def nodes_cmd() -> None:
         cordoned = " CORDONED" if v.cordoned else ""
         age = "never" if v.heartbeat_age_s is None else f"{int(v.heartbeat_age_s)}s"
         click.echo(
-            f"{v.name}\t{v.phase}{cordoned}\t[{labels}]\t"
+            f"{v.name}\t{v.phase}{cordoned}\trole={v.role or '-'}\t[{labels}]\t"
             f"cores={v.capacity.get('cores', '?')} "
             f"ram={v.capacity.get('ram_gb', '?')}GB "
             f"disk={v.capacity.get('disk_gb', '?')}GB\tbeat={age}"
@@ -374,9 +374,12 @@ def actuation_cmd(name: str, enabled: bool) -> None:
 @fleet.command("admit")
 @click.argument("name")
 @click.option("--label", "labels", multiple=True, help="k=v, repeatable.")
-@click.option("--preset", is_flag=True, help="Use the known-node preset labels/taints.")
+@click.option("--role", "role", default=None, help="Install profile to bind (e.g. worker-gpu).")
+@click.option("--preset", is_flag=True, help="Use the known-node preset labels/taints/role.")
 @click.option("--bootstrap", is_flag=True, help="First node: admit without a join request.")
-def admit_cmd(name: str, labels: tuple[str, ...], preset: bool, bootstrap: bool) -> None:
+def admit_cmd(
+    name: str, labels: tuple[str, ...], role: str | None, preset: bool, bootstrap: bool
+) -> None:
     """Admit a joining node, minting its node object."""
     label_map = dict(part.split("=", 1) for part in labels) if labels else None
     try:
@@ -385,12 +388,127 @@ def admit_cmd(name: str, labels: tuple[str, ...], preset: bool, bootstrap: bool)
             name,
             writer=_operator(),
             labels=label_map,
+            role=role,
             preset=preset,
             bootstrap=bootstrap,
         )
     except LookupError as exc:
         raise click.ClickException(str(exc)) from exc
-    click.echo(f"admitted {name} (generation {spec['generation']})")
+    bound = spec.get("spec", {}).get("role") or "-"
+    click.echo(f"admitted {name} (generation {spec['generation']}, role={bound})")
+
+
+@fleet.command("set-role")
+@click.argument("name")
+@click.argument("role")
+def set_role_cmd(name: str, role: str) -> None:
+    """Bind a node to an install profile by name."""
+    try:
+        spec = node_controller.set_role(default_paths(), name, role, writer=_operator())
+    except LookupError as exc:
+        raise click.ClickException(str(exc)) from exc
+    except ValueError as exc:
+        raise click.ClickException(str(exc)) from exc
+    click.echo(f"{name} role={role} (generation {spec['generation']})")
+
+
+@fleet.group("node")
+def node_group() -> None:
+    """Per-node checks (report only)."""
+
+
+def _profile_for(paths_, role: str):
+    """Normalized profile spec for a role, or None when absent/invalid."""
+    payload = store.read_spec(paths_, "profile", role)
+    if payload is None:
+        return None
+    try:
+        return profiles_mod.normalize_profile_spec(payload.get("spec", {}))
+    except profiles_mod.ProfileSpecError:
+        return None
+
+
+def _doctor_one(paths_, name: str, inventory: dict) -> tuple[dict | None, str]:
+    """(report dict, note). A skip returns (None, reason)."""
+    from . import profile_doctor
+
+    views = {v.name: v for v in node_controller.node_views(paths_)}
+    view = views.get(name)
+    if view is None:
+        return None, f"{name}: no such node object"
+    if not view.role:
+        return None, f"{name}: no spec.role set (skfleet set-role {name} <profile>)"
+    profile = _profile_for(paths_, view.role)
+    if profile is None:
+        return None, f"{name}: no valid profile object named {view.role!r}"
+    report = profile_doctor.diff(inventory, profile)
+    payload = report.as_dict()
+    payload["node"] = name
+    payload["role"] = view.role
+    payload["findings"] = [{"grade": g, "category": c, "name": n} for g, c, n in report.findings()]
+    return payload, ""
+
+
+@node_group.command("doctor")
+@click.argument("name", required=False)
+@click.option("--json", "as_json", is_flag=True, help="Machine-readable output.")
+@click.option("--all", "all_nodes", is_flag=True, help="Every node, from published inventories.")
+@click.option("--strict", is_flag=True, help="Exit 1 on error-grade findings.")
+def node_doctor_cmd(name: str | None, as_json: bool, all_nodes: bool, strict: bool) -> None:
+    """Report install-profile drift for a node. REPORT ONLY: changes nothing.
+
+    With no NAME, collects this node's live inventory locally. With --all,
+    reads each node's published inventory from its status file instead, so
+    no ssh is needed. A node with no role or no matching profile is skipped
+    with a note on stderr, never a whole-run failure: an unbound node is a
+    legitimate state, not an error.
+    """
+    from . import nodeinventory
+
+    paths_ = default_paths()
+    reports: list[dict] = []
+    notes: list[str] = []
+
+    if all_nodes:
+        for view in node_controller.node_views(paths_):
+            published = (store.read_node_file(paths_, view.name, "node.json") or {}).get(
+                "status", {}
+            ).get("inventory") or {}
+            report, note = _doctor_one(paths_, view.name, published)
+            (reports.append(report) if report else notes.append(note))
+    else:
+        target = name or self_node_name()
+        report, note = _doctor_one(paths_, target, nodeinventory.collect())
+        (reports.append(report) if report else notes.append(note))
+
+    for note in notes:
+        click.echo(f"skipped {note}", err=True)
+
+    if as_json:
+        click.echo(jsonlib.dumps(reports, indent=2, sort_keys=True))
+    elif not reports:
+        click.echo("no nodes to report on")
+    else:
+        for payload in reports:
+            click.echo(
+                f"\n{payload['node']}\trole={payload['role']}\t{payload['severity'].upper()}"
+            )
+            if not payload["findings"]:
+                click.echo("  (clean)")
+            for finding in payload["findings"]:
+                click.echo(f"  {finding['grade']:5} {finding['category']:28} {finding['name']}")
+        worst = [p["severity"] for p in reports]
+        click.echo(
+            f"\n{len(reports)} node(s), "
+            f"{sum(1 for s in worst if s == 'error')} error, "
+            f"{sum(1 for s in worst if s == 'warn')} warn, "
+            f"{sum(1 for s in worst if s == 'ok')} clean"
+        )
+
+    # Report-only by default: drift is information, not a failure. --strict
+    # is the opt-in that makes error-grade findings gate something.
+    if strict and any(p["severity"] == "error" for p in reports):
+        raise SystemExit(1)
 
 
 def register_fleet_commands(main: click.Group) -> None:

@@ -58,6 +58,31 @@ def test_pending_joins_empty_when_status_dir_missing(paths) -> None:
 
 
 def test_presets_cover_the_four_nodes() -> None:
-    assert set(admission.PRESETS) == {"node-158", "node-41", "node-100", "node-local"}
+    # Rekeyed by card 8258517f. This assertion previously read `node-158`,
+    # which pinned the defect rather than catching it: no node is ever
+    # called that, because paths.self_node_name() derives the name from the
+    # hostname, so `admit --preset` silently applied nothing on the control
+    # box. The old spelling still resolves through PRESET_ALIASES.
+    assert set(admission.PRESETS) == {
+        "node-noroc2027",
+        "node-41",
+        "node-100",
+        "node-local",
+    }
     assert admission.PRESETS["node-100"]["taints"][0]["effect"] == "NoSchedule"
     assert admission.PRESETS["node-local"]["taints"][0]["effect"] == "PreferNoSchedule"
+
+
+def test_the_dead_control_node_key_is_an_alias_not_a_preset() -> None:
+    """`node-158` is the key that never fired. It is now an alias, so the
+    spelling keeps working while the real key is the one a live node
+    actually reports.
+
+    Note `node-41` IS a real live name despite looking address-shaped: that
+    box's sknoded.service sets SKFLEET_NODE=node-41, which overrides the
+    hostname-derived default. So the rule is not "no numeric keys", it is
+    "every key is a name some node actually reports".
+    """
+    assert "node-158" not in admission.PRESETS
+    assert admission.PRESET_ALIASES["node-158"] == "node-noroc2027"
+    assert admission.resolve_preset("node-158") is admission.PRESETS["node-noroc2027"]
