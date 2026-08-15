@@ -19,6 +19,17 @@ def home(tmp_path):
     return tmp_path
 
 
+@pytest.fixture(autouse=True)
+def _reset_execute_dispatcher():
+    """run_ai_runner_job now wires the execute mux (P4/c6a87139) every tick,
+    which binds a home directory (tmp_path) into a module global. Without
+    this reset, test_run_ai_runner_job_smoke would leak a mux bound to its
+    own (torn-down) tmp_path into whatever test runs next."""
+    ar.set_execute_dispatcher(None)
+    yield
+    ar.set_execute_dispatcher(None)
+
+
 def test_request_run_attaches_queued(home):
     r = ar.request_run(home, "t1", "add tests and open a PR", agent="opus", mode="propose")
     assert r["ok"] and r["state"] == "queued"

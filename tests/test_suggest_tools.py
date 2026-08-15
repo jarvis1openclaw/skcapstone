@@ -33,6 +33,14 @@ def test_resolve_card_id_itil_passthrough():
     assert suggest_tools._resolve_card_id("itil", "inc-99") == "inc-99"
 
 
+def test_resolve_card_id_alert_prefixes():
+    assert suggest_tools._resolve_card_id("alert", "gmktec-rma-1") == "alert-gmktec-rma-1"
+
+
+def test_resolve_card_id_alert_idempotent_when_already_prefixed():
+    assert suggest_tools._resolve_card_id("alert", "alert-a1") == "alert-a1"
+
+
 def test_resolve_card_id_unknown_surface_is_none():
     assert suggest_tools._resolve_card_id("bogus", "abc123") is None
 
@@ -281,6 +289,28 @@ async def test_queue_item_schema_does_not_advertise_execute():
     modes = queue_tool.inputSchema["properties"]["mode"]["enum"]
     assert "execute" not in modes
     assert "propose" in modes
+
+
+@pytest.mark.asyncio
+async def test_both_tool_schemas_advertise_alert_surface():
+    for name in ("suggest_item", "queue_item"):
+        tool = next(t for t in suggest_tools.TOOLS if t.name == name)
+        assert "alert" in tool.inputSchema["properties"]["surface"]["enum"]
+
+
+@pytest.mark.asyncio
+async def test_suggest_item_alert_resolves_prefixed_card_id(tmp_path, monkeypatch):
+    monkeypatch.setattr(suggest_tools, "_shared_root", lambda: tmp_path)
+    calls = []
+
+    def fake_suggest_next_steps(home, card_id, use_llm=True, timeout=12.0):
+        calls.append(card_id)
+        return {"suggestions": [], "source": "heuristic"}
+
+    monkeypatch.setattr(agent_run, "suggest_next_steps", fake_suggest_next_steps)
+
+    await suggest_tools._handle_suggest_item({"surface": "alert", "id": "gmktec-rma-1"})
+    assert calls[0] == "alert-gmktec-rma-1"
 
 
 @pytest.mark.asyncio
