@@ -105,6 +105,32 @@ The new construction here is narrow. Most components exist and are merely discon
 | **HIGH** | Touches auth, data integrity, secrets, or the fleet control plane. Failure can be silent and costly. | PDP policy, capauth, sync thresholds, admission path |
 | **CRIT** | Irreversible or safety-relevant. Never fully automated; always routed to Chef. | destroys data, rotates keys, sends outbound comms, changes what agents may do |
 
+### 3.2.1 The two axes must not share labels
+
+**`risk` never uses S/M/L/XL.** This is a hard rule and it has already been
+broken once in a downstream list, which is why it is written here explicitly.
+
+The axes exist so a reader can tell them apart. `size: M, risk: crit` says
+ordinary work with dangerous consequences, and the correct response is a human,
+not a bigger model. `size: XL, risk: XL` says nothing at all: you cannot tell
+which value came from which axis, and the single most valuable signal the
+grading system produces (easy work that is dangerous, 17% of the golden set)
+becomes unreadable.
+
+There is no mechanical benefit to shared labels either. `max(size, risk)`
+compares RANKS, and the ranks already align one to one. Shared labels buy
+nothing and cost grep-ability: `risk: crit` is unambiguous, `risk: XL` collides
+with every size value in the codebase.
+
+`crit` also carries a rule that `XL` does not: **CRIT always routes to Chef**,
+regardless of grader confidence. That instruction lives in the label.
+
+A machine-readable copy of all three vocabularies, with ranks, definitions and
+worked examples, is committed beside this spec as
+`joule-grade-vocabulary.json`. Consume that file rather than retyping the
+enums; it is the single source both this epic and the gateway's model-matching
+spec resolve against.
+
 ### 3.3 The rule
 
 ```
