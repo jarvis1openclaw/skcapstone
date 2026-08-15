@@ -36,6 +36,36 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
     inventories rather than hand-typed.
   - `scripts/fleet/dot100-inference-smoke.sh`, the before/after gate for the
     inference node, and `scripts/fleet/gen-node-disposition.py`.
+- **Alert surface + execute mux + comms send authority** (P4, card `c6a87139`,
+  design doc `docs/specs/2026-08-13-unified-consent-plane-arch.md` sections 5+6).
+  Chef's ask: "when the alert comes up, give me the option of next steps so I can
+  just say 'do it'." `agent_run.ensure_card` gains an `alert-` branch (a new
+  `alert_store.py` file-per-id record store, since none existed: pubsub messages
+  are ephemeral/24h-TTL/pruned with no get-by-id, and `operator_seat.decisions`
+  belongs to a different subsystem's invariants) that materializes a shadow card
+  carrying the alert's own 2-4 options in `meta.origin.options`, surfaced verbatim
+  by `suggest_next_steps` (never LLM-regenerated for an alert card: design doc
+  section 4.3, untrusted text must never write the option list) and clamped
+  draft-only by the existing send-verb check. `mcp_tools/suggest_tools.py`'s
+  `_SURFACES`/`_resolve_card_id` registry gains `"alert"` alongside `coord`/`gtd`/
+  `itil`, and `agent_run.gate()` gains an `origin == "alert"` row, same shape as
+  the existing `gtd` row.
+  New `execute_mux.build_execute_mux()` reads the folded card's `meta.origin.surface`
+  and a `repo:<name>` label to route a queued execute run to the code bridge or to
+  a new `comms_executor.CommsExecutor`; `agent_run._maybe_wire_execute_mux()` wires
+  it into the existing `set_execute_dispatcher` seam every job tick, wrapping
+  whatever `_maybe_wire_execute_bridge()` left behind (that function's own
+  fail-closed contract, and its test suite, are untouched). `CommsExecutor` can
+  only ever draft: it imports no send-capable client, and its `send()` method
+  exists only to raise, mirroring `skharness.autocode.direct.DirectExecutor._merge`.
+  New `send_authority.SendAuthority` is the only object able to invoke a (currently
+  unwired, fail-closed) send dispatcher, and only when constructed with an explicit
+  `armed=True`, given an `armed_by` identity, and that identity differs from the
+  draft's `prepared_by` (no-self-approval, mirroring `skcoord.itil`'s CAB
+  `agent != prepared_by` fold guard); any missing condition raises
+  `SendAuthorityError` before a transport is ever touched. Wiring a real transport
+  behind `send_authority.set_send_dispatcher` is deliberately future work; this
+  card ships the structural boundary it will sit behind.
 
 ### Fixed
 - **`admission.PRESETS` keys were dead.** They were keyed `node-158`, but

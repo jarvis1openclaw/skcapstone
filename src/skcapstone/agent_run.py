@@ -87,13 +87,49 @@ def _find_gtd_item(home: Path, item_id: str) -> tuple[Optional[str], Optional[di
 def ensure_card(home: Path, card_id: str) -> bool:
     """Make sure ``card_id`` exists in the CardStore.
 
-    ITIL records (inc-/prb-/chg-) and GTD next-actions (gtd-) created outside
-    the CardStore are lazily materialized into a shadow card here, so AI
-    next-steps attach uniformly across tasks, ITIL tickets, and GTD items. The
-    shadow card carries a ``meta.origin`` backlink to the source surface.
+    ITIL records (inc-/prb-/chg-), GTD next-actions (gtd-), and alerts
+    (alert-, P4/c6a87139) created outside the CardStore are lazily
+    materialized into a shadow card here, so AI next-steps attach uniformly
+    across tasks, ITIL tickets, GTD items, and alerts. The shadow card
+    carries a ``meta.origin`` backlink to the source surface.
+
+    Registered is not the same as working: a surface must also be resolvable
+    by ``mcp_tools.suggest_tools._resolve_card_id`` (or the equivalent
+    resolver on whatever front door reaches it) or it dead-ends at "card not
+    found" despite being routable in principle.
     """
     store = CardStore(home)
     if store.fold(card_id) is not None:
+        return True
+
+    if card_id.startswith("alert-"):
+        alert_id = card_id[len("alert-") :]
+        from .alert_store import get_alert
+
+        record = get_alert(home, alert_id)
+        if record is None:
+            return False
+        store.create(
+            CardCore(
+                id=card_id,
+                kind="task",
+                title=(record.get("title") or "").strip() or f"Alert {alert_id}",
+                description=record.get("description", ""),
+                created_by=record.get("created_by", "alert"),
+                created_at=record.get("created_at") or _iso(_now()),
+                initial_priority=record.get("priority", "high"),
+                initial_swimlane="feature",
+                initial_labels=["alert"] + list(record.get("labels", [])),
+                meta={
+                    "origin": {
+                        "surface": "alert",
+                        "id": alert_id,
+                        "options": record.get("options", []),
+                    }
+                },
+            )
+        )
+        store.append_event(card_id, "move", "alert-import", column="backlog")
         return True
 
     if card_id.startswith("gtd-"):
@@ -314,7 +350,59 @@ def _clamp_gtd_suggestions(suggestions: list[dict]) -> list[dict]:
     return out
 
 
+# Generic fallback next-steps for an alert card that was not given its own
+# options (see ensure_card's "alert-" branch and alert_store.raise_alert).
+_HEURISTIC_ALERT = [
+    {"text": "Investigate and summarize what triggered this alert.", "mode": "propose"},
+    {"text": "Draft the recommended response for review (do not send/act).", "mode": "dry-run"},
+    {"text": "Snooze this alert.", "mode": "propose"},
+    {"text": "Mark this alert resolved.", "mode": "propose"},
+]
+
+
+def _is_alert(card) -> bool:
+    return ((getattr(card, "meta", None) or {}).get("origin") or {}).get("surface") == "alert"
+
+
+def _alert_suggestions(card) -> list[dict]:
+    """Turn the alert's own presented options into ``{text, mode}`` suggestions.
+
+    This is the actual feature Chef asked for (design doc section 1): "give
+    me the option of next steps so I can just say 'do it'". The options a
+    human is offered come from whatever raised the alert
+    (``alert_store.raise_alert``'s ``options`` argument), carried through
+    ``meta.origin.options`` by ``ensure_card``, not regenerated here. Falls
+    back to ``_HEURISTIC_ALERT`` only when the alert carried none. Any
+    option whose text reads as a real outbound/side-effecting action is
+    clamped to ``dry-run`` exactly like the GTD execute clamp
+    (``_clamp_gtd_suggestions``, reused here rather than duplicated - its
+    logic is generic send-verb detection, not GTD-specific), so an alert's
+    own options can never auto-send by construction.
+    """
+    origin = (getattr(card, "meta", None) or {}).get("origin") or {}
+    raw_options = origin.get("options") or []
+    out = []
+    for opt in raw_options:
+        if isinstance(opt, str):
+            text, mode = opt, "propose"
+        elif isinstance(opt, dict):
+            text, mode = str(opt.get("text", "")), opt.get("mode", "propose")
+        else:
+            continue
+        text = text.strip()
+        if not text:
+            continue
+        if mode not in MODES:
+            mode = "propose"
+        out.append({"text": text, "mode": mode})
+    if not out:
+        return [dict(s) for s in _HEURISTIC_ALERT]
+    return _clamp_gtd_suggestions(out)
+
+
 def _heuristic_suggestions(card) -> list[dict]:
+    if _is_alert(card):
+        return _alert_suggestions(card)
     if _is_gtd(card):
         return [dict(s) for s in _HEURISTIC_GTD]
     kind = card.kind.value
@@ -339,7 +427,13 @@ def suggest_next_steps(
     if card is None:
         return {"error": "card not found", "suggestions": []}
     heuristics = _heuristic_suggestions(card)
-    if not use_llm:
+    if not use_llm or _is_alert(card):
+        # Alert options are never LLM-regenerated at suggest time (design doc
+        # section 4.3): "untrusted text never writes the option list; non-model
+        # code renders the human-facing options from a fixed enum of allowed
+        # actions." An alert's options are fixed at raise_alert() time by
+        # non-model code; letting an LLM re-derive or embellish them here would
+        # reopen exactly the injection surface that decision closes.
         return {"suggestions": heuristics, "source": "heuristic"}
 
     try:
@@ -504,6 +598,19 @@ def gate(
     if mode in ("propose", "dry-run"):
         return {"allow_execute": True, "reason": f"{mode} has no real side effects"}
     # mode == execute
+    if origin == "alert":
+        # Alert options are ops/comms actions by nature (P4/c6a87139): execute
+        # routes through the mux to the comms executor, which can only ever
+        # produce a draft (comms_executor.CommsExecutor.send raises). Sending
+        # is a separate, explicitly armed step (send_authority.SendAuthority),
+        # never something this gate or the executor itself can trigger.
+        return {
+            "allow_execute": True,
+            "reason": (
+                "alert execute is draft-only: routes to the comms executor, "
+                "which is structurally unable to send"
+            ),
+        }
     if origin == "gtd":
         # GTD next-actions may be outbound comms; execute prepares a draft for
         # review and must never auto-send or auto-complete the item.
@@ -614,6 +721,43 @@ def _maybe_wire_execute_bridge() -> None:
         logger.info("execute bridge prerequisites missing; execute stays fail-closed")
         return
     set_execute_dispatcher(fn)
+
+
+# ---------------------------------------------------------------------------
+# Execute mux wiring (P4, card c6a87139)
+# ---------------------------------------------------------------------------
+#
+# A SEPARATE wiring step from _maybe_wire_execute_bridge above, deliberately:
+# that function's own fail-closed contract is locked by
+# tests/test_execute_bridge_wiring.py (SKAI_EXECUTE_BRIDGE unset -> a no-op,
+# execute_dispatch_available() stays False), and this card must not touch
+# that. Instead this step runs AFTER it and wraps whatever it left behind
+# (the real code dispatcher, or None) together with the comms executor, so
+# `_execute_dispatcher` ends up routing by `meta.origin.surface` regardless
+# of whether the code bridge itself is wired. The comms leg needs no flag of
+# its own: CommsExecutor is safe by construction (draft-only, see
+# comms_executor.py), so there is nothing an env gate would be protecting
+# against here the way SKAI_EXECUTE_BRIDGE protects real repo mutations.
+
+
+def _maybe_wire_execute_mux() -> None:
+    """Wrap the current execute dispatcher (code bridge or None) together
+    with the comms executor behind ``execute_mux.build_execute_mux``.
+
+    Idempotent: if ``_execute_dispatcher`` is already a mux (recognized by
+    the marker ``build_execute_mux`` stamps on its return value), this is a
+    no-op, so calling it every job tick never double-wraps.
+    """
+    global _execute_dispatcher
+    if getattr(_execute_dispatcher, "_is_execute_mux", False):
+        return
+    from . import SHARED_ROOT
+    from .comms_executor import CommsExecutor
+    from .execute_mux import build_execute_mux
+
+    home = Path(SHARED_ROOT).expanduser()
+    code_dispatcher = _execute_dispatcher
+    set_execute_dispatcher(build_execute_mux(home, code_dispatcher, CommsExecutor()))
 
 
 # ---------------------------------------------------------------------------
@@ -898,6 +1042,7 @@ def run_ai_runner_job() -> None:
     from . import SHARED_ROOT
 
     _maybe_wire_execute_bridge()
+    _maybe_wire_execute_mux()
     home = Path(SHARED_ROOT).expanduser()
     results = run_once(home, worker="ai-runner", dispatcher=claude_dispatcher)
     if results:

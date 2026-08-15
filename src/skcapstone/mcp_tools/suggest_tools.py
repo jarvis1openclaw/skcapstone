@@ -6,7 +6,8 @@ next-action, or an ITIL incident/problem/change) and queue an instruction on
 it, all through one lightweight ItemRef (``surface``, ``id``) instead of
 surface-specific tools. All business logic is delegated to
 :mod:`skcapstone.agent_run`, which already knows how to lazily materialize
-shadow cards (``gtd-<id>``, ``inc-/prb-/chg-<id>``) via ``ensure_card``.
+shadow cards (``gtd-<id>``, ``inc-/prb-/chg-<id>``, ``alert-<id>``) via
+``ensure_card``.
 """
 
 from __future__ import annotations
@@ -18,8 +19,10 @@ from ._helpers import _error_response, _json_response, _shared_root
 
 # Surfaces this resolver understands. "coord" cards use their raw id as the
 # card_id; "gtd" next-actions are shadow-materialized under a "gtd-" prefix;
-# "itil" records already carry their own inc-/prb-/chg- prefix.
-_SURFACES = {"coord", "gtd", "itil"}
+# "itil" records already carry their own inc-/prb-/chg- prefix; "alert"
+# records (P4/c6a87139) are shadow-materialized under an "alert-" prefix,
+# the same lazy-materialize pattern agent_run.ensure_card uses for gtd.
+_SURFACES = {"coord", "gtd", "itil", "alert"}
 
 
 def _resolve_card_id(surface: str, item_id: str) -> str | None:
@@ -43,6 +46,8 @@ def _resolve_card_id(surface: str, item_id: str) -> str | None:
         return None
     if surface == "gtd":
         return item_id if item_id.startswith("gtd-") else f"gtd-{item_id}"
+    if surface == "alert":
+        return item_id if item_id.startswith("alert-") else f"alert-{item_id}"
     # coord: raw card id, used as-is. itil: already inc-/prb-/chg-<id>.
     return item_id
 
@@ -64,7 +69,7 @@ TOOLS: list[Tool] = [
             "properties": {
                 "surface": {
                     "description": "Fleet surface the item lives on",
-                    "enum": ["coord", "gtd", "itil"],
+                    "enum": ["coord", "gtd", "itil", "alert"],
                     "type": "string",
                 },
                 "id": {"description": "The item's id on that surface", "type": "string"},
@@ -88,7 +93,7 @@ TOOLS: list[Tool] = [
             "properties": {
                 "surface": {
                     "description": "Fleet surface the item lives on",
-                    "enum": ["coord", "gtd", "itil"],
+                    "enum": ["coord", "gtd", "itil", "alert"],
                     "type": "string",
                 },
                 "id": {"description": "The item's id on that surface", "type": "string"},
