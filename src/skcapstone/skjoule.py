@@ -472,29 +472,66 @@ class JouleWallet:
         This is the raw persistence call used by both _persist() and
         the transfer() method which manages its own locking.
 
-        Every call writes the wallet state and flushes the transaction
-        log to disk immediately so no data is lost on crash.
+        JOURNAL FIRST, THEN STATE. The order matters and it is the whole
+        point of this method.
 
-        The snapshot write is atomic: it lands in a temp file in the same
-        directory, gets fsynced, then is swapped into place with
-        os.replace. A crash mid-write leaves either the whole old
-        snapshot or the whole new one, never a truncated file that later
-        gets misread as corruption.
+        These are two separate writes and they cannot be made atomic with
+        each other on a plain filesystem, so the only question is which one
+        survives a failure. Writing the snapshot first (the previous order)
+        meant a failed or interrupted log append left the balance advanced
+        with no transaction explaining it, and that is unrecoverable: the
+        amount is gone, so no replay can ever reconstruct it. Writing the
+        journal first means a failure leaves a recorded transaction whose
+        snapshot has not caught up, which `replay_balance()` repairs exactly.
+
+        A log-append failure therefore RAISES rather than being logged and
+        swallowed. An unjournaled balance change is worse than a failed
+        transaction: the caller can retry a failure, but nobody can
+        reconstruct a mutation that was never written down.
+
+        The snapshot write stays atomic (temp file in the same directory,
+        fsync, os.replace), so a crash mid-write leaves either the whole old
+        snapshot or the whole new one, never a truncated file.
+
+        Observed 2026-08-16, which is why this changed: 3 of 19 live wallets
+        carried exactly one break point each where balance_after ran ahead of
+        the summed amounts and then propagated that offset forever, and 2 more
+        held a balance with no transaction log at all.
+
+        Raises:
+            OSError: the transaction could not be journaled. The snapshot is
+                left untouched, so the wallet keeps its last consistent state.
         """
         self._snapshot.updated_at = datetime.now(timezone.utc).isoformat()
         self._wallet_dir.mkdir(parents=True, exist_ok=True)
-        try:
-            atomic_write_text(self._state_path, json.dumps(self._snapshot.model_dump(), indent=2))
-        except OSError as exc:
-            logger.error("Failed to write wallet state for %s: %s", self._agent, exc)
 
+        # 1. Journal. Durable and fsynced before any balance is published.
         try:
             with self._log_path.open("a", encoding="utf-8") as fh:
                 fh.write(json.dumps(txn.model_dump()) + "\n")
                 fh.flush()
                 os.fsync(fh.fileno())
         except OSError as exc:
-            logger.error("Failed to append transaction for %s: %s", self._agent, exc)
+            logger.error(
+                "Failed to journal transaction for %s, snapshot NOT advanced: %s",
+                self._agent,
+                exc,
+            )
+            # Callers mutate the in-memory snapshot before persisting, so that
+            # mutation is now ahead of both the journal and the disk state.
+            # Reload the last consistent snapshot so a caller that catches this
+            # does not keep spending against a balance that was never recorded.
+            try:
+                self._snapshot = self._load_or_create_snapshot()
+            except Exception:  # noqa: BLE001 - never mask the original OSError
+                logger.exception("Could not restore wallet snapshot for %s", self._agent)
+            raise
+
+        # 2. State. Safe to lose: replay_balance() rebuilds it from the journal.
+        try:
+            atomic_write_text(self._state_path, json.dumps(self._snapshot.model_dump(), indent=2))
+        except OSError as exc:
+            logger.error("Failed to write wallet state for %s: %s", self._agent, exc)
 
     def _read_log(self, limit: int) -> list[Transaction]:
         """Read the last N transactions from the JSONL log."""
@@ -614,6 +651,92 @@ class WalletAuditResult(BaseModel):
     )
     agrees: bool = Field(default=False, description="True if snapshot_balance == replayed_balance")
     error: str = Field(default="", description="Why the snapshot could not be compared, if any")
+
+
+def reconcile_wallet(
+    agent_name: str,
+    home: Optional[Path] = None,
+    *,
+    note: str = "",
+    dry_run: bool = True,
+) -> dict:
+    """Make a wallet's journal agree with its authoritative snapshot.
+
+    Chef's ruling 2026-08-16: where the two disagree, THE SNAPSHOT WINS.
+    Those balances are what every consumer has read and acted on since March,
+    and the journal is the side proven unreliable (for `opus` the snapshot and
+    the log's own last `balance_after` agree with each other; only the sum of
+    amounts dissents). Rebuilding balances from a journal just shown to be
+    lossy would be backwards.
+
+    The correction is WRITTEN DOWN, never applied silently. The whole defect
+    was a balance that could not be explained by its own history, so the repair
+    has to be a journal entry that says what changed and why. After this runs,
+    `replay_balance() == snapshot` and the two stay in agreement, because
+    `_persist_unlocked()` now journals before it publishes state.
+
+    Critically this appends to the journal WITHOUT moving the snapshot: using
+    mint()/spend() would advance the balance too and re-open the same gap it is
+    closing. The entry carries `balance_after` equal to the unchanged snapshot.
+
+    Args:
+        agent_name: Wallet to reconcile.
+        home: Agent home root; defaults to the live one.
+        note: Extra context recorded in the transaction description.
+        dry_run: When True (default) compute and report, write nothing.
+
+    Returns:
+        A dict describing the wallet, both balances, the delta, and whether a
+        correcting entry was written.
+    """
+    wallet = JouleWallet(agent_name, home=home)
+    snapshot = int(wallet.balance)
+    replayed = int(replay_balance(agent_name, home=home))
+    delta = snapshot - replayed
+
+    result = {
+        "agent": agent_name,
+        "snapshot_balance": snapshot,
+        "replayed_balance": replayed,
+        "delta": delta,
+        "written": False,
+        "kind": None,
+    }
+    if delta == 0:
+        return result
+
+    # delta > 0: the journal under-counts, so credit it up to the snapshot.
+    # delta < 0: the journal over-counts, so debit it down.
+    kind = TransactionKind.MINT if delta > 0 else TransactionKind.SPEND
+    result["kind"] = kind.value
+    if dry_run:
+        return result
+
+    desc = (
+        f"LEDGER RECONCILIATION: snapshot authoritative, journal adjusted by "
+        f"{delta:+d}J to match. Closes a historical gap where balance_after ran "
+        f"ahead of the summed amounts. Balance itself is UNCHANGED."
+    )
+    if note:
+        desc = f"{desc} {note}"
+
+    txn = Transaction(
+        kind=kind,
+        amount=abs(delta),
+        counterparty="reconciliation",
+        description=desc,
+        proof_hash=XPBridge.compute_proof_hash(f"reconcile:{agent_name}:{snapshot}:{replayed}")
+        if "XPBridge" in globals()
+        else "",
+        balance_after=snapshot,
+    )
+    with wallet._log_path.open("a", encoding="utf-8") as fh:
+        fh.write(json.dumps(txn.model_dump()) + "\n")
+        fh.flush()
+        os.fsync(fh.fileno())
+
+    result["written"] = True
+    return result
 
 
 def audit_wallets(home: Optional[Path] = None) -> list[WalletAuditResult]:
