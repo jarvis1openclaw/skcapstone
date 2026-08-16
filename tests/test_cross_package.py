@@ -379,9 +379,13 @@ class TestFullSovereignPipeline:
         assert manifest.memory.total_memories >= 1
         assert manifest.memory.status == PillarStatus.ACTIVE
 
-    def test_token_and_audit_across_operations(self, tmp_agent_home: Path):
+    def test_token_and_audit_across_operations(self, tmp_agent_home: Path, signing_identity):
         """Token issuance and audit trail span multiple subsystems."""
         _init_full_agent(tmp_agent_home, "audit-test")
+        # Reason: the subject is the audit trail spanning subsystems; the token
+        # is one of the operations feeding it, so it uses the shared throwaway
+        # signing key rather than its own.
+        signing_identity(tmp_agent_home)
 
         token = issue_token(
             tmp_agent_home,

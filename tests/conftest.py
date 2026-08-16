@@ -14,9 +14,154 @@ Coverage audit (task 945325c8, 2026-03-02):
 
 from __future__ import annotations
 
+import json
+import shutil
+import subprocess
+import tempfile
 from pathlib import Path
 
 import pytest
+
+# ---------------------------------------------------------------------------
+# Token signing fixtures
+# ---------------------------------------------------------------------------
+#
+# capauth.tokens.issue_token refuses to issue an unsigned token (it raises
+# TokenSigningError and writes nothing).  That refusal is correct: an unsigned
+# token is rejected by capauth.authz.decide, so a stored unsigned token is a
+# grant that authorizes nothing while looking issued.
+#
+# It also means a test cannot get a token out of an agent home whose identity
+# fingerprint has no matching SECRET key in the keyring gpg is pointed at.
+# skcapstone.pillars.identity.generate_identity produces exactly that: the
+# capauth profile it creates is pgpy-managed and its private half never lands
+# in a gpg keyring, and when capauth is unavailable the fingerprint is a bare
+# sha256 placeholder.  Either way `gpg --local-user <fp> --detach-sign` fails
+# with "No secret key", on a bare CI runner and on a workstation with a full
+# keyring alike.
+#
+# So tests that need a real token generate a real throwaway signing key in an
+# isolated GNUPGHOME and point the agent's identity at it.  ed25519 generation
+# is effectively instantaneous (~15ms) and needs no entropy wait, so this costs
+# nothing measurable and exercises the genuine sign-then-store path.
+
+
+def _gpg_or_fail() -> str:
+    """Locate the gpg binary, failing loudly rather than skipping.
+
+    Skipping here would silently drop the only coverage of the signed-issuance
+    path, and token signing is not optional behaviour for this package.
+    """
+    gpg = shutil.which("gpg")
+    if gpg is None:
+        pytest.fail("gpg is required to test capability token signing but is not on PATH")
+    return gpg
+
+
+@pytest.fixture(scope="session")
+def _gpg_signing_keyring():
+    """A throwaway GNUPGHOME holding one real, passphrase-less signing key.
+
+    Session-scoped because the key material is inert test data: every consumer
+    wants "some fingerprint gpg can actually sign with", not a distinct
+    identity, so generating it once keeps the suite fast.
+
+    The home is created under the system temp dir rather than pytest's tmp_path
+    so the gpg-agent socket path stays well under its 108-byte limit.
+    """
+    gpg = _gpg_or_fail()
+    home = Path(tempfile.mkdtemp(prefix="skcapstone-gnupg-"))
+    home.chmod(0o700)
+
+    subprocess.run(
+        [
+            gpg,
+            "--homedir",
+            str(home),
+            "--batch",
+            "--quiet",
+            "--pinentry-mode",
+            "loopback",
+            "--passphrase",
+            "",
+            "--quick-generate-key",
+            "skcapstone test signer <token-tests@skcapstone.invalid>",
+            "ed25519",
+            "sign",
+            "0",
+        ],
+        check=True,
+        capture_output=True,
+        text=True,
+        timeout=60,
+    )
+
+    listing = subprocess.run(
+        [gpg, "--homedir", str(home), "--list-secret-keys", "--with-colons"],
+        check=True,
+        capture_output=True,
+        text=True,
+        timeout=30,
+    )
+    fingerprint = ""
+    for line in listing.stdout.splitlines():
+        if line.startswith("fpr:"):
+            fingerprint = line.split(":")[9]
+            break
+    assert fingerprint, "throwaway gpg key was generated but exposed no fingerprint"
+
+    try:
+        yield home, fingerprint
+    finally:
+        # gpg-agent holds the home open; killing it first keeps the removal
+        # clean and leaves no stray daemon behind after the run.
+        subprocess.run(
+            ["gpgconf", "--homedir", str(home), "--kill", "all"],
+            capture_output=True,
+            timeout=30,
+            check=False,
+        )
+        shutil.rmtree(home, ignore_errors=True)
+
+
+@pytest.fixture
+def signing_identity(_gpg_signing_keyring, monkeypatch):
+    """Point gpg at the throwaway keyring and hand back an identity binder.
+
+    Returns a callable ``bind(agent_home) -> fingerprint`` that rewrites the
+    agent's ``identity/identity.json`` fingerprint to the throwaway key, which
+    is what capauth reads to pick the ``--local-user`` for signing.  Call it
+    after ``generate_identity``, which writes that file.
+
+    ``GNUPGHOME`` is redirected for the whole test, so nothing here can read or
+    write the developer's real ``~/.gnupg``.
+    """
+    gnupghome, fingerprint = _gpg_signing_keyring
+    monkeypatch.setenv("GNUPGHOME", str(gnupghome))
+
+    def bind(agent_home: Path) -> str:
+        identity_file = agent_home / "identity" / "identity.json"
+        data = json.loads(identity_file.read_text(encoding="utf-8"))
+        data["fingerprint"] = fingerprint
+        identity_file.write_text(json.dumps(data, indent=2), encoding="utf-8")
+        return fingerprint
+
+    bind.fingerprint = fingerprint
+    return bind
+
+
+@pytest.fixture
+def unsignable_gnupghome(monkeypatch, tmp_path: Path) -> Path:
+    """Redirect gpg at an empty keyring, so no issuer fingerprint can sign.
+
+    Deliberately empty: this is how the refusal guard stays deterministic on a
+    developer box that has a fully populated ``~/.gnupg``.
+    """
+    _gpg_or_fail()
+    gnupghome = tmp_path / "empty-gnupg"
+    gnupghome.mkdir(mode=0o700)
+    monkeypatch.setenv("GNUPGHOME", str(gnupghome))
+    return gnupghome
 
 
 @pytest.fixture(autouse=True)

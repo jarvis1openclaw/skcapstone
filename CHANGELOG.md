@@ -8,6 +8,51 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 ## [Unreleased]
 
 ### Fixed
+- **Six tests depended on a security bug and broke when it was fixed.** capauth PR #38 made
+  `issue_token` refuse to store an unsigned capability token instead of downgrading the
+  signing failure to a warning, which means every "signed" token this fleet issued through
+  that path was in fact unsigned. The tests created a placeholder identity with no secret
+  behind it and asked capauth to sign with it, so they had been passing on the strength of
+  the bug. They now use genuinely signed tokens, and one test asserts the refusal itself,
+  so the property is guarded rather than merely no longer violated.
+
+### Added
+- **`.100` holds a node-class capauth identity, and the PDP ceiling is proven rather than
+  asserted** (epic `3bbf39ea`, card `5ee6510f`). The key was generated on `.100` and its
+  private half never left the box. The class assignment denies `token:issue`,
+  `identity:sign` and `*` with the pinned reason strings, while the same subject is still
+  allowed `skgateway.infer`, so the denial is demonstrably about the capability and not a
+  broken subject.
+  Two results worth keeping. Re-deciding all 133 enrolled subjects across 12 capabilities
+  (1596 decisions) against a store with the class row removed changed exactly 9 outcomes,
+  all of them the node itself and all of them already denials, so no live seat lost access.
+  And a genuinely signed `Capability.ALL` token is denied with the class present and
+  GRANTS with it removed, which is what makes the ceiling load-bearing rather than
+  decorative. The previous protection was incidental: `token:issue` was denied only as an
+  unknown capability and `change.deploy` only on enrollment mode, both of which would
+  evaporate on a rule addition or a `verified` enrollment.
+  `scripts/fleet/issue-node-identity.py` captures the attestation trap in code: an attested
+  enrollment needs a signed MESSAGE, not a detached signature, because the verifier compares
+  the embedded payload against the challenge bytes. A detached blob passes `gpg --verify`,
+  passes bare pgpy, and is still rejected.
+
+### Fixed
+- **Six tests asked capauth for a token no key could sign, and used to get one.**
+  They stood up a throwaway identity whose fingerprint has no secret half in any
+  gpg keyring, then issued a capability token against it. Until capauth PR #38 that
+  silently produced an UNSIGNED token, which `capauth.authz.decide` rejects, so
+  every token those paths ever minted authorized nothing while looking issued.
+  capauth now refuses, and the tests went red. They are fixed honestly rather than
+  skipped: a session-scoped fixture generates a real passphrase-less ed25519 key in
+  an isolated temp `GNUPGHOME` (never `~/.gnupg`, gpg-agent killed and the home
+  removed on teardown) and binds the agent's identity to it, so issuance runs the
+  genuine sign-then-store path. `test_full_token_lifecycle` now also asserts the
+  token actually carries a signature and that `verify_token` affirms it, which no
+  test checked before. Added
+  `TestIdentityTokenLifecycle::test_issue_refuses_when_issuer_has_no_secret_key`
+  as the regression guard: against an empty keyring, issuance must raise
+  `TokenSigningError` and leave the token store empty. Nothing in this repo
+  guarded that fail-closed behaviour until now. Tests only; no `src/` change.
 - **The `.100` smoke gate could pass while sovereign traffic went to the cloud.**
   It probed `.100:8082` directly, which proves the node is up and proves nothing
   about what actually answers `sk-default`. When `.100` was down for four hours on

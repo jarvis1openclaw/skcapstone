@@ -55,9 +55,13 @@ class TestBuildGraph:
         assert graph.agent_name == "opus"
         assert any(n.id == "opus" for n in graph.nodes)
 
-    def test_token_creates_edge(self, tmp_agent_home: Path):
+    def test_token_creates_edge(self, tmp_agent_home: Path, signing_identity):
         """Issuing a token creates a trust edge to the subject."""
         _init_agent(tmp_agent_home, "issuer-agent")
+        # Reason: the subject under test is edge building, not signing, but a
+        # token only reaches the store when it is genuinely signed, so bind the
+        # issuer to the shared throwaway key.
+        signing_identity(tmp_agent_home)
         issue_token(
             tmp_agent_home,
             subject="peer-agent",
@@ -179,9 +183,11 @@ class TestFormatJson:
         assert "stats" in parsed
         assert parsed["agent"] == "json-test"
 
-    def test_stats_counts(self, tmp_agent_home: Path):
+    def test_stats_counts(self, tmp_agent_home: Path, signing_identity):
         """Stats section has correct counts."""
         _init_agent(tmp_agent_home)
+        # The token here exists only to give the graph an edge to count.
+        signing_identity(tmp_agent_home)
         issue_token(tmp_agent_home, subject="svc", capabilities=["*"])
         graph = build_trust_graph(tmp_agent_home)
         parsed = json.loads(format_json(graph))
