@@ -8,6 +8,22 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 ## [Unreleased]
 
 ### Fixed
+- **Six tests asked capauth for a token no key could sign, and used to get one.**
+  They stood up a throwaway identity whose fingerprint has no secret half in any
+  gpg keyring, then issued a capability token against it. Until capauth PR #38 that
+  silently produced an UNSIGNED token, which `capauth.authz.decide` rejects, so
+  every token those paths ever minted authorized nothing while looking issued.
+  capauth now refuses, and the tests went red. They are fixed honestly rather than
+  skipped: a session-scoped fixture generates a real passphrase-less ed25519 key in
+  an isolated temp `GNUPGHOME` (never `~/.gnupg`, gpg-agent killed and the home
+  removed on teardown) and binds the agent's identity to it, so issuance runs the
+  genuine sign-then-store path. `test_full_token_lifecycle` now also asserts the
+  token actually carries a signature and that `verify_token` affirms it, which no
+  test checked before. Added
+  `TestIdentityTokenLifecycle::test_issue_refuses_when_issuer_has_no_secret_key`
+  as the regression guard: against an empty keyring, issuance must raise
+  `TokenSigningError` and leave the token store empty. Nothing in this repo
+  guarded that fail-closed behaviour until now. Tests only; no `src/` change.
 - **The `.100` smoke gate could pass while sovereign traffic went to the cloud.**
   It probed `.100:8082` directly, which proves the node is up and proves nothing
   about what actually answers `sk-default`. When `.100` was down for four hours on

@@ -11,7 +11,15 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-from capauth.tokens import is_revoked, issue_token, list_tokens, revoke_token
+import pytest
+from capauth.tokens import (
+    TokenSigningError,
+    is_revoked,
+    issue_token,
+    list_tokens,
+    revoke_token,
+    verify_token,
+)
 
 from skcapstone.coordination import Board, Task, TaskStatus
 from skcapstone.discovery import discover_all
@@ -70,7 +78,7 @@ class TestInitToMemoryLifecycle:
 class TestIdentityTokenLifecycle:
     """Test: create identity -> issue token -> verify -> revoke."""
 
-    def test_full_token_lifecycle(self, tmp_agent_home: Path):
+    def test_full_token_lifecycle(self, tmp_agent_home: Path, signing_identity):
         """Identity creation, token issuance, and revocation work end-to-end."""
         identity = generate_identity(tmp_agent_home, "token-test-agent")
         # Reason: ACTIVE requires real GPG; DEGRADED is fine when capauth
@@ -80,6 +88,12 @@ class TestIdentityTokenLifecycle:
 
         initialize_security(tmp_agent_home)
 
+        # Reason: this test's subject IS the token lifecycle, so it has to run
+        # the real sign-then-store path rather than a stand-in for it.  Binding
+        # the identity to a throwaway key with a real secret half is what makes
+        # the signature genuine.
+        issuer_fingerprint = signing_identity(tmp_agent_home)
+
         token = issue_token(
             tmp_agent_home,
             subject="test-service",
@@ -88,9 +102,15 @@ class TestIdentityTokenLifecycle:
         )
         assert token is not None
         assert token.payload.subject == "test-service"
+        assert token.payload.issuer == issuer_fingerprint
         assert token.payload.has_capability("read")
         assert token.payload.has_capability("write")
         assert not token.payload.has_capability("admin")
+
+        # The token was never checked for a signature before, which is how the
+        # fleet issued unsigned tokens for so long without noticing.
+        assert token.signature, "issued token carries no PGP signature"
+        assert verify_token(token, tmp_agent_home)
 
         tokens = list_tokens(tmp_agent_home)
         assert len(tokens) >= 1
@@ -101,10 +121,11 @@ class TestIdentityTokenLifecycle:
         revoke_token(tmp_agent_home, token.payload.token_id)
         assert is_revoked(tmp_agent_home, token.payload.token_id)
 
-    def test_no_expiry_token_stays_active(self, tmp_agent_home: Path):
+    def test_no_expiry_token_stays_active(self, tmp_agent_home: Path, signing_identity):
         """A token issued with no TTL should never expire."""
         generate_identity(tmp_agent_home, "persist-test")
         initialize_security(tmp_agent_home)
+        signing_identity(tmp_agent_home)
 
         token = issue_token(
             tmp_agent_home,
@@ -114,6 +135,35 @@ class TestIdentityTokenLifecycle:
         )
         assert not token.payload.is_expired
         assert token.payload.expires_at is None
+
+    def test_issue_refuses_when_issuer_has_no_secret_key(
+        self, tmp_agent_home: Path, unsignable_gnupghome: Path
+    ):
+        """Issuance fails closed when the issuer fingerprint cannot sign.
+
+        This guards capauth's fail-closed posture from the consumer side.  The
+        old behaviour downgraded a signing failure to a warning and stored the
+        token unsigned, which produced grants that looked issued but that
+        capauth.authz.decide rejects, so nothing they named was ever really
+        authorized.  If that permissiveness ever comes back, this test is what
+        catches it.
+        """
+        generate_identity(tmp_agent_home, "unsignable-agent")
+        initialize_security(tmp_agent_home)
+
+        with pytest.raises(TokenSigningError):
+            issue_token(
+                tmp_agent_home,
+                subject="should-never-exist",
+                capabilities=["admin"],
+                ttl_hours=24,
+            )
+
+        # Refusing is only half the property: the store must be untouched, or a
+        # later reader still finds a token that authorizes nothing.
+        assert list_tokens(tmp_agent_home) == []
+        token_dir = tmp_agent_home / "security" / "tokens"
+        assert not token_dir.exists() or list(token_dir.glob("*.json")) == []
 
 
 class TestCoordinationLifecycle:
@@ -269,7 +319,7 @@ class TestAuditTrail:
 class TestFullSovereignLifecycle:
     """The big one: init -> all pillars -> memory -> token -> coord -> sync."""
 
-    def test_sovereign_agent_lifecycle(self, tmp_agent_home: Path):
+    def test_sovereign_agent_lifecycle(self, tmp_agent_home: Path, signing_identity):
         """A complete sovereign agent lifecycle from init to sync."""
         identity = generate_identity(tmp_agent_home, "sovereign")
         memory = initialize_memory(tmp_agent_home)
@@ -293,6 +343,11 @@ class TestFullSovereignLifecycle:
             tmp_agent_home, depth=10.0, trust_level=1.0, love_intensity=1.0, entangled=True
         )
 
+        # Reason: the token is one step of a long lifecycle here, not the
+        # subject, so it borrows the shared throwaway signing key rather than
+        # standing up its own.  It still has to be a real signed token: capauth
+        # refuses to issue any other kind.
+        signing_identity(tmp_agent_home)
         issue_token(
             tmp_agent_home,
             subject="mesh-peer",
