@@ -472,29 +472,66 @@ class JouleWallet:
         This is the raw persistence call used by both _persist() and
         the transfer() method which manages its own locking.
 
-        Every call writes the wallet state and flushes the transaction
-        log to disk immediately so no data is lost on crash.
+        JOURNAL FIRST, THEN STATE. The order matters and it is the whole
+        point of this method.
 
-        The snapshot write is atomic: it lands in a temp file in the same
-        directory, gets fsynced, then is swapped into place with
-        os.replace. A crash mid-write leaves either the whole old
-        snapshot or the whole new one, never a truncated file that later
-        gets misread as corruption.
+        These are two separate writes and they cannot be made atomic with
+        each other on a plain filesystem, so the only question is which one
+        survives a failure. Writing the snapshot first (the previous order)
+        meant a failed or interrupted log append left the balance advanced
+        with no transaction explaining it, and that is unrecoverable: the
+        amount is gone, so no replay can ever reconstruct it. Writing the
+        journal first means a failure leaves a recorded transaction whose
+        snapshot has not caught up, which `replay_balance()` repairs exactly.
+
+        A log-append failure therefore RAISES rather than being logged and
+        swallowed. An unjournaled balance change is worse than a failed
+        transaction: the caller can retry a failure, but nobody can
+        reconstruct a mutation that was never written down.
+
+        The snapshot write stays atomic (temp file in the same directory,
+        fsync, os.replace), so a crash mid-write leaves either the whole old
+        snapshot or the whole new one, never a truncated file.
+
+        Observed 2026-08-16, which is why this changed: 3 of 19 live wallets
+        carried exactly one break point each where balance_after ran ahead of
+        the summed amounts and then propagated that offset forever, and 2 more
+        held a balance with no transaction log at all.
+
+        Raises:
+            OSError: the transaction could not be journaled. The snapshot is
+                left untouched, so the wallet keeps its last consistent state.
         """
         self._snapshot.updated_at = datetime.now(timezone.utc).isoformat()
         self._wallet_dir.mkdir(parents=True, exist_ok=True)
-        try:
-            atomic_write_text(self._state_path, json.dumps(self._snapshot.model_dump(), indent=2))
-        except OSError as exc:
-            logger.error("Failed to write wallet state for %s: %s", self._agent, exc)
 
+        # 1. Journal. Durable and fsynced before any balance is published.
         try:
             with self._log_path.open("a", encoding="utf-8") as fh:
                 fh.write(json.dumps(txn.model_dump()) + "\n")
                 fh.flush()
                 os.fsync(fh.fileno())
         except OSError as exc:
-            logger.error("Failed to append transaction for %s: %s", self._agent, exc)
+            logger.error(
+                "Failed to journal transaction for %s, snapshot NOT advanced: %s",
+                self._agent,
+                exc,
+            )
+            # Callers mutate the in-memory snapshot before persisting, so that
+            # mutation is now ahead of both the journal and the disk state.
+            # Reload the last consistent snapshot so a caller that catches this
+            # does not keep spending against a balance that was never recorded.
+            try:
+                self._snapshot = self._load_or_create_snapshot()
+            except Exception:  # noqa: BLE001 - never mask the original OSError
+                logger.exception("Could not restore wallet snapshot for %s", self._agent)
+            raise
+
+        # 2. State. Safe to lose: replay_balance() rebuilds it from the journal.
+        try:
+            atomic_write_text(self._state_path, json.dumps(self._snapshot.model_dump(), indent=2))
+        except OSError as exc:
+            logger.error("Failed to write wallet state for %s: %s", self._agent, exc)
 
     def _read_log(self, limit: int) -> list[Transaction]:
         """Read the last N transactions from the JSONL log."""

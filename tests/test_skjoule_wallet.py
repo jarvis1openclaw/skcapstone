@@ -256,10 +256,13 @@ class TestAtomicPersistence:
 
         monkeypatch.setattr(os_module, "fsync", boom)
 
-        # mint() swallows the persist failure and logs it (matching the
-        # pre-existing failure behavior of this method), but the file on
-        # disk must survive untorn either way.
-        wallet.mint(10)
+        # Journal-before-state (2026-08-16): the fsync that fails first is now
+        # the JOURNAL's, so the transaction raises instead of being swallowed.
+        # That is the point of the change, and the snapshot must be left
+        # completely untouched rather than merely untorn: a balance must never
+        # advance past a transaction that could not be written down.
+        with pytest.raises(OSError):
+            wallet.mint(10)
 
         assert _state_path(tmp_path, "crashy").read_text(encoding="utf-8") == good_snapshot
         wallet_dir = _state_path(tmp_path, "crashy").parent
@@ -433,3 +436,77 @@ class TestAuditWallets:
 
     def test_audit_no_agents_dir_returns_empty(self, tmp_path: Path):
         assert audit_wallets(home=tmp_path / "does-not-exist") == []
+
+
+# ---------------------------------------------------------------------------
+# Journal-before-state ordering (2026-08-16)
+# ---------------------------------------------------------------------------
+
+
+def test_journal_is_written_before_the_snapshot(tmp_path, monkeypatch):
+    """The transaction must be durable before the balance is published.
+
+    Order is the entire guarantee here: the two writes cannot be atomic with
+    each other, so the survivor on failure has to be the one a replay can
+    repair from. A snapshot written first leaves an advanced balance with no
+    transaction explaining it, which nothing can reconstruct.
+    """
+    from skcapstone import skjoule
+
+    w = JouleWallet("order-probe", home=tmp_path)
+    w.mint(100, description="seed")
+
+    order: list[str] = []
+    real_atomic = skjoule.atomic_write_text
+
+    def spy_atomic(path, text):
+        order.append("state")
+        return real_atomic(path, text)
+
+    monkeypatch.setattr(skjoule, "atomic_write_text", spy_atomic)
+
+    log_path = tmp_path / "agents" / "order-probe" / "wallet" / "transactions.jsonl"
+    real_open = type(log_path).open
+
+    def spy_open(self, *a, **kw):
+        if self == log_path and "a" in str(a[0] if a else kw.get("mode", "")):
+            order.append("journal")
+        return real_open(self, *a, **kw)
+
+    monkeypatch.setattr(type(log_path), "open", spy_open)
+    w.spend(10, description="probe")
+
+    assert order[:2] == ["journal", "state"], f"wrong order: {order}"
+
+
+def test_failed_journal_does_not_advance_the_balance(tmp_path, monkeypatch):
+    """A transaction that cannot be journaled must not move the balance.
+
+    This is the live failure that produced 3 drifted wallets: the append was
+    best-effort and swallowed, so a lost write left the snapshot ahead of the
+    log forever. It must raise, and the balance must be unchanged on disk AND
+    in memory.
+    """
+    w = JouleWallet("journal-fail", home=tmp_path)
+    w.mint(500, description="seed")
+    before = w.balance
+
+    log_path = tmp_path / "agents" / "journal-fail" / "wallet" / "transactions.jsonl"
+    real_open = type(log_path).open
+
+    def boom(self, *a, **kw):
+        if self == log_path and "a" in str(a[0] if a else kw.get("mode", "")):
+            raise OSError("disk full")
+        return real_open(self, *a, **kw)
+
+    monkeypatch.setattr(type(log_path), "open", boom)
+
+    with pytest.raises(OSError):
+        w.spend(100, description="should not land")
+
+    # in-memory rolled back to the last consistent state
+    assert w.balance == before
+    # and a freshly opened wallet agrees
+    assert JouleWallet("journal-fail", home=tmp_path).balance == before
+    # and the replay agrees with both, which is the invariant that broke
+    assert replay_balance("journal-fail", home=tmp_path) == before
