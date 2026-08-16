@@ -40,6 +40,51 @@ making decisions while you are making yours.
 
 ---
 
+## The replica does NOT carry the agent signing keys. Read this before anything else.
+
+Card `6bcf1e4c` verified the replica and found the one thing a promotion cannot
+recover from on its own.
+
+`.41` holds a genuinely current replica: all 18 sovereign source-of-truth classes
+hash byte-for-byte identically, so a promoted `.41` inherits every memory, card,
+seed, soul and coordination record. What it does NOT inherit is the ability to
+sign as most of the agents that own them.
+
+Measured 2026-08-16:
+
+| node | private key files under `~/.skcapstone` | agents with `private.asc` |
+|---|---|---|
+| `.158` | 28 | architect, artisan, ava, coder, herald, jarvis, lumina, opus, scholar, sentinel, steward |
+| `.41` | 4 | jarvis, lumina, opus |
+
+**Eight agents' signing keys exist only on `.158`**: architect, artisan, ava, coder,
+herald, scholar, sentinel, steward. Also absent from the replica:
+`capauth/service/oidc_signing_key.pem` and the whole `skcomms/cot-pki` set (CA,
+server, and five device keys). Roughly 25 files, 88KB.
+
+This is not a bug and not a Syncthing failure. It is the `.stignore` rules
+(`*.key`, `*.pem`, `**/private.*`) doing exactly their job: private key material
+must never leave the node that owns it. The same three lines that keep 11 agent
+keys off the GPU worker also keep 8 of them off the standby.
+
+So the honest statement of the accepted SPOF is narrower than the ADR implies.
+The mitigation covers STATE, not IDENTITY. A promoted `.41` is a working control
+seat that cannot sign as eight of its agents until those keys are restored from
+backup or the agents are re-keyed.
+
+Two consequences for this runbook:
+
+1. **Restoring the eight keys is a promotion step, not an afterthought.** It has
+   to come from the sealed vault or from the `agents/*/backups` tarballs, not from
+   Syncthing, which will never carry them.
+2. **The operator key is not part of this problem.** `capauth/identity/` on `.158`
+   holds `public.asc` only, so operator custody was never a Syncthing question and
+   is not fixed or broken by a promotion.
+
+If you are promoting under time pressure and the eight agents are not needed
+immediately, promote first and restore keys after. Just do not believe the seat is
+whole until they are back.
+
 ## Preconditions
 
 Run all five. They are read-only. Write the answers down, on paper if you have
