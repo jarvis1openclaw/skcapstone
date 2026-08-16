@@ -531,6 +531,79 @@ def node_doctor_cmd(name: str | None, as_json: bool, all_nodes: bool, strict: bo
         raise SystemExit(1)
 
 
+def _stignore_rulesets(paths_):
+    """Every known sync-folder ruleset, folder objects merged over built-ins.
+
+    Keyed by FOLDER ID on purpose. Role is the wrong key: two roles can join
+    one folder, and a per-role ruleset would let them disagree about what
+    must never leave a node, which makes the no-secrets invariant per-node.
+    """
+    from . import stignore_doctor
+
+    folder_ids = set(stignore_doctor.DEFAULT_RULESETS)
+    folder_ids.update(
+        payload["name"]
+        for payload in store.list_specs(paths_, "syncfolder")
+        if payload.get("name")
+    )
+    out = []
+    for folder_id in sorted(folder_ids):
+        payload = store.read_spec(paths_, "syncfolder", folder_id) or {}
+        out.append(stignore_doctor.ruleset_from_spec(folder_id, payload.get("spec")))
+    return out
+
+
+@node_group.command("stignore")
+@click.option("--json", "as_json", is_flag=True, help="Machine-readable output.")
+@click.option("--strict", is_flag=True, help="Exit 1 on error-grade findings.")
+def node_stignore_cmd(as_json: bool, strict: bool) -> None:
+    """Report Syncthing ignore-rule drift on this node. REPORT ONLY.
+
+    Checks each sovereign sync folder this node actually holds for the rules
+    that keep private key material from being announced to peers. A folder
+    whose root is not on this host is skipped: a folder a node does not hold
+    cannot leak through it.
+
+    Deliberately a SIBLING of `node doctor` rather than part of it. `doctor`
+    diffs a ROLE profile against a published inventory and skips any node
+    with no role bound; this invariant is keyed by folder and applies to a
+    role-less node exactly as much as to a control node.
+    """
+    from . import stignore_doctor
+
+    paths_ = default_paths()
+    reports: list[dict] = []
+    notes: list[str] = []
+    for ruleset in _stignore_rulesets(paths_):
+        report = stignore_doctor.check_folder(ruleset)
+        if report is None:
+            notes.append(f"{ruleset.folder_id}: not held on this node")
+        else:
+            reports.append(report.as_dict())
+
+    for note in notes:
+        click.echo(f"skipped {note}", err=True)
+
+    if as_json:
+        click.echo(jsonlib.dumps(reports, indent=2, sort_keys=True))
+    elif not reports:
+        click.echo("no sovereign sync folders on this node")
+    else:
+        for payload in reports:
+            click.echo(f"\n{payload['folder']}\t{payload['root']}\t{payload['severity'].upper()}")
+            if not payload["present"]:
+                click.echo("  error no_stignore                 (folder has no ignore rules)")
+            for name in payload["missing_required"]:
+                click.echo(f"  error missing_required_ignore     {name}")
+            for name in payload["missing_recommended"]:
+                click.echo(f"  warn  missing_recommended_ignore  {name}")
+            if payload["severity"] == "ok":
+                click.echo("  (clean)")
+
+    if strict and any(p["severity"] == "error" for p in reports):
+        raise SystemExit(1)
+
+
 def _parse_taint(spec: str) -> tuple[str, str, str]:
     """Split a KEY=VALUE:EFFECT taint argument, e.g. travel=true:NoSchedule."""
     key, sep, rest = spec.partition("=")

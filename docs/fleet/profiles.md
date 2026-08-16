@@ -69,7 +69,7 @@ converge against.
 | `unitsIgnore` | list of str | `[]` | fnmatch patterns for units the profile takes no position on, so a desktop box full of `gpg-agent*.socket` does not read as drift |
 | `stateTier` | enum | **required** | `full-replica` \| `control-bus` \| `none` |
 | `capauthIdentityClass` | enum | **required** | `operator` \| `agent` \| `worker` \| `observer` |
-| `syncFolders` | list of str | `[]` | Syncthing folder ids a node of this role joins |
+| `syncFolders` | list of str | `[]` | Syncthing folder ids a node of this role joins. A REFERENCE only: see "Sync folders own their ignore rules" below |
 | `deleted` | bool | `false` | tombstone: stops management, never uninstalls anything |
 
 A **name-list block** is `{required, allowed, mustNot}`, each a list of
@@ -188,6 +188,49 @@ Manifests are read from the first readable source of:
 `$SKFLEET_PROFILE_MANIFESTS` (authoritative when set), the fleet tree's
 `objects/profile/`, then the shipped `deploy/fleet-objects/profile/` in a
 source checkout.
+
+## Sync folders own their ignore rules, roles do not
+
+`syncFolders` says which Syncthing folders a role joins. It deliberately does
+NOT say what those folders must ignore, and the Profile kind is the wrong
+place to put that.
+
+`~/.skcapstone/.stignore` opens with `*.key`, `*.pem` and `**/private.*`.
+Those three lines are the only reason the control node can hold eleven
+`agents/*/capauth/identity/private.asc` files while a peer in the same
+`sendreceive` folder holds zero: Syncthing never scans or announces an
+ignored file, so the source never offers it. Every node in the folder needs a
+byte-identical answer, or the no-secrets invariant becomes per-node.
+
+A Profile is role-keyed, so a ruleset kept there would be per-role, and two
+roles joining one folder could disagree. So the ruleset is keyed by FOLDER ID
+and lives with the folder definition:
+
+- built-in floor: `DEFAULT_RULESETS` in `skcapstone/fleet/stignore_doctor.py`
+- optional object: `syncfolder/<folder-id>.json`, with `spec.root`,
+  `spec.requiredIgnores` and `spec.recommendedIgnores`
+
+An object may only ADD to the built-in floor. It cannot drop a rule, for the
+same reason `syncthing_setup._write_stignore` merges by union and never
+overwrites: ignoring more costs a file that does not replicate, ignoring less
+leaks private keys onto every peer.
+
+To check a node:
+
+```console
+$ skfleet node stignore            # report only, writes nothing
+$ skfleet node stignore --strict   # exit 1 on an error-grade finding
+```
+
+A missing required rule, or a folder with no `.stignore` at all, grades
+`error`. A missing narrower credential rule grades `warn`, because it covers
+a subsystem the node may simply not run. Folders whose root is not on this
+host are skipped: a folder a node does not hold cannot leak through it.
+
+This is a SIBLING of `skfleet node doctor`, not part of it. `doctor` diffs a
+role profile against a published inventory and skips any node with no role
+bound; this invariant is folder-keyed and applies to a role-less node exactly
+as much as to a control node.
 
 ## Discovering this kind at runtime
 

@@ -190,6 +190,11 @@ def test_the_two_path_classes_outside_fleetpaths_still_relocate() -> None:
 _SKCAPSTONE_PATH_EXEMPT = {
     "paths.py": "owns the SKFLEET_ROOT default; the one place allowed to name it",
     "skmeter.py": "writes ~/.skcapstone/skmeter, a SIBLING of the fleet tree, not fleet state",
+    "stignore_doctor.py": (
+        "names ~/.skcapstone as the ROOT of the skcapstone-sync Syncthing folder it "
+        "audits, which is the fleet tree's parent, not fleet state; read-only, and "
+        "overridable by the syncfolder object's spec.root"
+    ),
 }
 
 
