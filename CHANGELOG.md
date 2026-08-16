@@ -8,6 +8,36 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 ## [Unreleased]
 
 ### Added
+- **Node roles wave 4** (epic `3bbf39ea`). Report-only throughout; no node state changed.
+  - `skfleet node stignore`: checks that a node holding a sovereign Syncthing folder
+    still carries the private-key ignore rules. Those three lines (`*.key`, `*.pem`,
+    `**/private.*`) are the only reason the control node holds 11 agent private keys
+    while the GPU worker holds zero, in the same `sendreceive` folder. Keyed by FOLDER
+    id, not by role, because every node in a folder needs byte-identical rules; a
+    role-keyed ruleset would recreate the drift it exists to stop.
+  - `skfleet drill`: a scratch-fleet harness for rehearsing the promotion runbook. It
+    is structurally incapable of touching production: the target is resolved before it
+    is judged (so `..` and symlinks cannot walk in), the forbidden prefix is the whole
+    sovereign home rather than the fleet folder alone, an ownership marker means it can
+    never adopt or delete a tree it did not create, and `SKFLEET_ROOT` is never read as
+    the target so an exported variable cannot aim a drill at the live fleet.
+  - `src/skcapstone/defaults/.stignore` refreshed from 40 to 70 patterns with nothing
+    dropped, comments carried across with their rules. Those comments are the only
+    record of which incident bought each rule.
+  - Docs: the control-bus nesting decision, the `skfleet-control` share runbook, the
+    control unit set `.41` must gain to become control, and the promotion runbook with
+    a documented revert for every step.
+
+### Fixed
+- **`skfleet node doctor <name>` graded the LOCAL node's units against another node's
+  profile.** Run from the control node, `node doctor node-41` collected this node's
+  inventory and returned a confident, well-formed report about the wrong machine. It
+  disagreed silently with `--all`, which correctly reported that node-41 had published
+  no inventory. Only the local node can be inventoried live; any other node is now read
+  from what it published, the same source `--all` uses, through one shared helper so the
+  two paths cannot drift apart again.
+
+### Added
 - **Fleet install profiles: a node can now say what it is, and be checked against
   it** (epic `3bbf39ea`, waves 1 and 2). The fleet could already schedule work onto
   nodes; nothing said what a node of a given role was *supposed to have installed*.
