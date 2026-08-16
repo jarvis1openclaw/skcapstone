@@ -27,6 +27,7 @@ from __future__ import annotations
 import hashlib
 import json
 import logging
+import os
 import threading
 import time
 from datetime import datetime, timezone
@@ -37,6 +38,7 @@ from typing import Any, Optional
 from pydantic import BaseModel, Field
 
 from . import AGENT_HOME, SHARED_ROOT
+from .atomic_io import atomic_write_text
 
 logger = logging.getLogger("skcapstone.skjoule")
 
@@ -150,6 +152,37 @@ class NetworkStats(BaseModel):
     active_agents: int = 0
     agent_balances: dict[str, int] = Field(default_factory=dict)
     generated_at: str = Field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
+
+
+# ---------------------------------------------------------------------------
+# Wallet corruption
+# ---------------------------------------------------------------------------
+
+
+class WalletCorruptionError(RuntimeError):
+    """Raised when a wallet snapshot exists but cannot be trusted.
+
+    ``joules.json`` is a cache of the last known balance, not the ledger.
+    ``transactions.jsonl`` is the append-only, replayable source of truth.
+    A snapshot that fails to parse must never be treated as an empty
+    wallet, since that would silently zero out a real balance while the
+    caller believes the wallet loaded successfully. Recover with
+    ``replay_balance(agent)`` against the transaction log, then repair or
+    replace the snapshot file by hand.
+    """
+
+    def __init__(self, agent: str, state_path: Path, log_path: Path, detail: str) -> None:
+        self.agent = agent
+        self.state_path = state_path
+        self.log_path = log_path
+        message = (
+            f"Wallet snapshot for '{agent}' at {state_path} is corrupt or "
+            f"unreadable ({detail}). Refusing to silently reset the balance to "
+            f"zero. {log_path} is the replayable source of truth: use "
+            f"replay_balance('{agent}') to recover the true balance, then "
+            f"repair or replace the snapshot file by hand."
+        )
+        super().__init__(message)
 
 
 # ---------------------------------------------------------------------------
@@ -395,21 +428,36 @@ class JouleWallet:
         Ensures the wallet directory exists (parents=True, exist_ok=True)
         and writes an initial joules.json if none is found, so the file
         is always present on disk after construction.
+
+        A snapshot file that exists but is empty, unreadable, or fails to
+        parse is treated as corruption, not as an absent wallet: it raises
+        WalletCorruptionError rather than silently returning a fresh
+        zero-balance snapshot. Only a genuinely missing file (a wallet
+        that has never been created) gets a real zero balance.
         """
         self._wallet_dir.mkdir(parents=True, exist_ok=True)
         if self._state_path.exists():
             try:
-                data = json.loads(self._state_path.read_text(encoding="utf-8"))
+                raw = self._state_path.read_text(encoding="utf-8")
+            except OSError as exc:
+                raise WalletCorruptionError(
+                    self._agent, self._state_path, self._log_path, f"unreadable: {exc}"
+                ) from exc
+            if not raw.strip():
+                raise WalletCorruptionError(
+                    self._agent, self._state_path, self._log_path, "snapshot file is empty"
+                )
+            try:
+                data = json.loads(raw)
                 return WalletSnapshot(**data)
-            except (json.JSONDecodeError, OSError, ValueError) as exc:
-                logger.warning("Failed to load wallet for %s: %s", self._agent, exc)
+            except (json.JSONDecodeError, ValueError) as exc:
+                raise WalletCorruptionError(
+                    self._agent, self._state_path, self._log_path, str(exc)
+                ) from exc
         snapshot = WalletSnapshot(agent=self._agent)
         # Persist the fresh snapshot so joules.json exists on disk immediately
         try:
-            self._state_path.write_text(
-                json.dumps(snapshot.model_dump(), indent=2),
-                encoding="utf-8",
-            )
+            atomic_write_text(self._state_path, json.dumps(snapshot.model_dump(), indent=2))
         except OSError as exc:
             logger.error("Failed to initialize wallet for %s: %s", self._agent, exc)
         return snapshot
@@ -426,14 +474,17 @@ class JouleWallet:
 
         Every call writes the wallet state and flushes the transaction
         log to disk immediately so no data is lost on crash.
+
+        The snapshot write is atomic: it lands in a temp file in the same
+        directory, gets fsynced, then is swapped into place with
+        os.replace. A crash mid-write leaves either the whole old
+        snapshot or the whole new one, never a truncated file that later
+        gets misread as corruption.
         """
         self._snapshot.updated_at = datetime.now(timezone.utc).isoformat()
         self._wallet_dir.mkdir(parents=True, exist_ok=True)
         try:
-            self._state_path.write_text(
-                json.dumps(self._snapshot.model_dump(), indent=2),
-                encoding="utf-8",
-            )
+            atomic_write_text(self._state_path, json.dumps(self._snapshot.model_dump(), indent=2))
         except OSError as exc:
             logger.error("Failed to write wallet state for %s: %s", self._agent, exc)
 
@@ -441,6 +492,7 @@ class JouleWallet:
             with self._log_path.open("a", encoding="utf-8") as fh:
                 fh.write(json.dumps(txn.model_dump()) + "\n")
                 fh.flush()
+                os.fsync(fh.fileno())
         except OSError as exc:
             logger.error("Failed to append transaction for %s: %s", self._agent, exc)
 
@@ -484,6 +536,143 @@ class JouleWallet:
         except Exception as exc:
             logger.debug("Could not fetch LLM cost for %s: %s", self._agent, exc)
             return 0.0
+
+
+# ---------------------------------------------------------------------------
+# Ledger replay and audit -- read-only verification primitives
+# ---------------------------------------------------------------------------
+
+
+def replay_balance(agent_name: str, home: Optional[Path] = None) -> int:
+    """Recompute a wallet's balance purely by replaying transactions.jsonl.
+
+    This never reads or writes joules.json, and never writes anything at
+    all. It is the verification primitive for confirming a snapshot
+    matches its ledger, and the recovery primitive for rebuilding a
+    balance when a snapshot is corrupt, stale, or missing. It works even
+    when the wallet's snapshot is corrupt enough that constructing a
+    JouleWallet would raise WalletCorruptionError, since it never touches
+    the snapshot file at all.
+
+    Malformed lines in the ledger are skipped, matching the tolerance
+    already used by JouleWallet.get_transactions().
+
+    Any disagreement between this and the snapshot balance is a
+    pre-existing corruption to surface, never something for this
+    function (or anything downstream of it) to auto-correct.
+
+    Args:
+        agent_name: The agent whose ledger to replay.
+        home: Root skcapstone directory (default from SHARED_ROOT).
+
+    Returns:
+        The balance computed by folding every transaction in file order.
+        Zero if the agent has no transaction log yet.
+    """
+    root = Path(home) if home else Path(SHARED_ROOT).expanduser()
+    log_path = root / "agents" / agent_name / "wallet" / "transactions.jsonl"
+    if not log_path.exists():
+        return 0
+
+    try:
+        raw = log_path.read_text(encoding="utf-8")
+    except OSError as exc:
+        logger.warning("Failed to read transaction log for %s: %s", agent_name, exc)
+        return 0
+
+    balance = 0
+    for line in raw.splitlines():
+        line = line.strip()
+        if not line:
+            continue
+        try:
+            entry = json.loads(line)
+        except json.JSONDecodeError:
+            continue
+        kind = entry.get("kind")
+        amount = entry.get("amount", 0)
+        if kind in (TransactionKind.MINT.value, TransactionKind.TRANSFER_IN.value):
+            balance += amount
+        elif kind in (TransactionKind.SPEND.value, TransactionKind.TRANSFER_OUT.value):
+            balance -= amount
+    return balance
+
+
+class WalletAuditResult(BaseModel):
+    """Snapshot-vs-ledger comparison for a single wallet.
+
+    Produced by audit_wallets(). Nothing that produces this result
+    writes to a wallet, repairs a wallet, or resets a wallet.
+    """
+
+    agent: str
+    snapshot_balance: Optional[int] = Field(
+        default=None, description="Balance in joules.json, or None if unreadable"
+    )
+    replayed_balance: int = Field(
+        default=0, description="Balance recomputed from transactions.jsonl"
+    )
+    agrees: bool = Field(default=False, description="True if snapshot_balance == replayed_balance")
+    error: str = Field(default="", description="Why the snapshot could not be compared, if any")
+
+
+def audit_wallets(home: Optional[Path] = None) -> list[WalletAuditResult]:
+    """Compare every agent's snapshot balance against a ledger replay.
+
+    Read-only across the board: it never writes, never repairs, and
+    never resets a wallet. Any snapshot that fails to parse is reported
+    with an error string instead of raising, since surfacing exactly
+    that disagreement for a human to look at is the entire purpose of
+    this function.
+
+    Args:
+        home: Root skcapstone directory (default from SHARED_ROOT).
+
+    Returns:
+        One WalletAuditResult per agent directory that has a wallet
+        directory, sorted by agent name.
+    """
+    root = Path(home) if home else Path(SHARED_ROOT).expanduser()
+    agents_dir = root / "agents"
+    results: list[WalletAuditResult] = []
+    if not agents_dir.exists():
+        return results
+
+    for agent_dir in sorted(agents_dir.iterdir()):
+        if not agent_dir.is_dir():
+            continue
+        wallet_dir = agent_dir / "wallet"
+        state_path = wallet_dir / "joules.json"
+        log_path = wallet_dir / "transactions.jsonl"
+        if not state_path.exists() and not log_path.exists():
+            continue
+
+        agent_name = agent_dir.name
+        replayed = replay_balance(agent_name, home=root)
+
+        snapshot_balance: Optional[int] = None
+        error = ""
+        if state_path.exists():
+            try:
+                data = json.loads(state_path.read_text(encoding="utf-8"))
+                snapshot_balance = WalletSnapshot(**data).balance
+            except (json.JSONDecodeError, OSError, ValueError) as exc:
+                error = f"snapshot unreadable: {exc}"
+        else:
+            error = "no snapshot file, ledger only"
+
+        agrees = snapshot_balance is not None and snapshot_balance == replayed
+        results.append(
+            WalletAuditResult(
+                agent=agent_name,
+                snapshot_balance=snapshot_balance,
+                replayed_balance=replayed,
+                agrees=agrees,
+                error=error,
+            )
+        )
+
+    return results
 
 
 # ---------------------------------------------------------------------------

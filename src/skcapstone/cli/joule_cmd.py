@@ -345,6 +345,59 @@ def register_joule_commands(main: click.Group) -> None:
 
         console.print()
 
+    # -- audit -----------------------------------------------------------------
+
+    @joule_group.command("audit")
+    @click.option("--json-out", is_flag=True, help="Output raw JSON.")
+    def audit_cmd(json_out: bool):
+        """Audit every wallet: replay transactions.jsonl vs. the snapshot.
+
+        Read-only. This never writes, repairs, or resets a wallet -- it
+        only reports where a snapshot balance disagrees with what the
+        append-only transaction ledger replays to, so a human can decide
+        what to do about it.
+        """
+        from ..skjoule import audit_wallets
+
+        results = audit_wallets(home=Path(SHARED_ROOT).expanduser())
+
+        if json_out:
+            click.echo(json.dumps([r.model_dump() for r in results], indent=2))
+            return
+
+        from rich.table import Table
+
+        table = Table(title="SKJoule Wallet Audit (read-only)", box=None, padding=(0, 2))
+        table.add_column("Agent", style="bold")
+        table.add_column("Snapshot", justify="right")
+        table.add_column("Replayed", justify="right")
+        table.add_column("Status")
+
+        agree_count = 0
+        disagree_count = 0
+        for r in results:
+            if r.error:
+                status = f"[yellow]{r.error}[/]"
+            elif r.agrees:
+                status = "[green]agrees[/]"
+                agree_count += 1
+            else:
+                status = "[red]DISAGREES[/]"
+                disagree_count += 1
+            snap_str = "-" if r.snapshot_balance is None else f"{r.snapshot_balance:,}J"
+            table.add_row(r.agent, snap_str, f"{r.replayed_balance:,}J", status)
+
+        unreadable_count = len(results) - agree_count - disagree_count
+
+        console.print()
+        console.print(table)
+        console.print()
+        console.print(
+            f"[bold]{agree_count}[/] agree, [bold]{disagree_count}[/] disagree, "
+            f"[bold]{unreadable_count}[/] unreadable, out of [bold]{len(results)}[/] wallets."
+        )
+        console.print()
+
     # -- leaderboard ---------------------------------------------------------
 
     @joule_group.command("leaderboard")
