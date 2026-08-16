@@ -418,18 +418,30 @@ the top:
 
 | | .158 files | .158 size | .41 files | .41 size |
 |---|---|---|---|---|
-| before | 198,827 | 18G | 160,942 | 6.6G |
-| after | see below | see below | see below | see below |
+| before (01:38) | 198,827 | 18G | 160,942 | 6.6G |
+| after (02:05) | 199,024 | 18G | 160,997 | 6.6G |
 
-The small drift between the opening and closing counts is live daemon activity
-(heartbeats, `fleet/status`, `logs/cron-ledger.jsonl`, memory writes), not this
-investigation: every command in this document is `find`, `du`, `stat`,
-`md5sum`, `grep`, `sed`, `ls`, `journalctl` or `systemctl is-active`. No
-command in the transcript creates, modifies or deletes a path under
-`~/.skcapstone` on either host. Scratch files were written only to the session
-scratchpad and to `/tmp`.
+Sizes are unchanged. The counts moved by +197 and +55 over the 27 minutes of
+measurement, and that drift is live daemon activity rather than this
+investigation. Re-running the path census at the end and diffing it against the
+opening one places every new path in a daemon-written class:
 
-<!-- CLOSING-COUNTS -->
+```bash
+LC_ALL=C comm -13 /tmp/l158.txt /tmp/l158-after.txt | cut -d/ -f1 | sort | uniq -c | sort -rn
+```
+
+```
+182 pubsub      54 agents (comms/inbox deliveries, sync/outbox seeds)
+ 11 skcomms      6 cards       2 sync      2 scheduler      1 coordination
+```
+
+66 `pubsub/` paths also disappeared in the same window, which is a message bus
+draining. Nothing appeared outside those classes.
+
+Every command in this document is `find`, `du`, `stat`, `md5sum`, `grep`,
+`sed`, `ls`, `wc`, `comm`, `journalctl`, `date` or `systemctl is-active`. None
+of them creates, modifies or deletes a path under `~/.skcapstone` on either
+host. Scratch files went to the session scratchpad and `/tmp` only.
 
 ## Reproducing this
 
