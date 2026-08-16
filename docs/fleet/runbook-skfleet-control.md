@@ -1,5 +1,26 @@
 # Runbook: stand up `skfleet-control`, take `.100` off the sovereign folder
 
+> 🔴 **The fleet is split across a Syncthing MAJOR version boundary. Verified
+> 2026-08-16:**
+>
+> | node | version | config path | database |
+> |---|---|---|---|
+> | `.158` | v1.27.2-ds4 (Debian) | `~/.local/state/syncthing/` | LevelDB |
+> | `.100` | v1.27.2-ds4 (Debian) | `~/.local/state/syncthing/` | LevelDB |
+> | `.41` | **v2.1.2** (upstream) | `~/.config/syncthing/` | SQLite |
+>
+> Every `syncthing cli` invocation below was checked against the **v1.27.2**
+> binary on `.158`. The 1.x and 2.x command surfaces are not guaranteed to
+> match, and the config file is not even in the same place on `.41`. So before
+> running any step of this runbook ON `.41`, re-check that step's syntax against
+> the local binary with `syncthing cli --help`, and expect the config path to
+> differ.
+>
+> This is not a blocker for the split, and it is not this runbook's to fix. It is
+> a reason not to copy and paste a command from a `.158` step into a `.41` shell
+> and assume it did the same thing.
+
+
 Epic `3bbf39ea`, card `fd381757` (parent `ddb2a02f`). Operational runbook.
 
 Background and measurements: [control-bus-folder.md](control-bus-folder.md).
