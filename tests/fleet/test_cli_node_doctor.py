@@ -280,3 +280,84 @@ def test_a_node_publishing_a_genuinely_empty_inventory_is_still_graded(
     reports = {r["node"]: r for r in _json_payload(result.output)}
     assert "node-bare" in reports
     assert reports["node-bare"]["missing_required_units"] == ["skai-beellama.service"]
+
+
+def test_naming_another_node_uses_ITS_published_inventory_not_the_local_one(
+    fleet_tree, operator, monkeypatch
+) -> None:
+    """`node doctor <other-node>` must never grade THIS node's units against
+    that node's profile.
+
+    It did, and the result was worse than an error: a confident, well-formed
+    report about the wrong machine. `--all` was correct while the named form
+    silently disagreed with it, which is the shape of bug that survives
+    because both outputs look fine.
+    """
+    store.write_spec(fleet_tree, "node", "node-other", {"role": "worker-gpu"}, writer=operator)
+    sknoded = store.Writer(role="sknoded", node="node-other", identity="")
+    store.write_node_file(
+        fleet_tree,
+        sknoded,
+        "node.json",
+        {
+            "kind": "Node",
+            "name": "node-other",
+            "node": "node-other",
+            # This node is CLEAN against worker-gpu.
+            "status": {"inventory": {"units": {"user": {"skai-beellama.service": "enabled"}}}},
+        },
+    )
+    # The LOCAL inventory is drifted (the fixture makes it forbidden-heavy).
+    result = CliRunner().invoke(
+        fleet, ["node", "doctor", "node-other", "--json"], env=_env(fleet_tree)
+    )
+    assert result.exit_code == 0, result.output
+    report = _json_payload(result.output)[0]
+    assert report["node"] == "node-other"
+    assert report["severity"] == "ok", "graded the local units instead of the named node's"
+    assert report["forbidden_units"] == []
+
+
+def test_naming_a_node_that_published_nothing_is_a_skip_not_a_wrong_answer(
+    fleet_tree, operator
+) -> None:
+    store.write_spec(fleet_tree, "node", "node-silent", {"role": "worker-gpu"}, writer=operator)
+    result = CliRunner().invoke(fleet, ["node", "doctor", "node-silent"], env=_env(fleet_tree))
+    assert result.exit_code == 0, result.output
+    assert "published no inventory yet" in result.output
+
+
+def test_the_named_form_and_all_agree_for_a_REMOTE_node(fleet_tree, operator) -> None:
+    """For a node that is not this one, both paths read what that node
+    published, so they must produce identical reports. That divergence is
+    what hid the bug.
+
+    They legitimately DIFFER for the local node: the named form collects
+    live while --all reads the last published snapshot, and live is the
+    better answer when you are standing on the machine.
+    """
+    store.write_spec(fleet_tree, "node", "node-remote", {"role": "worker-gpu"}, writer=operator)
+    sknoded = store.Writer(role="sknoded", node="node-remote", identity="")
+    store.write_node_file(
+        fleet_tree,
+        sknoded,
+        "node.json",
+        {
+            "kind": "Node",
+            "name": "node-remote",
+            "node": "node-remote",
+            "status": {"inventory": {"units": {"user": {"skchat-daemon.service": "enabled"}}}},
+        },
+    )
+    runner = CliRunner()
+    named = _json_payload(
+        runner.invoke(
+            fleet, ["node", "doctor", "node-remote", "--json"], env=_env(fleet_tree)
+        ).output
+    )[0]
+    every = _json_payload(
+        runner.invoke(fleet, ["node", "doctor", "--all", "--json"], env=_env(fleet_tree)).output
+    )
+    matching = [r for r in every if r["node"] == "node-remote"][0]
+    assert named == matching
+    assert named["forbidden_units"] == ["skchat-daemon.service"]

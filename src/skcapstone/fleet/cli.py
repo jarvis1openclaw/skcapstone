@@ -428,6 +428,16 @@ def _profile_for(paths_, role: str):
         return None
 
 
+def _published_inventory(paths_, name: str) -> dict | None:
+    """What a node last published, or None when it has published nothing.
+
+    None and {} are different answers: an empty inventory is a real
+    observation, an absent one means the node has not reported yet.
+    """
+    status = (store.read_node_file(paths_, name, "node.json") or {}).get("status", {})
+    return status["inventory"] if "inventory" in status else None
+
+
 def _doctor_one(paths_, name: str, inventory: dict | None) -> tuple[dict | None, str]:
     """(report dict, note). A skip returns (None, reason).
 
@@ -490,15 +500,21 @@ def node_doctor_cmd(name: str | None, as_json: bool, all_nodes: bool, strict: bo
 
     if all_nodes:
         for view in node_controller.node_views(paths_):
-            status = (store.read_node_file(paths_, view.name, "node.json") or {}).get("status", {})
-            # `.get("inventory")` would collapse absent into empty; see the
-            # note in _doctor_one for why that grades healthy nodes as broken.
-            published = status["inventory"] if "inventory" in status else None
-            report, note = _doctor_one(paths_, view.name, published)
+            report, note = _doctor_one(paths_, view.name, _published_inventory(paths_, view.name))
             (reports.append(report) if report else notes.append(note))
     else:
         target = name or self_node_name()
-        report, note = _doctor_one(paths_, target, nodeinventory.collect())
+        # Only THIS node can be inventoried live. Naming another node and
+        # grading the local units against that node's profile produces a
+        # confident wrong answer, which is worse than no answer: it reads
+        # exactly like a real report. For any other node, use what that node
+        # published, the same source --all uses.
+        inventory = (
+            nodeinventory.collect()
+            if target == self_node_name()
+            else _published_inventory(paths_, target)
+        )
+        report, note = _doctor_one(paths_, target, inventory)
         (reports.append(report) if report else notes.append(note))
 
     for note in notes:
