@@ -30,6 +30,19 @@ COMFYUI_PORT="${SMOKE_COMFYUI_PORT:-8188}"    # comfyui.service
 F5TTS_PORT="${SMOKE_F5TTS_PORT:-18796}"       # f5-tts.service
 WHISPER_PORT="${SMOKE_WHISPER_PORT:-18794}"   # whisper-stt.service
 
+# The gateway, probed from wherever this script runs (not on .100).
+# Probing .100 directly proves .100 is up. It does NOT prove that sovereign
+# traffic is reaching it: skgateway can silently fail sk-default over to a
+# cloud provider, and the direct probe answers 200 the whole time. A probe
+# that answers through a different path than the consumer uses is not a
+# test, it is a coincidence.
+GATEWAY_URL="${SMOKE_GATEWAY_URL:-http://localhost:18780}"
+
+# Models that mean "served by our own hardware". Anything else answering
+# sk-default is a silent substitution, which is the finding this probe exists
+# to catch. Extend this list when a new sovereign backend is added.
+SOVEREIGN_MODELS="${SMOKE_SOVEREIGN_MODELS:-ornith qwen llama mxbai beellama}"
+
 EMBED_MODEL="${SMOKE_EMBED_MODEL:-mxbai-embed-large}"
 EMBED_DIM="${SMOKE_EMBED_DIM:-1024}"
 CHAT_MODEL="${SMOKE_CHAT_MODEL:-ornith-1.0-9b}"
@@ -153,6 +166,43 @@ probe_http() {
   fi
 }
 
+probe_gateway_sovereignty() {
+    # Assert sk-default is answered BY sovereign hardware, not merely that
+    # .100 is reachable.
+    local out served
+    out=$(curl -sS -m "$CHAT_TIMEOUT" \
+        "${GATEWAY_URL}/v1/chat/completions" \
+        -H 'Content-Type: application/json' \
+        -d "{\"model\":\"sk-default\",\"messages\":[{\"role\":\"user\",\"content\":\"say OK\"}],\"max_tokens\":${CHAT_MAX_TOKENS}}" \
+        2>/dev/null)
+    if [ -z "$out" ]; then
+        # No gateway here is not a failure of .100. This script also runs on
+        # boxes that do not host one.
+        pass "gateway-sovereignty" "no gateway at ${GATEWAY_URL} (skipped)"
+        return
+    fi
+    served=$(printf '%s' "$out" | python3 -c '
+import json, sys
+try:
+    print(json.load(sys.stdin).get("model") or "")
+except ValueError:
+    print("")
+' 2>/dev/null)
+    if [ -z "$served" ]; then
+        fail "gateway-sovereignty" "sk-default returned no model field"
+        return
+    fi
+    for token in $SOVEREIGN_MODELS; do
+        case "$served" in
+            *"$token"*)
+                pass "gateway-sovereignty" "sk-default served by ${served}"
+                return ;;
+        esac
+    done
+    fail "gateway-sovereignty" \
+        "sk-default served by ${served}, which is NOT sovereign hardware (silent cloud failover)"
+}
+
 # ------------------------------------------------------------ timestamps ---
 # ActiveEnterTimestamp is the restart tripwire: run the script twice and these
 # values must be byte-identical, which proves the probe restarted nothing.
@@ -186,6 +236,7 @@ probe_chat "$QWEN_PORT" "qwen3-arc-chat" "qwen3.5:4b"
 probe_http "$COMFYUI_PORT" "comfyui" "/system_stats"
 probe_http "$F5TTS_PORT" "f5-tts" "/"
 probe_http "$WHISPER_PORT" "whisper-stt" "/"
+probe_gateway_sovereignty
 
 TIMESTAMPS=$(collect_timestamps)
 if [ -z "$TIMESTAMPS" ]; then

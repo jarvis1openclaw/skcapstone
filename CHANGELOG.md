@@ -7,6 +7,17 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased]
 
+### Fixed
+- **The `.100` smoke gate could pass while sovereign traffic went to the cloud.**
+  It probed `.100:8082` directly, which proves the node is up and proves nothing
+  about what actually answers `sk-default`. When `.100` was down for four hours on
+  2026-08-16, skgateway silently failed `sk-default` over to a cloud provider and a
+  direct probe would have returned a healthy 200 throughout. Added a
+  `gateway-sovereignty` probe that asks the gateway and asserts the SERVING model is
+  sovereign hardware, so a silent substitution fails the gate instead of hiding
+  behind it. Absent gateway skips rather than fails, since the script also runs on
+  boxes that do not host one.
+
 ### Added
 - **Node roles wave 4** (epic `3bbf39ea`). Report-only throughout; no node state changed.
   - `skfleet node stignore`: checks that a node holding a sovereign Syncthing folder
