@@ -653,6 +653,92 @@ class WalletAuditResult(BaseModel):
     error: str = Field(default="", description="Why the snapshot could not be compared, if any")
 
 
+def reconcile_wallet(
+    agent_name: str,
+    home: Optional[Path] = None,
+    *,
+    note: str = "",
+    dry_run: bool = True,
+) -> dict:
+    """Make a wallet's journal agree with its authoritative snapshot.
+
+    Chef's ruling 2026-08-16: where the two disagree, THE SNAPSHOT WINS.
+    Those balances are what every consumer has read and acted on since March,
+    and the journal is the side proven unreliable (for `opus` the snapshot and
+    the log's own last `balance_after` agree with each other; only the sum of
+    amounts dissents). Rebuilding balances from a journal just shown to be
+    lossy would be backwards.
+
+    The correction is WRITTEN DOWN, never applied silently. The whole defect
+    was a balance that could not be explained by its own history, so the repair
+    has to be a journal entry that says what changed and why. After this runs,
+    `replay_balance() == snapshot` and the two stay in agreement, because
+    `_persist_unlocked()` now journals before it publishes state.
+
+    Critically this appends to the journal WITHOUT moving the snapshot: using
+    mint()/spend() would advance the balance too and re-open the same gap it is
+    closing. The entry carries `balance_after` equal to the unchanged snapshot.
+
+    Args:
+        agent_name: Wallet to reconcile.
+        home: Agent home root; defaults to the live one.
+        note: Extra context recorded in the transaction description.
+        dry_run: When True (default) compute and report, write nothing.
+
+    Returns:
+        A dict describing the wallet, both balances, the delta, and whether a
+        correcting entry was written.
+    """
+    wallet = JouleWallet(agent_name, home=home)
+    snapshot = int(wallet.balance)
+    replayed = int(replay_balance(agent_name, home=home))
+    delta = snapshot - replayed
+
+    result = {
+        "agent": agent_name,
+        "snapshot_balance": snapshot,
+        "replayed_balance": replayed,
+        "delta": delta,
+        "written": False,
+        "kind": None,
+    }
+    if delta == 0:
+        return result
+
+    # delta > 0: the journal under-counts, so credit it up to the snapshot.
+    # delta < 0: the journal over-counts, so debit it down.
+    kind = TransactionKind.MINT if delta > 0 else TransactionKind.SPEND
+    result["kind"] = kind.value
+    if dry_run:
+        return result
+
+    desc = (
+        f"LEDGER RECONCILIATION: snapshot authoritative, journal adjusted by "
+        f"{delta:+d}J to match. Closes a historical gap where balance_after ran "
+        f"ahead of the summed amounts. Balance itself is UNCHANGED."
+    )
+    if note:
+        desc = f"{desc} {note}"
+
+    txn = Transaction(
+        kind=kind,
+        amount=abs(delta),
+        counterparty="reconciliation",
+        description=desc,
+        proof_hash=XPBridge.compute_proof_hash(f"reconcile:{agent_name}:{snapshot}:{replayed}")
+        if "XPBridge" in globals()
+        else "",
+        balance_after=snapshot,
+    )
+    with wallet._log_path.open("a", encoding="utf-8") as fh:
+        fh.write(json.dumps(txn.model_dump()) + "\n")
+        fh.flush()
+        os.fsync(fh.fileno())
+
+    result["written"] = True
+    return result
+
+
 def audit_wallets(home: Optional[Path] = None) -> list[WalletAuditResult]:
     """Compare every agent's snapshot balance against a ledger replay.
 

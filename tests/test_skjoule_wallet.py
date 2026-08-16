@@ -510,3 +510,40 @@ def test_failed_journal_does_not_advance_the_balance(tmp_path, monkeypatch):
     assert JouleWallet("journal-fail", home=tmp_path).balance == before
     # and the replay agrees with both, which is the invariant that broke
     assert replay_balance("journal-fail", home=tmp_path) == before
+
+
+def test_reconcile_makes_replay_agree_without_moving_the_balance(tmp_path):
+    """Reconciliation writes the correction down; it does not adjust silently.
+
+    And it must NOT move the balance: using mint()/spend() would advance the
+    snapshot too and re-open exactly the gap it is closing. Chef's ruling is
+    that the snapshot is authoritative, so the journal is what gets corrected.
+    """
+    from skcapstone.skjoule import reconcile_wallet
+
+    w = JouleWallet("drifty", home=tmp_path)
+    w.mint(1000, description="seed")
+
+    # forge the live defect: snapshot ahead of the journal by 500
+    log = tmp_path / "agents" / "drifty" / "wallet" / "transactions.jsonl"
+    rows = [json.loads(l) for l in log.read_text().splitlines() if l.strip()]
+    rows[-1]["amount"] = 500
+    log.write_text("".join(json.dumps(r) + "\n" for r in rows))
+
+    assert replay_balance("drifty", home=tmp_path) == 500
+    before = JouleWallet("drifty", home=tmp_path).balance
+    assert before == 1000
+
+    dry = reconcile_wallet("drifty", home=tmp_path, dry_run=True)
+    assert dry["delta"] == 500 and dry["written"] is False
+    assert replay_balance("drifty", home=tmp_path) == 500, "dry run must write nothing"
+
+    done = reconcile_wallet("drifty", home=tmp_path, dry_run=False)
+    assert done["written"] is True
+    assert replay_balance("drifty", home=tmp_path) == before
+    assert JouleWallet("drifty", home=tmp_path).balance == before, "balance must not move"
+
+    # the correction is legible in the journal, not silent
+    last = json.loads(log.read_text().splitlines()[-1])
+    assert "RECONCILIATION" in last["description"]
+    assert last["counterparty"] == "reconciliation"
