@@ -428,6 +428,16 @@ def _profile_for(paths_, role: str):
         return None
 
 
+def _published_inventory(paths_, name: str) -> dict | None:
+    """What a node last published, or None when it has published nothing.
+
+    None and {} are different answers: an empty inventory is a real
+    observation, an absent one means the node has not reported yet.
+    """
+    status = (store.read_node_file(paths_, name, "node.json") or {}).get("status", {})
+    return status["inventory"] if "inventory" in status else None
+
+
 def _doctor_one(paths_, name: str, inventory: dict | None) -> tuple[dict | None, str]:
     """(report dict, note). A skip returns (None, reason).
 
@@ -490,15 +500,21 @@ def node_doctor_cmd(name: str | None, as_json: bool, all_nodes: bool, strict: bo
 
     if all_nodes:
         for view in node_controller.node_views(paths_):
-            status = (store.read_node_file(paths_, view.name, "node.json") or {}).get("status", {})
-            # `.get("inventory")` would collapse absent into empty; see the
-            # note in _doctor_one for why that grades healthy nodes as broken.
-            published = status["inventory"] if "inventory" in status else None
-            report, note = _doctor_one(paths_, view.name, published)
+            report, note = _doctor_one(paths_, view.name, _published_inventory(paths_, view.name))
             (reports.append(report) if report else notes.append(note))
     else:
         target = name or self_node_name()
-        report, note = _doctor_one(paths_, target, nodeinventory.collect())
+        # Only THIS node can be inventoried live. Naming another node and
+        # grading the local units against that node's profile produces a
+        # confident wrong answer, which is worse than no answer: it reads
+        # exactly like a real report. For any other node, use what that node
+        # published, the same source --all uses.
+        inventory = (
+            nodeinventory.collect()
+            if target == self_node_name()
+            else _published_inventory(paths_, target)
+        )
+        report, note = _doctor_one(paths_, target, inventory)
         (reports.append(report) if report else notes.append(note))
 
     for note in notes:
@@ -527,6 +543,79 @@ def node_doctor_cmd(name: str | None, as_json: bool, all_nodes: bool, strict: bo
 
     # Report-only by default: drift is information, not a failure. --strict
     # is the opt-in that makes error-grade findings gate something.
+    if strict and any(p["severity"] == "error" for p in reports):
+        raise SystemExit(1)
+
+
+def _stignore_rulesets(paths_):
+    """Every known sync-folder ruleset, folder objects merged over built-ins.
+
+    Keyed by FOLDER ID on purpose. Role is the wrong key: two roles can join
+    one folder, and a per-role ruleset would let them disagree about what
+    must never leave a node, which makes the no-secrets invariant per-node.
+    """
+    from . import stignore_doctor
+
+    folder_ids = set(stignore_doctor.DEFAULT_RULESETS)
+    folder_ids.update(
+        payload["name"]
+        for payload in store.list_specs(paths_, "syncfolder")
+        if payload.get("name")
+    )
+    out = []
+    for folder_id in sorted(folder_ids):
+        payload = store.read_spec(paths_, "syncfolder", folder_id) or {}
+        out.append(stignore_doctor.ruleset_from_spec(folder_id, payload.get("spec")))
+    return out
+
+
+@node_group.command("stignore")
+@click.option("--json", "as_json", is_flag=True, help="Machine-readable output.")
+@click.option("--strict", is_flag=True, help="Exit 1 on error-grade findings.")
+def node_stignore_cmd(as_json: bool, strict: bool) -> None:
+    """Report Syncthing ignore-rule drift on this node. REPORT ONLY.
+
+    Checks each sovereign sync folder this node actually holds for the rules
+    that keep private key material from being announced to peers. A folder
+    whose root is not on this host is skipped: a folder a node does not hold
+    cannot leak through it.
+
+    Deliberately a SIBLING of `node doctor` rather than part of it. `doctor`
+    diffs a ROLE profile against a published inventory and skips any node
+    with no role bound; this invariant is keyed by folder and applies to a
+    role-less node exactly as much as to a control node.
+    """
+    from . import stignore_doctor
+
+    paths_ = default_paths()
+    reports: list[dict] = []
+    notes: list[str] = []
+    for ruleset in _stignore_rulesets(paths_):
+        report = stignore_doctor.check_folder(ruleset)
+        if report is None:
+            notes.append(f"{ruleset.folder_id}: not held on this node")
+        else:
+            reports.append(report.as_dict())
+
+    for note in notes:
+        click.echo(f"skipped {note}", err=True)
+
+    if as_json:
+        click.echo(jsonlib.dumps(reports, indent=2, sort_keys=True))
+    elif not reports:
+        click.echo("no sovereign sync folders on this node")
+    else:
+        for payload in reports:
+            click.echo(f"\n{payload['folder']}\t{payload['root']}\t{payload['severity'].upper()}")
+            if not payload["present"]:
+                click.echo("  error no_stignore                 (folder has no ignore rules)")
+            for name in payload["missing_required"]:
+                click.echo(f"  error missing_required_ignore     {name}")
+            for name in payload["missing_recommended"]:
+                click.echo(f"  warn  missing_recommended_ignore  {name}")
+            if payload["severity"] == "ok":
+                click.echo("  (clean)")
+
     if strict and any(p["severity"] == "error" for p in reports):
         raise SystemExit(1)
 
@@ -614,6 +703,109 @@ def control_bus_audit_cmd(budget: str | None, top: int, as_json: bool, stignore:
         click.echo(audit_mod.render(report))
     if not report.ok:
         raise SystemExit(1)
+
+
+@fleet.group("drill")
+def drill_group() -> None:
+    """Scratch-fleet promotion drill. NEVER touches the live fleet tree.
+
+    Every subcommand requires an explicit --root. There is deliberately no
+    default and SKFLEET_ROOT is never read as the drill target: on a control
+    node that variable points at production.
+    """
+
+
+#: --root is required on every drill subcommand for exactly one reason: an
+#: omitted root must be an error, never a fallback to the live tree.
+_drill_root_opt = click.option(
+    "--root",
+    required=True,
+    help="Scratch fleet root. Must be outside the sovereign home and created by this harness.",
+)
+
+
+@drill_group.command("create")
+@_drill_root_opt
+@click.option("--json", "as_json", is_flag=True, help="Machine-readable output.")
+def drill_create_cmd(root: str, as_json: bool) -> None:
+    """Build a populated throwaway fleet tree at --root."""
+    from . import drill as drill_mod
+
+    try:
+        fleet_handle = drill_mod.create(root)
+    except (drill_mod.UnsafeDrillRootError, ValueError) as exc:
+        raise click.ClickException(str(exc)) from exc
+    payload = drill_mod.summary(fleet_handle)
+    if as_json:
+        click.echo(jsonlib.dumps(payload, indent=2, sort_keys=True))
+        return
+    click.echo(f"drill tree ready at {payload['root']}")
+    click.echo(f"point the CLI at it with: export SKFLEET_ROOT={payload['root']}")
+    for node, phase in sorted(payload["phases"].items()):
+        click.echo(f"  {node}\t{phase}\trole={payload['roles'].get(node) or '-'}")
+
+
+@drill_group.command("status")
+@_drill_root_opt
+@click.option("--json", "as_json", is_flag=True, help="Machine-readable output.")
+def drill_status_cmd(root: str, as_json: bool) -> None:
+    """Show phases and bound roles inside a drill tree."""
+    from . import drill as drill_mod
+
+    try:
+        payload = drill_mod.summary(drill_mod.attach(root))
+    except drill_mod.UnsafeDrillRootError as exc:
+        raise click.ClickException(str(exc)) from exc
+    if as_json:
+        click.echo(jsonlib.dumps(payload, indent=2, sort_keys=True))
+        return
+    for node, phase in sorted(payload["phases"].items()):
+        click.echo(f"{node}\t{phase}\trole={payload['roles'].get(node) or '-'}")
+
+
+@drill_group.command("kill-control")
+@_drill_root_opt
+def drill_kill_control_cmd(root: str) -> None:
+    """Age the control seat's heartbeat until its phase derives as Dead."""
+    from . import drill as drill_mod
+
+    try:
+        step = drill_mod.attach(root).kill_control()
+    except drill_mod.UnsafeDrillRootError as exc:
+        raise click.ClickException(str(exc)) from exc
+    click.echo(f"{step.action}: {step.detail}")
+    click.echo(f"  revert: {step.revert}")
+
+
+@drill_group.command("promote")
+@_drill_root_opt
+@click.option("--force", is_flag=True, help="Promote even while the seat is still alive.")
+@click.option("--revert", is_flag=True, help="Undo a previous promote instead.")
+def drill_promote_cmd(root: str, force: bool, revert: bool) -> None:
+    """Run (or revert) the promotion runbook inside the drill tree."""
+    from . import drill as drill_mod
+
+    try:
+        handle = drill_mod.attach(root)
+        steps = handle.revert_promotion() if revert else handle.promote(force=force)
+    except (drill_mod.UnsafeDrillRootError, drill_mod.DrillPreconditionError) as exc:
+        raise click.ClickException(str(exc)) from exc
+    for step in steps:
+        click.echo(f"{step.action}: {step.detail}")
+        click.echo(f"  revert: {step.revert}")
+
+
+@drill_group.command("teardown")
+@_drill_root_opt
+def drill_teardown_cmd(root: str) -> None:
+    """Delete the drill tree. Refuses anything this harness did not create."""
+    from . import drill as drill_mod
+
+    try:
+        removed = drill_mod.attach(root).teardown()
+    except drill_mod.UnsafeDrillRootError as exc:
+        raise click.ClickException(str(exc)) from exc
+    click.echo(f"removed drill tree {removed}")
 
 
 def register_fleet_commands(main: click.Group) -> None:

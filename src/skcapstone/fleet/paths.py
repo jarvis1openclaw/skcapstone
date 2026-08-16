@@ -72,6 +72,15 @@ class FleetPaths:
         return self.objects / "_freeze.json"
 
 
+#: The sovereign home that holds the live fleet tree and its equally live
+#: siblings (agents/, trust/, coordination/), all of them Syncthing-shared to
+#: the rest of the fleet. It lives here rather than in the module that needs
+#: it because this file already owns the question "where does fleet state
+#: live", and the answer to "where may a throwaway tree NOT go" is the same
+#: fact stated once. Consumed by fleet.drill to keep its refusal honest.
+SOVEREIGN_HOME = "~/.skcapstone"
+
+
 def default_paths() -> FleetPaths:
     """The live fleet tree (SKFLEET_ROOT override for tests)."""
     root = os.environ.get("SKFLEET_ROOT", "~/.skcapstone/fleet")
