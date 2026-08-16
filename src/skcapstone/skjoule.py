@@ -725,9 +725,11 @@ def reconcile_wallet(
         amount=abs(delta),
         counterparty="reconciliation",
         description=desc,
-        proof_hash=XPBridge.compute_proof_hash(f"reconcile:{agent_name}:{snapshot}:{replayed}")
-        if "XPBridge" in globals()
-        else "",
+        proof_hash=(
+            XPBridge.compute_proof_hash(f"reconcile:{agent_name}:{snapshot}:{replayed}")
+            if "XPBridge" in globals()
+            else ""
+        ),
         balance_after=snapshot,
     )
     with wallet._log_path.open("a", encoding="utf-8") as fh:
