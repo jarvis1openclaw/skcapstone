@@ -616,6 +616,109 @@ def control_bus_audit_cmd(budget: str | None, top: int, as_json: bool, stignore:
         raise SystemExit(1)
 
 
+@fleet.group("drill")
+def drill_group() -> None:
+    """Scratch-fleet promotion drill. NEVER touches the live fleet tree.
+
+    Every subcommand requires an explicit --root. There is deliberately no
+    default and SKFLEET_ROOT is never read as the drill target: on a control
+    node that variable points at production.
+    """
+
+
+#: --root is required on every drill subcommand for exactly one reason: an
+#: omitted root must be an error, never a fallback to the live tree.
+_drill_root_opt = click.option(
+    "--root",
+    required=True,
+    help="Scratch fleet root. Must be outside the sovereign home and created by this harness.",
+)
+
+
+@drill_group.command("create")
+@_drill_root_opt
+@click.option("--json", "as_json", is_flag=True, help="Machine-readable output.")
+def drill_create_cmd(root: str, as_json: bool) -> None:
+    """Build a populated throwaway fleet tree at --root."""
+    from . import drill as drill_mod
+
+    try:
+        fleet_handle = drill_mod.create(root)
+    except (drill_mod.UnsafeDrillRootError, ValueError) as exc:
+        raise click.ClickException(str(exc)) from exc
+    payload = drill_mod.summary(fleet_handle)
+    if as_json:
+        click.echo(jsonlib.dumps(payload, indent=2, sort_keys=True))
+        return
+    click.echo(f"drill tree ready at {payload['root']}")
+    click.echo(f"point the CLI at it with: export SKFLEET_ROOT={payload['root']}")
+    for node, phase in sorted(payload["phases"].items()):
+        click.echo(f"  {node}\t{phase}\trole={payload['roles'].get(node) or '-'}")
+
+
+@drill_group.command("status")
+@_drill_root_opt
+@click.option("--json", "as_json", is_flag=True, help="Machine-readable output.")
+def drill_status_cmd(root: str, as_json: bool) -> None:
+    """Show phases and bound roles inside a drill tree."""
+    from . import drill as drill_mod
+
+    try:
+        payload = drill_mod.summary(drill_mod.attach(root))
+    except drill_mod.UnsafeDrillRootError as exc:
+        raise click.ClickException(str(exc)) from exc
+    if as_json:
+        click.echo(jsonlib.dumps(payload, indent=2, sort_keys=True))
+        return
+    for node, phase in sorted(payload["phases"].items()):
+        click.echo(f"{node}\t{phase}\trole={payload['roles'].get(node) or '-'}")
+
+
+@drill_group.command("kill-control")
+@_drill_root_opt
+def drill_kill_control_cmd(root: str) -> None:
+    """Age the control seat's heartbeat until its phase derives as Dead."""
+    from . import drill as drill_mod
+
+    try:
+        step = drill_mod.attach(root).kill_control()
+    except drill_mod.UnsafeDrillRootError as exc:
+        raise click.ClickException(str(exc)) from exc
+    click.echo(f"{step.action}: {step.detail}")
+    click.echo(f"  revert: {step.revert}")
+
+
+@drill_group.command("promote")
+@_drill_root_opt
+@click.option("--force", is_flag=True, help="Promote even while the seat is still alive.")
+@click.option("--revert", is_flag=True, help="Undo a previous promote instead.")
+def drill_promote_cmd(root: str, force: bool, revert: bool) -> None:
+    """Run (or revert) the promotion runbook inside the drill tree."""
+    from . import drill as drill_mod
+
+    try:
+        handle = drill_mod.attach(root)
+        steps = handle.revert_promotion() if revert else handle.promote(force=force)
+    except (drill_mod.UnsafeDrillRootError, drill_mod.DrillPreconditionError) as exc:
+        raise click.ClickException(str(exc)) from exc
+    for step in steps:
+        click.echo(f"{step.action}: {step.detail}")
+        click.echo(f"  revert: {step.revert}")
+
+
+@drill_group.command("teardown")
+@_drill_root_opt
+def drill_teardown_cmd(root: str) -> None:
+    """Delete the drill tree. Refuses anything this harness did not create."""
+    from . import drill as drill_mod
+
+    try:
+        removed = drill_mod.attach(root).teardown()
+    except drill_mod.UnsafeDrillRootError as exc:
+        raise click.ClickException(str(exc)) from exc
+    click.echo(f"removed drill tree {removed}")
+
+
 def register_fleet_commands(main: click.Group) -> None:
     """Register the fleet group on the skcapstone CLI."""
     main.add_command(fleet)
