@@ -170,6 +170,46 @@ def test_digest_age_prefers_window_over_mtime():
     assert ad._digest_age_s(ad._read_digest()) > 26 * 3600
 
 
+def test_digest_age_reads_the_REAL_wire_window_shape():
+    """The regression that made the window preference dead code in production.
+
+    `skos.watchdog.port.Window` names its attribute `until`, but
+    `Window.to_dict()` serialises `{"from": since, "to": until}`, and every
+    digest.json on disk carries `{"from", "to"}`. The adapter read only
+    `until`, so on a REAL digest it never matched and fell through to mtime,
+    silently defeating the staleness check it exists to perform.
+
+    The bug survived because the fixture above builds its own window using the
+    attribute names, a shape the publisher never emits. So this test writes the
+    wire shape deliberately: a digest published seconds ago, covering a window
+    that ended 40h back, must read as stale.
+    """
+    until = datetime.now(timezone.utc) - timedelta(hours=40)
+    path = ad._digest_path()
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(
+        json.dumps(
+            {
+                "date": until.strftime("%Y-%m-%d"),
+                # exactly what Window.to_dict() produces
+                "window": {"from": _iso(until - timedelta(hours=24)), "to": _iso(until)},
+                "headline": "test digest",
+                "problems": [],
+                "notable": [],
+                "info_counts": {},
+                "per_source": {},
+            }
+        ),
+        encoding="utf-8",
+    )
+    age = ad._digest_age_s(ad._read_digest())
+    assert age is not None
+    assert age > 26 * 3600, (
+        "age fell back to mtime instead of reading window['to']; the digest was "
+        "written just now but covers a window that ended 40h ago"
+    )
+
+
 def test_digest_without_window_falls_back_to_mtime():
     path = ad._digest_path()
     path.parent.mkdir(parents=True, exist_ok=True)
