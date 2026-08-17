@@ -320,6 +320,17 @@ elif [[ "$(uname)" == "Linux" ]] && command -v systemctl &>/dev/null; then
             fi
         done
 
+        # Syncthing desktop-tuning drop-in (machine-wide, agent-agnostic):
+        # keeps the mesh's continuous sync deprioritised so it never starves
+        # the active desktop session. Applies to whatever agent was just set up.
+        _SYNCTHING_DROPIN="$REPO_ROOT/systemd/syncthing.service.d/nice.conf"
+        if [[ -f "$_SYNCTHING_DROPIN" ]]; then
+            mkdir -p "$_UNIT_DIR/syncthing.service.d"
+            cp "$_SYNCTHING_DROPIN" "$_UNIT_DIR/syncthing.service.d/nice.conf"
+            echo "  [OK] syncthing.service.d/nice.conf (desktop-courteous sync)"
+            (( _installed++ ))
+        fi
+
         echo ""
         echo "  Installed $_installed service files to $_UNIT_DIR/"
 
