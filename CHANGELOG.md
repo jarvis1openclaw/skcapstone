@@ -24,7 +24,42 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   like an address" but "matches no live node", so the test asserts membership.
   Negative-controlled: 3 of 8 fail against the old table.
 
-### Fixed
+- **Concurrent joule settlements no longer lose updates** (card `b2bd1cad`).
+  `JouleEngine.record_work` read the balance (`JouleWallet.__init__` loading the
+  snapshot), added to it and wrote it back, with nothing serialising that
+  sequence. Two writers therefore captured the same balance and the second write
+  erased the first. This is measured, not theoretical: the live `lumina` wallet
+  lost a 25 J credit and a 50 J credit exactly this way, both of them
+  `auto_tokenize_task` entries (`[<card_id>] Task completed: <title>`).
+  `record_work` now holds a cross-process `flock` across the WHOLE
+  read-modify-write, wallet acquisition included, and reloads the snapshot inside
+  the lock so a cached balance written by somebody else since construction cannot
+  be carried into the mutation.
+
+  The lock file name and its resolution are a cross-repo contract, not a local
+  detail. skharness settles against the same wallet files from its own process,
+  and two processes holding two DIFFERENT locks over one wallet protect nothing,
+  so `SETTLE_LOCK_NAME`, `SETTLE_LOCK_TIMEOUT` and `_settle_lock_path()` mirror
+  `skharness.autocode.joules` exactly. skharness is deliberately not a dependency
+  here (the arrow runs the other way), so the constants are mirrored rather than
+  imported and `tests/test_skjoule_settle_lock.py` asserts both that the two
+  resolved paths are byte-identical and that the two locks actually exclude each
+  other in both directions. A drift in either repo now fails a test instead of
+  silently un-protecting the wallet.
+
+  Evidence: the race tests are deterministic, not opportunistic. Each writer is
+  held at a rendezvous placed immediately after it has read the balance and
+  before it writes, so neither can write until both have read. Against
+  unmodified `origin/main` the thread race lost an update in 5 of 5 runs and the
+  two-process race lost one in 5 of 5 runs (balance 125 where 150 was owed); on
+  this branch, 0 of 5 and 0 of 5. A positive control covers the other half of the
+  argument, since a lock that turned every settlement after the first into a
+  silent no-op would pass a race test too: sequential settlements from separate
+  engines both land, five settlements on one engine all land, and a write from
+  outside the process is picked up rather than clobbered.
+
+  The lost 25 J and 50 J are deliberately NOT restored here. That is a separate
+  reconciliation decision; this change stops the bleeding.
 
 - **The packaged systemd unit tree now includes `skmeter.service`.** The drift
   guard `test_packaged_tree_matches_canonical` had been red on `main` for five
@@ -44,6 +79,21 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   fix cannot be mistaken for disabling idempotency.
 
 ### Added
+
+- **The test suite isolates the joule wallet by default, and asserts that it
+  did.** `JouleWallet`/`JouleEngine` fall back to `skjoule.SHARED_ROOT` when no
+  `home` is given, and mint/spend are writes to real economic state, so a test
+  that forgot `home=tmp_path` edited the operator's live ledger and the entries
+  it left were indistinguishable from real ones. The sibling harness measured
+  1,366 fixture mints totalling 102,450 joules reaching a live wallet before
+  anybody noticed. An autouse `_isolate_joule_wallet` fixture now redirects the
+  default wallet root for every test, and `assert_not_production_wallet_in_test()`
+  raises `ProductionWalletInTestError` when a test reaches a production root by
+  some path the fixture does not cover (an explicit `home=`, for instance). The
+  fixture keeps honest tests safe; the assertion is what proves they were. The
+  set of production roots is frozen at import, because a guard whose definition
+  of production moves with the thing it is guarding is not a guard.
+
 - **`skfleet seat-audit`: two-seat detection by provenance, not by collision**
   (card `4c32df6f`, gap G2). The only existing detector was the Syncthing conflict
   file, and the drill measured what it actually catches: two seats writing inside
