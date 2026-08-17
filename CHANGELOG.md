@@ -17,6 +17,29 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   so the property is guarded rather than merely no longer violated.
 
 ### Added
+- **Atlas can see when the watchdog stops narrating** (card `f0786ba6`, cross-repo follow-up
+  to WD-11). The skos operator adapter declared two conditions and now declares four.
+  `WatchdogDigestFresh` reads the published `digests/latest/digest.json` and fires when it is
+  older than 26h. This is the signal nobody raises on their own: a missing morning digest
+  reads to a human as "nothing happened", not as "the thing that tells me what happened is
+  broken". `GradingBacklog` fires only when the latest digest carries a `GradingGap` event
+  whose `meta.budget_exhausted` is true, meaning `GRADE_RUN_BUDGET_S` ran out mid-list.
+  That flag is the whole point of the condition. The same `GradingGap` kind is also emitted
+  when the grader was unreachable or a reply did not parse, which is grader availability and
+  not backlog, so the check stays narrow on purpose: widening it to any `GradingGap` would
+  make every skgateway blip look like a backlog and retire the real signal.
+  Two properties are held by tests rather than by intent. Observation is read-only: the
+  watchdog root is resolved by mirroring `skos.watchdog.cursor.watchdog_home()`'s precedence
+  instead of calling it, because that helper (and `publish.digests_dir` / `latest_dir`)
+  mkdirs, and a probe that creates the store it looks at manufactures the state it reports.
+  A test asserts nothing exists under the root after a full observe pass. And the two
+  watchdog probes fail to `Unknown`, never to healthy, so a missing or unreadable digest can
+  never report "fresh" and silence the exact case the condition exists to catch.
+  `GradingBacklog` is the first problem-when-true condition owned by an app adapter, so
+  `loop.PROBLEM_WHEN_TRUE` now unions each adapter's own declaration onto the fleet's set;
+  without that the brief would have read the backlog upside down and fired when grading was
+  healthy. skos' `skworld_manifest` mirrors this adapter's `CONDITIONS` and the drift guard
+  lives in this repo, so the manifest needs the same two entries in the same order.
 - **`.100` holds a node-class capauth identity, and the PDP ceiling is proven rather than
   asserted** (epic `3bbf39ea`, card `5ee6510f`). The key was generated on `.100` and its
   private half never left the box. The class assignment denies `token:issue`,
