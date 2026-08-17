@@ -97,6 +97,12 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   marker does NOT count as already-muxed, and a real `True` marker still does, so the
   fix cannot be mistaken for disabling idempotency.
 
+- **`black --check` no longer fails on `main`.** `src/skcapstone/cli/coord.py` was
+  unformatted, so every open pull request inherited a red lint. A permanently red
+  gate stops being a signal: it cannot distinguish a change that broke something
+  from one that inherited the breakage, and the honest reading of any red becomes
+  "probably pre-existing". Formatting only, one file, no behaviour change.
+
 ### Added
 
 - **The test suite isolates the joule wallet by default, and asserts that it
