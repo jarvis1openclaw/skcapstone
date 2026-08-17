@@ -113,7 +113,7 @@ def test_the_idempotency_marker_is_identity_not_truthiness():
     Asserted from both sides so neither direction can regress alone.
     """
     truthy_not_true = mock.Mock(return_value={"summary": "x", "activity": [], "links": {}})
-    assert getattr(truthy_not_true, "_is_execute_mux", False)          # truthy
+    assert getattr(truthy_not_true, "_is_execute_mux", False)  # truthy
     assert getattr(truthy_not_true, "_is_execute_mux", False) is not True  # but not True
 
     ar.set_execute_dispatcher(truthy_not_true)
