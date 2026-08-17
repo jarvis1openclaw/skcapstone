@@ -8,6 +8,21 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 ## [Unreleased]
 
 ### Fixed
+- **A Syncthing conflict copy silently overrode the real fleet object.**
+  `store.list_specs` and `store.list_placements` globbed `*.json`, which also matches
+  `<stem>.sync-conflict-<timestamp>-<device>.json`, and both readers key on the `name`
+  field inside each payload rather than on the filename. The conflict copy therefore
+  replaced the real object in the result mapping, so the store served the version
+  Syncthing had discarded. Reproduced against a scratch fleet: with the object on disk
+  at `role=builder-standby cordoned=true`, `skfleet nodes` reported `role=control` and
+  showed no CORDONED flag, meaning a node an operator had explicitly cordoned read as
+  schedulable to the scheduler. Found by running the promotion runbook end to end
+  (card `4c32df6f`), where this is exactly the artifact a two-seat write produces: the
+  conflict file meant to be the alarm had quietly become the corruption. Conflict
+  copies are now skipped on read. They are not hidden, since the `SyncConflict`
+  condition still reports them, so they remain visible as a finding while no longer
+  being obeyed as data.
+
 - **Six tests depended on a security bug and broke when it was fixed.** capauth PR #38 made
   `issue_token` refuse to store an unsigned capability token instead of downgrading the
   signing failure to a warning, which means every "signed" token this fleet issued through
