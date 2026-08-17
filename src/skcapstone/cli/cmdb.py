@@ -92,9 +92,7 @@ def register_cmdb_commands(main: click.Group) -> None:
         for ci in cis:
             color = _STATUS_COLOR.get(ci.status, "white")
             node = f" @ {ci.node}" if ci.node else ""
-            console.print(
-                f"  [{color}]{ci.status:<12}[/{color}] {ci.ci_type:<10} {ci.name}{node}"
-            )
+            console.print(f"  [{color}]{ci.status:<12}[/{color}] {ci.ci_type:<10} {ci.name}{node}")
 
     # ── cmdb show ─────────────────────────────────────────────────────
 
