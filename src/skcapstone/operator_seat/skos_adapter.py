@@ -173,10 +173,20 @@ def _parse_iso(ts) -> Optional[float]:
 def _digest_age_s(digest: Optional[dict], *, now: Optional[float] = None) -> Optional[float]:
     """Age of the published digest in seconds, or None when unknown.
 
-    Prefers the digest's OWN window end (``window.until``, what the run actually
-    covered) over the file's mtime, so a re-published stale digest cannot look
-    fresh just because the bytes were rewritten. Falls back to mtime when the
-    window is missing or unparseable.
+    Prefers the digest's OWN window end (what the run actually covered) over the
+    file's mtime, so a re-published stale digest cannot look fresh just because
+    the bytes were rewritten. Falls back to mtime when the window is missing or
+    unparseable.
+
+    On the wire that field is spelled ``"to"``, not ``"until"``:
+    ``skos.watchdog.port.Window`` names its attribute ``until`` but
+    ``Window.to_dict()`` serialises it as ``{"from": since, "to": until}``, and
+    every digest.json on disk carries ``{"from", "to"}``. Reading only ``until``
+    therefore never matched, and this function fell through to mtime on every
+    real digest, silently defeating the very staleness check it exists to make.
+    Both spellings are accepted, ``until`` first, so a hand-written or future
+    payload using the attribute name still works. skos' own
+    ``operator_probe._window_end`` accepts the same pair; keep them in step.
     """
     if digest is None:
         return None
@@ -184,6 +194,8 @@ def _digest_age_s(digest: Optional[dict], *, now: Optional[float] = None) -> Opt
     window = digest.get("window")
     if isinstance(window, dict):
         published = _parse_iso(window.get("until"))
+        if published is None:
+            published = _parse_iso(window.get("to"))
     if published is None:
         p = _digest_path()
         try:
