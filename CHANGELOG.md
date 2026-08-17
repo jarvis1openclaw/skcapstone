@@ -116,6 +116,16 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   The lost 25 J and 50 J are deliberately NOT restored here. That is a separate
   reconciliation decision; this change stops the bleeding.
 
+- **`coord reconcile` now reports the cards it refused to un-complete.** Pairs
+  with the skcoord guard that skips cards which are `done` in the store but not
+  yet in legacy, instead of dragging them backward to match a lagging legacy
+  projection. Those cards keep failing parity, so the CLI has to say why: an
+  operator otherwise sees a gate that will not go green with no explanation and
+  reaches for a bigger hammer. Printed loud rather than dimmed, unlike the
+  informational priority/swimlane bucket, because this is a real divergence a
+  human must resolve on the legacy side rather than noise to filter out. Adds
+  `--allow-uncomplete` (off by default, documented as MOVES THEM OUT OF DONE).
+
 - **The packaged systemd unit tree now includes `skmeter.service`.** The drift
   guard `test_packaged_tree_matches_canonical` had been red on `main` for five
   consecutive commits because `scripts/sync-systemd-units.py` was not re-run when
