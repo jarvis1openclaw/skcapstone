@@ -43,6 +43,29 @@ ADAPTERS: dict[str, Callable[..., dict]] = {
     "skos": skos_adapter.observe,
 }
 
+#: The adapter modules ADAPTERS draws from, in the same order, so condition
+#: POLARITY can be collected from the modules that own it.
+_ADAPTER_MODULES = (
+    fleet_adapter,
+    skchat_adapter,
+    skcode_adapter,
+    skcomms_adapter,
+    skmemory_adapter,
+    skgateway_adapter,
+    skos_adapter,
+)
+
+#: Every condition type that indicates a PROBLEM when its status is "True"; the
+#: rest are health types that indicate a problem when "False" (brief.build_brief).
+#: The fleet's set is the reference, but polarity belongs to whichever adapter
+#: declares the condition, so each app adapter may add its own via an optional
+#: module-level PROBLEM_WHEN_TRUE (skos' GradingBacklog is the first). Without
+#: this union an app's problem-type condition would be read upside down: quiet
+#: when it fires, firing when it is quiet.
+PROBLEM_WHEN_TRUE = frozenset().union(
+    *(getattr(module, "PROBLEM_WHEN_TRUE", frozenset()) for module in _ADAPTER_MODULES)
+)
+
 
 def _no_proposals(brief_dict: dict, route: str) -> list[dict]:
     """Default agent: propose nothing (keeps run_once safe and model-free)."""
@@ -103,7 +126,7 @@ def run_once(
             "report": report,
         }
 
-    ptypes = problem_types if problem_types is not None else set(fleet_adapter.PROBLEM_WHEN_TRUE)
+    ptypes = problem_types if problem_types is not None else set(PROBLEM_WHEN_TRUE)
     # Discovered observers merge UNDER the built-ins: ADAPTERS spreads last so a
     # built-in always wins a name clash. Each observe fails safe on its own.
     adapters = {**(extra_observers or {}), **ADAPTERS}
