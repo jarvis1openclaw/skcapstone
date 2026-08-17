@@ -415,17 +415,32 @@ def register_coord_commands(main: click.Group) -> None:
         default=False,
         help="Write corrective events (default is a dry-run report).",
     )
-    def coord_reconcile(home, apply_):
+    @click.option(
+        "--allow-uncomplete",
+        is_flag=True,
+        default=False,
+        help=(
+            "Also converge cards that are done in the store but not in legacy. "
+            "This MOVES THEM OUT OF DONE. Off by default."
+        ),
+    )
+    def coord_reconcile(home, apply_, allow_uncomplete):
         """Converge the CardStore on the authoritative legacy board.
 
         One-time repair for drift that predates the mirror (claims/completes
         recorded only in agents/*.json): appends corrective move/assign/
         archive events, writer 'reconcile'. Append-only and idempotent.
+
+        Never un-completes work: a card whose store state is 'done' is skipped
+        and reported rather than dragged backward to match a lagging legacy
+        projection. Use --allow-uncomplete to override.
         """
         from ..card_store import reconcile_from_legacy
 
         home_path = Path(home).expanduser()
-        res = reconcile_from_legacy(home_path, dry_run=not apply_)
+        res = reconcile_from_legacy(
+            home_path, dry_run=not apply_, allow_uncomplete=allow_uncomplete
+        )
         if apply_:
             console.print(f"\n  [green]Reconciled {res['fixed']} card(s) to legacy state.[/]\n")
         else:
@@ -433,6 +448,23 @@ def register_coord_commands(main: click.Group) -> None:
                 f"\n  [yellow]Would reconcile {res['would_fix']} card(s).[/] "
                 f"Re-run with --apply to write.\n"
             )
+        skipped = res.get("skipped_uncomplete") or []
+        if skipped:
+            # Loud, not dimmed: these are the cards the gate will keep failing
+            # on, and the reason is that converging them would destroy work.
+            console.print(
+                f"  [yellow]Skipped {len(skipped)} card(s) that are done in the "
+                f"store but not in legacy.[/]\n"
+                f"  Converging these would un-complete finished work, so parity "
+                f"will keep reporting them.\n"
+                f"  Legacy is the stale side here; fix it there, or pass "
+                f"--allow-uncomplete to override.\n"
+            )
+            for cid in skipped[:20]:
+                console.print(f"    [dim]{cid}[/]")
+            if len(skipped) > 20:
+                console.print(f"    [dim]... and {len(skipped) - 20} more[/]")
+            console.print()
 
     @coord.command("export-legacy")
     @click.option("--home", default=AGENT_HOME, type=click.Path())
