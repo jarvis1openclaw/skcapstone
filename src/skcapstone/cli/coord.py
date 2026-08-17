@@ -398,8 +398,7 @@ def register_coord_commands(main: click.Group) -> None:
         info = par.get("informational") or []
         if info:
             console.print(
-                f"    [dim]informational (store-authoritative, not gating): "
-                f"{len(info)}[/]"
+                f"    [dim]informational (store-authoritative, not gating): " f"{len(info)}[/]"
             )
             for m in info[:show]:
                 console.print(f"      [dim]{m['id']}: {m['diff']}[/]")
