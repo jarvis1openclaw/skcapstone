@@ -51,6 +51,9 @@ def _discovery():
 
 def _build_runners(hosts: tuple[str, ...], local: bool):
     """Turn --host/--local into runners. No host means no observation."""
+    if not local and not hosts:
+        # Nothing to observe, so do not demand a dependency we will not use.
+        return []
     disc = _discovery()
 
     runners = []
