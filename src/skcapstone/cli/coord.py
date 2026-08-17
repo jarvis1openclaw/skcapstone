@@ -389,6 +389,20 @@ def register_coord_commands(main: click.Group) -> None:
             console.print(f"    [yellow]{m['id']}[/]: {m['diff']}")
         if par["missing"][:show]:
             console.print(f"    [yellow]missing[/]: {par['missing'][:show]}")
+        # Informational diffs (priority/swimlane) are reported but never gate.
+        # The dashboard writes those store-only, so legacy is the stale side by
+        # design and `reconcile` deliberately will not converge them. Counting
+        # them as failures made the gate unsatisfiable, which is how a gate
+        # stops being read. Shown so drift stays visible, dimmed so it is
+        # obviously not the thing that failed.
+        info = par.get("informational") or []
+        if info:
+            console.print(
+                f"    [dim]informational (store-authoritative, not gating): "
+                f"{len(info)}[/]"
+            )
+            for m in info[:show]:
+                console.print(f"      [dim]{m['id']}: {m['diff']}[/]")
         console.print()
         if check and not ok:
             sys.exit(1)
