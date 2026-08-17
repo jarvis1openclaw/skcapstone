@@ -7,6 +7,15 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased]
 
+### Fixed
+
+- **The packaged systemd unit tree now includes `skmeter.service`.** The drift
+  guard `test_packaged_tree_matches_canonical` had been red on `main` for five
+  consecutive commits because `scripts/sync-systemd-units.py` was not re-run when
+  the canonical unit was added. Regenerated, no hand-editing. The guard exists
+  precisely to catch this, and it did: what it could not do is stop the resulting
+  red from making every other pull request's gate unreadable.
+
 ### Added
 - **`skfleet seat-audit`: two-seat detection by provenance, not by collision**
   (card `4c32df6f`, gap G2). The only existing detector was the Syncthing conflict
