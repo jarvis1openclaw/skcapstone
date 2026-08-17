@@ -311,6 +311,25 @@ def register_all(
         "packages": {},
     }
 
+    # Wire the Codex AGENTS.md bootstrap (agent context loader + profile)
+    # whenever Codex is a registered environment, so a fresh install gets the
+    # SK agent context setup out of the box.
+    results["codex_setup"] = {"action": "skip", "reason": "codex not detected"}
+    if "codex" in environments:
+        from .codex_setup import check_codex_setup, ensure_codex_setup
+
+        if dry_run:
+            results["codex_setup"] = {"action": "dry-run"}
+        else:
+            _, detail = check_codex_setup()
+            actions = ensure_codex_setup()
+            status = "created" if "missing" in detail else "exists"
+            results["codex_setup"] = {
+                "action": "updated" if actions else status,
+                "detail": detail,
+                "actions": actions,
+            }
+
     for pkg in packages:
         name = pkg["name"]
         skill_md = find_skill_md(name, workspace)
