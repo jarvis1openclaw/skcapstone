@@ -85,6 +85,25 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   scratch root is still accepted, since a guard that refused everything would satisfy
   the other assertions while being useless.
 
+- **A test asserted the CAB self-approval bypass that skcoord had just closed, and it
+  held `main` red.** skcoord `941570f` ("a raw `status` event can no longer grant CAB
+  approval") stopped `update_change(..., new_status="approved")` from being the thing
+  that grants approval, because `agent` there is free text: without the guard, any
+  caller (the MCP tool and CLI included) could approve its own change around
+  `submit_cab_vote()` and its no-self-approval fold guard.
+  `test_process_one_execute_blocked_once_approved` built its fixture with exactly that
+  shortcut, so it began asserting `approved` against a change the guard correctly left
+  at `proposed`. The guard is right and the test was wrong, so the fixture now reaches
+  approval the way a real CAB approval happens: a `human` APPROVE vote via
+  `submit_cab_vote()`, with a voter that differs from the drafter so the fold's
+  no-self-approval filter keeps it. No test helper force-sets the status, since that
+  would rebuild the bypass inside the suite and leave it unable to notice a regression.
+  A negative control was added alongside (`test_raw_status_event_cannot_grant_cab_approval`)
+  that asserts the raw-status route still folds to `proposed`, so the guard now has a
+  test that fails if it is ever removed. This was the only raw-status approval shortcut
+  in the tree; it kept every open PR inheriting a red on `main`, which is how a red gate
+  stops being a signal.
+
 - **A Syncthing conflict copy silently overrode the real fleet object.**
   `store.list_specs` and `store.list_placements` globbed `*.json`, which also matches
   `<stem>.sync-conflict-<timestamp>-<device>.json`, and both readers key on the `name`
