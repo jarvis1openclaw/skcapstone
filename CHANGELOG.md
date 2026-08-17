@@ -8,6 +8,23 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 ## [Unreleased]
 
 ### Fixed
+- **`admit --preset` silently applied nothing on the GPU node.** `PRESETS` was keyed
+  `node-100`, but `paths.self_node_name()` derives from the hostname and produces
+  `node-ollama`, so the lookup missed and the box got no labels, no role and no
+  taint while the command exited 0. This is the SAME defect that was fixed for the
+  control node (`node-158` to `node-noroc2027`) and it survived that fix because
+  only one of the two address-style keys was rekeyed. Rekeyed to `node-ollama`,
+  with `node-100` kept as an alias so a runbook that says
+  `admit node-100 --preset` still does what it reads like it does.
+  Pinned by tests rather than by care: every live node name must resolve a preset,
+  every legacy spelling must resolve to the same object, and every canonical key
+  must be a name a node can actually have. That last invariant was stated wrongly
+  on the first attempt (it flagged any key ending in digits, which wrongly
+  condemns `node-41`, a real hostname-derived name); the defect was never "looks
+  like an address" but "matches no live node", so the test asserts membership.
+  Negative-controlled: 3 of 8 fail against the old table.
+
+### Fixed
 
 - **The packaged systemd unit tree now includes `skmeter.service`.** The drift
   guard `test_packaged_tree_matches_canonical` had been red on `main` for five
