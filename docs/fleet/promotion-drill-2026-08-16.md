@@ -566,6 +566,56 @@ either way (`revert_promotion()` was executed and round-tripped cleanly).
 
 ---
 
+## G10. The drill's own production-safety test was flaky, and would have read as a regression
+
+Found during verification, not during the drill, and fixed here.
+
+`tests/fleet/test_drill.py` proves the harness never writes production by
+snapshotting the **live** `~/.skcapstone/fleet` before and after, then asserting
+no differences except same-size `heartbeat.json` changes, which it correctly
+attributes to other nodes' `sknoded`.
+
+The carve-out was too narrow. `sknoded` also rewrites `node.json` on the same
+cycle, and `skoperator.timer` refreshes `objects/operatorapp/*.json` and service
+specs every 15 minutes. Any of those landing inside a 150-second full-suite run
+fails the assertion. It did:
+
+```
+FAILED tests/fleet/test_drill.py::test_ambient_skfleet_root_is_never_used_as_the_target
+============ 1 failed, 817 passed in 150.23s ============
+$ pytest tests/fleet/test_drill.py -q
+============ 44 passed in 4.64s ============
+```
+
+Same commit, docs-only change, green in isolation. That is a red gate that
+looks exactly like "the drill harness started writing production" and is not,
+which is the specific way a gate stops being a signal.
+
+**Fixed** by forgiving any same-size, mtime-only change rather than enumerating
+filenames. That is strictly stronger where it counts: if the harness ever
+touched production it would **create** paths (a tree plus its `.skfleet-drill`
+marker) or **remove** them (`teardown` is a recursive delete), and any spec it
+wrote would change that file's size, because `write_spec` bumps `generation`
+and rewrites the document. A same-size mtime bump is the one shape the drill
+cannot produce and the one shape other nodes' daemons produce constantly.
+
+Negative-controlled before committing:
+
+```
+mtime-only change (daemon):    forgiven  <- the flake, now silent
+size change (a spec write):    {'b.json': ((200, 1), (201, 2))}
+new path (a drill tree):       {'.skfleet-drill': (None, (50, 1))}
+removed path (a teardown):     {'c.json': ((300, 1), None)}
+```
+
+Worth noting the general shape: this is a test that reads live production state
+on every run. It is the only one in the fleet suite that does, and it is
+load-bearing enough to keep. But it will always be sensitive to fleet activity,
+and anyone touching it should negative-control it rather than just widen it
+until it passes.
+
+---
+
 ## What could not be drilled, and what it would take
 
 **The systemd half.** B1-B4, 2.4, 2.5, 2.7, F1 and F5 are all
