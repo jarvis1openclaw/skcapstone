@@ -7,6 +7,25 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased]
 
+### Added
+- **`skcapstone cmdb`: a CLI over the CMDB.** The CMDB held 48 CIs and had only
+  a dashboard surface, so the only way to see or populate assets was the web
+  UI. It also left the skbrain pack shipping
+  `cronjob-skbrain-cmdb-reconcile.json`, whose command is
+  `sk-cron-run skcapstone cmdb reconcile` -- a verb that did not exist, so the
+  job has never run.
+
+  Six verbs: `list`, `show`, `scan`, `reconcile`, `drift`, `impact`, each read
+  verb taking `--json` so this composes into the operator and Atlas paths
+  instead of only printing for a human. `scan` and `reconcile` are read-only
+  unless `--apply` is passed. Observation is opt-in per host (`--local`,
+  `--host NAME[=ssh-target]`, repeatable) and `scan` says out loud when no
+  runner was given, because a scan that quietly read only specs looks identical
+  to a scan that found a clean fleet.
+
+  Requires the `skcoord.discovery` collectors; an older skcoord gets a message
+  naming the package to upgrade rather than a bare `ImportError`.
+
 ### Fixed
 - **A Syncthing conflict copy silently overrode the real fleet object.**
   `store.list_specs` and `store.list_placements` globbed `*.json`, which also matches
