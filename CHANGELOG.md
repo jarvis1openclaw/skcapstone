@@ -15,6 +15,16 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   the canonical unit was added. Regenerated, no hand-editing. The guard exists
   precisely to catch this, and it did: what it could not do is stop the resulting
   red from making every other pull request's gate unreadable.
+- **The execute-mux idempotency guard compared truthiness where it meant identity,
+  so the code leg was never wired against a mocked dispatcher.**
+  `_maybe_wire_execute_mux` read `if getattr(d, "_is_execute_mux", False)`, and any
+  object with a permissive `__getattr__` satisfies that. `unittest.mock.Mock`
+  auto-creates the attribute as a truthy child mock, so the function returned early
+  and left the existing dispatcher unwrapped. `build_execute_mux` stamps exactly
+  `True`, so the guard now compares with `is True`. This was one of three failures
+  keeping `main` red. A regression test asserts both directions: a truthy-but-not-True
+  marker does NOT count as already-muxed, and a real `True` marker still does, so the
+  fix cannot be mistaken for disabling idempotency.
 
 ### Added
 - **`skfleet seat-audit`: two-seat detection by provenance, not by collision**
