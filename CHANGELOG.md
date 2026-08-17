@@ -27,6 +27,138 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   naming the package to upgrade rather than a bare `ImportError`.
 
 ### Fixed
+- **`admit --preset` silently applied nothing on the GPU node.** `PRESETS` was keyed
+  `node-100`, but `paths.self_node_name()` derives from the hostname and produces
+  `node-ollama`, so the lookup missed and the box got no labels, no role and no
+  taint while the command exited 0. This is the SAME defect that was fixed for the
+  control node (`node-158` to `node-noroc2027`) and it survived that fix because
+  only one of the two address-style keys was rekeyed. Rekeyed to `node-ollama`,
+  with `node-100` kept as an alias so a runbook that says
+  `admit node-100 --preset` still does what it reads like it does.
+  Pinned by tests rather than by care: every live node name must resolve a preset,
+  every legacy spelling must resolve to the same object, and every canonical key
+  must be a name a node can actually have. That last invariant was stated wrongly
+  on the first attempt (it flagged any key ending in digits, which wrongly
+  condemns `node-41`, a real hostname-derived name); the defect was never "looks
+  like an address" but "matches no live node", so the test asserts membership.
+  Negative-controlled: 3 of 8 fail against the old table.
+
+### Fixed
+
+- **The packaged systemd unit tree now includes `skmeter.service`.** The drift
+  guard `test_packaged_tree_matches_canonical` had been red on `main` for five
+  consecutive commits because `scripts/sync-systemd-units.py` was not re-run when
+  the canonical unit was added. Regenerated, no hand-editing. The guard exists
+  precisely to catch this, and it did: what it could not do is stop the resulting
+  red from making every other pull request's gate unreadable.
+- **The execute-mux idempotency guard compared truthiness where it meant identity,
+  so the code leg was never wired against a mocked dispatcher.**
+  `_maybe_wire_execute_mux` read `if getattr(d, "_is_execute_mux", False)`, and any
+  object with a permissive `__getattr__` satisfies that. `unittest.mock.Mock`
+  auto-creates the attribute as a truthy child mock, so the function returned early
+  and left the existing dispatcher unwrapped. `build_execute_mux` stamps exactly
+  `True`, so the guard now compares with `is True`. This was one of three failures
+  keeping `main` red. A regression test asserts both directions: a truthy-but-not-True
+  marker does NOT count as already-muxed, and a real `True` marker still does, so the
+  fix cannot be mistaken for disabling idempotency.
+
+### Added
+- **`skfleet seat-audit`: two-seat detection by provenance, not by collision**
+  (card `4c32df6f`, gap G2). The only existing detector was the Syncthing conflict
+  file, and the drill measured what it actually catches: two seats writing inside
+  one sync interval produce 1 conflict file, but the same two seats with a sync
+  between the writes produce 10 writes and **zero** conflict files. The interleaved
+  case is the likely one (a 368K folder converges in seconds against a 15-minute
+  timer), and the promotion runbook's own advice to wait one full timer cycle names
+  precisely the interval that guarantees no collision is raised. So a quiet conflict
+  directory was being read as evidence of a single writer when it is nothing of the
+  kind. The audit groups every spec by the `writer` block it already carries.
+  Verified against the live store: one operator seat, 39 objects. A discarded
+  conflict copy cannot inflate the count, and objects with no writer block are
+  reported separately rather than counted as clean.
+  Its limit is documented in the module and repeated in `--help`, because it decides
+  how much a clean result is worth: this is CURRENT-STATE only. `write_spec` emits no
+  event, so a second seat that wrote and was later overwritten leaves no trace at all.
+  Closing that needs an event on `write_spec` (card `27aa2d4d`), not a better reader.
+
+- **`skfleet label`, because there was no safe way to change a label.** Labels are
+  what the scheduler actually filters on: `scheduler.feasible` reads them and never
+  reads `spec.role`, so a node's labels decide whether anything can be placed on it.
+  The only tool for changing one was `skfleet apply`, which replaces the whole spec
+  from the document handed to it. During the promotion drill (card `4c32df6f`) a
+  label-only apply silently dropped `taints`, `cordoned` and `address`, un-cordoning
+  the node, and exited 0, so the documented way to fix a label corrupted the spec it
+  was fixing. `skfleet label NODE key=value ... [--remove key]` merges instead:
+  every other spec field survives and the generation bumps by exactly one. Removing
+  an absent key is a silent no-op, so a revert is safe to run twice and safe to run
+  when you do not know how far a promotion got. Setting and unsetting the same key
+  in one call is refused rather than resolved, since either resolution would make
+  the outcome depend on argument order.
+  The promotion runbook's Step 2.2b is now one line instead of a copy-the-whole-
+  document dance. A test asserts the end-to-end property the card is really about:
+  `set-role node-41 control` alone leaves the seat INFEASIBLE for a
+  `control-plane`-selecting workload, and labelling is what makes it schedulable.
+
+### Fixed
+- **The operator seat rewrote 7 unchanged specs every 15 minutes, forever.**
+  `skoperator.timer` refreshes all operatorapp objects on a 15-minute cycle, and
+  `_write_preserving_ratifications` called `write_spec` unconditionally.
+  `write_spec` has no no-op short-circuit of its own, so every refresh bumped the
+  generation and rewrote the file. Measured on the live control node: those objects
+  had reached generation **1674**, and watching one across a tick caught the write
+  directly, generation 1674 to 1675 with a **byte-identical body** (sha
+  `3abb1b3523529136` on both sides). That is roughly **672 no-op writes a day** into
+  `~/.skcapstone`, a Syncthing folder shared to four machines, which is the same
+  shape as the outbox floods.
+  The helper now compares before writing. The guard is deliberately in this caller
+  rather than in `write_spec`: fourteen call sites rely on that primitive bumping
+  the generation, and `set_role`, `set_taint` and `set_labels` each have a test
+  asserting a bump of exactly one, so making the primitive conditional would change
+  all of them to fix one caller. `write_placement` already returns
+  `(existing, False)` on unchanged content, so the store's own precedent for this is
+  per-writer rather than global.
+  Four tests, negative-controlled (two fail against the old code). One covers the
+  subtle case: the helper injects prior ratifications into the spec it compares, so
+  a ratified object has to settle too, rather than differing from the incoming spec
+  on every pass and rewriting forever.
+  Downstream impact was checked rather than assumed and is currently nil:
+  `store.py` flags a status stale when `observedGeneration < generation` and
+  `service_controller` acts on that, but only three live statuses carry
+  `observedGeneration` and all three are `node.json`. Nothing observes operatorapp
+  objects, so the bumps marked nothing stale. That changes the moment anything does.
+
+- **The drill's containment guard could be relocated by the caller** (card `4c32df6f`,
+  gap G0). `drill.sovereign_home()` expanded `~` through `os.path.expanduser`, which
+  prefers the `HOME` environment variable, so the definition of "production" moved
+  whenever `HOME` moved. Drilled: under a rewritten `HOME` the guard computed a
+  different forbidden prefix and ACCEPTED the real production tree as a drill root.
+  No write was performed, but the refusal that is the entire point of the guard did
+  not fire, and 10 of the other 11 refusal probes had passed, so the suite looked
+  healthy. The leading `~` is now expanded against the password database, which the
+  protected process cannot set. Negative-controlled: the new tests fail against the
+  old code and pass against the fix, with a positive control asserting a legitimate
+  scratch root is still accepted, since a guard that refused everything would satisfy
+  the other assertions while being useless.
+
+- **A test asserted the CAB self-approval bypass that skcoord had just closed, and it
+  held `main` red.** skcoord `941570f` ("a raw `status` event can no longer grant CAB
+  approval") stopped `update_change(..., new_status="approved")` from being the thing
+  that grants approval, because `agent` there is free text: without the guard, any
+  caller (the MCP tool and CLI included) could approve its own change around
+  `submit_cab_vote()` and its no-self-approval fold guard.
+  `test_process_one_execute_blocked_once_approved` built its fixture with exactly that
+  shortcut, so it began asserting `approved` against a change the guard correctly left
+  at `proposed`. The guard is right and the test was wrong, so the fixture now reaches
+  approval the way a real CAB approval happens: a `human` APPROVE vote via
+  `submit_cab_vote()`, with a voter that differs from the drafter so the fold's
+  no-self-approval filter keeps it. No test helper force-sets the status, since that
+  would rebuild the bypass inside the suite and leave it unable to notice a regression.
+  A negative control was added alongside (`test_raw_status_event_cannot_grant_cab_approval`)
+  that asserts the raw-status route still folds to `proposed`, so the guard now has a
+  test that fails if it is ever removed. This was the only raw-status approval shortcut
+  in the tree; it kept every open PR inheriting a red on `main`, which is how a red gate
+  stops being a signal.
+
 - **A Syncthing conflict copy silently overrode the real fleet object.**
   `store.list_specs` and `store.list_placements` globbed `*.json`, which also matches
   `<stem>.sync-conflict-<timestamp>-<device>.json`, and both readers key on the `name`
@@ -151,6 +283,13 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   two paths cannot drift apart again.
 
 ### Added
+- **`skfleet install`: profile-aware stack installer (the actuation half of the
+  node-roles-install-profiles epic `3bbf39ea`).** Reads the applied profile from the
+  synced fleet store, reports drift (`--check`), and closes `missing_required`
+  packages/units (`--apply`) by driving the per-repo installers as backends. Freeze +
+  per-node actuation-opt-in gated; only ever adds `missing_required`, never removes;
+  `--json` is the contract the AI/GUI install wizard wraps. `fleet/installer.py` +
+  `fleet/install_backends.py` + the `skfleet install` verb.
 - **Fleet install profiles: a node can now say what it is, and be checked against
   it** (epic `3bbf39ea`, waves 1 and 2). The fleet could already schedule work onto
   nodes; nothing said what a node of a given role was *supposed to have installed*.
