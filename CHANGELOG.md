@@ -25,6 +25,42 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
   Requires the `skcoord.discovery` collectors; an older skcoord gets a message
   naming the package to upgrade rather than a bare `ImportError`.
+### Security
+- **The .100 smoke probe certified cloud-served models as sovereign, because it
+  matched a model NAME** (card `16af7915`). `dot100-inference-smoke.sh` carried
+  `SOVEREIGN_MODELS="ornith qwen llama mxbai beellama"` and matched it as a
+  SUBSTRING against the `model` field of the gateway's response body. Measured
+  against the live gateway ledger (`skgateway/data/metrics.db`, `energy_log`,
+  opened read-only) on 2026-08-17: **76 rows** carry one of those tokens while
+  running on `backend=nvidia`, `basis=imputed_cloud`, including
+  `meta/llama-3.3-70b-instruct`, `nvidia/llama-3.3-nemotron-super-49b-v1` and
+  `qwen3.8-27b-huihui-abliterated-q4_k_m`. Reproduced end to end against a stub
+  gateway: the old probe printed
+  `PASS gateway-sovereignty  sk-default served by meta/llama-3.3-70b-instruct`
+  for a call whose serving backend was `nvidia`. The probe existed to catch
+  silent cloud failover and it was the thing announcing the failover as healthy.
+- **The probe now reads WHO SERVED, from skgateway's own attribution headers**
+  (`x-sk-backend`, `x-sk-energy-basis`, `x-sk-energy-node`), which the gateway
+  already emits for the serving attempt. Sovereignty is a claim about hardware
+  and jurisdiction, so the discriminator is the backend plus the energy basis,
+  never the model name: `ornith-1.0-9b` served by `nvidia` is a violation and
+  the same weights served by `reg:ornith` are not. The weights are not the
+  variable.
+- **One definition, called rather than mirrored.** The rule lives in skharness
+  (`skharness/autocode/sovereignty.py`) and this script shells out to
+  `python3 -m skharness.autocode.sovereignty`. A bash copy of the rule would
+  become a second definition the moment either side was edited, with nothing to
+  report the drift; calling across the seam costs one subprocess and makes
+  drift impossible. Requires the matching skharness change to be installed.
+- **Fails closed, in three distinct states.** `sovereign` passes; `violated`
+  fails naming the backend; `unobserved` (a gateway that emits no attribution)
+  ALSO fails, because unknown is not sovereign and reading "nothing" as a pass
+  is what made the old allowlist look healthy. A classifier that will not run at
+  all is reported as "cannot classify" rather than as a violation: the probe
+  branches on the state word and cross-checks the exit code, since
+  `python3 -m some.missing.module` also exits 1 and an exit-code-only reader
+  would point an operator at the routing when the real problem is the install.
+
 
 ### Fixed
 - **`admit --preset` silently applied nothing on the GPU node.** `PRESETS` was keyed
