@@ -54,6 +54,7 @@ from .benchmark import register_benchmark_commands  # noqa: E402
 from .capabilities_cmd import register_capabilities_commands  # noqa: E402
 from .card import register_card_commands  # noqa: E402
 from .chat import register_chat_commands  # noqa: E402
+from .cmdb import register_cmdb_commands  # noqa: E402
 from .completions import register_completions_commands  # noqa: E402
 from .config_cmd import register_config_commands  # noqa: E402
 from .consciousness import register_consciousness_commands  # noqa: E402
@@ -154,6 +155,7 @@ register_mood_commands(main)
 register_register_commands(main)
 register_gtd_commands(main)
 register_itil_commands(main)
+register_cmdb_commands(main)
 register_skseed_commands(main)
 register_service_commands(main)
 register_telegram_commands(main)
