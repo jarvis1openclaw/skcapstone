@@ -7,6 +7,31 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased]
 
+## [0.15.17] - 2026-08-20
+
+### Added
+
+- Added Pi coding-agent harness integration: the shared agent picker now wraps `pi`,
+  registration installs Pi's managed `AGENTS.md`/context loader, and Pi receives the
+  default `skcapstone` and `skmemory` MCP servers from `~/.skenv/bin`.
+- Added `skcapstone cmdb retire` for append-only, idempotent CI retirement by explicit
+  ID or discovery orphan set. Retirement preserves attributes, relationships, and
+  history instead of deleting records.
+
+### Fixed
+
+- Codex bootstrap now exports the shared SK environment and enables the profile's
+  unrestricted (`SK_CODEX_YOLO=1`) mode by default.
+- Agent resolution no longer silently chooses a named or alphabetically-first identity
+  when several profiles are installed. Explicit environment selection wins; otherwise
+  only a sole installed agent is an acceptable fallback.
+
+### Verification
+
+- `pytest tests/test_doctor.py tests/test_multi_agent.py tests/test_register_paths.py tests/test_register_plugins.py -q`
+- `pytest tests/test_cli_cmdb.py -q`
+- `ruff check` on every changed Python source and test file; `bash -n` on the picker.
+
 ### Added
 - **`skcapstone cmdb`: a CLI over the CMDB.** The CMDB held 48 CIs and had only
   a dashboard surface, so the only way to see or populate assets was the web
