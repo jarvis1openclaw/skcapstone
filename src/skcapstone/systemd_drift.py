@@ -4,6 +4,7 @@ The effective unit returned by ``systemctl --user cat`` includes local drop-ins,
 which are precisely the configuration most likely to make production differ from
 the repository. This module never reloads, enables, starts, or writes units.
 """
+
 from __future__ import annotations
 
 import subprocess
@@ -87,4 +88,3 @@ def audit(source_dir: Path, units: tuple[str, ...]) -> tuple[UnitDrift, ...]:
             continue
         results.append(compare_unit(unit, source.read_text(encoding="utf-8"), effective))
     return tuple(results)
-

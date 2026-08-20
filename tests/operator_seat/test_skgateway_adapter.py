@@ -34,6 +34,5 @@ def test_skgateway_default_probe_failure_is_unknown(monkeypatch):
     st = ad._default_probe()
     assert st["_probe_error"] == "OSError"
     assert all(
-        item["status"] == "Unknown"
-        for item in ad.skgateway_observe(lambda: st)["conditions"]
+        item["status"] == "Unknown" for item in ad.skgateway_observe(lambda: st)["conditions"]
     )

@@ -289,9 +289,7 @@ def schedule_doctor_cmd() -> None:
     from skcapstone import systemd_drift
 
     source = Path(__file__).resolve().parents[3] / "data" / "systemd"
-    results = systemd_drift.audit(
-        source, ("skoperator.service", "skoperator.timer")
-    )
+    results = systemd_drift.audit(source, ("skoperator.service", "skoperator.timer"))
     dirty = False
     for result in results:
         if result.clean:

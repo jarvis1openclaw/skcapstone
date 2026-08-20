@@ -52,9 +52,7 @@ def test_observe_uses_only_verified_complete_fresh_artifact(tmp_path, monkeypatc
     monkeypatch.setattr(Path, "home", classmethod(lambda cls: tmp_path))
     home = tmp_path / ".skcapstone"
     _artifact(home)
-    result = cmdb_adapter.observe(
-        now_iso="2026-08-20T20:00:00Z", manager_factory=_CleanManager
-    )
+    result = cmdb_adapter.observe(now_iso="2026-08-20T20:00:00Z", manager_factory=_CleanManager)
     statuses = {item["type"]: item["status"] for item in result["conditions"]}
     assert statuses == {
         "CmdbReconcileFresh": "True",
@@ -100,13 +98,9 @@ def test_shadow_act_starts_only_the_shadow_oneshot(tmp_path):
         calls.append(argv)
         return True
 
-    result = cmdb_adapter.cmdb_act(
-        FleetPaths(tmp_path), "run-cmdb-shadow", runner=runner
-    )
+    result = cmdb_adapter.cmdb_act(FleetPaths(tmp_path), "run-cmdb-shadow", runner=runner)
     assert result["performed"] is True
-    assert calls == [
-        ["systemctl", "--user", "start", "skcapstone-cmdb-reconcile-shadow.service"]
-    ]
+    assert calls == [["systemctl", "--user", "start", "skcapstone-cmdb-reconcile-shadow.service"]]
 
 
 class _Value:
@@ -241,9 +235,7 @@ def test_apply_starts_distinct_network_unit_after_all_gates(tmp_path):
         manager_factory=_CleanManager,
     )
     assert result["performed"] is True
-    assert calls == [
-        ["systemctl", "--user", "start", "skcapstone-cmdb-reconcile-network.service"]
-    ]
+    assert calls == [["systemctl", "--user", "start", "skcapstone-cmdb-reconcile-network.service"]]
 
 
 def test_apply_rechecks_freeze_immediately_before_start(tmp_path):

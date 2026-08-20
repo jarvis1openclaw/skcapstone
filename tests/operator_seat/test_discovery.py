@@ -294,9 +294,7 @@ def test_partial_skbrain_health_is_not_exposed(tmp_path, on):
         home=tmp_path,
         builtin_ids=frozenset(),
         verified_ids_fn=lambda h: {"skbrain"},
-        runner=lambda *a, **k: {
-            "conditions": [{"type": "OpsSchemaPresent", "status": "True"}]
-        },
+        runner=lambda *a, **k: {"conditions": [{"type": "OpsSchemaPresent", "status": "True"}]},
     )
     assert apps == []
 

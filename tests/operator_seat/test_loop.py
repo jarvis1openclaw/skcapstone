@@ -385,10 +385,15 @@ def test_failed_verification_executes_typed_rollback(tmp_path, monkeypatch):
     result = loop.run_once(
         paths,
         now_iso="2026-08-20T00:00:00Z",
-        propose=lambda _b, _r: [{
-            "app": "demo", "condition": "Ready", "action": "restart",
-            "object": "svc", "rollback": {"action": "restart"},
-        }],
+        propose=lambda _b, _r: [
+            {
+                "app": "demo",
+                "condition": "Ready",
+                "action": "restart",
+                "object": "svc",
+                "rollback": {"action": "restart"},
+            }
+        ],
         explain={"actions": [{"name": "restart", "standard": True, "reversible": True}]},
         apply_fn=lambda _p, _c: {"performed": True},
         rollback_fn=lambda p, c, r: rollbacks.append((p, c, r)) or {"performed": True},

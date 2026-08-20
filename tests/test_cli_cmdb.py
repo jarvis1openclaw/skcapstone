@@ -357,9 +357,11 @@ class _Orchestration:
         return {
             "scan_id": "run-1",
             "reconcile": {
-                "created": [], "updated": {}, "unchanged": [], "orphans": [],
-                "counts": {"created": 0, "updated": 0, "unchanged": 0, "orphans": 0,
-                           "retired": 0},
+                "created": [],
+                "updated": {},
+                "unchanged": [],
+                "orphans": [],
+                "counts": {"created": 0, "updated": 0, "unchanged": 0, "orphans": 0, "retired": 0},
             },
         }, []
 
@@ -400,9 +402,7 @@ def test_network_apply_rejects_incomplete_scan(
     orchestration = _Orchestration(home, complete=False)
     monkeypatch.setattr("skcapstone.cli.cmdb._orchestration", lambda: orchestration)
 
-    result = run(
-        "reconcile", "--network", "--credential", "nor=skvault://cmdb/nor", "--apply"
-    )
+    result = run("reconcile", "--network", "--credential", "nor=skvault://cmdb/nor", "--apply")
 
     assert result.exit_code != 0
     assert "network scan is incomplete" in result.output
@@ -445,8 +445,12 @@ def test_network_apply_runs_scoped_lifecycle_and_persists_artifact(
     )
 
     result = run(
-        "reconcile", "--network", "--credential", "nor=skvault://cmdb/nor",
-        "--apply", "--json",
+        "reconcile",
+        "--network",
+        "--credential",
+        "nor=skvault://cmdb/nor",
+        "--apply",
+        "--json",
     )
 
     assert result.exit_code == 0, result.output
@@ -455,9 +459,7 @@ def test_network_apply_runs_scoped_lifecycle_and_persists_artifact(
     assert (home / "cmdb" / "reconcile-runs" / "run-1.json").is_file()
     assert (home / "cmdb" / "reconcile-runs" / "run-1.sha256").is_file()
     args, kwargs = orchestration.lifecycle_calls[0]
-    assert args[1:6] == (
-        "network:fleet", "a" * 64, ["ci-host-nor"], ["ci-host-old"], True
-    )
+    assert args[1:6] == ("network:fleet", "a" * 64, ["ci-host-nor"], ["ci-host-old"], True)
     assert kwargs["apply"] is True
 
 

@@ -93,8 +93,7 @@ def _decision_id(proposal: dict, now_iso: str, index: int) -> str:
     # maps to the same id every pass, so with park's create-or-skip a standing
     # issue is one decision the human resolves once, not a new one each run.
     seed = "|".join(
-        str(proposal.get(field) or "")
-        for field in ("app", "condition", "object", "action")
+        str(proposal.get(field) or "") for field in ("app", "condition", "object", "action")
     )
     return hashlib.sha1(seed.encode()).hexdigest()[:12]
 
@@ -277,12 +276,14 @@ def _run_once(
         explain,
         target_known=target_known,
         action_allowed=(
-            lambda proposal: _operatorapp_allows(
-                paths, proposal, require_signature=require_signed_catalog
+            (
+                lambda proposal: _operatorapp_allows(
+                    paths, proposal, require_signature=require_signed_catalog
+                )
             )
-        )
-        if require_verified_actions
-        else None,
+            if require_verified_actions
+            else None
+        ),
     )
 
     outcomes: list[dict] = []

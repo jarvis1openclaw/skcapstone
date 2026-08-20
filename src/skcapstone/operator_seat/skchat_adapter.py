@@ -239,9 +239,11 @@ def skchat_observe(probe: Callable[[], dict] | None = None) -> dict:
     st = (probe or _default_probe)()
     depth = int(st.get("outbox_depth", 0))
     limit = int(st.get("outbox_limit", _OUTBOX_LIMIT))
+
     def status(key: str) -> str:
         value = st.get(key)
         return "Unknown" if value is None else _b(bool(value))
+
     return {
         "conditions": [
             {

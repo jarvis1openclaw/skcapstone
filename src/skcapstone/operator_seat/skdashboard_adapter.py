@@ -84,9 +84,8 @@ def _default_probe() -> dict:
     return {
         "dashboard_ready": not (isinstance(status, dict) and status.get("error")),
         "board_readable": not (isinstance(board, dict) and board.get("error")),
-        "_probe_error": bool(
-            isinstance(status, dict) and status.get("_probe_error")
-        ) or bool(isinstance(board, dict) and board.get("_probe_error")),
+        "_probe_error": bool(isinstance(status, dict) and status.get("_probe_error"))
+        or bool(isinstance(board, dict) and board.get("_probe_error")),
     }
 
 

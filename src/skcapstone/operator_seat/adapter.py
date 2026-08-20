@@ -172,11 +172,15 @@ def normalize_observe(
     now = observed_at or datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
     raw = payload if isinstance(payload, Mapping) else {}
     items = raw.get("conditions")
-    by_type = {
-        item.get("type"): item
-        for item in items
-        if isinstance(items, list) and isinstance(item, Mapping) and item.get("type") in schema
-    } if isinstance(items, list) else {}
+    by_type = (
+        {
+            item.get("type"): item
+            for item in items
+            if isinstance(items, list) and isinstance(item, Mapping) and item.get("type") in schema
+        }
+        if isinstance(items, list)
+        else {}
+    )
     conditions: list[dict[str, Any]] = []
     for name, definition in schema.items():
         polarity = definition.get("polarity")
@@ -187,12 +191,16 @@ def normalize_observe(
             raise ValueError(f"invalid ttl_seconds for {name!r}: {ttl!r}")
         candidate = by_type.get(name)
         valid = isinstance(candidate, Mapping) and candidate.get("status") in OBSERVE_STATUSES
-        item = dict(candidate) if valid else {
-            "type": name,
-            "status": "Unknown",
-            "reason": "ProbeUnavailable",
-            "message": "adapter did not provide valid evidence",
-        }
+        item = (
+            dict(candidate)
+            if valid
+            else {
+                "type": name,
+                "status": "Unknown",
+                "reason": "ProbeUnavailable",
+                "message": "adapter did not provide valid evidence",
+            }
+        )
         item.update(
             {
                 "type": name,

@@ -314,9 +314,8 @@ class ActionLedger:
             if event.sequence != len(events):
                 raise ValueError(f"non-contiguous action sequence at line {line_number}")
             expected_previous = events[-1].event_hash if events else None
-            if (
-                event.previous_hash != expected_previous
-                or event.event_hash != self._event_hash(event)
+            if event.previous_hash != expected_previous or event.event_hash != self._event_hash(
+                event
             ):
                 raise ValueError(f"broken action event hash chain at line {line_number}")
             if event.signature is None:

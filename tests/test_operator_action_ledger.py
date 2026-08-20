@@ -143,7 +143,9 @@ def test_signed_events_are_bound_to_authorization_and_verified(tmp_path) -> None
         return hashlib.sha256(secret + data).hexdigest()
 
     ledger = ActionLedger(
-        tmp_path, signer=signer, verifier=lambda data, sig: signer(data) == sig,
+        tmp_path,
+        signer=signer,
+        verifier=lambda data, sig: signer(data) == sig,
         require_signatures=True,
     )
     intent = _intent(authorization_ref="capauth://grant/grant-123")
