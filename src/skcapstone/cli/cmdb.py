@@ -256,6 +256,99 @@ def register_cmdb_commands(main: click.Group) -> None:
             console.print(f"  [{color}]{finding.kind}[/{color}] {finding.ci_id}")
             console.print(f"    [dim]{finding.detail}[/dim]")
 
+    # ── cmdb retire ───────────────────────────────────────────────
+
+    @cmdb.command("retire")
+    @click.argument("ci_ids", nargs=-1)
+    @click.option(
+        "--orphans",
+        is_flag=True,
+        help=(
+            "Retire the scan's orphan CIs (discovered, not seen this pass) "
+            "instead of the given IDs."
+        ),
+    )
+    @click.option("--host", multiple=True, help="Observe a remote node over ssh. Repeatable.")
+    @click.option("--local/--no-local", default=True, help="Observe this machine.")
+    @click.option("--note", default="", help="Note recorded on each retire event.")
+    @click.option("--agent", default="cmdb-retire", help="Writer name for the event log.")
+    @click.option("--json", "as_json", is_flag=True, help="Emit the result as JSON.")
+    def cmdb_retire(ci_ids, orphans, host, local, note, agent, as_json):
+        """Retire CIs: status -> retired. Nothing is ever deleted (CMDB-8).
+
+        The store is append-only, so a CI nobody observes stops being trusted
+        instead of disappearing: `retired` keeps the record (attributes,
+        relationships, history) and reconcile never un-retires a CI, so the
+        next scan cannot resurrect it. Orphans from the last scan can be
+        retired in one pass with --orphans.
+        """
+        mgr = _manager()
+        source = "given"
+
+        if orphans:
+            disc = _discovery()
+            found = disc.scan(Path(SHARED_ROOT).expanduser(), runners=_build_runners(host, local))
+            report = disc.reconcile(mgr, found, agent=agent, apply=False)
+            targets = list(report.orphans)
+            source = "orphans"
+            if not targets:
+                result = {"retired": [], "already_retired": [], "not_found": []}
+                if as_json:
+                    click.echo(_json.dumps(result, indent=2))
+                    return
+                console.print("[green]No orphan CIs to retire.[/green]")
+                return
+        else:
+            if not ci_ids:
+                raise click.ClickException("Give CI IDs to retire, or use --orphans.")
+            targets = list(ci_ids)
+
+        default_note = (
+            "orphan: not seen in scan (retire-not-delete)"
+            if source == "orphans"
+            else "retired by operator (retire-not-delete)"
+        )
+        retired, already, missing = [], [], []
+        for cid in targets:
+            ci = mgr.get_ci(cid)
+            if ci is None:
+                missing.append(cid)
+                continue
+            if ci.status == "retired":
+                already.append(cid)
+                continue
+            mgr.set_status(cid, agent, "retired", note=note or default_note)
+            retired.append(cid)
+
+        if missing and not retired and not already:
+            # Nothing happened: fail loudly, but still emit the payload so an
+            # agent parsing --json sees which IDs were not found.
+            if as_json:
+                click.echo(
+                    _json.dumps(
+                        {"retired": [], "already_retired": [], "not_found": missing},
+                        indent=2,
+                    )
+                )
+            raise click.ClickException(f"No CIs retired; {len(missing)} not found.")
+
+        result = {"retired": retired, "already_retired": already, "not_found": missing}
+        if as_json:
+            click.echo(_json.dumps(result, indent=2))
+            return
+
+        for cid in retired:
+            console.print(f"  [dim]retired[/dim]   {cid}")
+        for cid in already:
+            console.print(f"  [green]kept[/green]    {cid} (already retired)")
+        for cid in missing:
+            console.print(f"  [yellow]missing[/yellow] {cid}")
+        if retired or already:
+            console.print(
+                "\n[dim]Retirement is a status event, not a deletion: the records stay "
+                "and reconcile will never un-retire them.[/dim]"
+            )
+
     # ── cmdb impact ───────────────────────────────────────────────────
 
     @cmdb.command("impact")

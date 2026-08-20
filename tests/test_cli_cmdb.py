@@ -155,6 +155,77 @@ def test_drift_says_out_loud_when_it_observed_nothing(home: Path) -> None:
     assert "drift cannot be measured" in result.output
 
 
+# ── retire (CMDB-8) ──────────────────────────────────────────────────────
+
+
+def test_retire_sets_status_and_is_idempotent(seeded: Path) -> None:
+    """Retirement is a status event, not a deletion: the record stays."""
+    first = run("retire", "ci-service-skgateway", "--json")
+    assert first.exit_code == 0
+    assert json.loads(first.output) == {
+        "retired": ["ci-service-skgateway"],
+        "already_retired": [],
+        "not_found": [],
+    }
+    assert CMDBManager(seeded).get_ci("ci-service-skgateway").status == "retired"
+
+    second = run("retire", "ci-service-skgateway", "--json")
+    assert json.loads(second.output)["already_retired"] == ["ci-service-skgateway"]
+
+    ci = CMDBManager(seeded).get_ci("ci-service-skgateway")
+    assert ci.attributes == {"port": 18991}, "retire must not touch the record"
+
+
+def test_retire_records_the_reason_in_the_event_log(seeded: Path) -> None:
+    run("retire", "ci-service-skgateway", "--note", "ephemeral accretion")
+    events = (seeded / "cmdb" / "ci-service-skgateway" / "events").glob("*.jsonl")
+    status_events = [
+        json.loads(line)
+        for f in events
+        for line in f.read_text().splitlines()
+        if line and json.loads(line).get("action") == "status"
+    ]
+    assert status_events, "the retire must leave a status event"
+    last = status_events[-1]
+    assert last["status"] == "retired"
+    assert last["note"] == "ephemeral accretion"
+
+
+def test_retire_with_no_ids_or_orphans_fails_cleanly(home: Path) -> None:
+    result = run("retire")
+    assert result.exit_code != 0
+    assert "--orphans" in result.output
+
+
+def test_retire_on_a_missing_ci_fails_cleanly(seeded: Path) -> None:
+    result = run("retire", "ci-service-nope", "--json")
+    assert result.exit_code != 0
+    assert "ci-service-nope" in result.output
+
+
+@needs_discovery
+def test_retire_orphans_only_retires_the_unseen(seeded: Path) -> None:
+    """A discovered CI the scan no longer sees is an orphan; retire --orphans
+    takes exactly those, and a CI the scan still sees is left alone."""
+    mgr = CMDBManager(seeded)
+    still_seen = mgr.create_ci("still-up", "service", node="testnode", tags=["discovered"])
+    (seeded / "registry").mkdir(parents=True, exist_ok=True)
+    (seeded / "registry" / "svc.json").write_text(json.dumps({"name": "still-up"}))
+
+    payload = json.loads(run("retire", "--orphans", "--no-local", "--json").output)
+
+    assert payload["retired"] == ["ci-service-skgateway"]
+    assert "ci-service-still-up" not in payload["retired"]
+    assert CMDBManager(seeded).get_ci(still_seen.id).status == "operational"
+
+
+@needs_discovery
+def test_retire_orphans_on_a_clean_fleet_says_so(home: Path) -> None:
+    result = run("retire", "--orphans", "--no-local")
+    assert result.exit_code == 0
+    assert "No orphan CIs" in result.output
+
+
 # ── dependency guard ──────────────────────────────────────────────────────
 
 
