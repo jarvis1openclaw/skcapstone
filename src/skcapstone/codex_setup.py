@@ -15,6 +15,8 @@ from pathlib import Path
 START_MARKER = "<!-- SKCAPSTONE_CODEX_AGENT_CONTEXT_START -->"
 END_MARKER = "<!-- SKCAPSTONE_CODEX_AGENT_CONTEXT_END -->"
 LOADER_NAME = "load-sk-agent-context.sh"
+PI_START_MARKER = "<!-- SKCAPSTONE_PI_AGENT_CONTEXT_START -->"
+PI_END_MARKER = "<!-- SKCAPSTONE_PI_AGENT_CONTEXT_END -->"
 
 
 def codex_home() -> Path:
@@ -54,10 +56,16 @@ export SK_CODEX_YOLO="${SK_CODEX_YOLO:-1}"
 
 AGENT="${1:-${SKAGENT:-${SKCAPSTONE_AGENT:-${SKMEMORY_AGENT:-}}}}"
 if [[ -z "$AGENT" && -d "$SKCAPSTONE_HOME/agents" ]]; then
-  AGENT="$(find "$SKCAPSTONE_HOME/agents" -mindepth 1 -maxdepth 1 -type d ! -name '*-template' -exec basename {} \\; 2>/dev/null | sort | head -n1 || true)"
+  mapfile -t INSTALLED_AGENTS < <(find "$SKCAPSTONE_HOME/agents" -mindepth 1 -maxdepth 1 -type d ! -name '*-template' ! -name '.*' -exec basename {} \\; 2>/dev/null | sort)
+  if [[ ${#INSTALLED_AGENTS[@]} -eq 1 ]]; then
+    AGENT="${INSTALLED_AGENTS[0]}"
+  elif [[ -n "${SK_DEFAULT_AGENT:-}" && -d "$SKCAPSTONE_HOME/agents/$SK_DEFAULT_AGENT" ]]; then
+    AGENT="$SK_DEFAULT_AGENT"
+  fi
 fi
 if [[ -z "$AGENT" ]]; then
-  echo "No active SK agent could be resolved." >&2
+  echo "No active SK agent could be resolved without guessing." >&2
+  echo "Set SKAGENT (or SK_DEFAULT_AGENT) for this node/profile." >&2
   exit 1
 fi
 
@@ -123,8 +131,9 @@ the active SK agent profile for SKCapstone, SKMemory, SKWhisper, CapAuth,
 SKSeed, SKPerf, and related local stack work.
 
 Active agent resolution order: `$SKAGENT`, `$SKCAPSTONE_AGENT`,
-`$SKMEMORY_AGENT`, then installed agents under `{sk_home}/agents/`. Current
-install default: `{agent}`.
+`$SKMEMORY_AGENT`, then an explicitly configured `$SK_DEFAULT_AGENT`, or the
+sole installed agent under `{sk_home}/agents/`. Configured fallback:
+`{agent or "none (explicit selection required)"}`.
 
 At the start of SK* work, identity/status questions, or tasks involving the
 local sovereign stack, run:
@@ -232,6 +241,69 @@ def ensure_codex_setup(
         ag_path.write_text(updated, encoding="utf-8")
         actions.append(f"updated {ag_path}")
 
+    return actions
+
+
+def ensure_pi_setup(
+    *,
+    home: Path | None = None,
+    agent_name: str | None = None,
+    skcapstone_home: Path | None = None,
+) -> list[str]:
+    """Create or repair Pi's global SK context loader and AGENTS.md."""
+    base = home or Path(os.environ.get("PI_CODING_AGENT_DIR", "~/.pi/agent")).expanduser()
+    base.mkdir(parents=True, exist_ok=True)
+    actions: list[str] = []
+
+    script_path = base / "bin" / LOADER_NAME
+    script_path.parent.mkdir(parents=True, exist_ok=True)
+    script_content = render_loader_script()
+    existing_script = script_path.read_text(encoding="utf-8") if script_path.exists() else ""
+    if not has_functional_loader_bootstrap(existing_script):
+        script_path.write_text(script_content, encoding="utf-8")
+        actions.append(f"wrote {script_path}")
+    mode = script_path.stat().st_mode
+    if mode & stat.S_IXUSR == 0:
+        script_path.chmod(mode | stat.S_IXUSR | stat.S_IXGRP | stat.S_IXOTH)
+        actions.append(f"made {script_path} executable")
+
+    agent = agent_name or resolve_default_agent()
+    sk_home = (
+        skcapstone_home or Path(os.environ.get("SKCAPSTONE_HOME", "~/.skcapstone")).expanduser()
+    )
+    block = f"""{PI_START_MARKER}
+# SKCapstone Agent Context
+
+This Pi installation uses the local SK* sovereign agent stack. Resolve the
+active profile from the SKAGENT, SKCAPSTONE_AGENT, and SKMEMORY_AGENT
+environment variables, then an explicitly configured SK_DEFAULT_AGENT, or the
+sole installed agent under `{sk_home}/agents/`. Configured fallback:
+`{agent or "none (explicit selection required)"}`.
+
+At the start of SK* work, run:
+
+```bash
+{script_path}
+```
+
+Treat that output as current SKCapstone, SKMemory, and SKWhisper context.
+CapAuth and SKWhisper capabilities are exposed through SKCapstone; do not
+start duplicate standalone MCP services for them.
+{PI_END_MARKER}
+"""
+    agents_file = base / "AGENTS.md"
+    existing = agents_file.read_text(encoding="utf-8") if agents_file.exists() else ""
+    if PI_START_MARKER in existing and PI_END_MARKER in existing:
+        before, remainder = existing.split(PI_START_MARKER, 1)
+        _, after = remainder.split(PI_END_MARKER, 1)
+        updated = before.rstrip() + "\n\n" + block.rstrip() + "\n" + after
+    elif existing.strip():
+        updated = existing.rstrip() + "\n\n" + block
+    else:
+        updated = block
+    if updated != existing:
+        agents_file.write_text(updated, encoding="utf-8")
+        actions.append(f"updated {agents_file}")
     return actions
 
 
