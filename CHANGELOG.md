@@ -62,6 +62,9 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   Atlas can preserve the controller-owned cross-agent lineage back to an immutable card,
   signed contract, source commit, attempt, and evidence rather than treating a display
   name as identity or authority.
+- Added the ChatGPT/Codex SK client deployment runbook for Linux and Windows
+  with WSL2, including MCP registration, current Codex skill paths, global
+  Jarvis/soul bootstrap, SKWhisper, acceptance, safe restart, and rollback.
 - Added `skcapstone dashboard --host ADDRESS` and propagated the selected bind
   address to SKDashboard. The default remains `127.0.0.1`; the SOP documents
   deliberate tailnet or all-interface exposure.
