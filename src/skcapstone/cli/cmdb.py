@@ -49,6 +49,17 @@ def _discovery():
     return mod
 
 
+def _orchestration():
+    """Import the bounded fleet orchestration shipped by newer skcoord."""
+    try:
+        import skcoord.cmdb_reconcile as mod
+    except ImportError as exc:  # pragma: no cover - installed-version dependent
+        raise click.ClickException(
+            "skcoord.cmdb_reconcile is missing; upgrade skcoord for --network support"
+        ) from exc
+    return mod
+
+
 def _build_runners(hosts: tuple[str, ...], local: bool):
     """Turn --host/--local into runners. No host means no observation."""
     if not local and not hosts:
@@ -192,33 +203,58 @@ def register_cmdb_commands(main: click.Group) -> None:
     @cmdb.command("reconcile")
     @click.option("--host", multiple=True, help="Observe a remote node over ssh. Repeatable.")
     @click.option("--local/--no-local", default=True, help="Observe this machine.")
+    @click.option(
+        "--network",
+        is_flag=True,
+        help="Scan the authoritative fleet target set with bounded concurrency.",
+    )
     @click.option("--apply", is_flag=True, help="Write the changes. Off by default.")
     @click.option("--agent", default="cmdb-discovery", help="Writer name for the event log.")
     @click.option("--json", "as_json", is_flag=True, help="Emit the report as JSON.")
-    def cmdb_reconcile(host, local, apply, agent, as_json):
+    def cmdb_reconcile(host, local, network, apply, agent, as_json):
         """Converge the CMDB on discovered state. Additive: never deletes."""
         disc = _discovery()
         run_scan, run_reconcile = disc.scan, disc.reconcile
 
         mgr = _manager()
-        found = run_scan(Path(SHARED_ROOT).expanduser(), runners=_build_runners(host, local))
-        report = run_reconcile(mgr, found, agent=agent, apply=apply)
+        home = Path(SHARED_ROOT).expanduser()
+        artifact = None
+        if network:
+            if host:
+                raise click.ClickException("--network cannot be combined with --host")
+            orch = _orchestration()
+            targets = orch.resolve_targets(home)
+            if not targets:
+                raise click.ClickException("--network resolved no authoritative fleet targets")
+            scan_result = orch.scan_network(
+                home,
+                targets,
+                lambda target: disc.SSHRunner(host=target, target=target),
+            )
+            artifact, _events = orch.run_reconcile(
+                mgr, scan_result, apply=apply, code_version="skcapstone"
+            )
+            report_data = artifact["reconcile"]
+        else:
+            found = run_scan(home, runners=_build_runners(host, local))
+            report = run_reconcile(mgr, found, agent=agent, apply=apply)
+            report_data = report.as_dict()
 
         if as_json:
-            click.echo(_json.dumps(report.as_dict(), indent=2, default=str))
+            click.echo(_json.dumps(artifact or report_data, indent=2, default=str))
             return
 
         mode = "[green]applied[/green]" if apply else "[yellow]dry run[/yellow]"
         console.print(f"\n[bold]CMDB reconcile[/bold] ({mode})")
-        console.print(f"  created:   {len(report.created)}")
-        console.print(f"  updated:   {len(report.updated)}")
-        console.print(f"  unchanged: {len(report.unchanged)}")
-        console.print(f"  orphans:   {len(report.orphans)}")
-        for ci_id in report.created[:20]:
+        console.print(f"  created:   {len(report_data['created'])}")
+        console.print(f"  updated:   {len(report_data['updated'])}")
+        console.print(f"  unchanged: {len(report_data['unchanged'])}")
+        console.print(f"  orphans:   {len(report_data['orphans'])}")
+        for ci_id in report_data["created"][:20]:
             console.print(f"    [green]+[/green] {ci_id}")
-        for ci_id, keys in list(report.updated.items())[:20]:
+        for ci_id, keys in list(report_data["updated"].items())[:20]:
             console.print(f"    [yellow]~[/yellow] {ci_id}: {', '.join(keys)}")
-        for ci_id in report.orphans[:20]:
+        for ci_id in report_data["orphans"][:20]:
             console.print(f"    [dim]?[/dim] {ci_id} (not seen; left in place)")
         if not apply:
             console.print("\n[dim]Nothing was written. Re-run with --apply.[/dim]")
@@ -353,15 +389,35 @@ def register_cmdb_commands(main: click.Group) -> None:
 
     @cmdb.command("impact")
     @click.argument("ci_id")
+    @click.option("--transitive", is_flag=True, help="Traverse all bounded dependents.")
+    @click.option("--max-depth", default=8, show_default=True, type=click.IntRange(min=0))
+    @click.option("--max-nodes", default=1000, show_default=True, type=click.IntRange(min=1))
     @click.option("--json", "as_json", is_flag=True, help="Emit the analysis as JSON.")
-    def cmdb_impact(ci_id, as_json):
+    def cmdb_impact(ci_id, transitive, max_depth, max_nodes, as_json):
         """What breaks if this CI does, plus its open incidents."""
-        result = _manager().impact_analysis(ci_id)
+        mgr = _manager()
+        result = (
+            mgr.impact_graph(ci_id, max_depth=max_depth, max_nodes=max_nodes)
+            if transitive
+            else mgr.impact_analysis(ci_id)
+        )
         if result.get("error"):
             raise click.ClickException(f"{result['error']}: {ci_id}")
 
         if as_json:
             click.echo(_json.dumps(result, indent=2, default=str))
+            return
+
+        if transitive:
+            console.print(f"\n[bold]Transitive impact: {ci_id}[/bold]")
+            console.print(f"  dependents: {len(result['dependents'])}")
+            console.print(f"  cycles: {len(result['cycles'])}")
+            console.print(f"  truncated: {result['truncated']}")
+            for dep in result["dependents"]:
+                console.print(
+                    f"    d={dep['depth']} [cyan]{dep['rel']}[/cyan] "
+                    f"{dep['ci_type']} {dep['name']}"
+                )
             return
 
         ci = result["ci"]
@@ -374,3 +430,21 @@ def register_cmdb_commands(main: click.Group) -> None:
         console.print(f"  open incidents: {len(incidents)}")
         for inc in incidents:
             console.print(f"    [red]{inc['severity']}[/red] {inc['id']} {inc['title']}")
+
+    @cmdb.command("audit")
+    @click.option("--json", "as_json", is_flag=True, help="Emit findings as JSON.")
+    def cmdb_audit(as_json):
+        """Audit relationship integrity without changing the CMDB."""
+        findings = _manager().audit_relationships()
+        if as_json:
+            click.echo(_json.dumps(findings, indent=2, default=str))
+            return
+        if not findings:
+            console.print("[green]Relationship graph is internally consistent.[/green]")
+            return
+        console.print(f"[yellow]Relationship findings: {len(findings)}[/yellow]")
+        for finding in findings:
+            console.print(
+                f"  {finding['kind']} {finding['source']} "
+                f"--{finding['relationship']}--> {finding['target']}"
+            )
