@@ -13,7 +13,7 @@ class _CleanManager:
     def __init__(self, _home):
         pass
 
-    def audit(self):
+    def audit_relationships(self):
         return []
 
 

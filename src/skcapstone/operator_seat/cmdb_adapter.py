@@ -106,7 +106,7 @@ def observe(paths=None, now_iso: str | None = None, *, manager_factory=None) -> 
             from skcoord.cmdb import CMDBManager
 
             manager_factory = CMDBManager
-        findings = manager_factory(home).audit()
+        findings = manager_factory(home).audit_relationships()
         audit = "True" if not findings else "False"
     except Exception:
         audit = "Unknown"
