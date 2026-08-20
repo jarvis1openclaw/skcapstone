@@ -161,12 +161,13 @@ def register_cmdb_commands(main: click.Group) -> None:
 
     @cmdb_operator.command("act")
     @click.argument("action", type=click.Choice(["run-cmdb-shadow", "apply-cmdb-reconcile"]))
-    def cmdb_operator_act(action):
+    @click.option("--change-id", help="Approved ITIL change binding (required for apply).")
+    def cmdb_operator_act(action, change_id):
         """Start a governed CMDB oneshot (freeze-aware)."""
         from skcapstone.fleet.paths import default_paths
         from skcapstone.operator_seat.cmdb_adapter import cmdb_act
 
-        result = cmdb_act(default_paths(), action)
+        result = cmdb_act(default_paths(), action, change_id=change_id)
         click.echo(_json.dumps(result, indent=2))
         if not result["performed"]:
             raise click.ClickException(result.get("reason", "CMDB action failed"))

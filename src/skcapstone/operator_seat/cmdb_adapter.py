@@ -19,7 +19,7 @@ from ..fleet import actuation, store
 PROBLEM_WHEN_TRUE = frozenset()
 _MAX_ARTIFACT_AGE = timedelta(hours=4)
 _SHADOW_UNIT = "skcapstone-cmdb-reconcile-shadow.service"
-_APPLY_UNIT = "skcapstone-cmdb-reconcile.service"
+_APPLY_UNIT = "skcapstone-cmdb-reconcile-network.service"
 
 _ACTIONS = [
     {
@@ -72,6 +72,76 @@ def _verified_latest_artifact(home: Path) -> dict | None:
     return None
 
 
+def _verified_artifacts(home: Path) -> list[dict]:
+    """Return checksum-valid run artifacts, newest first."""
+    directory = home / "cmdb" / "reconcile-runs"
+    verified: list[tuple[float, dict]] = []
+    for path in directory.glob("*.json"):
+        try:
+            payload = path.read_bytes()
+            expected = path.with_suffix(".sha256").read_text().strip().split()[0]
+            if hashlib.sha256(payload).hexdigest() != expected:
+                continue
+            value = json.loads(payload)
+            if isinstance(value, dict):
+                verified.append((path.stat().st_mtime, value))
+        except (OSError, ValueError, IndexError, json.JSONDecodeError):
+            continue
+    return [value for _, value in sorted(verified, key=lambda item: item[0], reverse=True)]
+
+
+def _apply_gate(
+    home: Path,
+    change_id: str,
+    *,
+    itil_factory=None,
+    manager_factory=None,
+) -> str | None:
+    """Return a refusal reason unless the governed network-apply gate passes."""
+    if not change_id.startswith("chg-"):
+        return "a valid --change-id is required"
+    if itil_factory is None:
+        from skcoord.itil import ITILManager
+
+        itil_factory = ITILManager
+    itil = itil_factory(home)
+    change = next((item for item in itil.list_changes() if item.id == change_id), None)
+    if change is None:
+        return f"unknown ITIL change: {change_id}"
+    if change.status.value not in {"approved", "scheduled"}:
+        return f"ITIL change is {change.status.value}, not approved or scheduled"
+    approvals = [
+        vote
+        for vote in itil.get_cab_votes(change_id)
+        if vote.decision.value == "approved" and vote.agent == "human"
+    ]
+    if not approvals:
+        return "independent authenticated human CAB approval is required"
+
+    artifacts = _verified_artifacts(home)
+    complete = [item for item in artifacts if item.get("completeness", {}).get("complete") is True]
+    if len(complete) < 3:
+        return "three checksum-valid complete shadow artifacts are required"
+    latest = complete[:3]
+    scopes = {item.get("scope_fingerprint") for item in latest}
+    scans = {item.get("scan_id") for item in latest}
+    if None in scopes or "" in scopes or len(scopes) != 1:
+        return "three complete shadow artifacts must have one non-empty scope"
+    if None in scans or "" in scans or len(scans) != 3:
+        return "three distinct complete shadow runs are required"
+
+    try:
+        if manager_factory is None:
+            from skcoord.cmdb import CMDBManager
+
+            manager_factory = CMDBManager
+        if manager_factory(home).audit_relationships():
+            return "CMDB relationship audit is not clean"
+    except Exception:
+        return "CMDB relationship audit could not be verified"
+    return None
+
+
 def _parse_time(value: object) -> datetime | None:
     """Parse one UTC timestamp without accepting naive values."""
     try:
@@ -120,7 +190,16 @@ def observe(paths=None, now_iso: str | None = None, *, manager_factory=None) -> 
     }
 
 
-def cmdb_act(paths, action: str, *, runner: Callable | None = None) -> dict:
+def cmdb_act(
+    paths,
+    action: str,
+    *,
+    change_id: str | None = None,
+    runner: Callable | None = None,
+    itil_factory=None,
+    manager_factory=None,
+    before_start: Callable[[], None] | None = None,
+) -> dict:
     """Start one reviewed CMDB oneshot; freeze always wins.
 
     The apply action exists for human-governed execution but is intentionally
@@ -131,6 +210,23 @@ def cmdb_act(paths, action: str, *, runner: Callable | None = None) -> dict:
     units = {"run-cmdb-shadow": _SHADOW_UNIT, "apply-cmdb-reconcile": _APPLY_UNIT}
     if action not in units:
         raise ValueError(f"unknown CMDB action: {action!r}")
+    if action == "apply-cmdb-reconcile":
+        if not change_id:
+            return {"performed": False, "reason": "--change-id is required", "action": action}
+        home = paths.root.parent if paths.root.name == "fleet" else paths.root
+        refusal = _apply_gate(
+            home,
+            change_id,
+            itil_factory=itil_factory,
+            manager_factory=manager_factory,
+        )
+        if refusal:
+            return {"performed": False, "reason": refusal, "action": action}
+    if before_start is not None:
+        before_start()
+    # Close the check/use window: an operator may freeze while evidence is read.
+    if store.is_frozen(paths):
+        return {"performed": False, "reason": "frozen", "action": action}
     run = runner or actuation.default_runner
     ok = run(["systemctl", "--user", "start", units[action]])
     if hasattr(ok, "returncode"):
