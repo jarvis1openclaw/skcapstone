@@ -48,6 +48,9 @@ set -euo pipefail
 
 export PATH="$HOME/.skenv/bin:$PATH"
 export SKCAPSTONE_HOME="${SKCAPSTONE_HOME:-$HOME/.skcapstone}"
+# SK Codex profiles are autonomous by default. Set SK_CODEX_YOLO=0 before
+# loading the profile to retain Codex approval and sandbox prompts.
+export SK_CODEX_YOLO="${SK_CODEX_YOLO:-1}"
 
 AGENT="${1:-${SKAGENT:-${SKCAPSTONE_AGENT:-${SKMEMORY_AGENT:-}}}}"
 if [[ -z "$AGENT" && -d "$SKCAPSTONE_HOME/agents" ]]; then
@@ -167,6 +170,7 @@ def has_functional_loader_bootstrap(text: str) -> bool:
         "SKAGENT",
         "SKCAPSTONE_AGENT",
         "SKMEMORY_AGENT",
+        "SK_CODEX_YOLO",
         "skcapstone",
         "skmemory",
         "skwhisper",
