@@ -292,7 +292,7 @@ class _Scan:
         self.discovered = [_Discovered()]
 
     def scope_fingerprint(self) -> str:
-        return "scope-v1"
+        return "a" * 64
 
 
 class _Orchestration:
@@ -378,7 +378,7 @@ def test_network_apply_runs_scoped_lifecycle_and_persists_artifact(
     mgr.create_ci(
         "old",
         "host",
-        attributes={"source_authority": "network:ssh", "lifecycle_scope": "scope-v1"},
+        attributes={"source_authority": "network:ssh", "lifecycle_scope": "a" * 64},
         tags=["discovered"],
     )
 
@@ -394,7 +394,7 @@ def test_network_apply_runs_scoped_lifecycle_and_persists_artifact(
     assert (home / "cmdb" / "reconcile-runs" / "run-1.sha256").is_file()
     args, kwargs = orchestration.lifecycle_calls[0]
     assert args[1:6] == (
-        "network:fleet", "scope-v1", ["ci-host-nor"], ["ci-host-old"], True
+        "network:fleet", "a" * 64, ["ci-host-nor"], ["ci-host-old"], True
     )
     assert kwargs["apply"] is True
 
@@ -409,3 +409,38 @@ def test_network_requires_explicit_in_scope_credentials(
 
     assert result.exit_code != 0
     assert "missing --credential mapping" in result.output
+
+
+def test_secure_runner_resolves_only_vault_metadata(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from skcapstone.cli.cmdb import _secure_runner_factory
+
+    identity = tmp_path / "id_ed25519"
+    known_hosts = tmp_path / "known_hosts"
+    identity.write_text("fixture-key-path-only")
+    identity.chmod(0o600)
+    known_hosts.write_text("nor ssh-ed25519 fixture")
+    known_hosts.chmod(0o644)
+
+    class Vault:
+        references = []
+
+        def resolve_ssh(self, reference):
+            self.references.append(reference)
+            return {
+                "username": "ops",
+                "identity_file": str(identity),
+                "known_hosts_file": str(known_hosts),
+            }
+
+    vault = Vault()
+    monkeypatch.setattr("skcapstone.cli.cmdb._vault_transport", lambda: vault)
+    runner = _secure_runner_factory([_Target()], ("nor=skvault://ssh/nor",))("nor")
+    command = runner.command(["uname", "-s"])
+
+    assert vault.references == ["skvault://ssh/nor"]
+    assert "BatchMode=yes" in command
+    assert "StrictHostKeyChecking=yes" in command
+    assert str(identity) in " ".join(command)
+    assert "fixture-key-path-only" not in " ".join(command)
