@@ -218,6 +218,28 @@ never lose the freeze card at any step.
 5. **The freeze is always yours:** `skoperator freeze` halts all actuation
    instantly, at any stage. Atlas cannot lift it.
 
+### CMDB scheduling through Atlas
+
+CMDB operations use the same seat, rather than a privileged AI side channel.
+`skcapstone cmdb operator observe` gives Atlas checksum-verified reconcile
+freshness, scan completeness, and append-only-store audit conditions. The
+regular `skoperator.timer` is the cognitive wake-up: stale or incomplete CMDB
+evidence appears in its brief.
+
+The rollout keeps two bounded oneshots and no independent apply timer:
+
+- `skcapstone-cmdb-reconcile-shadow.service` runs a credentialed network
+  reconcile without `--apply` and retains its artifact plus checksum.
+- `skcapstone-cmdb-reconcile.service` is the apply oneshot. Its operator action
+  is non-standard and irreversible, so it requires a human CAB decision and the
+  three complete, same-scope shadow artifacts before use.
+
+Do not replace a live timer merely because the adapter exists. First restore
+all authoritative targets, collect the three shadow artifacts, ratify only the
+shadow action, and review the exact unit/configuration diff. Timer replacement
+is itself a Normal change with rollback to the prior unit. Atlas records and
+executes that approved intent; it does not own or bypass the freeze card.
+
 ## Status and rollout
 
 - Constitution (guardrails + governance): **live and tested.**

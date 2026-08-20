@@ -18,6 +18,7 @@ from typing import Callable
 
 from ..fleet import operatorapp, store
 from . import (
+    cmdb_adapter,
     skchat_adapter,
     skcode_adapter,
     skcomms_adapter,
@@ -31,6 +32,11 @@ from . import (
 #: home repos. The fleet itself is NOT here: it is the reference the apps plug
 #: into, not an Operatorapp.
 APP_REGISTRY: dict[str, dict] = {
+    "cmdb": {
+        "explain": cmdb_adapter.cmdb_explain,
+        "cli": "skcapstone cmdb operator",
+        "repos": ["skcapstone", "skcoord", "skvault"],
+    },
     "skchat": {
         "explain": skchat_adapter.skchat_explain,
         "cli": "skchat operator",

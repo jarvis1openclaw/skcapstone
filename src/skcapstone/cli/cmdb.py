@@ -141,6 +141,36 @@ def register_cmdb_commands(main: click.Group) -> None:
     def cmdb():
         """CMDB - configuration items, discovery, and drift."""
 
+    @cmdb.group("operator")
+    def cmdb_operator():
+        """ATLAS operator facet: explain, observe, and governed actuation."""
+
+    @cmdb_operator.command("explain")
+    def cmdb_operator_explain():
+        """Describe CMDB conditions and actions to ATLAS."""
+        from skcapstone.operator_seat.cmdb_adapter import cmdb_explain
+
+        click.echo(_json.dumps(cmdb_explain(), indent=2))
+
+    @cmdb_operator.command("observe")
+    def cmdb_operator_observe():
+        """Read CMDB health without changing the store or timers."""
+        from skcapstone.operator_seat.cmdb_adapter import observe
+
+        click.echo(_json.dumps(observe(), indent=2))
+
+    @cmdb_operator.command("act")
+    @click.argument("action", type=click.Choice(["run-cmdb-shadow", "apply-cmdb-reconcile"]))
+    def cmdb_operator_act(action):
+        """Start a governed CMDB oneshot (freeze-aware)."""
+        from skcapstone.fleet.paths import default_paths
+        from skcapstone.operator_seat.cmdb_adapter import cmdb_act
+
+        result = cmdb_act(default_paths(), action)
+        click.echo(_json.dumps(result, indent=2))
+        if not result["performed"]:
+            raise click.ClickException(result.get("reason", "CMDB action failed"))
+
     # ── cmdb list ─────────────────────────────────────────────────────
 
     @cmdb.command("list")

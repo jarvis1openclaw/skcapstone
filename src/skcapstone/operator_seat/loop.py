@@ -18,6 +18,7 @@ from ..fleet.paths import default_paths
 from . import (
     brain,
     brief,
+    cmdb_adapter,
     decisions,
     fleet_adapter,
     plan,
@@ -35,6 +36,7 @@ from . import (
 #: down probe never raises a false alarm.
 ADAPTERS: dict[str, Callable[..., dict]] = {
     "fleet": fleet_adapter.fleet_observe,
+    "cmdb": cmdb_adapter.observe,
     "skchat": skchat_adapter.observe,
     "skcode": skcode_adapter.observe,
     "skcomms": skcomms_adapter.observe,
@@ -47,6 +49,7 @@ ADAPTERS: dict[str, Callable[..., dict]] = {
 #: POLARITY can be collected from the modules that own it.
 _ADAPTER_MODULES = (
     fleet_adapter,
+    cmdb_adapter,
     skchat_adapter,
     skcode_adapter,
     skcomms_adapter,
