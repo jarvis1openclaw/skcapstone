@@ -325,7 +325,9 @@ async def _handle_coord_kanban(_args: dict) -> list[TextContent]:
 
 async def _handle_coord_move(args: dict) -> list[TextContent]:
     """Move a card to a kanban column."""
-    from ..card import CardEvent, CardEventLog, Column
+    from skcoord.lifecycle import transition_task
+
+    from ..card import Column
 
     task_id = args.get("task_id", "")
     column = args.get("column", "")
@@ -334,26 +336,24 @@ async def _handle_coord_move(args: dict) -> list[TextContent]:
     if column not in {c.value for c in Column}:
         return _error_response(f"invalid column '{column}'")
 
-    root = _shared_root()
-    CardEventLog(root).append(
-        CardEvent(
-            card_id=task_id,
-            action="move",
-            column=column,
-            order=args.get("order"),
-            writer=args.get("agent", "") or "",
-        )
-    )
     try:
-        from ..card_store import card_store_write_enabled, mirror_coord_move
-
-        if card_store_write_enabled():
-            mirror_coord_move(
-                root, task_id, column, args.get("agent", "") or "", order=args.get("order")
-            )
-    except Exception:  # noqa: BLE001
-        pass
-    return _json_response({"moved": True, "task_id": task_id, "column": column})
+        receipt = transition_task(
+            _shared_root(),
+            task_id=task_id,
+            column=column,
+            actor=args.get("agent", "") or "coord-move",
+            order=args.get("order"),
+        )
+    except (OSError, RuntimeError, ValueError) as exc:
+        return _error_response(str(exc))
+    return _json_response(
+        {
+            "moved": True,
+            "task_id": task_id,
+            "column": column,
+            "projection_actions": list(receipt.actions),
+        }
+    )
 
 
 # Tools present in this module but intentionally NOT published on the MCP

@@ -81,6 +81,7 @@ from .peer import register_peer_commands  # noqa: E402
 from .peers_dir import register_peers_dir_commands  # noqa: E402
 from .preflight_cmd import register_preflight_commands  # noqa: E402
 from .profile_cmd import register_profile_commands  # noqa: E402
+from .qualification import register_qualification_commands  # noqa: E402
 from .record_cmd import register_record_commands  # noqa: E402
 from .register_cmd import register_register_commands  # noqa: E402
 from .scheduler_cmd import register_scheduler_commands  # noqa: E402
@@ -146,6 +147,7 @@ register_upgrade_commands(main)
 register_test_connection_commands(main)
 register_version_commands(main)
 register_profile_commands(main)
+register_qualification_commands(main)
 register_errors_commands(main)
 register_archive_commands(main)
 register_autopilot_cost_commands(main)

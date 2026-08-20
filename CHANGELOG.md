@@ -12,6 +12,19 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 - Added `skcapstone dashboard --host ADDRESS` and propagated the selected bind
   address to SKDashboard. The default remains `127.0.0.1`; the SOP documents
   deliberate tailnet or all-interface exposure.
+- Added `skcapstone qualify` commands for exact source checkpoints, independent
+  review dispositions, evidence-only completion inventories, durable
+  content-addressed review artifacts, and split exact-Git dependency audits that
+  preserve hash enforcement for registry packages.
+- Added `coord reconcile-agents`, a read-only-by-default audit with explicit,
+  serialized repair receipts for card lifecycle versus mutable agent claims.
+
+### Changed
+
+- `coord move` and the matching MCP tool now use `skcoord` lifecycle transitions so
+  Review stops active execution while preserving accountable ownership, Done clears
+  live claims and records history, and reopen transitions remove stale completion
+  state before returning.
 
 ## [0.15.17] - 2026-08-20
 
