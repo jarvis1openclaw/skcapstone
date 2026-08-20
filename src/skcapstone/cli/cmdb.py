@@ -326,6 +326,7 @@ def register_cmdb_commands(main: click.Group) -> None:
                 apply=apply,
                 code_version="skcapstone",
                 lifecycle_actions=lifecycle_actions,
+                agent=agent,
             )
             if apply:
                 artifact_path, checksum = orch.write_run_artifact(home, artifact)
@@ -403,12 +404,17 @@ def register_cmdb_commands(main: click.Group) -> None:
             "instead of the given IDs."
         ),
     )
+    @click.option(
+        "--confirm-single-pass",
+        is_flag=True,
+        help="Explicitly acknowledge that --orphans bypasses the N-pass network lifecycle.",
+    )
     @click.option("--host", multiple=True, help="Observe a remote node over ssh. Repeatable.")
     @click.option("--local/--no-local", default=True, help="Observe this machine.")
     @click.option("--note", default="", help="Note recorded on each retire event.")
     @click.option("--agent", default="cmdb-retire", help="Writer name for the event log.")
     @click.option("--json", "as_json", is_flag=True, help="Emit the result as JSON.")
-    def cmdb_retire(ci_ids, orphans, host, local, note, agent, as_json):
+    def cmdb_retire(ci_ids, orphans, confirm_single_pass, host, local, note, agent, as_json):
         """Retire CIs: status -> retired. Nothing is ever deleted (CMDB-8).
 
         The store is append-only, so a CI nobody observes stops being trusted
@@ -421,6 +427,12 @@ def register_cmdb_commands(main: click.Group) -> None:
         source = "given"
 
         if orphans:
+            if not confirm_single_pass:
+                raise click.ClickException(
+                    "--orphans is a single-pass compatibility path; add "
+                    "--confirm-single-pass or use `cmdb reconcile --network --apply` "
+                    "for scope-bound N-pass retirement"
+                )
             disc = _discovery()
             found = disc.scan(Path(SHARED_ROOT).expanduser(), runners=_build_runners(host, local))
             report = disc.reconcile(mgr, found, agent=agent, apply=False)

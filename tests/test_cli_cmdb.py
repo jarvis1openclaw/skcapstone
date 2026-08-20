@@ -225,7 +225,9 @@ def test_retire_orphans_only_retires_the_unseen(seeded: Path) -> None:
     (seeded / "registry").mkdir(parents=True, exist_ok=True)
     (seeded / "registry" / "svc.json").write_text(json.dumps({"name": "still-up"}))
 
-    payload = json.loads(run("retire", "--orphans", "--no-local", "--json").output)
+    payload = json.loads(
+        run("retire", "--orphans", "--confirm-single-pass", "--no-local", "--json").output
+    )
 
     assert payload["retired"] == ["ci-service-skgateway"]
     assert "ci-service-still-up" not in payload["retired"]
@@ -234,7 +236,7 @@ def test_retire_orphans_only_retires_the_unseen(seeded: Path) -> None:
 
 @needs_discovery
 def test_retire_orphans_on_a_clean_fleet_says_so(home: Path) -> None:
-    result = run("retire", "--orphans", "--no-local")
+    result = run("retire", "--orphans", "--confirm-single-pass", "--no-local")
     assert result.exit_code == 0
     assert "No orphan CIs" in result.output
 
