@@ -343,9 +343,14 @@ def register_cmdb_commands(main: click.Group) -> None:
         help="Explicit skvault SSH credential reference. Repeat for every network target.",
     )
     @click.option("--apply", is_flag=True, help="Write the changes. Off by default.")
+    @click.option(
+        "--record-run",
+        is_flag=True,
+        help="Persist the checksummed run artifact even in dry-run/shadow mode.",
+    )
     @click.option("--agent", default="cmdb-discovery", help="Writer name for the event log.")
     @click.option("--json", "as_json", is_flag=True, help="Emit the report as JSON.")
-    def cmdb_reconcile(host, local, network, credentials, apply, agent, as_json):
+    def cmdb_reconcile(host, local, network, credentials, apply, record_run, agent, as_json):
         """Converge the CMDB on discovered state. Additive: never deletes."""
         disc = _discovery()
         run_scan, run_reconcile = disc.scan, disc.reconcile
@@ -397,7 +402,7 @@ def register_cmdb_commands(main: click.Group) -> None:
                 lifecycle_actions=lifecycle_actions,
                 agent=agent,
             )
-            if apply:
+            if apply or record_run:
                 artifact_path, checksum = orch.write_run_artifact(home, artifact)
                 artifact["artifact"] = {
                     "path": str(artifact_path),

@@ -410,6 +410,27 @@ def test_network_apply_rejects_incomplete_scan(
     assert not (home / "cmdb" / "reconcile-runs").exists()
 
 
+def test_network_shadow_can_persist_checksummed_artifact(
+    home: Path, monkeypatch: pytest.MonkeyPatch, secure_runner
+) -> None:
+    orchestration = _Orchestration(home, complete=True)
+    monkeypatch.setattr("skcapstone.cli.cmdb._orchestration", lambda: orchestration)
+
+    result = run(
+        "reconcile",
+        "--network",
+        "--credential",
+        "nor=skvault://cmdb/nor",
+        "--record-run",
+        "--json",
+    )
+
+    assert result.exit_code == 0
+    assert (home / "cmdb" / "reconcile-runs" / "run-1.json").is_file()
+    assert (home / "cmdb" / "reconcile-runs" / "run-1.sha256").is_file()
+    assert orchestration.lifecycle_calls[0][1]["apply"] is False
+
+
 def test_network_apply_runs_scoped_lifecycle_and_persists_artifact(
     home: Path, monkeypatch: pytest.MonkeyPatch, secure_runner
 ) -> None:
