@@ -252,12 +252,18 @@ def _run_once(
                 outcome = "verified" if require_verified_actions else "applied"
             except Exception as exc:
                 if execution_state is not None and attempt_started:
-                    execution_state.record(
-                        safety.action_fingerprint(prop),
-                        time.time(),
-                        success=False,
-                        reason=str(exc),
-                    )
+                    try:
+                        execution_state.record(
+                            safety.action_fingerprint(prop),
+                            time.time(),
+                            success=False,
+                            reason=str(exc),
+                        )
+                    except Exception as state_exc:
+                        # Persistence is a safety control, so its failure keeps
+                        # the action failed, but must not hide later proposals
+                        # or prevent the human escalation from being parked.
+                        exc = RuntimeError(f"{exc}; state persistence failed: {state_exc}")
                 if decisions_dir is not None:
                     decisions.park(
                         decisions_dir,
