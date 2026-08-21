@@ -318,6 +318,31 @@ done
 ```
 Verify a template edit before deploy with `systemd-analyze verify systemd/skcapstone@.service`.
 
+**Governed CMDB network apply.** ATLAS owns the cognitive scheduling and CAB
+workflow; it does not receive a generic privileged shell. The write-free shadow
+unit and the apply unit are deliberately distinct. The packaged apply unit is
+`src/skcapstone/data/systemd/skcapstone-cmdb-reconcile-network.service`; its
+`ConditionPathExists` gate requires an owner-reviewed launcher at
+`~/.config/skcapstone/cmdb-network-apply`. The launcher is mode `0700`, contains
+only exact fleet targets and `skvault://` references, and ends in:
+
+```bash
+exec "$HOME/.skenv/bin/skcapstone" cmdb reconcile --network --apply --record-run \
+  --credential HOST=skvault://REFERENCE  # repeated for every exact target
+```
+
+Never put credential values in the launcher, unit, change record, or artifact.
+Before start, `skcapstone cmdb operator act apply-cmdb-reconcile --change-id ID`
+rechecks: canonical approved/scheduled ITIL state, authenticated human CAB
+provenance, three distinct checksum-valid complete same-scope shadows, clean
+relationship audit, and freeze immediately before actuation. The legacy
+`skcapstone-cmdb-reconcile.service` runs `--local --apply`; it is rollback-only
+during cutover and is not an ATLAS apply target. Deploy the network unit from a
+tagged GitHub checkout, run `systemd-analyze verify`, copy it to the user-unit
+directory, reload, and compare `systemctl --user cat` with the tagged source.
+Do not disable the legacy timer until the governed network oneshot succeeds and
+its artifact/audit readback is accepted.
+
 > **Gotcha (orphan/stale pidfile).** `~/.skcapstone/daemon.pid` (per-agent home) is the
 > liveness source `read_pid` / `is_running` read. A hard-killed daemon (or an OOM-kill
 > before the exponential backoff catches it) can leave a stale PID whose number was

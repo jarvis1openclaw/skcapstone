@@ -7,6 +7,13 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased]
 
+### Fixed
+
+- Restored the packaged `skcapstone-cmdb-reconcile-network.service` contract
+  used by ATLAS for governed credentialed CMDB applies. The unit fails closed
+  unless the owner-reviewed exact-target/SKVault launcher exists; the legacy
+  local-only reconcile service is no longer misdocumented as the ATLAS target.
+
 ### Added
 
 - Added `skcapstone dashboard --host ADDRESS` and propagated the selected bind

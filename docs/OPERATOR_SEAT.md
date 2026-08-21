@@ -230,9 +230,16 @@ The rollout keeps two bounded oneshots and no independent apply timer:
 
 - `skcapstone-cmdb-reconcile-shadow.service` runs a credentialed network
   reconcile without `--apply` and retains its artifact plus checksum.
-- `skcapstone-cmdb-reconcile.service` is the apply oneshot. Its operator action
+- `skcapstone-cmdb-reconcile-network.service` is the credentialed apply
+  oneshot. Its operator action
   is non-standard and irreversible, so it requires a human CAB decision and the
   three complete, same-scope shadow artifacts before use.
+
+The legacy `skcapstone-cmdb-reconcile.service` is local-only and must never be
+used as the target of `apply-cmdb-reconcile`. The network unit fails closed
+unless `%h/.config/skcapstone/cmdb-network-apply` exists. That owner-reviewed,
+mode-`0700` launcher contains exact targets and `skvault://` references (not
+secret values), and invokes `cmdb reconcile --network --apply --record-run`.
 
 Do not replace a live timer merely because the adapter exists. First restore
 all authoritative targets, collect the three shadow artifacts, ratify only the
