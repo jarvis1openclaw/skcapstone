@@ -9,10 +9,10 @@ edit is reversible by re-applying and the original stays visible in
 - ``reprioritize`` rides the existing ``set_priority`` overlay action, which
   both folds (legacy ``fold_overlay`` and the CardStore fold via
   ``load_legacy_mutations``) already understand.
-- ``amend_criteria`` has no fold action upstream (the fold lives in the
-  skcoord package), so the event is appended to the card's own store log and
-  folded skcapstone-side by :func:`current_acceptance_criteria`. The
-  upstream fold ignores the unknown action harmlessly.
+- ``amend_criteria`` is appended to the card's own store log. The required
+  ``skcoord>=0.1.18`` fold applies it to both ``CardStore.fold`` and
+  ``Board.get_task_views``; :func:`current_acceptance_criteria` delegates to
+  that authoritative fold.
 - ``void_card`` (card 325a737f) kills a mistakenly created card without
   completing it: a ``void`` audit event plus the archive mechanism, so no
   Joules are minted and the changelog stays clean.
@@ -92,11 +92,10 @@ def _base_acceptance_criteria(home: Path, task_id: str) -> list[str]:
 
 
 def current_acceptance_criteria(home: Path, task_id: str) -> list[str]:
-    """Fold a card's acceptance criteria: birth facts plus amendments.
+    """Return a card's acceptance criteria from the authoritative store fold.
 
-    The base list comes from the immutable ``core.json`` (falling back to
-    the legacy task file for cards never mirrored into the store); every
-    ``amend_criteria`` event then replaces it, latest event winning.
+    Cards mirrored into the store delegate directly to ``CardStore.fold``.
+    Cards without a store core fall back to the legacy task birth facts.
 
     Args:
         home: Shared skcapstone root (``~/.skcapstone``).
@@ -106,11 +105,10 @@ def current_acceptance_criteria(home: Path, task_id: str) -> list[str]:
         list[str]: The current (amended) acceptance criteria.
     """
     home = Path(home).expanduser()
-    criteria = _base_acceptance_criteria(home, task_id)
-    for event in CardStore(home)._read_events(task_id):
-        if event.get("action") == "amend_criteria" and isinstance(event.get("criteria"), list):
-            criteria = list(event["criteria"])
-    return criteria
+    card = CardStore(home).fold(task_id)
+    if card is not None:
+        return list(card.acceptance_criteria)
+    return _base_acceptance_criteria(home, task_id)
 
 
 def void_record(home: Path, task_id: str) -> dict | None:

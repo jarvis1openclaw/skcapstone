@@ -52,6 +52,9 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ### Changed
 
+- Raised the `skcoord` runtime floor to 0.1.18, delegated acceptance-criteria
+  reads to the authoritative `CardStore.fold`, and added a registry-only CI
+  gate that enforces the `skcoord`-first release order.
 - `coord move` and the matching MCP tool now use `skcoord` lifecycle transitions so
   Review stops active execution while preserving accountable ownership, Done clears
   live claims and records history, and reopen transitions remove stale completion
