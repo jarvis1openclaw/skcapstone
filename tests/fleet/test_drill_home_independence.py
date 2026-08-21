@@ -23,20 +23,20 @@ from skcapstone.fleet import drill
 PRODUCTION = Path(pwd.getpwuid(os.getuid()).pw_dir) / ".skcapstone" / "fleet"
 
 
-def test_sovereign_home_ignores_a_rewritten_HOME(tmp_path, monkeypatch) -> None:
+def test_sovereign_home_ignores_a_rewritten_home(tmp_path, monkeypatch) -> None:
     before = drill.sovereign_home()
     monkeypatch.setenv("HOME", str(tmp_path / "fake-home"))
     assert drill.sovereign_home() == before, "the forbidden prefix moved with $HOME"
 
 
-def test_production_is_still_refused_under_a_rewritten_HOME(tmp_path, monkeypatch) -> None:
+def test_production_is_still_refused_under_a_rewritten_home(tmp_path, monkeypatch) -> None:
     """The load-bearing case: this is the probe that did not fire in the drill."""
     monkeypatch.setenv("HOME", str(tmp_path / "fake-home"))
     with pytest.raises(drill.UnsafeDrillRootError):
         drill.resolve_drill_root(PRODUCTION)
 
 
-def test_production_is_refused_with_HOME_unset(monkeypatch) -> None:
+def test_production_is_refused_with_home_unset(monkeypatch) -> None:
     """Deleting HOME entirely must not disarm the guard either."""
     monkeypatch.delenv("HOME", raising=False)
     with pytest.raises(drill.UnsafeDrillRootError):
@@ -54,7 +54,7 @@ def test_a_genuine_scratch_root_is_still_accepted(tmp_path, monkeypatch) -> None
     assert drill.resolve_drill_root(scratch) == scratch.resolve()
 
 
-def test_the_sovereign_home_itself_is_refused_under_a_rewritten_HOME(
+def test_the_sovereign_home_itself_is_refused_under_a_rewritten_home(
     tmp_path, monkeypatch
 ) -> None:
     monkeypatch.setenv("HOME", str(tmp_path / "fake-home"))

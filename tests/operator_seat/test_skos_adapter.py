@@ -170,7 +170,7 @@ def test_digest_age_prefers_window_over_mtime():
     assert ad._digest_age_s(ad._read_digest()) > 26 * 3600
 
 
-def test_digest_age_reads_the_REAL_wire_window_shape():
+def test_digest_age_reads_the_real_wire_window_shape():
     """The regression that made the window preference dead code in production.
 
     `skos.watchdog.port.Window` names its attribute `until`, but
