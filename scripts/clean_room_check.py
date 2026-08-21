@@ -35,6 +35,9 @@ CHECK_TIMEOUT_SECONDS = 900.0
 TERMINATE_GRACE_SECONDS = 15.0
 KILL_GRACE_SECONDS = 10.0
 PROGRESS_INTERVAL_SECONDS = 30.0
+SOURCE_TIMEOUT_SECONDS = 60.0
+SOURCE_TERMINATE_GRACE_SECONDS = 5.0
+SOURCE_KILL_GRACE_SECONDS = 5.0
 CONTAINMENT_BIND_SECONDS = 5.0
 SYSTEM_PATH = "/usr/bin"
 TRUSTED_PATH_DIRECTORIES = (Path("/usr/bin"),)
@@ -168,6 +171,7 @@ class SourceRunner(Protocol):
         check: bool,
         capture_output: bool,
         pass_fds: tuple[int, ...],
+        timeout: float,
     ) -> subprocess.CompletedProcess[bytes]: ...
 
 
@@ -310,6 +314,28 @@ def _phase(
     )
 
 
+def _terminate_source_process(process: subprocess.Popen[bytes]) -> None:
+    """Escalate a hung allowlist process group from TERM to a bounded KILL."""
+
+    try:
+        os.killpg(process.pid, signal.SIGTERM)
+    except (OSError, ProcessLookupError):
+        pass
+    try:
+        process.communicate(timeout=SOURCE_TERMINATE_GRACE_SECONDS)
+        return
+    except subprocess.TimeoutExpired:
+        pass
+    try:
+        os.killpg(process.pid, signal.SIGKILL)
+    except (OSError, ProcessLookupError):
+        pass
+    try:
+        process.communicate(timeout=SOURCE_KILL_GRACE_SECONDS)
+    except subprocess.TimeoutExpired:
+        raise CleanRoomError("source_allowlist_cleanup_failed") from None
+
+
 def _run_source_command(
     argv: list[str],
     *,
@@ -318,15 +344,31 @@ def _run_source_command(
     check: bool,
     capture_output: bool,
     pass_fds: tuple[int, ...],
+    timeout: float,
 ) -> subprocess.CompletedProcess[bytes]:
-    return subprocess.run(
+    process = subprocess.Popen(
         argv,
         cwd=cwd,
         env=env,
-        check=check,
-        capture_output=capture_output,
+        stdout=subprocess.PIPE if capture_output else None,
+        stderr=subprocess.PIPE if capture_output else None,
         pass_fds=pass_fds,
+        start_new_session=True,
     )
+    try:
+        stdout, stderr = process.communicate(timeout=timeout)
+    except subprocess.TimeoutExpired:
+        _terminate_source_process(process)
+        raise CleanRoomTimeout("source_allowlist_timeout") from None
+    completed = subprocess.CompletedProcess(argv, process.returncode, stdout, stderr)
+    if check and completed.returncode:
+        raise subprocess.CalledProcessError(
+            completed.returncode,
+            argv,
+            output=completed.stdout,
+            stderr=completed.stderr,
+        )
+    return completed
 
 
 def _start_process(
@@ -463,12 +505,18 @@ def _validate_scratch_override(raw: str, *, repo_root: Path) -> Path:
         anchors.append(runtime)
     if resolved not in anchors:
         raise CleanRoomError("scratch_root_must_be_exact_anchor")
-    repository = repo_root.resolve(strict=True)
-    if resolved in {repository, *repository.parents} or _is_relative_to(
-        resolved, repository.parent
-    ):
+    if _scratch_overlaps_repository(resolved, repo_root=repo_root):
         raise CleanRoomError("scratch_root_overlaps_repository")
     return resolved
+
+
+def _scratch_overlaps_repository(scratch_root: Path, *, repo_root: Path) -> bool:
+    """Return whether scratch could stage beside or inside the source tree."""
+
+    repository = repo_root.resolve(strict=True)
+    return scratch_root in {repository, *repository.parents} or _is_relative_to(
+        scratch_root, repository.parent
+    )
 
 
 def resolve_scratch_root(
@@ -484,12 +532,20 @@ def resolve_scratch_root(
 
     runtime = _runtime_anchor()
     expected_runtime = f"/run/user/{os.geteuid()}"
-    if runtime is not None and environment.get("XDG_RUNTIME_DIR") in {
-        None,
-        expected_runtime,
-    }:
+    if (
+        runtime is not None
+        and environment.get("XDG_RUNTIME_DIR")
+        in {
+            None,
+            expected_runtime,
+        }
+        and not _scratch_overlaps_repository(runtime, repo_root=repo_root)
+    ):
         return runtime
-    return _tmp_anchor()
+    temporary = _tmp_anchor()
+    if _scratch_overlaps_repository(temporary, repo_root=repo_root):
+        raise CleanRoomError("scratch_root_overlaps_repository")
+    return temporary
 
 
 def _validate_cache_root(path: Path, *, reason: str) -> Path:
@@ -551,6 +607,7 @@ def source_files(
     repo_root: Path = REPO_ROOT,
     runner: SourceRunner = _run_source_command,
     repo_root_fd: int | None = None,
+    timeout: float = SOURCE_TIMEOUT_SECONDS,
 ) -> list[Path]:
     """Return the current Git-eligible source allowlist."""
 
@@ -584,6 +641,7 @@ def source_files(
             check=True,
             capture_output=True,
             pass_fds=(descriptor,),
+            timeout=timeout,
         )
         _ensure_directory_identity(
             repo_root,
@@ -3692,6 +3750,7 @@ def run(
     terminate_grace: float = TERMINATE_GRACE_SECONDS,
     kill_grace: float = KILL_GRACE_SECONDS,
     progress_interval: float = PROGRESS_INTERVAL_SECONDS,
+    source_timeout: float = SOURCE_TIMEOUT_SECONDS,
     clock: Callable[[], float] = time.monotonic,
     emit: Callable[[dict[str, object]], None] = emit_event,
 ) -> CleanRoomReceipt:
@@ -3742,6 +3801,7 @@ def run(
             terminate_grace,
             kill_grace,
             progress_interval,
+            source_timeout,
         )
         if any(not math.isfinite(value) or value <= 0 for value in durations):
             raise CleanRoomError("invalid_timeout_configuration")
@@ -3769,6 +3829,7 @@ def run(
             repo_root=source_root,
             runner=source_runner,
             repo_root_fd=source_root_fd,
+            timeout=source_timeout,
         )
         file_count = len(files)
         phase("source-allowlist")

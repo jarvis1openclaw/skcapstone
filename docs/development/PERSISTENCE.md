@@ -251,8 +251,10 @@ Three PostgreSQL role classes exist:
   functions. It is provisioned by `scripts/provision_postgres_runtime.py`
   before migration, because the migrator role cannot create roles. It holds
   the same least-privilege attribute profile, owns no objects, and
-  participates in no role graph. Its reconciliation with the per-principal
-  login model is a Sprint 3 architecture decision (board card S3-08).
+  participates in no role graph. The proposed Sprint 3 scaling decision is
+  recorded in `docs/architecture/POSTGRES-PRINCIPAL-SCALING.md` and its
+  pending approval record. Until that amendment is approved and implemented,
+  the per-principal `session_user` binding above remains authoritative.
 
 Direct connections use libpq environment configuration, `PGSERVICE`, or a
 `.pgpass` file. A database URL is never accepted on the command line, keeping

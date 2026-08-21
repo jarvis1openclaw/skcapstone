@@ -1,7 +1,7 @@
 # Liberty Auto Plaza pilot migration technical design
 
 Date: 2026-08-19  
-Status: Proposed  
+Status: Approved, retrieval projection wording amended 2026-08-21
 Source matter: `PRB-2026-009`  
 Source event: `INC-016`  
 Source path: `/mnt/cloud/onedrive/projects/DAVE AI/hammerTime/incidents/problems/liberty-auto-plaza-libertyville-nissan-purchase-order`
@@ -154,7 +154,7 @@ Requirements:
 - changed source content creates a new source version and a new proposed mapping revision
 - no imported target silently overwrites a human-reviewed target
 - import batches can be compared and superseded
-- derived Qdrant or graph projection work uses the committed target version as its idempotency input
+- derived full-text, vector, or graph projection work uses the committed target version as its idempotency input
 
 ## 8. Read-only demo slice
 
@@ -275,4 +275,3 @@ The pilot passes only when:
 - no approval or execution state is advanced
 - one Qwen proposal completes through CapAuth, source validation, and human review
 - the complete run can be replayed from pinned evidence
-

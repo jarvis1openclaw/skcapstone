@@ -29,6 +29,8 @@ NUMBER_WORDS = {
 PERSISTENCE_DOC = ROOT / "docs/development/PERSISTENCE.md"
 CAPAUTH_DOC = ROOT / "docs/development/CAPAUTH.md"
 APPROVAL_DOC = ROOT / "docs/approval/ARCHITECTURE-APPROVAL.md"
+SCALING_DOC = ROOT / "docs/architecture/POSTGRES-PRINCIPAL-SCALING.md"
+SCALING_AMENDMENT = ROOT / "docs/approval/AMENDMENT-SKL-S3-08.md"
 MANIFEST = ROOT / "migrations/manifest.json"
 
 
@@ -75,11 +77,35 @@ class DevelopmentContractTests(unittest.TestCase):
                 self.assertIn(token, rollback)
 
     def test_repaired_docs_use_ascii_dashes_only(self) -> None:
-        for path in (PERSISTENCE_DOC, CAPAUTH_DOC, APPROVAL_DOC):
+        for path in (
+            PERSISTENCE_DOC,
+            CAPAUTH_DOC,
+            APPROVAL_DOC,
+            SCALING_DOC,
+            SCALING_AMENDMENT,
+        ):
             with self.subTest(doc=path.name):
                 text = path.read_text(encoding="utf-8")
                 self.assertNotIn("\u2014", text)  # em dash
                 self.assertNotIn("\u2013", text)  # en dash
+
+    def test_principal_scaling_decision_fails_closed_and_is_human_gated(self) -> None:
+        decision = SCALING_DOC.read_text(encoding="utf-8")
+        amendment = SCALING_AMENDMENT.read_text(encoding="utf-8")
+        normalized_decision = " ".join(decision.split())
+        for required in (
+            "database-owned authorization-context lease",
+            "caller-set PostgreSQL variable",
+            "atomically consumes the lease",
+            "transaction ID",
+            "NOBYPASSRLS",
+            "cross-Tenant and cross-Matter denial",
+            "existing per-principal `session_user` contract remains authoritative",
+        ):
+            with self.subTest(required=required):
+                self.assertIn(required, normalized_decision)
+        self.assertIn("Status: proposed, pending human approval", amendment)
+        self.assertIn("No hash-pinned approved document was modified", amendment)
 
 
 if __name__ == "__main__":

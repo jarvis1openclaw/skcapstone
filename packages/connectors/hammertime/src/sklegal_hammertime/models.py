@@ -172,6 +172,7 @@ class ResolvedRelease(FrozenValue):
     preserved verbatim in ``drift`` instead of being silently harmonized.
     """
 
+    aliases_pin: SnapshotPin
     alias: RuntimeAlias
     manifest: ReleaseManifest
     drift: list[ShortText]
@@ -242,6 +243,7 @@ class MatterAccessRequest(FrozenValue):
 
     legacy_id: LegacyRecordId
     record_kind: LegacyRecordKind
+    parent_legacy_id: LegacyRecordId | None = None
     relative_path: RelativePosixPath | None = None
 
 
@@ -249,10 +251,22 @@ MatterAuthorizer = Callable[[MatterAccessRequest], bool]
 """Returns True only when the caller may read the exact matter record."""
 
 
+class LegacyPathResolution(FrozenValue):
+    """Authorized, snapshot-pinned resolution of one legacy record path."""
+
+    pin: SnapshotPin
+    registry_pin: SnapshotPin
+    record_kind: LegacyRecordKind
+    legacy_id: LegacyRecordId
+    relative_path: RelativePosixPath
+    parent_legacy_id: LegacyRecordId | None = None
+
+
 class LegacyMatterRecord(FrozenValue):
     """One legacy matter container or activity record, pinned and lossless."""
 
     pin: SnapshotPin
+    registry_pin: SnapshotPin
     record_kind: LegacyRecordKind
     legacy_id: LegacyRecordId
     slug: LegacySlug
@@ -293,7 +307,14 @@ class PacketReference(FrozenValue):
     packet_version: int = Field(ge=1)
     facts_pin: SnapshotPin
     facts: dict[str, Any]
-    review_path: RelativePosixPath | None = None
+    review_pin: SnapshotPin | None = None
+
+    @property
+    def review_path(self) -> RelativePosixPath | None:
+        """Compatibility view derived only from a pinned review artifact."""
+        if self.review_pin is None:
+            return None
+        return self.review_pin.relative_path
 
 
 def mapping_of(value: Mapping[str, Any]) -> dict[str, Any]:

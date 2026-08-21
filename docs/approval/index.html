@@ -275,7 +275,7 @@
   <div class="shell">
     <header class="topbar">
       <div class="brand"><div class="mark">SK</div><span>SKLegal</span></div>
-      <div class="status-pill"><span class="status-dot"></span> Awaiting architecture approval</div>
+      <div class="status-pill"><span class="status-dot"></span> Architecture approved, retrieval amended</div>
     </header>
 
     <main>
@@ -289,7 +289,7 @@
           <h2>Approval snapshot</h2>
           <div class="metric"><strong>1</strong><span>pilot matter<br>before broad migration</span></div>
           <div class="metric"><strong>6</strong><span>sequential<br>evidence-gated sprints</span></div>
-          <div class="metric"><strong>32</strong><span>detailed<br>task designs</span></div>
+          <div class="metric"><strong>33</strong><span>detailed<br>task designs</span></div>
           <div class="metric"><strong>0</strong><span>implementation agents<br>before approval</span></div>
         </aside>
       </div>
@@ -309,7 +309,7 @@
       <section id="decisions">
         <div class="section-head">
           <h2>Decisions already made</h2>
-          <p>This proposal incorporates the confirmed product direction. The approval gate is about whether the architecture faithfully implements these decisions, not reopening the product name or basic stack.</p>
+          <p>This approved design incorporates the confirmed product direction. The retrieval data plane was amended on 2026-08-21 to use separate local core and retrieval PostgreSQL clusters.</p>
         </div>
         <div class="grid grid-3">
           <article class="card decision"><div class="kicker">Product</div><h3>SKLegal</h3><p>A local-first law-firm application with a React frontend, proper legal terminology, and GPLv3 licensing.</p></article>
@@ -330,19 +330,19 @@
           <div class="node primary"><b>SKLegal Web</b><small>React, TypeScript, matter-centered UX</small></div>
           <div class="node primary"><b>FastAPI</b><small>Typed APIs and server-side authorization</small></div>
           <div class="node security"><b>CapAuth</b><small>Principal, purpose, tenant, matter, tool</small></div>
-          <div class="node"><b>PostgreSQL</b><small>Operational records, outbox, audit references</small></div>
+          <div class="node"><b>Core PostgreSQL</b><small>Canonical records, outbox, audit references</small></div>
           <div class="node"><b>Temporal</b><small>Durable workflows and human waits</small></div>
           <div class="flow-line"></div>
           <div class="node"><b>HammerTime</b><small>Sources, provenance, decomposition, releases</small></div>
-          <div class="node"><b>Qdrant</b><small>Derived semantic retrieval</small></div>
-          <div class="node"><b>FalkorDB</b><small>Curated graph projection</small></div>
+          <div class="node"><b>Retrieval PostgreSQL</b><small>Governed full-text and pgvector projections</small></div>
+          <div class="node"><b>Apache AGE</b><small>Optional Matter-partitioned graph projection</small></div>
           <div class="node model"><b>Qwen3.8</b><small>Bounded local corpus analyst on chiap08</small></div>
           <div class="node model"><b>OpenAI API</b><small>Approved provider-diverse roles</small></div>
         </div>
         <div class="grid grid-3" style="margin-top:16px">
-          <article class="card"><div class="kicker">Host</div><h3>chiap01</h3><p>Web, API, workers, dedicated SKLegal PostgreSQL, initial Temporal, telemetry, and simulation connectors.</p></article>
+          <article class="card"><div class="kicker">Host</div><h3>chiap01</h3><p>Web, API, workers, separate SKLegal core and retrieval PostgreSQL clusters, initial Temporal, telemetry, and simulation connectors. The live SKMemory database is not shared.</p></article>
           <article class="card"><div class="kicker">Current blocker</div><h3>95 percent disk use</h3><p>Capacity recovery or expansion is a Sprint 0 prerequisite before persistent services are deployed.</p></article>
-          <article class="card"><div class="kicker">Consistency</div><h3>Outbox and watermarks</h3><p>No distributed transaction across files, PostgreSQL, vectors, graph, models, and connectors.</p></article>
+          <article class="card"><div class="kicker">Consistency</div><h3>Outbox and watermarks</h3><p>Core commits first. Rebuildable retrieval projections advance idempotently with visible watermarks and no distributed transaction.</p></article>
         </div>
       </section>
 
@@ -416,7 +416,7 @@
           <div id="d0" class="task-detail">Exit: human approval is recorded, chiap01 has an approved capacity plan, rights and threat controls are owned, and the clean development baseline is reproducible.</div>
           <div class="sprint" data-detail="d1"><div class="sprint-no">S1</div><div><h3>Domain, data, and CapAuth</h3><p>Legal entities, PostgreSQL isolation, capabilities, conflicts, privilege, audit.</p></div><div class="count">5 tasks</div></div>
           <div id="d1" class="task-detail">Exit: no protected operation or retrieval can occur without tenant, matter, purpose, conflict, wall, privilege, and capability checks.</div>
-          <div class="sprint" data-detail="d2"><div class="sprint-no">S2</div><div><h3>HammerTime integration</h3><p>Read adapter, pilot importer, ingestion bridge, retrieval, corpus registry, public sources.</p></div><div class="count">6 tasks</div></div>
+          <div class="sprint" data-detail="d2"><div class="sprint-no">S2</div><div><h3>HammerTime integration</h3><p>Read adapter, pilot importer, ingestion bridge, retrieval, corpus registry, public sources, partition assurance.</p></div><div class="count">7 tasks</div></div>
           <div id="d2" class="task-detail">Exit: one source snapshot can be read and projected losslessly, new sources have a governed intake path, and corpus health is bounded and measurable.</div>
           <div class="sprint" data-detail="d3"><div class="sprint-no">S3</div><div><h3>Agent harness and assurance</h3><p>Temporal, Qwen and OpenAI gateway, tools, evals, claims, citations, challenges.</p></div><div class="count">5 tasks</div></div>
           <div id="d3" class="task-detail">Exit: a typed model proposal can survive outage and retry, fail closed on policy or evidence defects, and wait for human review.</div>
@@ -444,9 +444,9 @@
 
       <section id="approval">
         <div class="approval-box">
-          <div class="eyebrow">Human gate</div>
-          <h2 style="font-family:Georgia,serif; font-size:clamp(2.2rem,5vw,4.6rem); margin:14px 0 10px; font-weight:500">Approve before agents build.</h2>
-          <p class="lede" style="font-size:1rem">Use this checklist as a review aid. Checking boxes here does not change the board or constitute approval.</p>
+          <div class="eyebrow">Recorded human gate</div>
+          <h2 style="font-family:Georgia,serif; font-size:clamp(2.2rem,5vw,4.6rem); margin:14px 0 10px; font-weight:500">Approved architecture with governed retrieval.</h2>
+          <p class="lede" style="font-size:1rem">The original architecture was approved on 2026-08-19. The owner approved the local PostgreSQL, pgvector, and optional Apache AGE retrieval replacement on 2026-08-21. Implementation remains card-gated and deployment remains separately controlled.</p>
           <div class="checks">
             <label class="check"><input type="checkbox"> Tenant, client, engagement, and matter hierarchy is correct.</label>
             <label class="check"><input type="checkbox"> HammerTime remains the initial corpus and original-artifact owner.</label>
@@ -463,14 +463,14 @@
             <a class="button" href="../architecture/SKLEGAL-HIGH-LEVEL-TDD.md">Open full TDD</a>
             <a class="button" href="../tasks/SUBAGENT-TASK-TTDS.md">Open task TDDs</a>
           </div>
-          <div id="copyStatus" class="approval-note">Approval phrase: “I approve the SKLegal architecture and authorize completion of SKL-S0-01.”</div>
+          <div id="copyStatus" class="approval-note">Original approval phrase: “I approve the SKLegal architecture and authorize completion of SKL-S0-01.” Retrieval amendment: <code>AMENDMENT-SKL-S2-10</code>.</div>
         </div>
       </section>
     </main>
 
     <footer>
-      <span>SKLegal architecture proposal, 2026-08-19</span>
-      <span>GPLv3, local repository, implementation blocked pending approval</span>
+      <span>SKLegal architecture approved 2026-08-19, retrieval amended 2026-08-21</span>
+      <span>GPLv3, local repository, implementation and deployment remain card-gated</span>
     </footer>
   </div>
 

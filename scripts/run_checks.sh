@@ -39,36 +39,74 @@ run_type_check() {
   npm run build
 }
 
+discover_unit_test_modules() {
+  rg --files -0 \
+    -g 'test_*.py' \
+    -g '!tests/integration/**' \
+    tests \
+    | sort -z
+}
+
+discover_integration_test_modules() {
+  rg --files -0 \
+    -g 'test_*.py' \
+    tests/integration \
+    | sort -z
+}
+
+run_pytest_modules() {
+  local suite=$1
+  shift
+  local modules=("$@")
+
+  if ((${#modules[@]} == 0)); then
+    echo "${suite} test discovery found zero eligible modules" >&2
+    return 1
+  fi
+
+  printf 'test-suite discovery: suite=%s modules=%d\n' \
+    "$suite" "${#modules[@]}"
+  local module
+  for module in "${modules[@]}"; do
+    local collection_report
+    if ! collection_report=$(
+      "$uv" run --locked pytest --collect-only -q "$module" 2>&1
+    ); then
+      printf '%s\n' "$collection_report" >&2
+      echo "test collection failed: suite=$suite module=$module" >&2
+      return 1
+    fi
+    printf '%s\n' "$collection_report"
+
+    local collection_count
+    collection_count=$(
+      sed -nE \
+        's/^([0-9]+) tests? collected([,[:space:]].*)?$/\1/p' \
+        <<<"$collection_report" \
+        | tail -n 1
+    )
+    if [[ -z "$collection_count" || "$collection_count" == "0" ]]; then
+      echo "test collection count missing or zero: suite=$suite module=$module" >&2
+      return 1
+    fi
+
+    printf 'test-module collection: suite=%s module=%s count=%s\n' \
+      "$suite" "$module" "$collection_count"
+    "$uv" run --locked pytest -v "$module"
+  done
+}
+
 run_unit_test() {
-  "$uv" run --locked python -m unittest -v \
-    tests.test_capacity_policy \
-    tests.test_security_policy \
-    tests.test_doc_haus_provenance \
-    tests.test_domain_entities \
-    tests.test_persistence_mapping \
-    tests.test_capauth_authorization \
-    tests.test_capauth_delegation \
-    tests.test_capauth_boundaries \
-    tests.test_capauth_hotpath_benchmark \
-    tests.test_party_conflicts \
-    tests.test_policy_corrections \
-    tests.test_policy_engine \
-    tests.test_audit \
-    tests.test_clean_room_check \
-    tests.test_validation_subject \
-    tests.test_status_page \
-    tests.test_external_action_state_docs \
-    tests.test_worker_workflows \
-    tests.test_foundation
+  local modules=()
+  mapfile -d '' modules < <(discover_unit_test_modules)
+  run_pytest_modules unit "${modules[@]}"
   npm test
 }
 
 run_integration_test() {
-  "$uv" run --locked python -m unittest -v \
-    tests.integration.test_foundation_contract \
-    tests.integration.test_domain_contract \
-    tests.integration.test_capauth_contract \
-    tests.integration.test_persistence_contract
+  local modules=()
+  mapfile -d '' modules < <(discover_integration_test_modules)
+  run_pytest_modules integration "${modules[@]}"
 }
 
 run_migration_check() {

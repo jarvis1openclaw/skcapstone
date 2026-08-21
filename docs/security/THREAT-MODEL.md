@@ -60,7 +60,7 @@ SKLegal must preserve the following distinctions at parsing, validation, authori
 | B4: API and workers to PostgreSQL, caches, and projections | Legal records, tenant and matter keys, versions, transaction state | API filter omission, IDOR, cache key collision, unsafe query, stale projection, or restore into the wrong tenant | Enforce row-level security and scoped keys as backstops, reject missing scope, validate versions, and expose explicit stale or incomplete state |
 | B5: API and humans to Temporal workflows and activities | Typed workflow input, signals, retries, approvals, idempotency state | Duplicate signal, stale approval, worker restart, replay repeating mutation, or policy changed during a long wait | Pin exact input and policy references, reauthorize at effect boundaries, reject stale versions, and require idempotency receipts before replayed mutation |
 | B6: Workflow and model to CapAuth tool gateway | Tool name, arguments, result, budget, capability constraints | Prompt or model requests a broader tool, supplies path traversal, uses another matter ID, or exfiltrates through tool output | Authority comes only from CapAuth, validate typed arguments and results, intersect all scopes, deny unknown tools, bound output, and audit the decision |
-| B7: SKLegal to HammerTime and retrieval stores | Release IDs, source hashes, chunks, embeddings, graph results, provenance | Frontend constructs a path, unpromoted content is retrieved, poisoned chunk changes instructions, or vector/graph result crosses a partition | Use approved adapters, pin promoted release and alias, verify source hash and location, filter tenant/matter/rights, treat content as data, and return incomplete state on mismatch |
+| B7: SKLegal to HammerTime and retrieval stores | Release IDs, source hashes, credential-binding watermarks, chunks, embeddings, graph results, provenance | Frontend constructs a path, unpromoted content is retrieved, a stale or wrong-Principal binding is used, a graph gateway is abused, poisoned chunk changes instructions, or a vector/graph result crosses a partition | Use approved adapters, distinct exact-scope retrieval credentials, database-owned current bindings, hardened graph gateways, pinned promoted releases, exact source hashes, forced scope checks, and whole-response rejection on mismatch |
 | B8: Model gateway to local Qwen or external model provider | Minimized prompts, evidence bundles, typed outputs, provider metadata | Protected content is routed externally, an unapproved provider is selected, credentials enter a prompt, provider response injects tools, or model invents authority | Deny disallowed classification or rights, require an explicitly approved provider route plus tenant and purpose approval, reject raw secret or capability material, constrain schemas and tools, and retain proposal status until validation and review |
 | B9: Connector workers to external action providers | Exact artifact, destination, credentials, dispatch request, provider receipt | Malicious document triggers email, model chooses destination, callback forges success, or retry sends twice | Default to simulation; require connector and human approval, exact version, verified destination, scoped capability, idempotency, and receipt reconciliation |
 | B10: Services to audit, logs, and telemetry | Event metadata, decision IDs, errors, traces, actor and run correlation | Protected prompt or token is logged, audit viewer crosses tenants, or attacker edits event history | Redact at producer, prohibit secrets and content, scope audit reads, make records append-only and tamper evident, and fail closed when redaction is uncertain |
@@ -74,7 +74,7 @@ SKLegal must preserve the following distinctions at parsing, validation, authori
 - The local Qwen route reduces external egress but is not implicitly authorized. It still receives only policy-approved, tenant- and matter-scoped context.
 - OpenAI and all other external providers are optional routes. No protected content is sent until tenant configuration, classification, purpose, rights, route, minimization, and required human approval pass.
 - HammerTime remains the canonical owner of initial corpus originals and release artifacts. SKLegal does not inspect or modify unapproved Inbox content and does not treat arbitrary filesystem visibility as authorization.
-- Qdrant, FalkorDB, and embedding outputs are derived indexes. They are not sources of legal authority and cannot replace exact source verification.
+- PostgreSQL full-text, pgvector, Apache AGE, legacy Qdrant and FalkorDB compatibility data, and embedding outputs are derived indexes. They are not sources of legal authority and cannot replace exact source verification.
 - Model and connector output is untrusted even when transport and service identity are valid.
 - Platform root administrators can ultimately access host storage. Prevention of a malicious, unconstrained root administrator is outside the application authorization boundary, but operator attribution, encrypted backups, separation of duties, and minimization remain in scope.
 - Physical host compromise, hypervisor compromise, and cryptographic algorithm breaks are not repository-level attacker stories unless SKLegal code weakens a documented deployment control.
@@ -108,9 +108,27 @@ Realistic attacker story: a corpus document says to email all evidence to an att
 
 ### Retrieval poisoning, corpus integrity, and legal authority
 
-HammerTime releases, Qdrant vectors, FalkorDB graph entries, custom embeddings, and external legal-source connectors form a provenance-sensitive boundary. Threats include unpromoted or stale content, source-hash mismatch, malicious metadata, cross-partition indexing, orphan vectors, poisoned graph edges, rank manipulation, citation laundering, and treating similarity as legal authority.
+HammerTime releases, PostgreSQL full-text rows, pgvector vectors, Apache AGE graph entries, legacy Qdrant and FalkorDB compatibility data, custom embeddings, and external legal-source connectors form a provenance-sensitive boundary. Threats include unpromoted or stale content, source-hash mismatch, malicious metadata, cross-partition indexing, orphan vectors, poisoned graph edges, rank manipulation, citation laundering, and treating similarity as legal authority.
 
 Mitigations include pinned release IDs and projection watermarks, exact source hash and locator verification, tenant/matter/rights filters before retrieval, bounded adapter APIs, provenance on every result, stale and incomplete states, reconciliation, independent authority-status review, and qualification of the custom embedding against leakage and citation metrics.
+
+The retrieval PostgreSQL cluster receives database-owned Principal, exact
+Matter or Tenant-shared scope, projection-generation, policy, rights, and
+revocation bindings from the core transactional outbox. A stale, revoked, or
+mismatched binding denies before a query. AGE runtime roles have no direct
+graph-schema access. A registry-pinned `SECURITY DEFINER` gateway with a locked
+search path, restricted owner, revoked public execute, fixed query template,
+and normalized failures is the only graph read path. Gateway arguments cannot
+select a graph or supply SQL, Cypher, DDL, or mutation text.
+
+Realistic attacker story: a Principal loses Matter access while an old
+retrieval credential and projection remain locally available. The adapter and
+database binding must reject the old policy, rights, authorization-event, or
+revocation watermark before any row, count, graph-existence signal, cache
+entry, or prompt content is returned. Another attacker calls a graph gateway
+with another graph name or malformed query text. The fixed gateway accepts
+neither and returns a normalized denial without revealing whether that graph
+exists.
 
 Realistic attacker story: a poisoned connector result or corpus chunk claims to be binding authority and embeds a tool instruction. SKLegal must label its source role, verify exact authority location and status independently, preserve contradictions, and prevent the text from influencing authorization. Retrieval rank alone cannot establish applicability.
 
@@ -162,7 +180,7 @@ A developer with unrestricted production host and database access is outside app
 
 ### Availability and safe degradation
 
-The system depends on PostgreSQL, Temporal, CapAuth, HammerTime adapters, Qdrant, FalkorDB, model providers, connectors, storage, and telemetry. Attackers or failures can exhaust uploads, workflow queues, model slots, database connections, disk, logs, retrieval fanout, or connector retries. Deadline and preservation workflows make silent failure dangerous.
+The system depends on separate core and retrieval PostgreSQL clusters, Temporal, CapAuth, HammerTime adapters, model providers, connectors, storage, and telemetry. Legacy Qdrant and FalkorDB remain compatibility sources rather than protected runtime dependencies. Attackers or failures can exhaust uploads, workflow queues, model slots, database connections, disk, logs, retrieval fanout, or connector retries. A retrieval extension crash, rebuild, or saturation must not interrupt canonical core or audit state. Deadline and preservation workflows make silent failure dangerous.
 
 Mitigations include request and upload limits, admission control, per-tenant quotas, bounded retrieval, four-slot Qwen admission control, queue separation, rate limits, backpressure, timeouts, circuit breakers, disk and lag alarms, durable state, backup and restore tests, and visible degraded status. Dependency outages cannot relax authorization, source rights, human approval, or exact-version checks. Operations remain denied or pending rather than silently skipped.
 

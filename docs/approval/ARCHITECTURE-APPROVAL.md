@@ -34,7 +34,7 @@ The approval covers:
 - simulation-first external-action connectors
 - sequential, evidence-gated sprints and task designs
 
-## Approved document hashes
+## Original approved document hashes
 
 ```text
 63a6134dfedc2e1acd047d3b993e1ecfe6b2ac4262cd469caaacf2fc7c7cbc30  docs/architecture/SKLEGAL-HIGH-LEVEL-TDD.md
@@ -44,7 +44,9 @@ The approval covers:
 4402c7dc2bdb9ed245b6d581d325f9eaa887b191d9a209737b0a1dcf2e3b4005  docs/approval/index.html
 ```
 
-The approved documents remain unchanged by this approval record.
+The approved documents were unchanged when this original approval record was
+created. The historical hashes above remain immutable evidence; later approved
+revisions are recorded separately below.
 
 ## Gate effect
 
@@ -79,7 +81,29 @@ The approved documents remain unchanged by this approval record.
   `docs/planning/EPIC-SPRINT-PLAN.md`, and `docs/approval/index.html`).
   `Qwen3.8` is not a real Qwen model identifier; the intended deployment is
   the local Qwen3 route operated by HammerTime on chiap08. Because the
-  approved documents are hash-pinned, no silent edit was made. The next
-  approved revision should correct the name and re-pin the inventory through
-  this approval process.
+  approved documents are hash-pinned, no silent edit was made. The scoped
+  S2-10 retrieval amendment below did not include approval to change the model
+  name. That correction still requires a separate explicit owner decision and
+  a later re-pin through this approval process.
+- 2026-08-21, card `f5b93935` (`SKL-S2-10`): The owner approved the scoped
+  replacement of Qdrant and FalkorDB as primary protected retrieval stores.
+  Current retrieval uses separate `sklegal-core-pg` and
+  `sklegal-retrieval-pg` PostgreSQL 17 clusters, built-in full-text search,
+  exact pgvector, and optional qualification-gated Apache AGE. Qdrant and
+  FalkorDB remain HammerTime compatibility and shadow provenance only. The
+  full owner statement, preserved boundaries, independent review, original
+  hashes, and current hashes are recorded in
+  `docs/approval/AMENDMENT-SKL-S2-10.md`.
 
+## Current approved document hashes
+
+These values match `docs/approval/DESIGN-HASHES.sha256` after the approved
+S2-10 retrieval amendment:
+
+```text
+56d88a3d80ba09a96d9f95270fafd1376122368d0a4a7bd891233dae9addfef7  docs/architecture/SKLEGAL-HIGH-LEVEL-TDD.md
+8a30c43f66bc70b9a104beb04686e444e0144c6b9e0842b8239865ae5fcbab52  docs/architecture/LIBERTY-AUTO-PILOT-TDD.md
+103d6e53f2eea27da0e9801ce972bd091cba8abed6e4c70d372dde5618da00cb  docs/planning/EPIC-SPRINT-PLAN.md
+7d7155e6cb23566e9cee3226de176a9e14999c5174e30fb24f75185dfc3de8cc  docs/tasks/SUBAGENT-TASK-TTDS.md
+631ee98634e5d194dc54ebc853663fc349525ba69b89a7a912b9a5cb9a355d20  docs/approval/index.html
+```

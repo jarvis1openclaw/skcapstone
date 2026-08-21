@@ -19,12 +19,15 @@ Hard boundaries:
 
 from __future__ import annotations
 
+import errno
 import hashlib
 import json
 import os
 import re
 import stat
-from collections.abc import Callable
+from collections.abc import Callable, Iterator
+from contextlib import contextmanager
+from dataclasses import dataclass
 from datetime import UTC, datetime
 from pathlib import Path, PurePosixPath
 from typing import Any
@@ -55,6 +58,7 @@ from .models import (
     DecompositionEntity,
     DocumentCounts,
     LegacyMatterRecord,
+    LegacyPathResolution,
     MatterAccessRequest,
     MatterAuthorizer,
     MatterValidationReport,
@@ -115,6 +119,16 @@ def _record_kind(legacy_id: str) -> LegacyRecordKind:
     return LegacyRecordKind.ACTIVITY
 
 
+@dataclass(frozen=True)
+class _LegacyRead:
+    relative: PurePosixPath
+    record_kind: LegacyRecordKind
+    parent_legacy_id: str | None
+    content: bytes
+    digest: str
+    registry_pin: SnapshotPin
+
+
 class HammerTimeReleaseAdapter:
     """Typed read-only access to one HammerTime corpus root."""
 
@@ -140,6 +154,10 @@ class HammerTimeReleaseAdapter:
             )
         if max_artifact_bytes < 1:
             raise ValueError("max_artifact_bytes must be positive")
+        if not hasattr(os, "O_NOFOLLOW") or not hasattr(os, "O_DIRECTORY"):
+            raise AdapterUnavailableError(
+                "the host cannot enforce symlink-safe HammerTime reads"
+            )
         self._root = candidate.resolve()
         self._matter_authorizer = matter_authorizer
         self._clock = clock or (lambda: datetime.now(UTC))
@@ -170,47 +188,166 @@ class HammerTimeReleaseAdapter:
             or str(pure) != relative_path
         ):
             raise ForbiddenPathError(f"denied non-normalized path: {relative_path!r}")
+        pure = self._validate_relative(pure)
         first = pure.parts[0].lower()
         if first in _FORBIDDEN_ROOTS:
             raise ForbiddenPathError(
                 f"denied path under {pure.parts[0]}/: {relative_path!r}"
             )
-        resolved = (self._root / Path(*pure.parts)).resolve()
-        if not resolved.is_relative_to(self._root):
-            raise ForbiddenPathError(
-                f"denied path escaping the HammerTime root: {relative_path!r}"
-            )
         return pure
 
-    def _read_bytes(self, relative: PurePosixPath) -> tuple[bytes, str]:
-        """Read one regular file with read-only flags and return its hash."""
-        target = self._root / Path(*relative.parts)
+    def _validate_relative(self, relative: PurePosixPath) -> PurePosixPath:
+        """Fail closed on internal and caller-supplied path components."""
+        if (
+            relative.is_absolute()
+            or not relative.parts
+            or any(part in {"", ".", ".."} for part in relative.parts)
+            or any(part.lower() == "inbox" for part in relative.parts)
+        ):
+            raise ForbiddenPathError(f"denied HammerTime path: {relative!s}")
+        return relative
+
+    def _assert_descriptor_path(
+        self,
+        descriptor: int,
+        expected: PurePosixPath | None,
+    ) -> None:
+        """Verify the opened descriptor is still at its expected rooted path."""
+        proc_path = f"/proc/self/fd/{descriptor}"
         try:
-            descriptor = os.open(target, os.O_RDONLY)
-        except FileNotFoundError:
+            target_text = os.readlink(proc_path)
+        except OSError:
+            raise AdapterUnavailableError(
+                "descriptor path verification is unavailable"
+            ) from None
+        if target_text.endswith(" (deleted)"):
+            raise ForbiddenPathError("HammerTime descriptor target changed during read")
+        target = Path(target_text).resolve(strict=False)
+        try:
+            relative = target.relative_to(self._root)
+        except ValueError:
+            raise ForbiddenPathError(
+                "HammerTime descriptor escaped the configured root"
+            ) from None
+        observed = PurePosixPath(*relative.parts) if relative.parts else None
+        if observed is not None and any(
+            part.lower() == "inbox" for part in observed.parts
+        ):
+            raise ForbiddenPathError("HammerTime descriptor resolved inside Inbox")
+        if observed != expected:
+            raise ForbiddenPathError("HammerTime descriptor path changed during read")
+
+    def _open_error(self, exc: OSError, relative: PurePosixPath) -> None:
+        if exc.errno == errno.ELOOP:
+            raise ForbiddenPathError(
+                f"symlinked HammerTime path is forbidden: {relative}"
+            ) from None
+        if isinstance(exc, (FileNotFoundError, NotADirectoryError)):
             raise MissingPathError(f"missing HammerTime artifact: {relative}") from None
-        except NotADirectoryError:
-            raise MissingPathError(f"missing HammerTime artifact: {relative}") from None
-        except PermissionError:
+        if isinstance(exc, PermissionError):
             raise AdapterUnavailableError(
                 f"HammerTime artifact is not readable: {relative}"
             ) from None
-        with os.fdopen(descriptor, "rb") as handle:
-            metadata = os.fstat(handle.fileno())
-            if not stat.S_ISREG(metadata.st_mode):
-                raise MissingPathError(
-                    f"HammerTime path is not a regular file: {relative}"
-                )
-            if metadata.st_size > self._max_artifact_bytes:
-                raise ArtifactTooLargeError(
-                    f"HammerTime artifact exceeds the read budget: {relative}"
-                )
-            content = handle.read(self._max_artifact_bytes + 1)
+        raise AdapterUnavailableError(
+            f"HammerTime artifact cannot be opened safely: {relative}"
+        ) from None
+
+    @contextmanager
+    def _directory_descriptor(
+        self,
+        relative: PurePosixPath | None,
+    ) -> Iterator[int]:
+        """Open a rooted directory chain without following any symlink."""
+        parts = () if relative is None else self._validate_relative(relative).parts
+        directory_flags = os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW
+        if hasattr(os, "O_CLOEXEC"):
+            directory_flags |= os.O_CLOEXEC
+        descriptors: list[int] = []
+        try:
+            try:
+                current = os.open(self._root, directory_flags)
+            except OSError as exc:
+                self._open_error(exc, PurePosixPath("."))
+                raise AssertionError("unreachable")
+            descriptors.append(current)
+            self._assert_descriptor_path(current, None)
+            prefix: list[str] = []
+            for part in parts:
+                prefix.append(part)
+                expected = PurePosixPath(*prefix)
+                try:
+                    current = os.open(part, directory_flags, dir_fd=current)
+                except OSError as exc:
+                    if isinstance(exc, NotADirectoryError):
+                        try:
+                            metadata = os.stat(
+                                part,
+                                dir_fd=current,
+                                follow_symlinks=False,
+                            )
+                        except OSError:
+                            metadata = None
+                        if metadata is not None and stat.S_ISLNK(metadata.st_mode):
+                            raise ForbiddenPathError(
+                                f"symlinked HammerTime path is forbidden: {expected}"
+                            ) from None
+                    self._open_error(exc, expected)
+                    raise AssertionError("unreachable")
+                descriptors.append(current)
+                self._assert_descriptor_path(current, expected)
+            yield current
+        finally:
+            for descriptor in reversed(descriptors):
+                os.close(descriptor)
+
+    def _read_bytes(self, relative: PurePosixPath) -> tuple[bytes, str]:
+        """Read one regular file with read-only flags and return its hash."""
+        relative = self._validate_relative(relative)
+        parent_parts = relative.parts[:-1]
+        parent = PurePosixPath(*parent_parts) if parent_parts else None
+        file_flags = os.O_RDONLY | os.O_NOFOLLOW
+        if hasattr(os, "O_CLOEXEC"):
+            file_flags |= os.O_CLOEXEC
+        with self._directory_descriptor(parent) as directory:
+            try:
+                descriptor = os.open(relative.name, file_flags, dir_fd=directory)
+            except OSError as exc:
+                self._open_error(exc, relative)
+                raise AssertionError("unreachable")
+            with os.fdopen(descriptor, "rb") as handle:
+                self._assert_descriptor_path(handle.fileno(), relative)
+                metadata = os.fstat(handle.fileno())
+                if not stat.S_ISREG(metadata.st_mode):
+                    raise MissingPathError(
+                        f"HammerTime path is not a regular file: {relative}"
+                    )
+                if metadata.st_size > self._max_artifact_bytes:
+                    raise ArtifactTooLargeError(
+                        f"HammerTime artifact exceeds the read budget: {relative}"
+                    )
+                content = handle.read(self._max_artifact_bytes + 1)
         if len(content) > self._max_artifact_bytes:
             raise ArtifactTooLargeError(
                 f"HammerTime artifact exceeds the read budget: {relative}"
             )
         return content, hashlib.sha256(content).hexdigest()
+
+    def _list_directory_names(self, relative: PurePosixPath) -> list[str]:
+        """List one fixed directory through its verified descriptor."""
+        relative = self._validate_relative(relative)
+        with self._directory_descriptor(relative) as descriptor:
+            try:
+                return sorted(os.listdir(descriptor))
+            except OSError:
+                raise AdapterUnavailableError(
+                    f"HammerTime directory is not readable: {relative}"
+                ) from None
+
+    def _optional_read_bytes(self, relative: PurePosixPath) -> tuple[bytes, str] | None:
+        try:
+            return self._read_bytes(relative)
+        except MissingPathError:
+            return None
 
     def _read_json(self, relative: PurePosixPath) -> tuple[dict[str, Any], str]:
         content, digest = self._read_bytes(relative)
@@ -246,6 +383,7 @@ class HammerTimeReleaseAdapter:
         self,
         legacy_id: str,
         record_kind: LegacyRecordKind,
+        parent_legacy_id: str | None,
         relative_path: str | None,
     ) -> None:
         """Fail-closed matter gate for every matter-scoped read."""
@@ -256,6 +394,7 @@ class HammerTimeReleaseAdapter:
         request = MatterAccessRequest(
             legacy_id=legacy_id,
             record_kind=record_kind,
+            parent_legacy_id=parent_legacy_id,
             relative_path=relative_path,
         )
         try:
@@ -273,16 +412,10 @@ class HammerTimeReleaseAdapter:
 
     def list_releases(self) -> list[ReleaseSummary]:
         """List every pinned release manifest under ``json/releases/``."""
-        releases_dir = self._root / Path(*_RELEASES_DIR.parts)
-        if not releases_dir.is_dir():
-            raise MissingPathError(f"missing HammerTime directory: {_RELEASES_DIR}")
         summaries: list[ReleaseSummary] = []
-        for entry in sorted(releases_dir.iterdir()):
-            name = entry.name
-            if (
-                not entry.is_file()
-                or not name.startswith(_RELEASE_PREFIX)
-                or not name.endswith(_RELEASE_SUFFIX)
+        for name in self._list_directory_names(_RELEASES_DIR):
+            if not name.startswith(_RELEASE_PREFIX) or not name.endswith(
+                _RELEASE_SUFFIX
             ):
                 continue
             release_id = name[len(_RELEASE_PREFIX) : -len(_RELEASE_SUFFIX)]
@@ -469,7 +602,12 @@ class HammerTimeReleaseAdapter:
                 f"alias graph name {binding.graph_name!r} differs from manifest "
                 f"{manifest.graph_name!r}"
             )
-        return ResolvedRelease(alias=alias, manifest=manifest, drift=drift)
+        return ResolvedRelease(
+            aliases_pin=snapshot.pin,
+            alias=alias,
+            manifest=manifest,
+            drift=drift,
+        )
 
     # ------------------------------------------------------------------
     # decompositions
@@ -605,28 +743,13 @@ class HammerTimeReleaseAdapter:
         legacy_id: str,
         *,
         parent_legacy_id: str | None = None,
-    ) -> str:
-        """Resolve a legacy record id to its normalized relative path.
-
-        This resolves path metadata only; no record content is returned.
-        Legacy activity ids (``INC-*``) are unique only inside their parent
-        matter container, so ``parent_legacy_id`` is required for them.
-        """
-        self._require_legacy_id(legacy_id)
-        kind = _record_kind(legacy_id)
-        if kind is LegacyRecordKind.CONTAINER:
-            return self._resolve_problem_path(legacy_id)
-        if parent_legacy_id is None:
-            raise AmbiguousLegacyIdError(
-                f"legacy activity id {legacy_id!r} requires parent_legacy_id"
-            )
-        self._require_legacy_id(parent_legacy_id)
-        if _record_kind(parent_legacy_id) is not LegacyRecordKind.CONTAINER:
-            raise ValueError(
-                f"parent_legacy_id must be a matter container id: {parent_legacy_id!r}"
-            )
-        problem_path = self._resolve_problem_path(parent_legacy_id)
-        return self._resolve_incident_path(legacy_id, problem_path)
+    ) -> LegacyPathResolution:
+        """Return an authorized, typed, snapshot-pinned legacy path."""
+        read = self._read_authorized_legacy(
+            legacy_id,
+            parent_legacy_id=parent_legacy_id,
+        )
+        return self._path_resolution(legacy_id, read)
 
     def resolve_legacy_matter(
         self,
@@ -635,14 +758,14 @@ class HammerTimeReleaseAdapter:
         parent_legacy_id: str | None = None,
     ) -> LegacyMatterRecord:
         """Read and pin one legacy matter record after an allow decision."""
-        relative = PurePosixPath(
-            self.legacy_matter_path(legacy_id, parent_legacy_id=parent_legacy_id)
+        read = self._read_authorized_legacy(
+            legacy_id,
+            parent_legacy_id=parent_legacy_id,
         )
-        kind = _record_kind(legacy_id)
-        self._authorize_matter(legacy_id, kind, str(relative))
-        content, digest = self._read_bytes(relative)
+        relative = read.relative
+        kind = read.record_kind
         try:
-            text = content.decode("utf-8")
+            text = read.content.decode("utf-8")
         except UnicodeDecodeError:
             raise MalformedFrontmatterError(
                 f"legacy matter record is not UTF-8 text: {relative}"
@@ -663,9 +786,15 @@ class HammerTimeReleaseAdapter:
             else:
                 slug = relative.parts[4]
         parent_id = frontmatter.get("problem_id")
+        if kind is LegacyRecordKind.ACTIVITY and parent_id != read.parent_legacy_id:
+            raise RegistryMismatchError(
+                f"legacy activity {legacy_id!r} resolved under "
+                f"{read.parent_legacy_id!r} but declares parent {parent_id!r}"
+            )
         try:
             return LegacyMatterRecord(
-                pin=self._pin(relative, digest),
+                pin=self._pin(relative, read.digest),
+                registry_pin=read.registry_pin,
                 record_kind=kind,
                 legacy_id=legacy_id,
                 slug=str(slug),
@@ -691,7 +820,6 @@ class HammerTimeReleaseAdapter:
     ) -> MatterValidationReport:
         """Read and pin the HammerTime validation result for one record."""
         incident_dir = self._incident_dir(legacy_id, parent_legacy_id)
-        self._authorize_matter(legacy_id, LegacyRecordKind.ACTIVITY, str(incident_dir))
         relative = incident_dir / "validation-report.json"
         payload, digest = self._read_json(relative)
         known = {"validated_date", "incident_id", "valid", "errors", "notices"}
@@ -723,23 +851,20 @@ class HammerTimeReleaseAdapter:
     ) -> list[PacketReference]:
         """List pinned versioned packet facts payloads for one record."""
         incident_dir = self._incident_dir(legacy_id, parent_legacy_id)
-        self._authorize_matter(legacy_id, LegacyRecordKind.ACTIVITY, str(incident_dir))
-        absolute = self._root / Path(*incident_dir.parts)
-        if not absolute.is_dir():
-            raise MissingPathError(f"missing HammerTime directory: {incident_dir}")
         references: list[PacketReference] = []
-        for entry in sorted(absolute.iterdir()):
-            match = _PACKET_FACTS_PATTERN.fullmatch(entry.name)
-            if match is None or not entry.is_file():
+        for name in self._list_directory_names(incident_dir):
+            match = _PACKET_FACTS_PATTERN.fullmatch(name)
+            if match is None:
                 continue
-            facts_relative = incident_dir / entry.name
+            facts_relative = incident_dir / name
             payload, digest = self._read_json(facts_relative)
             review_relative = (
                 incident_dir / f"phase-0-wave-1-v{match.group(1)}-review.md"
             )
-            review_path = (
-                str(review_relative)
-                if (self._root / Path(*review_relative.parts)).is_file()
+            review_read = self._optional_read_bytes(review_relative)
+            review_pin = (
+                self._pin(review_relative, review_read[1])
+                if review_read is not None
                 else None
             )
             references.append(
@@ -747,7 +872,7 @@ class HammerTimeReleaseAdapter:
                     packet_version=int(match.group(1)),
                     facts_pin=self._pin(facts_relative, digest),
                     facts=payload,
-                    review_path=review_path,
+                    review_pin=review_pin,
                 )
             )
         return references
@@ -760,7 +885,6 @@ class HammerTimeReleaseAdapter:
     ) -> ArtifactRead:
         """Read and pin the owner-directions record for one matter activity."""
         incident_dir = self._incident_dir(legacy_id, parent_legacy_id)
-        self._authorize_matter(legacy_id, LegacyRecordKind.ACTIVITY, str(incident_dir))
         relative = incident_dir / "correspondence" / "OWNER-DIRECTIONS.md"
         content, digest = self._read_bytes(relative)
         return ArtifactRead(pin=self._pin(relative, digest), content=content)
@@ -773,9 +897,9 @@ class HammerTimeReleaseAdapter:
         if _LEGACY_ID_PATTERN.fullmatch(legacy_id) is None:
             raise ValueError(f"invalid legacy record id: {legacy_id!r}")
 
-    def _registry_links(self) -> dict[str, list[str]]:
-        """Map legacy ids to registry-declared paths without reading records."""
-        content, _digest = self._read_bytes(_REGISTRY_PATH)
+    def _registry_links(self) -> tuple[dict[str, list[str]], SnapshotPin]:
+        """Map legacy ids to paths and pin the exact registry snapshot."""
+        content, digest = self._read_bytes(_REGISTRY_PATH)
         try:
             text = content.decode("utf-8")
         except UnicodeDecodeError:
@@ -790,10 +914,12 @@ class HammerTimeReleaseAdapter:
                 continue
             for legacy_id in ids:
                 links.setdefault(legacy_id, []).extend(paths)
-        return links
+        return links, self._pin(_REGISTRY_PATH, digest)
 
-    def _resolve_problem_path(self, legacy_id: str) -> str:
-        links = self._registry_links()
+    def _resolve_problem_path(
+        self, legacy_id: str
+    ) -> tuple[PurePosixPath, SnapshotPin]:
+        links, registry_pin = self._registry_links()
         candidates = sorted(
             {path for path in links.get(legacy_id, []) if path.endswith("/PROBLEM.md")}
         )
@@ -805,31 +931,25 @@ class HammerTimeReleaseAdapter:
             raise AmbiguousLegacyIdError(
                 f"legacy id {legacy_id!r} maps to multiple registry paths"
             )
-        relative = _PROBLEMS_DIR.parent / candidates[0]
-        target = self._root / Path(*relative.parts)
-        if not target.is_file():
-            raise MissingPathError(
-                f"registry path for {legacy_id!r} is missing: {relative}"
-            )
-        return str(relative)
+        relative = self._validate_relative(_PROBLEMS_DIR.parent / candidates[0])
+        return relative, registry_pin
 
-    def _resolve_incident_path(self, legacy_id: str, problem_path: str) -> str:
-        problem_dir = PurePosixPath(problem_path).parent
-        incidents_dir = self._root / Path(*(problem_dir / "incidents").parts)
-        if not incidents_dir.is_dir():
-            raise MissingPathError(
-                f"missing HammerTime directory: {problem_dir / 'incidents'}"
-            )
-        matches = sorted(
-            entry
-            for entry in incidents_dir.iterdir()
-            if entry.is_dir() and entry.name.startswith(f"{legacy_id}-")
-        )
-        candidates = [
-            entry / "INCIDENT.md"
-            for entry in matches
-            if (entry / "INCIDENT.md").is_file()
-        ]
+    def _resolve_incident_path(
+        self, legacy_id: str, problem_path: PurePosixPath
+    ) -> PurePosixPath:
+        problem_dir = problem_path.parent
+        incidents_dir = problem_dir / "incidents"
+        candidates: list[PurePosixPath] = []
+        for name in self._list_directory_names(incidents_dir):
+            if not name.startswith(f"{legacy_id}-"):
+                continue
+            candidate_dir = incidents_dir / name
+            try:
+                names = self._list_directory_names(candidate_dir)
+            except MissingPathError:
+                continue
+            if "INCIDENT.md" in names:
+                candidates.append(candidate_dir / "INCIDENT.md")
         if not candidates:
             raise MissingPathError(
                 f"no incident record for {legacy_id!r} under {problem_dir}"
@@ -838,9 +958,67 @@ class HammerTimeReleaseAdapter:
             raise AmbiguousLegacyIdError(
                 f"legacy id {legacy_id!r} maps to multiple incident records"
             )
-        absolute = candidates[0]
-        relative = absolute.relative_to(self._root)
-        return str(PurePosixPath(*relative.parts))
+        return candidates[0]
+
+    def _read_authorized_legacy(
+        self,
+        legacy_id: str,
+        *,
+        parent_legacy_id: str | None,
+    ) -> _LegacyRead:
+        """Authorize before discovery, recheck exact path, then read once."""
+        self._require_legacy_id(legacy_id)
+        kind = _record_kind(legacy_id)
+        if kind is LegacyRecordKind.ACTIVITY:
+            if parent_legacy_id is None:
+                raise AmbiguousLegacyIdError(
+                    f"legacy activity id {legacy_id!r} requires parent_legacy_id"
+                )
+            self._require_legacy_id(parent_legacy_id)
+            if _record_kind(parent_legacy_id) is not LegacyRecordKind.CONTAINER:
+                raise ValueError(
+                    "parent_legacy_id must be a matter container id: "
+                    f"{parent_legacy_id!r}"
+                )
+        elif parent_legacy_id is not None:
+            raise ValueError("parent_legacy_id is only valid for legacy activities")
+
+        self._authorize_matter(legacy_id, kind, parent_legacy_id, None)
+        if kind is LegacyRecordKind.CONTAINER:
+            relative, registry_pin = self._resolve_problem_path(legacy_id)
+        else:
+            assert parent_legacy_id is not None
+            problem_path, registry_pin = self._resolve_problem_path(parent_legacy_id)
+            relative = self._resolve_incident_path(legacy_id, problem_path)
+        self._authorize_matter(
+            legacy_id,
+            kind,
+            parent_legacy_id,
+            str(relative),
+        )
+        content, digest = self._read_bytes(relative)
+        return _LegacyRead(
+            relative=relative,
+            record_kind=kind,
+            parent_legacy_id=parent_legacy_id,
+            content=content,
+            digest=digest,
+            registry_pin=registry_pin,
+        )
+
+    def _path_resolution(
+        self,
+        legacy_id: str,
+        read: _LegacyRead,
+    ) -> LegacyPathResolution:
+        return LegacyPathResolution(
+            pin=self._pin(read.relative, read.digest),
+            registry_pin=read.registry_pin,
+            record_kind=read.record_kind,
+            legacy_id=legacy_id,
+            relative_path=str(read.relative),
+            parent_legacy_id=read.parent_legacy_id,
+        )
 
     def _incident_dir(
         self,
@@ -852,8 +1030,11 @@ class HammerTimeReleaseAdapter:
             raise ValueError(
                 f"expected a legacy activity id (INC-*), got {legacy_id!r}"
             )
-        path = self.legacy_matter_path(legacy_id, parent_legacy_id=parent_legacy_id)
-        return PurePosixPath(path).parent
+        read = self._read_authorized_legacy(
+            legacy_id,
+            parent_legacy_id=parent_legacy_id,
+        )
+        return read.relative.parent
 
 
 def _optional_str(

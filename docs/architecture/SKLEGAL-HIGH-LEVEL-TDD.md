@@ -1,7 +1,7 @@
 # SKLegal high-level technical design document
 
 Date: 2026-08-19  
-Status: Proposed for human approval  
+Status: Approved, retrieval architecture amended 2026-08-21
 Deployment target: chiap01  
 Pilot source: HammerTime matter `PRB-2026-009`, legacy event `INC-016`
 
@@ -53,14 +53,17 @@ flowchart LR
     W --> A[FastAPI gateway]
     A --> C[CapAuth and policy gateway]
     A --> M[Matter services]
-    M --> P[(SKLegal PostgreSQL)]
+    M --> P[(SKLegal core PostgreSQL)]
+    P --> O[Outbox and projection registry]
     M --> T[Temporal workflows]
     T --> X[Typed activities]
     X --> C
     X --> H[HammerTime adapter]
     H --> F[(HammerTime files and releases)]
-    H --> QD[(Qdrant hammertime-v3)]
-    H --> FG[(FalkorDB hammertime-v4)]
+    O --> X
+    X --> R[(SKLegal retrieval PostgreSQL)]
+    R --> V[PostgreSQL FTS and pgvector]
+    R --> G[Optional Apache AGE]
     X --> MG[Model gateway]
     MG --> QW[Qwen3.8 on chiap08]
     MG --> OA[OpenAI Responses API]
@@ -84,7 +87,10 @@ flowchart LR
 - `sklegal-api`: FastAPI process
 - `sklegal-worker-interactive`: Temporal worker for user-facing tasks
 - `sklegal-worker-batch`: Temporal worker for imports, indexing, and reconciliation
-- `sklegal-postgres`: dedicated PostgreSQL database or cluster, separate from `skmem-pg`
+- `sklegal-core-pg`: dedicated PostgreSQL 17 cluster for canonical legal,
+  policy, audit, outbox, and projection-registry state
+- `sklegal-retrieval-pg`: separate PostgreSQL 17 cluster for rebuildable
+  full-text, pgvector, and optional Apache AGE projections
 - `sklegal-temporal`: development or initial self-hosted Temporal services
 - `sklegal-otel`: local OpenTelemetry collector with protected-content filtering
 - connector workers in simulation mode until individually approved
@@ -93,11 +99,16 @@ flowchart LR
 
 - chiap08 Qwen3.8 endpoint
 - HammerTime filesystem and release manifests
-- existing Qdrant collection contract `hammertime-v3`
-- existing FalkorDB graph contract `hammertime-v4`
+- existing Qdrant `hammertime-v3` and FalkorDB `hammertime-v4` contracts as
+  upstream-owned compatibility and shadow-comparison sources only
 - existing central custom embedding service
 - SKMemory for agent continuity only
 - SKCapstone coordination for engineering work
+
+SKLegal does not share the live `skmem-pg` instance, application schema,
+volume, roles, credentials, restart lifecycle, or backup lifecycle. The core
+and retrieval clusters are also separate from each other so a derived-store
+extension or workload cannot share the canonical legal-record failure domain.
 
 ### Capacity prerequisite
 
@@ -111,14 +122,14 @@ chiap01 currently reports approximately 47 GB free and 95 percent root-filesyste
 | Navigation and data | TanStack Router and Query | Typed routing, caching, mutation state, and explicit server ownership. |
 | Styling | CSS design tokens plus accessible component primitives | Establish SKLegal identity without locking the domain to a theme library. |
 | API | FastAPI and Pydantic 2 | Typed boundaries shared with agent activity schemas. |
-| Operational data | PostgreSQL | Transactions, row-level security, audit references, and queryability. |
+| Operational data | Dedicated core PostgreSQL 17 | Transactions, row-level security, audit references, and queryability without derived-store extensions. |
 | Durable workflow | Temporal Python SDK | Retries, human waits, resumability, and execution history. |
 | Model activities | PydanticAI behind an internal provider interface | Typed model outputs without making the framework the workflow owner. |
 | Local model | Qwen3.8 on chiap08 | Existing HammerTime semantic route and local data posture. |
 | External model | OpenAI Responses API | Provider-diverse review and bounded agent roles when egress policy allows. |
-| Vector retrieval | Existing Qdrant | Preserve current corpus investment and release contract. |
-| Graph retrieval | Existing FalkorDB adapter | Preserve curated graph while keeping replacement possible. |
-| Lexical retrieval | PostgreSQL full-text search first | Avoid another cluster until evaluation proves a need. |
+| Vector retrieval | Exact pgvector in dedicated retrieval PostgreSQL | Keep the initial data plane local and use Tenant and generation partitions with Matter row security. |
+| Graph retrieval | Optional Apache AGE in dedicated retrieval PostgreSQL | Keep traversal derived and replaceable, with one physical graph per protected Matter and generation. |
+| Lexical retrieval | PostgreSQL full-text search | Use the same governed retrieval cluster and closed scope contract. |
 | Authorization | CapAuth plus policy gateway | Signed, scoped capabilities at every tool and action boundary. |
 | Telemetry | OpenTelemetry with local collector | End-to-end correlation without exporting protected prompts by default. |
 
@@ -231,8 +242,10 @@ The adapter provides:
 - provenance and artifact lookup
 - legacy matter snapshots
 - decomposed chunk and claim reads
-- Qdrant retrieval through the active release contract
-- FalkorDB graph queries through the active graph contract
+- pinned projection inputs for local PostgreSQL full-text and pgvector indexing
+- graph projection inputs for optional local Apache AGE indexing
+- legacy Qdrant and FalkorDB watermark references for isolated compatibility
+  and shadow comparison only
 - packet, validation, and owner-direction references
 - bounded health and coverage metadata
 
@@ -413,7 +426,8 @@ The design language uses a warm near-black base, parchment-neutral surfaces, a r
 
 ## 18. Architecture approval gate
 
-Implementation may begin only after the human owner confirms:
+The human owner completed the architecture gate on 2026-08-19 and approved
+the scoped retrieval replacement on 2026-08-21. The confirmed gate covers:
 
 - tenant and client interpretation
 - chiap01 capacity remediation approach
@@ -424,5 +438,7 @@ Implementation may begin only after the human owner confirms:
 - pilot migration mapping
 - sprint and task plan
 
-Approval completes the SKCapstone architecture gate. No subagent implementation card may be claimed before that gate is complete.
-
+The completed architecture gate does not authorize work outside an eligible
+claimed card. Production deployment, external actions, additional Matter
+migration, external account creation, and HammerTime `Inbox/` processing keep
+their separate human and task gates.

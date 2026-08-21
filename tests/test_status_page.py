@@ -10,6 +10,16 @@ REPO_ROOT = Path(__file__).resolve().parents[1]
 STATUS_PAGE = REPO_ROOT / "docs" / "status" / "index.html"
 APPROVAL_PAGE = REPO_ROOT / "docs" / "approval" / "index.html"
 APPROVAL_RECORD = REPO_ROOT / "docs" / "approval" / "ARCHITECTURE-APPROVAL.md"
+RETRIEVAL_AMENDMENT = REPO_ROOT / "docs" / "approval" / "AMENDMENT-SKL-S2-10.md"
+DESIGN_HASHES = REPO_ROOT / "docs" / "approval" / "DESIGN-HASHES.sha256"
+
+EXPECTED_DESIGN_PATHS = {
+    "docs/architecture/SKLEGAL-HIGH-LEVEL-TDD.md",
+    "docs/architecture/LIBERTY-AUTO-PILOT-TDD.md",
+    "docs/planning/EPIC-SPRINT-PLAN.md",
+    "docs/tasks/SUBAGENT-TASK-TTDS.md",
+    "docs/approval/index.html",
+}
 
 
 class _StatusPageParser(HTMLParser):
@@ -84,6 +94,27 @@ class StatusPageTests(unittest.TestCase):
         digest = hashlib.sha256(APPROVAL_PAGE.read_bytes()).hexdigest()
         record = APPROVAL_RECORD.read_text(encoding="utf-8")
         self.assertIn(f"{digest}  docs/approval/index.html", record)
+
+    def test_current_design_hash_inventory_matches_approved_amendment(self) -> None:
+        lines = [
+            line
+            for line in DESIGN_HASHES.read_text(encoding="utf-8").splitlines()
+            if line
+        ]
+        self.assertEqual(5, len(lines))
+        self.assertEqual(
+            EXPECTED_DESIGN_PATHS, {line.split("  ", 1)[1] for line in lines}
+        )
+
+        amendment = RETRIEVAL_AMENDMENT.read_text(encoding="utf-8")
+        record = APPROVAL_RECORD.read_text(encoding="utf-8")
+        self.assertNotIn("CURRENT_HASHES_PENDING_VALIDATION", amendment)
+        self.assertNotIn("CURRENT_HASHES_PENDING_VALIDATION", record)
+        self.assertIn("Status: approved", amendment)
+        for line in lines:
+            with self.subTest(path=line.split("  ", 1)[1]):
+                self.assertIn(line, amendment)
+                self.assertIn(line, record)
 
 
 if __name__ == "__main__":

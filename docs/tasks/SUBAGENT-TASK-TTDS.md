@@ -1,8 +1,8 @@
 # SKLegal subagent task technical designs
 
 Date: 2026-08-19  
-Status: Proposed and blocked by `SKL-S0-01`  
-Rule: Subagents claim leaf tasks only after architecture approval
+Status: Approved, retrieval architecture amended 2026-08-21
+Rule: Subagents claim only eligible leaf tasks after architecture approval and dependency completion
 
 ## Task execution contract
 
@@ -157,16 +157,16 @@ Every task begins by loading SK context, reading `AGENTS.md`, checking the SKCap
 - **Acceptance:** SKLegal receives a promoted artifact reference and cannot bypass finalization or promotion gates.
 - **Prohibited:** Do not process live `Inbox/` in tests. Use an isolated fixture intake root.
 
-### SKL-S2-04: Build Qdrant and FalkorDB retrieval adapters
+### SKL-S2-04: Build PostgreSQL retrieval and graph adapters
 
 - **Agent:** Retrieval and graph
-- **Size:** M
-- **Dependencies:** `SKL-S1-03`, `SKL-S1-04`, `SKL-S2-01`
-- **Objective:** Query existing derived stores through pinned, policy-filtered interfaces.
-- **Implementation:** Resolve active aliases, apply tenant and matter partitions, preserve retrieval traces, expose vector and graph watermarks, and degrade explicitly when a backend is unavailable.
-- **Tests:** Unauthorized partition, stale alias, backend outage, empty result, release mismatch, and deterministic trace shape.
-- **Acceptance:** Every result identifies release, source, filters, rank path, and projection lag.
-- **Prohibited:** Graph or vector similarity cannot establish authority applicability.
+- **Size:** L
+- **Dependencies:** `SKL-S1-03`, `SKL-S1-04`, `SKL-S1-05`, `SKL-S2-01`, `SKL-S2-10`
+- **Objective:** Query local derived PostgreSQL full-text, pgvector, and optional Apache AGE projections through pinned, policy-filtered interfaces.
+- **Implementation:** Read the authorized projection registry, query exact pgvector and full-text partitions, expose only closed graph query templates after AGE qualification, preserve retrieval traces and watermarks, and degrade explicitly when a backend is unavailable.
+- **Tests:** Every leak and qualification case in `config/retrieval/tenant-partition-contract.json`, including authorization before registry access, cross-Tenant and cross-Matter denial, stale generation, backend outage, empty result, release mismatch, mixed-scope rejection, replica lag, deterministic trace shape, idempotent rebuild, and atomic rollback.
+- **Acceptance:** Every result identifies Tenant and Matter scope, release, source hashes, credential-binding event, projection schema and projector, retrieval adapter, query-template ID, version and hash, filters, rank path, watermark, and projection lag. Vector results also identify the embedding model revision, dimension, and metric. Replica results also identify replay LSN. The exact S2-10 contract is satisfied by fake and disposable PostgreSQL backends.
+- **Prohibited:** Do not use the live `skmem-pg` instance or create new protected Qdrant or FalkorDB projections. Do not expose raw SQL, raw filters, raw Cypher, or graph names. Graph or vector similarity cannot establish Authority applicability.
 
 ### SKL-S2-05: Build the materialized corpus registry and reconciliation jobs
 
@@ -189,6 +189,17 @@ Every task begins by loading SK context, reading `AGENTS.md`, checking the SKCap
 - **Tests:** Terms and rights quarantine, rate-limit backoff, stale-source detection, account revocation, credential rotation, source hash, and connector outage.
 - **Acceptance:** Every enabled connector has a reviewed rights record, accountable owner, secret reference, health check, and provenance contract.
 - **Prohibited:** Free access alone cannot authorize corpus ingestion, redistribution, training, or protected-data upload.
+
+### SKL-S2-10: Define the tenant-native PostgreSQL retrieval partition contract
+
+- **Agent:** Retrieval architecture and security
+- **Size:** M
+- **Dependencies:** None
+- **Objective:** Define the structural Tenant, Matter, generation, provenance, and failure-domain backstops required before S2-04 implementation.
+- **Implementation:** Specify separate core and retrieval PostgreSQL clusters, exact-first pgvector, governed full-text search, optional physical AGE graphs, closed query templates, registry and outbox ownership, supply-chain gates, trace fields, rebuild, replication, and rollback behavior.
+- **Tests:** Machine-readable contract validation, ASCII-dash validation, approved-document linkage, and a complete adapter leak and qualification matrix for S2-04.
+- **Acceptance:** `docs/development/RETRIEVAL-PARTITIONS.md` and `config/retrieval/tenant-partition-contract.json` are approved, internally consistent, test-covered, and referenced by S2-04.
+- **Prohibited:** No retrieval adapter, database, container, live corpus, HammerTime `Inbox/`, production credential, or deployment change.
 
 ## Sprint 3
 
@@ -231,7 +242,7 @@ Every task begins by loading SK context, reading `AGENTS.md`, checking the SKCap
 - **Size:** L
 - **Dependencies:** `SKL-S2-04`, `SKL-S2-05`
 - **Objective:** Measure retrieval before accepting the custom legal embedding.
-- **Implementation:** Build frozen queries and relevance judgments across exact citation, paraphrase, near-neighbor distinction, jurisdiction mismatch, superseded authority, evidence versus authority, OCR noise, no answer, privilege partition, and prompt injection. Compare custom model with base BGE-M3 in shadow collections.
+- **Implementation:** Build frozen queries and relevance judgments across exact citation, paraphrase, near-neighbor distinction, jurisdiction mismatch, superseded authority, evidence versus authority, OCR noise, no answer, privilege partition, and prompt injection. Compare the custom model with base BGE-M3 in shadow projection generations.
 - **Tests:** Dataset leakage, deterministic metric calculation, alias rollback, and cross-partition leakage.
 - **Acceptance:** Approved Recall@k, nDCG, MRR, citation accuracy, latency, and leakage thresholds pass.
 - **Prohibited:** Do not promote from pairwise cosine examples alone.

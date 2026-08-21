@@ -1,7 +1,7 @@
 # SKLegal epic and sprint plan
 
 Date: 2026-08-19  
-Status: Proposed  
+Status: Approved, retrieval architecture amended 2026-08-21
 Execution policy: Sequential, approval-gated, test-evidenced
 
 ## Epic outcome
@@ -50,16 +50,20 @@ Tasks:
 
 ### Sprint 2: HammerTime integration and migration
 
-Outcome: SKLegal can read a pinned HammerTime snapshot, import one legacy matter losslessly, submit approved new ingestion, query existing stores, and report bounded corpus health.
+Outcome: SKLegal can read a pinned HammerTime snapshot, import one legacy matter losslessly, submit approved new ingestion, build and query local governed PostgreSQL retrieval projections, and report bounded corpus health.
 
 Tasks:
 
 - `SKL-S2-01` Build the read-only HammerTime release and artifact adapter
 - `SKL-S2-02` Build the legacy matter snapshot and pilot importer
 - `SKL-S2-03` Build the governed SKLegal-to-HammerTime ingestion bridge
-- `SKL-S2-04` Build Qdrant and FalkorDB retrieval adapters
+- `SKL-S2-04` Build PostgreSQL retrieval and graph adapters
 - `SKL-S2-05` Build the materialized corpus registry and reconciliation jobs
 - `SKL-S2-06` Build the official and free legal-source connector registry
+
+Retrieval assurance gate:
+
+- `SKL-S2-10` Define the tenant-native PostgreSQL retrieval partition contract
 
 ### Sprint 3: Durable agent harness and legal assurance
 

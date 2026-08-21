@@ -129,6 +129,10 @@ class ReleaseAndAliasTests(AdapterTestCase):
         self.assertEqual(
             resolved.alias.previous.release_id, fixture.PREVIOUS_RELEASE_ID
         )
+        self.assertEqual(
+            resolved.aliases_pin.content_sha256,
+            fixture.fixture_sha256(self.root, "json/state/runtime-aliases.json"),
+        )
 
     def test_resolve_current_release_preserves_binding_drift(self) -> None:
         aliases_path = self.root / "json/state/runtime-aliases.json"
@@ -275,6 +279,8 @@ class UnauthorizedMatterTests(AdapterTestCase):
     def test_no_authorizer_denies_matter_reads(self) -> None:
         adapter = self._adapter_without_authorizer()
         with self.assertRaises(MatterAccessDenied):
+            adapter.legacy_matter_path(fixture.PROBLEM_ID)
+        with self.assertRaises(MatterAccessDenied):
             adapter.resolve_legacy_matter(fixture.PROBLEM_ID)
         with self.assertRaises(MatterAccessDenied):
             adapter.get_matter_validation_report(
@@ -338,24 +344,64 @@ class UnauthorizedMatterTests(AdapterTestCase):
             root=self.root, matter_authorizer=recording, clock=lambda: FIXED_NOW
         )
         adapter.resolve_legacy_matter(fixture.PROBLEM_ID)
-        self.assertEqual(len(seen), 1)
+        self.assertEqual(len(seen), 2)
         self.assertEqual(seen[0].legacy_id, fixture.PROBLEM_ID)
         self.assertEqual(seen[0].record_kind, LegacyRecordKind.CONTAINER)
-        self.assertEqual(seen[0].relative_path, fixture.PROBLEM_RELATIVE)
+        self.assertIsNone(seen[0].relative_path)
+        self.assertEqual(seen[1].relative_path, fixture.PROBLEM_RELATIVE)
+
+    def test_denied_callers_cannot_probe_matter_existence(self) -> None:
+        adapter = self._adapter_without_authorizer()
+        for legacy_id in (fixture.PROBLEM_ID, "PRB-2099-999"):
+            with self.subTest(legacy_id=legacy_id):
+                with self.assertRaises(MatterAccessDenied):
+                    adapter.legacy_matter_path(legacy_id)
+                with self.assertRaises(MatterAccessDenied):
+                    adapter.resolve_legacy_matter(legacy_id)
+
+    def test_denial_happens_before_registry_discovery(self) -> None:
+        registry = self.root / "incidents/_incident-registry.md"
+        registry.unlink()
+        adapter = self._adapter_without_authorizer()
+        calls = (
+            lambda: adapter.legacy_matter_path(fixture.PROBLEM_ID),
+            lambda: adapter.resolve_legacy_matter(fixture.PROBLEM_ID),
+            lambda: adapter.get_matter_validation_report(
+                fixture.INCIDENT_ID, parent_legacy_id=fixture.PROBLEM_ID
+            ),
+            lambda: adapter.list_packet_references(
+                fixture.INCIDENT_ID, parent_legacy_id=fixture.PROBLEM_ID
+            ),
+            lambda: adapter.get_owner_directions(
+                fixture.INCIDENT_ID, parent_legacy_id=fixture.PROBLEM_ID
+            ),
+        )
+        for call in calls:
+            with self.subTest(call=call):
+                with self.assertRaises(MatterAccessDenied):
+                    call()
 
 
 class LegacyMatterTests(AdapterTestCase):
     def test_legacy_matter_path_resolution(self) -> None:
+        problem = self.adapter.legacy_matter_path(fixture.PROBLEM_ID)
+        self.assertEqual(problem.relative_path, fixture.PROBLEM_RELATIVE)
         self.assertEqual(
-            self.adapter.legacy_matter_path(fixture.PROBLEM_ID),
-            fixture.PROBLEM_RELATIVE,
+            problem.pin.content_sha256,
+            fixture.fixture_sha256(self.root, fixture.PROBLEM_RELATIVE),
         )
         self.assertEqual(
-            self.adapter.legacy_matter_path(
-                fixture.INCIDENT_ID, parent_legacy_id=fixture.PROBLEM_ID
-            ),
+            problem.registry_pin.content_sha256,
+            fixture.fixture_sha256(self.root, "incidents/_incident-registry.md"),
+        )
+        incident = self.adapter.legacy_matter_path(
+            fixture.INCIDENT_ID, parent_legacy_id=fixture.PROBLEM_ID
+        )
+        self.assertEqual(
+            incident.relative_path,
             fixture.INCIDENT_RELATIVE,
         )
+        self.assertEqual(incident.parent_legacy_id, fixture.PROBLEM_ID)
 
     def test_incident_resolution_requires_parent(self) -> None:
         with self.assertRaises(AmbiguousLegacyIdError):
@@ -371,6 +417,10 @@ class LegacyMatterTests(AdapterTestCase):
         self.assertEqual(
             record.pin.content_sha256,
             fixture.fixture_sha256(self.root, fixture.PROBLEM_RELATIVE),
+        )
+        self.assertEqual(
+            record.registry_pin.content_sha256,
+            fixture.fixture_sha256(self.root, "incidents/_incident-registry.md"),
         )
         alias = record.to_legacy_alias(source_version=fixture.RELEASE_ID)
         self.assertEqual(alias.legacy_id, fixture.PROBLEM_ID)
@@ -412,10 +462,16 @@ class MatterArtifactTests(AdapterTestCase):
             fixture.INCIDENT_ID, parent_legacy_id=fixture.PROBLEM_ID
         )
         self.assertEqual([item.packet_version for item in references], [1, 2])
-        self.assertIsNone(references[0].review_path)
+        self.assertIsNone(references[0].review_pin)
         self.assertEqual(
             references[1].review_path,
             f"{fixture.INCIDENT_DIR_RELATIVE}/phase-0-wave-1-v2-review.md",
+        )
+        self.assertIsNotNone(references[1].review_pin)
+        review_relative = f"{fixture.INCIDENT_DIR_RELATIVE}/phase-0-wave-1-v2-review.md"
+        self.assertEqual(
+            references[1].review_pin.content_sha256,
+            fixture.fixture_sha256(self.root, review_relative),
         )
         self.assertEqual(references[1].facts["packet_version"], 2)
         relative = f"{fixture.INCIDENT_DIR_RELATIVE}/packet-v2-facts.json"
@@ -467,7 +523,12 @@ class DecompositionTests(AdapterTestCase):
 
 class PathSafetyTests(AdapterTestCase):
     def test_inbox_is_never_readable(self) -> None:
-        for path in ("Inbox/do-not-read.md", "inbox/do-not-read.md", "INBOX/x"):
+        for path in (
+            "Inbox/do-not-read.md",
+            "inbox/do-not-read.md",
+            "INBOX/x",
+            "json/Inbox/do-not-read.md",
+        ):
             with self.assertRaises(ForbiddenPathError):
                 self.adapter.read_artifact(path)
 
@@ -500,8 +561,74 @@ class PathSafetyTests(AdapterTestCase):
         with self.assertRaises(ForbiddenPathError):
             self.adapter.read_artifact("reference/legal/escape-link.md")
 
+    def test_fixed_internal_path_symlink_denied(self) -> None:
+        outside = self.root.parent / f"{self.root.name}-aliases.json"
+        outside.write_bytes(
+            (self.root / "json/state/runtime-aliases.json").read_bytes()
+        )
+        self.addCleanup(outside.unlink)
+        alias_path = self.root / "json/state/runtime-aliases.json"
+        alias_path.unlink()
+        alias_path.symlink_to(outside)
+        with self.assertRaises(ForbiddenPathError):
+            self.adapter.get_runtime_aliases()
+
+    def test_fixed_internal_path_cannot_symlink_into_inbox(self) -> None:
+        alias_path = self.root / "json/state/runtime-aliases.json"
+        inbox_alias = self.root / "Inbox/runtime-aliases.json"
+        inbox_alias.write_bytes(alias_path.read_bytes())
+        alias_path.unlink()
+        alias_path.symlink_to(inbox_alias)
+        with self.assertRaises(ForbiddenPathError):
+            self.adapter.get_runtime_aliases()
+
+    def test_fixed_internal_directory_cannot_symlink_into_inbox(self) -> None:
+        state_dir = self.root / "json/state"
+        inbox_state = self.root / "Inbox/state"
+        state_dir.rename(inbox_state)
+        state_dir.symlink_to(inbox_state, target_is_directory=True)
+        with self.assertRaises(ForbiddenPathError):
+            self.adapter.get_runtime_aliases()
+
 
 class ReadOnlyEnforcementTests(AdapterTestCase):
+    def test_every_public_response_carries_all_source_pins(self) -> None:
+        self.assertTrue(all(item.pin for item in self.adapter.list_releases()))
+        self.assertTrue(self.adapter.get_release_manifest(fixture.RELEASE_ID).pin)
+        self.assertTrue(self.adapter.get_runtime_aliases().pin)
+        resolved = self.adapter.resolve_current_release("dev")
+        self.assertTrue(resolved.aliases_pin)
+        self.assertTrue(resolved.manifest.pin)
+        self.assertTrue(self.adapter.get_decomposed_state().pin)
+        self.assertTrue(self.adapter.get_decomposition(fixture.DECOMPOSITION_ID).pin)
+        self.assertTrue(self.adapter.read_artifact(fixture.REFERENCE_RELATIVE).pin)
+        verified = self.adapter.verify_source_hash(
+            fixture.REFERENCE_RELATIVE,
+            expected_sha256=fixture.fixture_sha256(
+                self.root, fixture.REFERENCE_RELATIVE
+            ),
+        )
+        self.assertTrue(verified.pin)
+        resolution = self.adapter.legacy_matter_path(fixture.PROBLEM_ID)
+        self.assertTrue(resolution.pin)
+        self.assertTrue(resolution.registry_pin)
+        matter = self.adapter.resolve_legacy_matter(fixture.PROBLEM_ID)
+        self.assertTrue(matter.pin)
+        self.assertTrue(matter.registry_pin)
+        report = self.adapter.get_matter_validation_report(
+            fixture.INCIDENT_ID, parent_legacy_id=fixture.PROBLEM_ID
+        )
+        self.assertTrue(report.pin)
+        packets = self.adapter.list_packet_references(
+            fixture.INCIDENT_ID, parent_legacy_id=fixture.PROBLEM_ID
+        )
+        self.assertTrue(all(item.facts_pin for item in packets))
+        self.assertTrue(next(item.review_pin for item in packets if item.review_pin))
+        directions = self.adapter.get_owner_directions(
+            fixture.INCIDENT_ID, parent_legacy_id=fixture.PROBLEM_ID
+        )
+        self.assertTrue(directions.pin)
+
     def test_full_api_surface_runs_on_read_only_filesystem(self) -> None:
         for dirpath, dirnames, filenames in os.walk(self.root):
             os.chmod(dirpath, stat.S_IRUSR | stat.S_IXUSR | stat.S_IRGRP | stat.S_IXGRP)

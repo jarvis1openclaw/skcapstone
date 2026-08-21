@@ -39,6 +39,21 @@ audit flags remain unchanged.
   `/run/user/$uid`. Renameable descendant overrides, links, path escapes,
   repository overlap, and other roots are rejected.
 
+The Python quality gates use NUL-delimited `rg --files` discovery for every
+`test_*.py` file recursively under `tests`. Files below `tests/integration` run
+in the integration gate and all other discovered files run in the unit gate.
+Before execution, every module receives its own pytest collection preflight.
+The gate prints the module path and collection count and fails if collection
+errors, reports zero tests, or does not provide a parseable count.
+
+`tests/integration/test_clean_room_containment.py` is always collected by the
+integration gate. Its disposable host proofs intentionally skip unless
+`SKLEGAL_SYSTEMD_CONTAINMENT_TEST=1` is set. Run
+`SKLEGAL_SYSTEMD_CONTAINMENT_TEST=1 make integration-test` on a qualified Linux
+host when those systemd and kernel containment proofs are required. The normal
+quality gate keeps the module and its skipped-test count visible without
+starting host containment work implicitly.
+
 The clean-room copy is a clean-checkout-equivalent test. The source allowlist is
 exactly `git ls-files --cached --others --exclude-standard`; command-scope Git
 configuration disables local

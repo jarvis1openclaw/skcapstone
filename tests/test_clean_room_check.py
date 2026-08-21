@@ -154,6 +154,7 @@ class CleanRoomCheckTests(unittest.TestCase):
         source_entries: tuple[str, ...] = ("Makefile", "payload.txt"),
         environment_changes: dict[str, str] | None = None,
         progress_interval: float = 30.0,
+        source_timeout: float = clean_room_check.SOURCE_TIMEOUT_SECONDS,
         containment_options: dict[str, Any] | None = None,
         after_copy_hook: Callable[[Path, Path], None] | None = None,
         source_runner_hook: Callable[[Path], None] | None = None,
@@ -193,6 +194,7 @@ class CleanRoomCheckTests(unittest.TestCase):
             check: bool,
             capture_output: bool,
             pass_fds: tuple[int, ...],
+            timeout: float,
         ) -> subprocess.CompletedProcess[bytes]:
             self.assertEqual(
                 [
@@ -230,6 +232,9 @@ class CleanRoomCheckTests(unittest.TestCase):
             )
             self.assertTrue(check)
             self.assertTrue(capture_output)
+            self.assertEqual(source_timeout, timeout)
+            self.assertTrue(math.isfinite(timeout))
+            self.assertGreater(timeout, 0)
             if source_runner_hook is not None:
                 source_runner_hook(source)
             return subprocess.CompletedProcess(argv, 0, stdout=git_stdout)
@@ -272,6 +277,7 @@ class CleanRoomCheckTests(unittest.TestCase):
                 terminate_grace=2.0,
                 kill_grace=1.0,
                 progress_interval=progress_interval,
+                source_timeout=source_timeout,
                 emit=events.append,
             )
         return receipt, fake_containment, events, source, scratch
@@ -1656,6 +1662,19 @@ assert signal.getsignal(signal.SIGTERM) == previous
                 {Path("/tmp"), Path(f"/run/user/{os.geteuid()}")},
             )
 
+            with mock.patch.object(
+                clean_room_check,
+                "_runtime_anchor",
+                return_value=source.parent,
+            ):
+                self.assertEqual(
+                    Path("/tmp"),
+                    clean_room_check.resolve_scratch_root(
+                        environment={},
+                        repo_root=source,
+                    ),
+                )
+
             valid = Path(tempfile.mkdtemp(dir="/tmp"))
             self.addCleanup(lambda: valid.rmdir())
             with self.assertRaisesRegex(
@@ -1664,6 +1683,25 @@ assert signal.getsignal(signal.SIGTERM) == previous
             ):
                 clean_room_check.resolve_scratch_root(
                     environment={"SKLEGAL_CLEAN_ROOM_ROOT": str(valid)},
+                    repo_root=source,
+                )
+
+        with tempfile.TemporaryDirectory(dir="/tmp") as source_raw:
+            source = Path(source_raw) / "repository"
+            source.mkdir()
+            with (
+                mock.patch.object(
+                    clean_room_check,
+                    "_runtime_anchor",
+                    return_value=None,
+                ),
+                self.assertRaisesRegex(
+                    clean_room_check.CleanRoomError,
+                    "scratch_root_overlaps_repository",
+                ),
+            ):
+                clean_room_check.resolve_scratch_root(
+                    environment={},
                     repo_root=source,
                 )
 
@@ -1875,6 +1913,85 @@ assert signal.getsignal(signal.SIGTERM) == previous
         self.assertIsNone(containment.start_call)
         self.assertTrue(receipt.temporary_cleaned)
         self.assertTrue(events[-1]["temporary_cleaned"])
+
+    def test_source_allowlist_timeout_fails_closed_with_terminal_receipt(
+        self,
+    ) -> None:
+        def hang(source: Path) -> None:
+            del source
+            raise clean_room_check.CleanRoomTimeout("source_allowlist_timeout")
+
+        receipt, containment, events, _, _ = self._fixture(
+            process=FakeProcess(0),
+            source_runner_hook=hang,
+        )
+        self.assertEqual("timed_out", receipt.status)
+        self.assertEqual(124, receipt.exit_code)
+        self.assertEqual("source_allowlist_timeout", receipt.reason)
+        self.assertIsNone(containment.start_call)
+        self.assertTrue(receipt.temporary_cleaned)
+        self.assertEqual("receipt", events[-1]["event"])
+        self.assertEqual("timed_out", events[-1]["status"])
+
+        for invalid in (0.0, -1.0, math.inf, math.nan):
+            with self.subTest(invalid=invalid):
+                invalid_receipt, invalid_containment, _, _, _ = self._fixture(
+                    process=FakeProcess(0),
+                    source_timeout=invalid,
+                )
+                self.assertEqual("failed", invalid_receipt.status)
+                self.assertEqual(
+                    "invalid_timeout_configuration",
+                    invalid_receipt.reason,
+                )
+                self.assertIsNone(invalid_containment.start_call)
+
+    def test_source_allowlist_runner_escalates_term_to_bounded_group_kill(
+        self,
+    ) -> None:
+        with tempfile.TemporaryDirectory(dir="/tmp") as raw:
+            marker = Path(raw)
+            script = (
+                "trap 'touch \"$1\"/term-delivered' TERM; "
+                '( trap "" TERM; sleep 2; touch "$1"/group-survived ) & '
+                "while :; do sleep 1; done"
+            )
+            started = time.monotonic()
+            with (
+                mock.patch.object(
+                    clean_room_check,
+                    "SOURCE_TERMINATE_GRACE_SECONDS",
+                    0.5,
+                ),
+                mock.patch.object(
+                    clean_room_check,
+                    "SOURCE_KILL_GRACE_SECONDS",
+                    1.0,
+                ),
+                self.assertRaisesRegex(
+                    clean_room_check.CleanRoomTimeout,
+                    "source_allowlist_timeout",
+                ),
+            ):
+                clean_room_check._run_source_command(
+                    [
+                        "/usr/bin/bash",
+                        "-c",
+                        script,
+                        "clean-room-test",
+                        str(marker),
+                    ],
+                    cwd=Path("/"),
+                    env={"PATH": clean_room_check.SYSTEM_PATH},
+                    check=True,
+                    capture_output=True,
+                    pass_fds=(),
+                    timeout=0.5,
+                )
+            self.assertLess(time.monotonic() - started, 10.0)
+            self.assertTrue((marker / "term-delivered").exists())
+            time.sleep(2.5)
+            self.assertFalse((marker / "group-survived").exists())
 
     def test_child_failure_is_normalized_and_tree_is_extinct_and_cleaned(
         self,
