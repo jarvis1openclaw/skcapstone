@@ -1724,10 +1724,16 @@ assert signal.getsignal(signal.SIGTERM) == previous
             del args, kwargs
             return subprocess.CompletedProcess([], 0, stdout=b"linked.txt\0")
 
-        with mock.patch.object(
-            clean_room_check,
-            "resolve_scratch_root",
-            return_value=scratch,
+        with (
+            mock.patch.object(
+                clean_room_check,
+                "resolve_scratch_root",
+                return_value=scratch,
+            ),
+            mock.patch.object(
+                clean_room_check,
+                "_validate_trusted_executables",
+            ),
         ):
             receipt = clean_room_check.run(
                 repo_root=source,
