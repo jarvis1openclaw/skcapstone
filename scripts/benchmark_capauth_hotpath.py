@@ -494,7 +494,7 @@ def _verify_or_raise(parsed: ParsedCapability) -> bool:
 def _gpg_scenarios(root: Path, iterations: int) -> dict[str, Any]:
     scenarios: dict[str, Any] = {}
     keyring = root / "gnupg"
-    keyring.mkdir(mode=0o700)
+    keyring.mkdir(mode=0o700, parents=True)
     fingerprint = _generate_synthetic_key(keyring)
     previous_home = os.environ.get("GNUPGHOME")
     os.environ["GNUPGHOME"] = str(keyring)

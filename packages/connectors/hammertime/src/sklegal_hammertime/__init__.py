@@ -1,0 +1,101 @@
+"""Read-only HammerTime release and artifact adapter package.
+
+The adapter is the only SKLegal component allowed to construct HammerTime
+paths. It has no write, move, delete, or dispatch surface, never reads
+``Inbox/``, and fails closed on matter authorization.
+"""
+
+from .adapter import (
+    DEFAULT_MAX_ARTIFACT_BYTES,
+    ROOT_ENV_VAR,
+    HammerTimeReleaseAdapter,
+)
+from .errors import (
+    AdapterUnavailableError,
+    AmbiguousLegacyIdError,
+    ArtifactTooLargeError,
+    ForbiddenPathError,
+    HammerTimeAdapterError,
+    MalformedFrontmatterError,
+    MalformedManifestError,
+    MatterAccessDenied,
+    MissingPathError,
+    RegistryMismatchError,
+    SourceHashMismatchError,
+    StaleReleaseError,
+)
+from .frontmatter import split_frontmatter
+from .models import (
+    AliasBinding,
+    AliasTarget,
+    ArtifactRead,
+    DecomposedStateSeal,
+    Decomposition,
+    DecompositionChunk,
+    DecompositionClaim,
+    DecompositionEntity,
+    DecompositionId,
+    DocumentCounts,
+    LegacyMatterRecord,
+    LegacyRecordId,
+    MatterAccessRequest,
+    MatterAuthorizer,
+    MatterValidationReport,
+    PacketReference,
+    RelativePosixPath,
+    ReleaseId,
+    ReleaseManifest,
+    ReleaseSummary,
+    ResolvedRelease,
+    RuntimeAlias,
+    RuntimeAliasesSnapshot,
+    SnapshotPin,
+    SourceHashVerification,
+)
+
+PACKAGE_NAME = "sklegal-hammertime"
+
+__all__ = [
+    "DEFAULT_MAX_ARTIFACT_BYTES",
+    "PACKAGE_NAME",
+    "ROOT_ENV_VAR",
+    "AdapterUnavailableError",
+    "AliasBinding",
+    "AliasTarget",
+    "AmbiguousLegacyIdError",
+    "ArtifactRead",
+    "ArtifactTooLargeError",
+    "DecomposedStateSeal",
+    "Decomposition",
+    "DecompositionClaim",
+    "DecompositionChunk",
+    "DecompositionEntity",
+    "DecompositionId",
+    "DocumentCounts",
+    "ForbiddenPathError",
+    "HammerTimeAdapterError",
+    "HammerTimeReleaseAdapter",
+    "LegacyMatterRecord",
+    "LegacyRecordId",
+    "MalformedFrontmatterError",
+    "MalformedManifestError",
+    "MatterAccessDenied",
+    "MatterAccessRequest",
+    "MatterAuthorizer",
+    "MatterValidationReport",
+    "MissingPathError",
+    "PacketReference",
+    "RegistryMismatchError",
+    "RelativePosixPath",
+    "ReleaseId",
+    "ReleaseManifest",
+    "ReleaseSummary",
+    "ResolvedRelease",
+    "RuntimeAlias",
+    "RuntimeAliasesSnapshot",
+    "SnapshotPin",
+    "SourceHashMismatchError",
+    "SourceHashVerification",
+    "StaleReleaseError",
+    "split_frontmatter",
+]

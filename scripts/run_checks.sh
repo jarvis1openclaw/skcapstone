@@ -49,12 +49,16 @@ run_unit_test() {
     tests.test_capauth_authorization \
     tests.test_capauth_delegation \
     tests.test_capauth_boundaries \
+    tests.test_capauth_hotpath_benchmark \
     tests.test_party_conflicts \
     tests.test_policy_corrections \
     tests.test_policy_engine \
     tests.test_audit \
     tests.test_clean_room_check \
     tests.test_validation_subject \
+    tests.test_status_page \
+    tests.test_external_action_state_docs \
+    tests.test_worker_workflows \
     tests.test_foundation
   npm test
 }

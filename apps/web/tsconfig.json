@@ -14,7 +14,10 @@
     "noUncheckedIndexedAccess": true,
     "noUnusedLocals": true,
     "noUnusedParameters": true,
-    "skipLibCheck": false,
+    // skipLibCheck is true because @tanstack/router-core 1.171.26 (latest)
+    // ships an internal d.ts defect (ssr/types.d.ts references the
+    // undeclared MakeRouteMatch['__beforeLoadContext']). Revisit on upgrade.
+    "skipLibCheck": true,
     "strict": true,
     "target": "ES2023",
     "types": ["node", "vite/client", "vitest/globals"]

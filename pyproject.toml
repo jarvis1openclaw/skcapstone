@@ -24,6 +24,7 @@ sklegal-domain = { workspace = true }
 sklegal-capauth = { workspace = true }
 sklegal-policies = { workspace = true }
 sklegal-audit = { workspace = true }
+sklegal-hammertime = { workspace = true }
 
 [tool.uv.workspace]
 members = [
@@ -31,6 +32,7 @@ members = [
   "services/worker",
   "packages/domain",
   "packages/capauth",
+  "packages/connectors/hammertime",
   "packages/persistence",
   "packages/policies",
   "packages/audit",

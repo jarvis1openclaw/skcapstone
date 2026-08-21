@@ -41,7 +41,9 @@ def _documented_edges(heading: str) -> dict[str, frozenset[str]]:
         if match is None:
             continue
         source, target = match.groups()
-        edges.setdefault(source, set()).add(target)
+        edges.setdefault(source, set())
+        if target != "none":
+            edges[source].add(target)
     return {source: frozenset(targets) for source, targets in edges.items()}
 
 

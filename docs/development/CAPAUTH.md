@@ -271,9 +271,15 @@ They are not safe across workers or hosts and are not production defaults.
 Before any protected production route is enabled, deployment must configure a
 durable shared principal adapter, trusted issuer policy, revocation backend,
 atomic replay backend, and the S1-05 durable audit sink. PostgreSQL is the
-expected shared state for principal, revocation, replay, and audit adapters.
-The sink implementation is available, but no production route composition is
-enabled by either card. Replay reservation needs
+shared state for principal, revocation, replay, and audit adapters.
+`PostgresPrincipalPolicyBackend`, `PostgresRevocationBackend`, and
+`PostgresReplayBackend` in `sklegal_capauth.postgres` implement those three
+contracts over the migration 0008 through 0010 SECURITY DEFINER functions.
+Each adapter revalidates the current runtime scope inside the database
+function, converts any database error into a fail-closed
+`BackendUnavailable`, and never sees raw credential material. The audit sink
+implementation is available, but no production route composition is enabled
+by either card. Replay reservation needs
 a unique credential-digest insert or equivalent serializable atomic operation.
 Read errors, unavailable revisions, corrupt state, and write ambiguity must
 deny. The package provides explicit unavailable adapters so an incomplete
@@ -303,9 +309,27 @@ Run the focused checks with:
 
 ## Rollback
 
-No database rollback is required because this card adds no migration. Disable
-route, tool, model, or connector compositions that depend on
-`sklegal-capauth`, remove the package dependency and workspace member, then
-remove the package, API adapter, tests, and check-runner entries. Never replace
-the authorizer with an allow fallback. A missing integration must leave the
-operation unavailable.
+The integration now carries durable PostgreSQL state, so rollback has two
+halves. The code half is unchanged: disable route, tool, model, or connector
+compositions that depend on `sklegal-capauth`, remove the package dependency
+and workspace member, then remove the package, API adapter, tests, and
+check-runner entries. Never replace the authorizer with an allow fallback. A
+missing integration must leave the operation unavailable.
+
+The database half runs the explicit down sections of migrations 0008 through
+0012 in reverse order through the digest-pinned runner:
+
+- 0012 and 0011 revoke schema USAGE from `sklegal_runtime`.
+- 0010 drops the authentication subject index, constraint, and column, then
+  restores the 0009-era `capability_principal_snapshot` that derives the
+  subject from the principal UUID.
+- 0009 drops `capability_principal_snapshot`.
+- 0008 drops the revocation and replay functions, their RLS policies, and the
+  `capability_revocations` and `capability_replay_reservations` tables.
+
+Revocation history and consumed replay reservations live only in the 0008
+tables, and principal authentication subject bindings live only in the 0010
+column. A down migration destroys that evidence, so any data-bearing
+production rollback requires the separate backup and restore decision recorded
+in `PERSISTENCE.md`. Reapplying up after a down recreates empty state; it does
+not resurrect revoked credential digests or consumed replay reservations.

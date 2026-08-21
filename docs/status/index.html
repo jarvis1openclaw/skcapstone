@@ -1,0 +1,1384 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta
+      name="description"
+      content="Read-only delivery status snapshot for the governed SKLegal platform."
+    />
+    <meta name="theme-color" content="#12100e" />
+    <title>SKLegal | Delivery Status</title>
+    <style>
+      :root {
+        color-scheme: dark;
+        --ink: #f5efe4;
+        --ink-muted: #bdb3a5;
+        --ink-faint: #847a6d;
+        --canvas: #0d0c0b;
+        --canvas-warm: #12100e;
+        --surface: rgba(30, 27, 23, 0.88);
+        --surface-raised: #211d18;
+        --surface-soft: #171410;
+        --line: rgba(231, 218, 197, 0.14);
+        --line-strong: rgba(231, 218, 197, 0.25);
+        --copper: #cf8a52;
+        --copper-light: #eab17d;
+        --sage: #8fb7a0;
+        --sage-deep: #173529;
+        --gold: #d6b363;
+        --gold-deep: #382e15;
+        --slate: #93a8b8;
+        --slate-deep: #1b2932;
+        --rose: #d18f84;
+        --rose-deep: #3a211e;
+        --radius-lg: 24px;
+        --radius-md: 16px;
+        --radius-sm: 10px;
+        --shadow: 0 28px 80px rgba(0, 0, 0, 0.36);
+        --content: 1180px;
+      }
+
+      *,
+      *::before,
+      *::after {
+        box-sizing: border-box;
+      }
+
+      html {
+        scroll-behavior: smooth;
+      }
+
+      body {
+        min-width: 320px;
+        margin: 0;
+        color: var(--ink);
+        background:
+          radial-gradient(circle at 12% 0%, rgba(207, 138, 82, 0.15), transparent 28rem),
+          radial-gradient(circle at 88% 18%, rgba(91, 116, 104, 0.12), transparent 30rem),
+          linear-gradient(180deg, var(--canvas-warm), var(--canvas));
+        font-family:
+          Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI",
+          sans-serif;
+        line-height: 1.6;
+      }
+
+      body::before {
+        position: fixed;
+        inset: 0;
+        z-index: -1;
+        background-image:
+          linear-gradient(rgba(255, 255, 255, 0.018) 1px, transparent 1px),
+          linear-gradient(90deg, rgba(255, 255, 255, 0.018) 1px, transparent 1px);
+        background-size: 48px 48px;
+        content: "";
+        pointer-events: none;
+        mask-image: linear-gradient(to bottom, black, transparent 72%);
+      }
+
+      a {
+        color: var(--copper-light);
+      }
+
+      a:hover {
+        color: var(--ink);
+      }
+
+      a:focus-visible,
+      button:focus-visible,
+      [tabindex]:focus-visible {
+        outline: 3px solid var(--copper-light);
+        outline-offset: 4px;
+      }
+
+      .skip-link {
+        position: fixed;
+        top: 12px;
+        left: 12px;
+        z-index: 20;
+        padding: 10px 14px;
+        border-radius: 8px;
+        color: #15110e;
+        background: var(--copper-light);
+        font-weight: 800;
+        transform: translateY(-160%);
+      }
+
+      .skip-link:focus {
+        transform: translateY(0);
+      }
+
+      .shell {
+        width: min(calc(100% - 40px), var(--content));
+        margin-inline: auto;
+      }
+
+      .site-header {
+        position: sticky;
+        top: 0;
+        z-index: 10;
+        border-bottom: 1px solid var(--line);
+        background: rgba(13, 12, 11, 0.82);
+        backdrop-filter: blur(18px);
+      }
+
+      .header-inner {
+        display: flex;
+        min-height: 76px;
+        align-items: center;
+        justify-content: space-between;
+        gap: 28px;
+      }
+
+      .brand {
+        display: inline-flex;
+        align-items: center;
+        gap: 12px;
+        color: var(--ink);
+        text-decoration: none;
+      }
+
+      .brand-mark {
+        display: grid;
+        width: 36px;
+        height: 36px;
+        place-items: center;
+        border: 1px solid rgba(234, 177, 125, 0.58);
+        border-radius: 50%;
+        color: var(--copper-light);
+        font-family: Georgia, "Times New Roman", serif;
+        font-size: 0.82rem;
+        font-weight: 700;
+        letter-spacing: 0.04em;
+      }
+
+      .brand-copy {
+        display: grid;
+        line-height: 1.12;
+      }
+
+      .brand-name {
+        font-family: Georgia, "Times New Roman", serif;
+        font-size: 1.15rem;
+        letter-spacing: 0.02em;
+      }
+
+      .brand-context {
+        color: var(--ink-faint);
+        font-size: 0.68rem;
+        font-weight: 800;
+        letter-spacing: 0.16em;
+        text-transform: uppercase;
+      }
+
+      .site-nav ul {
+        display: flex;
+        margin: 0;
+        padding: 0;
+        gap: 24px;
+        list-style: none;
+      }
+
+      .site-nav a {
+        color: var(--ink-muted);
+        font-size: 0.82rem;
+        font-weight: 700;
+        letter-spacing: 0.02em;
+        text-decoration: none;
+      }
+
+      .site-nav a:hover {
+        color: var(--ink);
+      }
+
+      main {
+        overflow: hidden;
+      }
+
+      .hero {
+        position: relative;
+        padding: 92px 0 48px;
+      }
+
+      .hero::after {
+        position: absolute;
+        top: 80px;
+        right: max(-160px, calc((100vw - var(--content)) / 2 - 220px));
+        width: 440px;
+        height: 440px;
+        border: 1px solid rgba(234, 177, 125, 0.1);
+        border-radius: 50%;
+        content: "";
+        box-shadow:
+          0 0 0 64px rgba(234, 177, 125, 0.025),
+          0 0 0 128px rgba(234, 177, 125, 0.018);
+        pointer-events: none;
+      }
+
+      .eyebrow {
+        display: flex;
+        margin: 0 0 26px;
+        align-items: center;
+        gap: 12px;
+        color: var(--copper-light);
+        font-size: 0.72rem;
+        font-weight: 800;
+        letter-spacing: 0.15em;
+        text-transform: uppercase;
+      }
+
+      .eyebrow::before {
+        width: 32px;
+        height: 1px;
+        background: var(--copper);
+        content: "";
+      }
+
+      .hero-grid {
+        position: relative;
+        z-index: 1;
+        display: grid;
+        grid-template-columns: minmax(0, 1.6fr) minmax(270px, 0.7fr);
+        align-items: end;
+        gap: 72px;
+      }
+
+      h1,
+      h2,
+      h3 {
+        margin-top: 0;
+        font-family: Georgia, "Times New Roman", serif;
+        font-weight: 500;
+        line-height: 1.08;
+        text-wrap: balance;
+      }
+
+      h1 {
+        max-width: 900px;
+        margin-bottom: 26px;
+        font-size: clamp(3rem, 7.4vw, 6.75rem);
+        letter-spacing: -0.055em;
+      }
+
+      h1 .accent {
+        color: var(--copper-light);
+      }
+
+      .hero-lead {
+        max-width: 760px;
+        margin: 0;
+        color: var(--ink-muted);
+        font-size: clamp(1rem, 1.5vw, 1.22rem);
+      }
+
+      .brief {
+        padding: 24px;
+        border: 1px solid var(--line-strong);
+        border-radius: var(--radius-md);
+        background: rgba(22, 19, 16, 0.8);
+        box-shadow: var(--shadow);
+      }
+
+      .brief-label {
+        margin: 0 0 8px;
+        color: var(--ink-faint);
+        font-size: 0.68rem;
+        font-weight: 800;
+        letter-spacing: 0.14em;
+        text-transform: uppercase;
+      }
+
+      .brief strong {
+        display: block;
+        margin-bottom: 8px;
+        color: var(--sage);
+        font-family: Georgia, "Times New Roman", serif;
+        font-size: 1.65rem;
+        font-weight: 500;
+      }
+
+      .brief p {
+        margin: 0;
+        color: var(--ink-muted);
+        font-size: 0.9rem;
+      }
+
+      .status-ribbon {
+        display: grid;
+        margin-top: 62px;
+        grid-template-columns: repeat(4, 1fr);
+        border: 1px solid var(--line);
+        border-radius: var(--radius-lg);
+        background: rgba(22, 19, 16, 0.78);
+        box-shadow: var(--shadow);
+        overflow: hidden;
+      }
+
+      .status-item {
+        min-height: 138px;
+        padding: 25px 26px 22px;
+        border-right: 1px solid var(--line);
+      }
+
+      .status-item:last-child {
+        border-right: 0;
+      }
+
+      .status-item dt {
+        margin-bottom: 13px;
+        color: var(--ink-faint);
+        font-size: 0.67rem;
+        font-weight: 800;
+        letter-spacing: 0.13em;
+        text-transform: uppercase;
+      }
+
+      .status-item dd {
+        margin: 0;
+        font-size: 1.05rem;
+        font-weight: 740;
+        line-height: 1.35;
+      }
+
+      .status-value {
+        display: flex;
+        align-items: center;
+        gap: 9px;
+      }
+
+      .status-dot {
+        width: 9px;
+        height: 9px;
+        flex: 0 0 auto;
+        border-radius: 50%;
+        background: currentColor;
+        box-shadow: 0 0 16px currentColor;
+      }
+
+      .approved {
+        color: var(--sage);
+      }
+
+      .active {
+        color: var(--copper-light);
+      }
+
+      .held {
+        color: var(--gold);
+      }
+
+      .closed {
+        color: var(--rose);
+      }
+
+      .status-detail {
+        display: block;
+        margin-top: 7px;
+        color: var(--ink-muted);
+        font-size: 0.78rem;
+        font-weight: 500;
+      }
+
+      .section {
+        padding: 72px 0;
+      }
+
+      .section + .section {
+        border-top: 1px solid var(--line);
+      }
+
+      .section-heading {
+        display: grid;
+        margin-bottom: 34px;
+        grid-template-columns: minmax(0, 1fr) minmax(260px, 0.6fr);
+        align-items: end;
+        gap: 56px;
+      }
+
+      .section-heading .kicker {
+        margin: 0 0 12px;
+        color: var(--copper-light);
+        font-size: 0.7rem;
+        font-weight: 800;
+        letter-spacing: 0.15em;
+        text-transform: uppercase;
+      }
+
+      .section-heading h2 {
+        margin-bottom: 0;
+        font-size: clamp(2rem, 4.2vw, 3.65rem);
+        letter-spacing: -0.035em;
+      }
+
+      .section-heading > p {
+        margin: 0;
+        color: var(--ink-muted);
+        font-size: 0.92rem;
+      }
+
+      .metric-grid {
+        display: grid;
+        grid-template-columns: repeat(5, 1fr);
+        gap: 12px;
+      }
+
+      .metric {
+        min-height: 146px;
+        padding: 22px;
+        border: 1px solid var(--line);
+        border-radius: var(--radius-md);
+        background: var(--surface-soft);
+      }
+
+      .metric strong {
+        display: block;
+        margin-bottom: 16px;
+        color: var(--ink);
+        font-family: Georgia, "Times New Roman", serif;
+        font-size: 2.5rem;
+        font-weight: 500;
+        line-height: 1;
+      }
+
+      .metric span {
+        color: var(--ink-muted);
+        font-size: 0.78rem;
+        font-weight: 750;
+        letter-spacing: 0.05em;
+        text-transform: uppercase;
+      }
+
+      .metric.done {
+        border-top-color: var(--sage);
+      }
+
+      .metric.review {
+        border-top-color: var(--gold);
+      }
+
+      .metric.doing {
+        border-top-color: var(--copper-light);
+      }
+
+      .metric.ready {
+        border-top-color: var(--slate);
+      }
+
+      .metric.backlog {
+        border-top-color: var(--ink-faint);
+      }
+
+      .count-note {
+        margin: 18px 0 0;
+        color: var(--ink-faint);
+        font-size: 0.78rem;
+      }
+
+      .roadmap {
+        position: relative;
+        display: grid;
+        margin: 0;
+        padding: 0;
+        gap: 14px;
+        list-style: none;
+      }
+
+      .roadmap::before {
+        position: absolute;
+        top: 44px;
+        bottom: 44px;
+        left: 42px;
+        width: 1px;
+        background: linear-gradient(var(--sage), var(--copper), var(--ink-faint));
+        content: "";
+      }
+
+      .roadmap-item {
+        position: relative;
+        display: grid;
+        min-height: 138px;
+        padding: 28px 30px;
+        grid-template-columns: 88px minmax(210px, 0.65fr) minmax(0, 1.35fr);
+        align-items: center;
+        gap: 26px;
+        border: 1px solid var(--line);
+        border-radius: var(--radius-md);
+        background: rgba(25, 22, 18, 0.7);
+      }
+
+      .roadmap-item::before {
+        position: absolute;
+        left: 36px;
+        width: 13px;
+        height: 13px;
+        border: 3px solid var(--surface-raised);
+        border-radius: 50%;
+        background: var(--ink-faint);
+        box-shadow: 0 0 0 1px var(--line-strong);
+        content: "";
+      }
+
+      .roadmap-item.complete::before {
+        background: var(--sage);
+      }
+
+      .roadmap-item.current::before {
+        background: var(--copper-light);
+        box-shadow:
+          0 0 0 1px rgba(234, 177, 125, 0.4),
+          0 0 22px rgba(234, 177, 125, 0.58);
+      }
+
+      .phase-number {
+        padding-left: 32px;
+        color: var(--ink-faint);
+        font-family: Georgia, "Times New Roman", serif;
+        font-size: 1.4rem;
+      }
+
+      .phase-title h3 {
+        margin-bottom: 7px;
+        font-size: 1.4rem;
+      }
+
+      .phase-title p,
+      .phase-copy p {
+        margin: 0;
+        color: var(--ink-muted);
+        font-size: 0.88rem;
+      }
+
+      .phase-tag {
+        display: inline-flex;
+        margin-bottom: 10px;
+        padding: 4px 9px;
+        border: 1px solid var(--line-strong);
+        border-radius: 999px;
+        color: var(--ink-muted);
+        font-size: 0.63rem;
+        font-weight: 800;
+        letter-spacing: 0.1em;
+        text-transform: uppercase;
+      }
+
+      .phase-tag.complete {
+        border-color: rgba(143, 183, 160, 0.38);
+        color: var(--sage);
+        background: rgba(23, 53, 41, 0.5);
+      }
+
+      .phase-tag.current {
+        border-color: rgba(234, 177, 125, 0.38);
+        color: var(--copper-light);
+        background: rgba(70, 42, 23, 0.46);
+      }
+
+      .phase-tag.gated {
+        border-color: rgba(209, 143, 132, 0.32);
+        color: var(--rose);
+        background: rgba(58, 33, 30, 0.5);
+      }
+
+      .focus-grid {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 16px;
+      }
+
+      .focus-card {
+        min-height: 240px;
+        padding: 26px;
+        border: 1px solid var(--line);
+        border-radius: var(--radius-md);
+        background: var(--surface);
+      }
+
+      .focus-card .card-index {
+        display: block;
+        margin-bottom: 42px;
+        color: var(--copper-light);
+        font-family: Georgia, "Times New Roman", serif;
+        font-size: 1.15rem;
+      }
+
+      .focus-card h3 {
+        margin-bottom: 12px;
+        font-size: 1.38rem;
+      }
+
+      .focus-card p {
+        margin: 0 0 18px;
+        color: var(--ink-muted);
+        font-size: 0.88rem;
+      }
+
+      .card-ref {
+        color: var(--ink-faint);
+        font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+        font-size: 0.72rem;
+      }
+
+      .gate-grid {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        border: 1px solid var(--line);
+        border-radius: var(--radius-lg);
+        background: rgba(22, 19, 16, 0.76);
+        overflow: hidden;
+      }
+
+      .gate {
+        display: grid;
+        min-height: 118px;
+        padding: 24px 26px;
+        grid-template-columns: 1fr auto;
+        gap: 22px;
+        border-right: 1px solid var(--line);
+        border-bottom: 1px solid var(--line);
+      }
+
+      .gate:nth-child(2n) {
+        border-right: 0;
+      }
+
+      .gate:nth-last-child(-n + 2) {
+        border-bottom: 0;
+      }
+
+      .gate h3 {
+        margin-bottom: 8px;
+        font-family: inherit;
+        font-size: 0.96rem;
+        font-weight: 800;
+        line-height: 1.3;
+      }
+
+      .gate p {
+        margin: 0;
+        color: var(--ink-muted);
+        font-size: 0.8rem;
+      }
+
+      .gate-state {
+        align-self: start;
+        padding: 5px 9px;
+        border-radius: 999px;
+        font-size: 0.62rem;
+        font-weight: 850;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+      }
+
+      .gate-state.clear {
+        color: var(--sage);
+        background: var(--sage-deep);
+      }
+
+      .gate-state.open {
+        color: var(--copper-light);
+        background: #402718;
+      }
+
+      .gate-state.locked {
+        color: var(--rose);
+        background: var(--rose-deep);
+      }
+
+      .boundary-panel {
+        display: grid;
+        padding: 34px;
+        grid-template-columns: 0.8fr 1.2fr;
+        gap: 64px;
+        border: 1px solid rgba(209, 143, 132, 0.24);
+        border-radius: var(--radius-lg);
+        background:
+          linear-gradient(135deg, rgba(58, 33, 30, 0.74), rgba(23, 20, 17, 0.86));
+      }
+
+      .boundary-panel h2 {
+        margin-bottom: 14px;
+        font-size: clamp(2rem, 3.5vw, 3.1rem);
+        letter-spacing: -0.03em;
+      }
+
+      .boundary-panel > div > p {
+        margin: 0;
+        color: var(--ink-muted);
+      }
+
+      .boundary-list {
+        display: grid;
+        margin: 0;
+        padding: 0;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 12px;
+        list-style: none;
+      }
+
+      .boundary-list li {
+        position: relative;
+        padding: 15px 16px 15px 42px;
+        border: 1px solid rgba(209, 143, 132, 0.16);
+        border-radius: var(--radius-sm);
+        color: var(--ink-muted);
+        background: rgba(13, 12, 11, 0.32);
+        font-size: 0.82rem;
+      }
+
+      .boundary-list li::before {
+        position: absolute;
+        top: 18px;
+        left: 17px;
+        color: var(--rose);
+        content: "×";
+        font-size: 1.1rem;
+        font-weight: 800;
+        line-height: 1;
+      }
+
+      .source-grid {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 14px;
+      }
+
+      .source-link {
+        display: block;
+        min-height: 128px;
+        padding: 22px;
+        border: 1px solid var(--line);
+        border-radius: var(--radius-md);
+        color: var(--ink);
+        background: var(--surface-soft);
+        text-decoration: none;
+      }
+
+      .source-link:hover {
+        border-color: rgba(234, 177, 125, 0.45);
+        color: var(--ink);
+        background: var(--surface-raised);
+      }
+
+      .source-link span {
+        display: block;
+        margin-bottom: 12px;
+        color: var(--ink-faint);
+        font-size: 0.65rem;
+        font-weight: 800;
+        letter-spacing: 0.11em;
+        text-transform: uppercase;
+      }
+
+      .source-link strong {
+        display: block;
+        font-family: Georgia, "Times New Roman", serif;
+        font-size: 1.14rem;
+        font-weight: 500;
+        line-height: 1.25;
+      }
+
+      .site-footer {
+        padding: 34px 0 48px;
+        border-top: 1px solid var(--line);
+      }
+
+      .footer-inner {
+        display: flex;
+        align-items: flex-start;
+        justify-content: space-between;
+        gap: 36px;
+      }
+
+      .footer-inner p {
+        max-width: 740px;
+        margin: 0;
+        color: var(--ink-faint);
+        font-size: 0.76rem;
+      }
+
+      .footer-ref {
+        white-space: nowrap;
+        color: var(--ink-muted);
+        font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+        font-size: 0.7rem;
+      }
+
+      @media (max-width: 940px) {
+        .hero-grid,
+        .section-heading,
+        .boundary-panel {
+          grid-template-columns: 1fr;
+          gap: 30px;
+        }
+
+        .hero-grid {
+          align-items: start;
+        }
+
+        .brief {
+          max-width: 520px;
+        }
+
+        .status-ribbon {
+          grid-template-columns: repeat(2, 1fr);
+        }
+
+        .status-item:nth-child(2) {
+          border-right: 0;
+        }
+
+        .status-item:nth-child(-n + 2) {
+          border-bottom: 1px solid var(--line);
+        }
+
+        .metric-grid {
+          grid-template-columns: repeat(3, 1fr);
+        }
+
+        .focus-grid,
+        .source-grid {
+          grid-template-columns: repeat(2, 1fr);
+        }
+      }
+
+      @media (max-width: 720px) {
+        .shell {
+          width: min(calc(100% - 28px), var(--content));
+        }
+
+        .site-header {
+          position: static;
+        }
+
+        .header-inner {
+          min-height: 68px;
+        }
+
+        .site-nav {
+          display: none;
+        }
+
+        .hero {
+          padding-top: 62px;
+        }
+
+        h1 {
+          font-size: clamp(2.75rem, 16vw, 4.4rem);
+        }
+
+        .status-ribbon,
+        .metric-grid,
+        .focus-grid,
+        .gate-grid,
+        .source-grid,
+        .boundary-list {
+          grid-template-columns: 1fr;
+        }
+
+        .status-item,
+        .status-item:nth-child(2) {
+          border-right: 0;
+          border-bottom: 1px solid var(--line);
+        }
+
+        .status-item:last-child {
+          border-bottom: 0;
+        }
+
+        .roadmap::before {
+          left: 28px;
+        }
+
+        .roadmap-item {
+          padding: 24px 22px 24px 58px;
+          grid-template-columns: 1fr;
+          gap: 16px;
+        }
+
+        .roadmap-item::before {
+          left: 22px;
+        }
+
+        .phase-number {
+          display: none;
+        }
+
+        .gate,
+        .gate:nth-child(2n),
+        .gate:nth-last-child(-n + 2) {
+          border-right: 0;
+          border-bottom: 1px solid var(--line);
+        }
+
+        .gate:last-child {
+          border-bottom: 0;
+        }
+
+        .boundary-panel {
+          padding: 26px;
+        }
+
+        .footer-inner {
+          flex-direction: column;
+        }
+
+        .footer-ref {
+          white-space: normal;
+        }
+      }
+
+      @media (prefers-reduced-motion: reduce) {
+        html {
+          scroll-behavior: auto;
+        }
+
+        *,
+        *::before,
+        *::after {
+          animation-duration: 0.01ms !important;
+          animation-iteration-count: 1 !important;
+          transition-duration: 0.01ms !important;
+        }
+      }
+
+      @media print {
+        :root {
+          color-scheme: light;
+          --ink: #1a1714;
+          --ink-muted: #4b443c;
+          --ink-faint: #6a6158;
+          --canvas: #ffffff;
+          --canvas-warm: #ffffff;
+          --surface: #ffffff;
+          --surface-raised: #ffffff;
+          --surface-soft: #faf7f2;
+          --line: rgba(26, 23, 20, 0.2);
+          --line-strong: rgba(26, 23, 20, 0.34);
+        }
+
+        body {
+          background: #ffffff;
+        }
+
+        body::before,
+        .hero::after,
+        .site-nav {
+          display: none;
+        }
+
+        .site-header {
+          position: static;
+          background: #ffffff;
+        }
+
+        .section {
+          break-inside: avoid;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <a class="skip-link" href="#main-content">Skip to status</a>
+
+    <header class="site-header">
+      <div class="shell header-inner">
+        <a class="brand" href="#top" aria-label="SKLegal delivery status home">
+          <span class="brand-mark" aria-hidden="true">SL</span>
+          <span class="brand-copy">
+            <span class="brand-name">SKLegal</span>
+            <span class="brand-context">Delivery status</span>
+          </span>
+        </a>
+        <nav class="site-nav" aria-label="Status sections">
+          <ul>
+            <li><a href="#roadmap">Roadmap</a></li>
+            <li><a href="#focus">Active work</a></li>
+            <li><a href="#gates">Gates</a></li>
+            <li><a href="#evidence">Evidence</a></li>
+          </ul>
+        </nav>
+      </div>
+    </header>
+
+    <main id="main-content">
+      <section class="hero" id="top" aria-labelledby="page-title">
+        <div class="shell">
+          <p class="eyebrow">
+            Read-only snapshot
+            <time datetime="2026-08-21T14:42:00-05:00">August 21, 2026 at 2:42 PM CDT</time>
+          </p>
+          <div class="hero-grid">
+            <div>
+              <h1 id="page-title">
+                Architecture approved.<br />
+                <span class="accent">Build and qualification</span> are active.
+              </h1>
+              <p class="hero-lead">
+                SKLegal has moved from design into governed implementation. The core legal
+                domain, PostgreSQL and row-level security, CapAuth integration, audit and
+                outbox foundation, reproducible workspace, and platform baseline are complete.
+                Policy review, production composition, HammerTime integration, durable agent
+                workflows, and the legal workbench are now advancing in parallel through
+                dependency-eligible cards.
+              </p>
+            </div>
+            <aside class="brief" aria-label="Current delivery posture">
+              <p class="brief-label">Current posture</p>
+              <strong>Foundation to integration</strong>
+              <p>
+                Architecture is settled. Core foundations are implemented, with remaining
+                security review and hardening still controlling downstream readiness.
+              </p>
+            </aside>
+          </div>
+
+          <dl class="status-ribbon" aria-label="Primary governance status">
+            <div class="status-item">
+              <dt>Architecture</dt>
+              <dd>
+                <span class="status-value approved"><span class="status-dot"></span>Approved</span>
+                <span class="status-detail">Human gate b04de409 is complete</span>
+              </dd>
+            </div>
+            <div class="status-item">
+              <dt>Delivery mode</dt>
+              <dd>
+                <span class="status-value active"><span class="status-dot"></span>Build and review</span>
+                <span class="status-detail">Eligible leaf cards only</span>
+              </dd>
+            </div>
+            <div class="status-item">
+              <dt>External actions</dt>
+              <dd>
+                <span class="status-value held"><span class="status-dot"></span>Simulation only</span>
+                <span class="status-detail">No dispatch authority</span>
+              </dd>
+            </div>
+            <div class="status-item">
+              <dt>Pilot and production</dt>
+              <dd>
+                <span class="status-value closed"><span class="status-dot"></span>Gates closed</span>
+                <span class="status-detail">No migration or deployment authorization</span>
+              </dd>
+            </div>
+          </dl>
+        </div>
+      </section>
+
+      <section class="section" aria-labelledby="board-title">
+        <div class="shell">
+          <div class="section-heading">
+            <div>
+              <p class="kicker">Portfolio signal</p>
+              <h2 id="board-title">SKCapstone board snapshot</h2>
+            </div>
+            <p>
+              94 SKLegal-labeled records are shown here after excluding this page's publishing
+              card. Counts include leaf tasks, parent containers, qualification cards, and
+              planning records, so they are workflow volume, not a percent-complete measure.
+            </p>
+          </div>
+
+          <div class="metric-grid" aria-label="SKLegal workflow counts">
+            <div class="metric done"><strong>15</strong><span>Done</span></div>
+            <div class="metric review"><strong>12</strong><span>In review</span></div>
+            <div class="metric doing"><strong>7</strong><span>Active</span></div>
+            <div class="metric ready"><strong>8</strong><span>Ready</span></div>
+            <div class="metric backlog"><strong>52</strong><span>Backlog</span></div>
+          </div>
+          <p class="count-note">
+            Source: SKCapstone card fold at snapshot time. Board state remains the system of
+            record and can change after this page is opened.
+          </p>
+        </div>
+      </section>
+
+      <section class="section" id="roadmap" aria-labelledby="roadmap-title">
+        <div class="shell">
+          <div class="section-heading">
+            <div>
+              <p class="kicker">Delivery sequence</p>
+              <h2 id="roadmap-title">Six governed phases</h2>
+            </div>
+            <p>
+              Parallel work is allowed only where explicit dependencies are complete. An active
+              later-phase card does not mean every earlier release gate has cleared.
+            </p>
+          </div>
+
+          <ol class="roadmap">
+            <li class="roadmap-item complete">
+              <span class="phase-number" aria-hidden="true">00</span>
+              <div class="phase-title">
+                <span class="phase-tag complete">Complete</span>
+                <h3>Architecture and readiness</h3>
+                <p>Sprint 0</p>
+              </div>
+              <div class="phase-copy">
+                <p>
+                  Human architecture approval, platform qualification, threat and source-rights
+                  controls, the reproducible workspace, and Doc Haus provenance review are done.
+                </p>
+              </div>
+            </li>
+            <li class="roadmap-item current">
+              <span class="phase-number" aria-hidden="true">01</span>
+              <div class="phase-title">
+                <span class="phase-tag current">Review and hardening</span>
+                <h3>Legal and security foundation</h3>
+                <p>Sprint 1</p>
+              </div>
+              <div class="phase-copy">
+                <p>
+                  Four of five core cards are done. Conflicts, privilege, ethical walls,
+                  retention, and holds are in review. Production CapAuth composition and quality
+                  corrections remain active review work.
+                </p>
+              </div>
+            </li>
+            <li class="roadmap-item current">
+              <span class="phase-number" aria-hidden="true">02</span>
+              <div class="phase-title">
+                <span class="phase-tag current">Active</span>
+                <h3>HammerTime integration</h3>
+                <p>Sprint 2</p>
+              </div>
+              <div class="phase-copy">
+                <p>
+                  The read-only release and artifact adapter is in active implementation. Pilot
+                  import, governed ingestion, retrieval adapters, corpus registry, and legal
+                  source connectors remain queued behind their gates.
+                </p>
+              </div>
+            </li>
+            <li class="roadmap-item current">
+              <span class="phase-number" aria-hidden="true">03</span>
+              <div class="phase-title">
+                <span class="phase-tag current">Active</span>
+                <h3>Agents and legal assurance</h3>
+                <p>Sprint 3</p>
+              </div>
+              <div class="phase-copy">
+                <p>
+                  Temporal foundations, CapAuth signing performance, and audit-chain write
+                  serialization are active. Provider routing, tool mediation, retrieval
+                  evaluation, and claim release gates remain future work.
+                </p>
+              </div>
+            </li>
+            <li class="roadmap-item current">
+              <span class="phase-number" aria-hidden="true">04</span>
+              <div class="phase-title">
+                <span class="phase-tag current">Active edge</span>
+                <h3>Legal workbench</h3>
+                <p>Sprint 4</p>
+              </div>
+              <div class="phase-copy">
+                <p>
+                  The accessible design system and application shell are in active build. Action
+                  failure semantics and dispatch ownership are being documented before connector
+                  implementation can advance.
+                </p>
+              </div>
+            </li>
+            <li class="roadmap-item">
+              <span class="phase-number" aria-hidden="true">05</span>
+              <div class="phase-title">
+                <span class="phase-tag gated">Gated</span>
+                <h3>Pilot proof and rollout</h3>
+                <p>Sprint 5</p>
+              </div>
+              <div class="phase-copy">
+                <p>
+                  Structured import, governed Qwen workflow, action simulation, security and
+                  recovery qualification, and human acceptance have not started. Production
+                  rollout remains outside current authority.
+                </p>
+              </div>
+            </li>
+          </ol>
+        </div>
+      </section>
+
+      <section class="section" id="focus" aria-labelledby="focus-title">
+        <div class="shell">
+          <div class="section-heading">
+            <div>
+              <p class="kicker">Current execution</p>
+              <h2 id="focus-title">Where work is moving now</h2>
+            </div>
+            <p>
+              This is a curated view of material active and review lanes. Exact lifecycle and
+              ownership remain in SKCapstone.
+            </p>
+          </div>
+
+          <div class="focus-grid">
+            <article class="focus-card">
+              <span class="card-index">01</span>
+              <h3>Policy foundation review</h3>
+              <p>
+                Conflicts, privilege, ethical walls, retention, and legal holds are undergoing
+                review before downstream protected retrieval is treated as ready.
+              </p>
+              <span class="card-ref">SKL-S1-04 · 8137c2f5</span>
+            </article>
+            <article class="focus-card">
+              <span class="card-index">02</span>
+              <h3>CapAuth composition</h3>
+              <p>
+                Dedicated issuer custody, durable revocation replay, protected-route health, and
+                sanitized audit adapters are moving through review and qualification.
+              </p>
+              <span class="card-ref">SKL-S1-03A · d9552c4c</span>
+            </article>
+            <article class="focus-card">
+              <span class="card-index">03</span>
+              <h3>Read-only corpus boundary</h3>
+              <p>
+                The first HammerTime integration wraps approved releases, manifests, artifacts,
+                hashes, and legacy resolution behind typed read-only APIs.
+              </p>
+              <span class="card-ref">SKL-S2-01 · 5ab203ce</span>
+            </article>
+            <article class="focus-card">
+              <span class="card-index">04</span>
+              <h3>Durable workflow base</h3>
+              <p>
+                Temporal workflow foundations and task queues are being built alongside measured
+                signer and audit serialization limits.
+              </p>
+              <span class="card-ref">SKL-S3-01 · f8d425e1</span>
+            </article>
+            <article class="focus-card">
+              <span class="card-index">05</span>
+              <h3>Application shell</h3>
+              <p>
+                The responsive, accessible product shell is active, including design tokens,
+                protected navigation, status semantics, and error boundaries.
+              </p>
+              <span class="card-ref">SKL-S4-01 · b688c5db</span>
+            </article>
+            <article class="focus-card">
+              <span class="card-index">06</span>
+              <h3>Action workflow contract</h3>
+              <p>
+                Failure, cancellation, retry, receipt reconciliation, and dispatch ownership are
+                being specified before any connector can move beyond simulation.
+              </p>
+              <span class="card-ref">SKL-S4-08 · 48fde7c1</span>
+            </article>
+          </div>
+        </div>
+      </section>
+
+      <section class="section" id="gates" aria-labelledby="gates-title">
+        <div class="shell">
+          <div class="section-heading">
+            <div>
+              <p class="kicker">Control plane</p>
+              <h2 id="gates-title">Release and authority gates</h2>
+            </div>
+            <p>
+              Models produce typed proposals only. Workflow state, authorization, approvals, and
+              external actions remain deterministic, policy-mediated, and human-gated.
+            </p>
+          </div>
+
+          <div class="gate-grid">
+            <article class="gate">
+              <div>
+                <h3>Architecture approval</h3>
+                <p>Recorded on August 19, 2026 with a pinned review artifact hash.</p>
+              </div>
+              <span class="gate-state clear">Cleared</span>
+            </article>
+            <article class="gate">
+              <div>
+                <h3>Foundation acceptance</h3>
+                <p>Core implementation is largely complete, with policy and composition review open.</p>
+              </div>
+              <span class="gate-state open">Open</span>
+            </article>
+            <article class="gate">
+              <div>
+                <h3>Integration readiness</h3>
+                <p>Read-only HammerTime work is active. Broader migration and ingestion gates remain.</p>
+              </div>
+              <span class="gate-state open">Open</span>
+            </article>
+            <article class="gate">
+              <div>
+                <h3>Production and dispatch</h3>
+                <p>No production deployment or live connector dispatch is authorized.</p>
+              </div>
+              <span class="gate-state locked">Locked</span>
+            </article>
+          </div>
+        </div>
+      </section>
+
+      <section class="section" aria-labelledby="boundary-title">
+        <div class="shell boundary-panel">
+          <div>
+            <p class="eyebrow">Still outside scope</p>
+            <h2 id="boundary-title">The red lines remain intact.</h2>
+            <p>
+              Architecture approval authorizes governed implementation. It does not grant
+              operational, migration, deployment, or legal-action authority.
+            </p>
+          </div>
+          <ul class="boundary-list">
+            <li>No production deployment</li>
+            <li>No external account creation</li>
+            <li>No HammerTime Inbox processing</li>
+            <li>No additional matter migration</li>
+            <li>No outbound legal action</li>
+            <li>No unrestricted model tools or credentials</li>
+          </ul>
+        </div>
+      </section>
+
+      <section class="section" id="evidence" aria-labelledby="evidence-title">
+        <div class="shell">
+          <div class="section-heading">
+            <div>
+              <p class="kicker">Traceability</p>
+              <h2 id="evidence-title">Source documents</h2>
+            </div>
+            <p>
+              This page is a presentation snapshot. The approval record, TDD, delivery plan, and
+              live SKCapstone board remain authoritative.
+            </p>
+          </div>
+
+          <div class="source-grid">
+            <a class="source-link" href="../approval/ARCHITECTURE-APPROVAL.md">
+              <span>Human gate</span>
+              <strong>Architecture approval record</strong>
+            </a>
+            <a class="source-link" href="../tasks/SUBAGENT-TASK-TTDS.md">
+              <span>Execution contract</span>
+              <strong>Subagent task TDDs</strong>
+            </a>
+            <a class="source-link" href="../planning/EPIC-SPRINT-PLAN.md">
+              <span>Delivery sequence</span>
+              <strong>Epic and sprint plan</strong>
+            </a>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <footer class="site-footer">
+      <div class="shell footer-inner">
+        <p>
+          Read-only delivery snapshot generated from the SKCapstone board and repository evidence
+          on August 21, 2026. Refresh against the live board before using status in a decision.
+          This page contains no Client or Matter content.
+        </p>
+        <span class="footer-ref">SKL-STATUS-01 · e88c89b4</span>
+      </div>
+    </footer>
+  </body>
+</html>

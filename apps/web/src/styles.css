@@ -1,0 +1,357 @@
+/*
+ * SKLegal shell styles.
+ *
+ * Token values mirror src/design/tokens.ts; tokens.test.ts asserts the
+ * two stay in sync. Responsive thresholds mirror the breakpoints token:
+ * compact below 960px, expanded at 960px and above.
+ */
+
+:root {
+  --sl-ink: #1c1917;
+  --sl-ink-soft: #44403c;
+  --sl-parchment: #faf6ef;
+  --sl-surface: #f3ecdf;
+  --sl-surface-sunken: #eae0cd;
+  --sl-border: #d8cbb6;
+  --sl-copper: #9a3412;
+  --sl-copper-strong: #7c2d12;
+  --sl-focus-ring: #1d4ed8;
+  --sl-ink-inverse: #faf6ef;
+
+  --sl-font-base:
+    ui-sans-serif, system-ui, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  --sl-font-mono: ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
+
+  --sl-space-2: 0.5rem;
+  --sl-space-3: 0.75rem;
+  --sl-space-4: 1rem;
+  --sl-space-6: 1.5rem;
+  --sl-space-8: 2rem;
+
+  /* WCAG 2.5.5 target size guidance. */
+  --sl-min-target: 44px;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  font-family: var(--sl-font-base);
+  line-height: 1.5;
+  color: var(--sl-ink);
+  background: var(--sl-parchment);
+}
+
+a {
+  color: var(--sl-copper);
+  text-underline-offset: 0.15em;
+}
+
+a:hover {
+  color: var(--sl-copper-strong);
+}
+
+:focus-visible {
+  outline: 3px solid var(--sl-focus-ring);
+  outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    transition: none !important;
+    animation: none !important;
+  }
+}
+
+.sl-skip-link {
+  position: absolute;
+  left: var(--sl-space-4);
+  top: -100px;
+  z-index: 10;
+  padding: var(--sl-space-3) var(--sl-space-4);
+  background: var(--sl-ink);
+  color: var(--sl-ink-inverse);
+  border-radius: 0 0 4px 4px;
+}
+
+.sl-skip-link:focus-visible {
+  top: 0;
+}
+
+.sl-shell {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.sl-banner {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--sl-space-4);
+  padding: var(--sl-space-3) var(--sl-space-4);
+  background: var(--sl-ink);
+  color: var(--sl-ink-inverse);
+}
+
+.sl-product-name {
+  font-size: 1.375rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+}
+
+.sl-banner-side {
+  margin-inline-start: auto;
+  display: flex;
+  align-items: center;
+  gap: var(--sl-space-4);
+}
+
+.sl-principal {
+  font-size: 0.875rem;
+}
+
+.sl-tenant-switcher {
+  display: flex;
+  align-items: center;
+  gap: var(--sl-space-2);
+}
+
+.sl-tenant-label {
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--sl-surface-sunken);
+}
+
+.sl-tenant-name {
+  font-weight: 600;
+}
+
+.sl-tenant-select {
+  min-height: var(--sl-min-target);
+  padding: var(--sl-space-2) var(--sl-space-3);
+  border: 1px solid var(--sl-border);
+  border-radius: 4px;
+  background: var(--sl-parchment);
+  color: var(--sl-ink);
+  font: inherit;
+}
+
+.sl-nav-toggle {
+  min-height: var(--sl-min-target);
+  min-width: var(--sl-min-target);
+  padding: var(--sl-space-2) var(--sl-space-4);
+  border: 1px solid var(--sl-border);
+  border-radius: 4px;
+  background: transparent;
+  color: var(--sl-ink-inverse);
+  font: inherit;
+  cursor: pointer;
+}
+
+.sl-nav {
+  background: var(--sl-surface);
+  border-bottom: 1px solid var(--sl-border);
+}
+
+.sl-nav ul {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sl-space-2);
+  margin: 0;
+  padding: var(--sl-space-2) var(--sl-space-4);
+  list-style: none;
+}
+
+.sl-nav a {
+  display: inline-flex;
+  align-items: center;
+  min-height: var(--sl-min-target);
+  padding: var(--sl-space-2) var(--sl-space-3);
+  border-radius: 4px;
+  color: var(--sl-ink);
+  text-decoration: none;
+  font-weight: 500;
+}
+
+.sl-nav a:hover {
+  background: var(--sl-surface-sunken);
+  color: var(--sl-copper-strong);
+}
+
+.sl-nav a[aria-current="page"] {
+  background: var(--sl-copper);
+  color: var(--sl-ink-inverse);
+}
+
+.sl-main {
+  flex: 1;
+  padding: var(--sl-space-6) var(--sl-space-4);
+  max-width: 72rem;
+  width: 100%;
+  margin-inline: auto;
+}
+
+.sl-record-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.sl-record-list li {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--sl-space-3);
+  padding: var(--sl-space-3) var(--sl-space-4);
+  border: 1px solid var(--sl-border);
+  border-radius: 4px;
+  background: var(--sl-surface);
+  margin-block-end: var(--sl-space-2);
+}
+
+.sl-record-list a {
+  font-weight: 600;
+}
+
+.sl-record-meta {
+  color: var(--sl-ink-soft);
+  font-size: 0.875rem;
+}
+
+.sl-status-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sl-space-2);
+  padding: 0.125rem var(--sl-space-3);
+  border: 1px solid;
+  border-radius: 999px;
+  font-size: 0.875rem;
+  font-weight: 500;
+}
+
+.sl-status-glyph {
+  font-weight: 700;
+}
+
+.sl-error-state {
+  max-width: 40rem;
+  padding: var(--sl-space-6);
+  border: 1px solid var(--sl-border);
+  border-inline-start: 4px solid var(--sl-copper);
+  border-radius: 4px;
+  background: var(--sl-surface);
+}
+
+.sl-error-state h1,
+.sl-error-state h2 {
+  margin-top: 0;
+}
+
+.sl-button {
+  min-height: var(--sl-min-target);
+  padding: var(--sl-space-2) var(--sl-space-4);
+  border: 1px solid var(--sl-copper-strong);
+  border-radius: 4px;
+  background: var(--sl-copper);
+  color: var(--sl-ink-inverse);
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.sl-button:hover {
+  background: var(--sl-copper-strong);
+}
+
+.sl-loading {
+  display: flex;
+  align-items: center;
+  gap: var(--sl-space-3);
+  padding: var(--sl-space-4);
+  color: var(--sl-ink-soft);
+}
+
+.sl-skeleton {
+  inline-size: 1.5rem;
+  block-size: 1.5rem;
+  border-radius: 50%;
+  border: 3px solid var(--sl-border);
+  border-top-color: var(--sl-copper);
+}
+
+.sl-correlation {
+  display: inline-flex;
+  align-items: baseline;
+  gap: var(--sl-space-2);
+  font-size: 0.75rem;
+  color: var(--sl-ink-soft);
+}
+
+.sl-correlation-id {
+  font-family: var(--sl-font-mono);
+  user-select: all;
+}
+
+.sl-contentinfo {
+  padding: var(--sl-space-3) var(--sl-space-4);
+  border-top: 1px solid var(--sl-border);
+  background: var(--sl-surface);
+}
+
+.sl-matter-nav ul {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sl-space-2);
+  margin: 0 0 var(--sl-space-6);
+  padding: 0;
+  list-style: none;
+}
+
+.sl-matter-nav a {
+  display: inline-flex;
+  align-items: center;
+  min-height: var(--sl-min-target);
+  padding: var(--sl-space-2) var(--sl-space-3);
+  border: 1px solid var(--sl-border);
+  border-radius: 4px;
+  background: var(--sl-surface);
+  text-decoration: none;
+}
+
+/* Expanded layout: 960px min-width, mirrors breakpoints.expanded. */
+@media (min-width: 960px) {
+  .sl-banner {
+    padding: var(--sl-space-3) var(--sl-space-8);
+  }
+
+  .sl-main {
+    padding: var(--sl-space-8);
+  }
+}
+
+/* Compact layout: below 960px the banner stacks and touch targets grow. */
+@media (max-width: 959.98px) {
+  .sl-banner-side {
+    margin-inline-start: 0;
+    width: 100%;
+  }
+
+  .sl-nav ul {
+    flex-direction: column;
+  }
+}
+
+/* Medium and up: 640px min-width, mirrors breakpoints.medium. */
+@media (min-width: 640px) {
+  .sl-record-list li {
+    flex-wrap: nowrap;
+  }
+}

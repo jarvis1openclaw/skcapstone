@@ -61,3 +61,25 @@ The approved documents remain unchanged by this approval record.
 - Before this approval was claimed, the board reported zero claimed and zero in-progress tasks.
 - No SKLegal application implementation agent was dispatched before approval.
 
+## Amendment trail
+
+- 2026-08-21, card `c976908e` (`SKL-S1-10`): Repaired the development
+  contracts `docs/development/PERSISTENCE.md` and
+  `docs/development/CAPAUTH.md` to document the real migration surface,
+  migrations 0008 through 0012 (durable CapAuth revocation, replay
+  reservation, principal snapshot, authentication subject, and
+  `sklegal_runtime` grants). Development contracts are not hash-pinned; the
+  five approved documents and `docs/approval/DESIGN-HASHES.sha256` remain
+  unchanged and verified clean.
+- 2026-08-21, card `c976908e` (`SKL-S1-10`): Flagged a model naming error for
+  correction at the next approved document revision. The approved documents
+  name the initial local corpus analyst `Qwen3.8`
+  (`docs/architecture/SKLEGAL-HIGH-LEVEL-TDD.md`,
+  `docs/architecture/LIBERTY-AUTO-PILOT-TDD.md`,
+  `docs/planning/EPIC-SPRINT-PLAN.md`, and `docs/approval/index.html`).
+  `Qwen3.8` is not a real Qwen model identifier; the intended deployment is
+  the local Qwen3 route operated by HammerTime on chiap08. Because the
+  approved documents are hash-pinned, no silent edit was made. The next
+  approved revision should correct the name and re-pin the inventory through
+  this approval process.
+
