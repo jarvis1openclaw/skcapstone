@@ -26,6 +26,10 @@ def register_coord_commands(main: click.Group) -> None:
         and syncs via Syncthing. Conflict-free by design.
         """
 
+    from .coord_amend import register_coord_amend_commands
+
+    register_coord_amend_commands(coord)
+
     @coord.command("status")
     @click.option("--home", default=AGENT_HOME, type=click.Path())
     @click.option("--tag", multiple=True, help="Only tasks carrying this tag (repeatable).")

@@ -1,11 +1,14 @@
-"""Coordination card-hygiene tools: describe, label, and link.
+"""Coordination card-hygiene tools: describe, label, link, reprioritize, amend-criteria.
 
-These mirror the ``coord describe`` / ``coord label`` / ``coord link`` CLI
-verbs exactly: the same append-only overlay events (``CardEventLog``), the
-same writer attribution (``agent`` param, empty means "default to host"),
-and the same best-effort CardStore mirror for ``describe`` when dual-write
-is enabled. MCP-first agents can now do routine board hygiene without
-shelling out to the CLI (card 61b97e22).
+The first three mirror the ``coord describe`` / ``coord label`` /
+``coord link`` CLI verbs exactly: the same append-only overlay events
+(``CardEventLog``), the same writer attribution (``agent`` param, empty
+means "default to host"), and the same best-effort CardStore mirror for
+``describe`` when dual-write is enabled. ``coord_reprioritize`` and
+``coord_amend_criteria`` are the folded amendment verbs (same discipline
+as describe; see ``coord_amendments``). MCP-first agents can now do
+routine board hygiene without shelling out to the CLI (cards 61b97e22,
+e78fd954).
 """
 
 from __future__ import annotations
@@ -61,6 +64,47 @@ TOOLS: list[Tool] = [
                 "value": {"description": "Link value (URL or ref)", "type": "string"},
             },
             "required": ["task_id", "key", "value"],
+            "type": "object",
+        },
+    ),
+    Tool(
+        name="coord_reprioritize",
+        description=(
+            "Amend a card's priority (folded, never rewrites core.json). The amendment "
+            "is one appended, writer-attributed event, reversed by reprioritizing again."
+        ),
+        inputSchema={
+            "properties": {
+                "agent": {"description": "Writer name (defaults to host)", "type": "string"},
+                "priority": {
+                    "description": "New priority for the card",
+                    "enum": ["critical", "high", "medium", "low"],
+                    "type": "string",
+                },
+                "task_id": {"description": "The card/task ID", "type": "string"},
+            },
+            "required": ["task_id", "priority"],
+            "type": "object",
+        },
+    ),
+    Tool(
+        name="coord_amend_criteria",
+        description=(
+            "Replace a card's acceptance criteria (folded, never rewrites core.json). "
+            "The event carries the full replacement list; latest event wins."
+        ),
+        inputSchema={
+            "properties": {
+                "agent": {"description": "Writer name (defaults to host)", "type": "string"},
+                "criteria": {
+                    "description": "Full replacement acceptance criteria list",
+                    "items": {"type": "string"},
+                    "minItems": 1,
+                    "type": "array",
+                },
+                "task_id": {"description": "The card/task ID", "type": "string"},
+            },
+            "required": ["task_id", "criteria"],
             "type": "object",
         },
     ),
@@ -137,8 +181,45 @@ async def _handle_coord_link(args: dict) -> list[TextContent]:
     return _json_response({"linked": True, "task_id": task_id, "key": key, "value": value})
 
 
+async def _handle_coord_reprioritize(args: dict) -> list[TextContent]:
+    """Amend a card's priority via the folded set_priority event."""
+    from ..coord_amendments import reprioritize
+
+    task_id = args.get("task_id", "")
+    priority = args.get("priority", "")
+    if not task_id or not priority:
+        return _error_response("task_id and priority are required")
+    try:
+        reprioritize(_shared_root(), task_id, priority, args.get("agent", "") or "")
+    except ValueError as exc:
+        return _error_response(str(exc))
+    return _json_response({"reprioritized": True, "task_id": task_id, "priority": priority})
+
+
+async def _handle_coord_amend_criteria(args: dict) -> list[TextContent]:
+    """Replace a card's acceptance criteria via one appended store event."""
+    from ..coord_amendments import amend_criteria, current_acceptance_criteria
+
+    task_id = args.get("task_id", "")
+    criteria = args.get("criteria") or []
+    if not task_id or not criteria:
+        return _error_response("task_id and at least one criterion are required")
+
+    home = _shared_root()
+    amend_criteria(home, task_id, list(criteria), args.get("agent", "") or "")
+    return _json_response(
+        {
+            "amended": True,
+            "task_id": task_id,
+            "acceptance_criteria": current_acceptance_criteria(home, task_id),
+        }
+    )
+
+
 HANDLERS: dict = {
     "coord_describe": _handle_coord_describe,
     "coord_label": _handle_coord_label,
     "coord_link": _handle_coord_link,
+    "coord_reprioritize": _handle_coord_reprioritize,
+    "coord_amend_criteria": _handle_coord_amend_criteria,
 }

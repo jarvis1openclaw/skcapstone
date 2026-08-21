@@ -79,11 +79,12 @@ class TestToolListing:
         # + itil_change_validate / _schedule / _unschedule   (CM P1.2)
         # + gtd_reopen                          (SPE P1.2, card 0ef48ec9)
         # + coord_describe / coord_label / coord_link   (card 61b97e22)
+        # + coord_reprioritize / coord_amend_criteria   (card e78fd954)
         #
         # Bump this WITH the commit that adds a tool. It drifted three behind
         # and kept main red, which is worse than useless: a count nobody trusts
         # gets bumped reflexively, and then it guards nothing.
-        assert len(tools) == 134
+        assert len(tools) == 136
 
     @pytest.mark.asyncio
     async def test_tool_names_are_unique(self):
