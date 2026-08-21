@@ -195,6 +195,32 @@ def test_reconcile_apply_writes_and_is_idempotent(home: Path) -> None:
 
 
 @needs_discovery
+def test_plan_and_apply_are_supported_explicit_verbs(home: Path) -> None:
+    (home / "registry").mkdir(parents=True)
+    (home / "registry" / "svc.json").write_text(json.dumps({"name": "svc"}))
+
+    plan = json.loads(run("plan", "--no-local", "--json").output)
+    assert plan["applied"] is False
+    assert plan["counts"]["created"] == 1
+    assert CMDBManager(home).list_cis() == []
+
+    applied = json.loads(run("apply", "--no-local", "--json").output)
+    assert applied["applied"] is True
+    assert applied["counts"]["created"] == 1
+    assert len(CMDBManager(home).list_cis()) == 1
+
+
+def test_status_reports_inventory_and_verified_artifact_state(seeded: Path) -> None:
+    result = run("status", "--json")
+
+    assert result.exit_code == 0, result.output
+    payload = json.loads(result.output)
+    assert payload["inventory"]["total"] == 1
+    assert payload["latest_scan_id"] is None
+    assert payload["relationship_audit"]["clean"] is False
+
+
+@needs_discovery
 def test_scan_says_out_loud_when_it_observed_nothing(home: Path) -> None:
     """Reading only specs must not look like finding a clean fleet."""
     result = run("scan", "--no-local")
@@ -460,7 +486,8 @@ def test_network_apply_runs_scoped_lifecycle_and_persists_artifact(
     assert (home / "cmdb" / "reconcile-runs" / "run-1.sha256").is_file()
     args, kwargs = orchestration.lifecycle_calls[0]
     assert args[1:6] == ("network:fleet", "a" * 64, ["ci-host-nor"], ["ci-host-old"], True)
-    assert kwargs["apply"] is True
+    assert kwargs["apply"] is False
+    assert orchestration.lifecycle_calls[1][1]["apply"] is True
 
 
 def test_network_requires_explicit_in_scope_credentials(

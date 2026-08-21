@@ -12,6 +12,7 @@ that writes by default is a scan nobody can safely run twice.
 from __future__ import annotations
 
 import json as _json
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 import click
@@ -392,7 +393,7 @@ def register_cmdb_commands(main: click.Group) -> None:
                 discovered_ids,
                 owned_ids,
                 scan_result.complete,
-                apply=apply,
+                apply=False,
                 agent=agent,
             )
             artifact, _events = orch.run_reconcile(
@@ -403,6 +404,22 @@ def register_cmdb_commands(main: click.Group) -> None:
                 lifecycle_actions=lifecycle_actions,
                 agent=agent,
             )
+            validation_failures = artifact.get("plan", {}).get("validation_failures", [])
+            if apply and validation_failures:
+                raise click.ClickException(
+                    "refusing --apply: discovery evidence failed validation; inspect the plan"
+                )
+            if apply:
+                orch.apply_retirement_lifecycle(
+                    mgr,
+                    "network:fleet",
+                    scope_fingerprint,
+                    discovered_ids,
+                    owned_ids,
+                    scan_result.complete,
+                    apply=True,
+                    agent=agent,
+                )
             if apply or record_run:
                 artifact_path, checksum = orch.write_run_artifact(home, artifact)
                 artifact["artifact"] = {
@@ -414,6 +431,10 @@ def register_cmdb_commands(main: click.Group) -> None:
             found = run_scan(home, runners=_build_runners(host, local))
             report = run_reconcile(mgr, found, agent=agent, apply=apply)
             report_data = report.as_dict()
+            if apply and report.validation_failures:
+                raise click.ClickException(
+                    "refusing --apply: discovery evidence failed validation; inspect `cmdb plan`"
+                )
 
         if as_json:
             click.echo(_json.dumps(artifact or report_data, indent=2, default=str))
@@ -433,6 +454,98 @@ def register_cmdb_commands(main: click.Group) -> None:
             console.print(f"    [dim]?[/dim] {ci_id} (not seen; left in place)")
         if not apply:
             console.print("\n[dim]Nothing was written. Re-run with --apply.[/dim]")
+
+    # Explicit supported verbs. ``reconcile`` stays as a compatibility command
+    # for existing timers, while plan/apply make write intent unambiguous.
+
+    @cmdb.command("plan")
+    @click.option("--host", multiple=True, help="Observe a remote node over ssh. Repeatable.")
+    @click.option("--local/--no-local", default=True, help="Observe this machine.")
+    @click.option("--network", is_flag=True, help="Scan the authoritative fleet target set.")
+    @click.option(
+        "--credential",
+        "credentials",
+        multiple=True,
+        metavar="HOST=SKVAULT_REF",
+        help="Explicit skvault SSH credential reference. Repeat for every network target.",
+    )
+    @click.option("--record-run", is_flag=True, help="Persist the checksummed shadow artifact.")
+    @click.option("--agent", default="cmdb-discovery", help="Writer name for the event log.")
+    @click.option("--json", "as_json", is_flag=True, help="Emit the complete plan as JSON.")
+    @click.pass_context
+    def cmdb_plan(ctx, host, local, network, credentials, record_run, agent, as_json):
+        """Plan reconciliation without modifying the CMDB."""
+        return ctx.invoke(
+            cmdb_reconcile,
+            host=host,
+            local=local,
+            network=network,
+            credentials=credentials,
+            apply=False,
+            record_run=record_run,
+            agent=agent,
+            as_json=as_json,
+        )
+
+    @cmdb.command("apply")
+    @click.option("--host", multiple=True, help="Observe a remote node over ssh. Repeatable.")
+    @click.option("--local/--no-local", default=True, help="Observe this machine.")
+    @click.option("--network", is_flag=True, help="Scan the authoritative fleet target set.")
+    @click.option(
+        "--credential",
+        "credentials",
+        multiple=True,
+        metavar="HOST=SKVAULT_REF",
+        help="Explicit skvault SSH credential reference. Repeat for every network target.",
+    )
+    @click.option("--agent", default="cmdb-discovery", help="Writer name for the event log.")
+    @click.option("--json", "as_json", is_flag=True, help="Emit the applied report as JSON.")
+    @click.pass_context
+    def cmdb_apply(ctx, host, local, network, credentials, agent, as_json):
+        """Apply a validated reconciliation plan and append audit events."""
+        return ctx.invoke(
+            cmdb_reconcile,
+            host=host,
+            local=local,
+            network=network,
+            credentials=credentials,
+            apply=True,
+            record_run=network,
+            agent=agent,
+            as_json=as_json,
+        )
+
+    @cmdb.command("status")
+    @click.option("--json", "as_json", is_flag=True, help="Emit status as JSON.")
+    def cmdb_status(as_json):
+        """Show inventory, audit, and checksum-verified discovery freshness."""
+        orch = _orchestration()
+        mgr = _manager()
+        artifacts = orch.read_verified_run_artifacts(Path(SHARED_ROOT).expanduser())
+        result = orch.operator_summary(
+            artifacts,
+            datetime.now(timezone.utc),
+            timedelta(hours=4),
+        )
+        cis = mgr.list_cis()
+        result["inventory"] = {
+            "total": len(cis),
+            "discovered": sum("discovered" in (ci.tags or []) for ci in cis),
+            "retired": sum(ci.status == "retired" for ci in cis),
+        }
+        findings = mgr.audit_relationships()
+        result["relationship_audit"] = {
+            "clean": not findings,
+            "findings": findings,
+        }
+        if as_json:
+            click.echo(_json.dumps(result, indent=2, default=str))
+            return
+        console.print("\n[bold]CMDB status[/bold]")
+        console.print(f"  inventory: {result['inventory']['total']} CIs")
+        console.print(f"  latest scan: {result['latest_scan_id'] or 'none'}")
+        console.print(f"  latest complete: {result['latest_complete']}")
+        console.print(f"  relationship audit clean: {result['relationship_audit']['clean']}")
 
     # ── cmdb drift ────────────────────────────────────────────────────
 
