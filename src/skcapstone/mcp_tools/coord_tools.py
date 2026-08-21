@@ -15,9 +15,29 @@ TOOLS: list[Tool] = [
         name="coord_status",
         description=(
             "Show the multi-agent coordination board. Lists all tasks with status, priority, "
-            "and assignees. Shows active agents."
+            "and assignees. Shows active agents. Optional tag/parent/status filters bound "
+            "the output (parent matches the 'parent-<id>' tag convention)."
         ),
-        inputSchema={"properties": {}, "required": [], "type": "object"},
+        inputSchema={
+            "properties": {
+                "parent": {
+                    "description": "Only tasks tagged 'parent-<id>' (children of this card)",
+                    "type": "string",
+                },
+                "status": {
+                    "description": "Only tasks in this status",
+                    "enum": ["open", "claimed", "in_progress", "review", "done", "blocked"],
+                    "type": "string",
+                },
+                "tag": {
+                    "description": "Only tasks carrying this tag (repeatable)",
+                    "items": {"type": "string"},
+                    "type": "array",
+                },
+            },
+            "required": [],
+            "type": "object",
+        },
     ),
     Tool(
         name="coord_claim",
@@ -119,13 +139,24 @@ TOOLS: list[Tool] = [
 ]
 
 
-async def _handle_coord_status(_args: dict) -> list[TextContent]:
-    """Return coordination board status."""
+async def _handle_coord_status(args: dict) -> list[TextContent]:
+    """Return coordination board status, with optional tag/parent/status filters."""
     from ..coordination import Board
 
     board = Board(_home())
     views = board.get_task_views()
     agents = board.load_agents()
+
+    tags = list(args.get("tag") or [])
+    parent = args.get("parent")
+    if parent:
+        tags.append(f"parent-{parent}")
+    if tags:
+        wanted = {t.lower() for t in tags}
+        views = [v for v in views if wanted & {t.lower() for t in v.task.tags}]
+    status_filter = args.get("status")
+    if status_filter:
+        views = [v for v in views if v.status.value == status_filter]
 
     return _json_response(
         {

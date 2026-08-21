@@ -28,7 +28,20 @@ def register_coord_commands(main: click.Group) -> None:
 
     @coord.command("status")
     @click.option("--home", default=AGENT_HOME, type=click.Path())
-    def coord_status(home):
+    @click.option("--tag", multiple=True, help="Only tasks carrying this tag (repeatable).")
+    @click.option(
+        "--parent",
+        default=None,
+        help="Only tasks tagged 'parent-<id>' (children of this epic/card).",
+    )
+    @click.option(
+        "--status",
+        "status_filter",
+        default=None,
+        type=click.Choice(["open", "claimed", "in_progress", "review", "done", "blocked"]),
+        help="Only tasks in this status.",
+    )
+    def coord_status(home, tag, parent, status_filter):
         """Show the coordination board overview."""
         from ..coordination import Board
 
@@ -36,6 +49,18 @@ def register_coord_commands(main: click.Group) -> None:
         board = Board(home_path)
         views = board.get_task_views()
         agents = board.load_agents()
+
+        if parent:
+            tag = (*tag, f"parent-{parent}")
+        if tag:
+            wanted = {t.lower() for t in tag}
+            views = [v for v in views if wanted & {t.lower() for t in v.task.tags}]
+        if status_filter:
+            views = [v for v in views if v.status.value == status_filter]
+
+        if not views and (tag or status_filter):
+            console.print("\n  [dim]No tasks match the given filters.[/]\n")
+            return
 
         if not views and not agents:
             console.print("\n  [dim]Board is empty. Create tasks with:[/]")
@@ -78,7 +103,7 @@ def register_coord_commands(main: click.Group) -> None:
         }
 
         for v in views:
-            if v.status.value == "done":
+            if v.status.value == "done" and status_filter is None:
                 continue
             t = v.task
             p_style = priority_colors.get(t.priority.value, "dim")
