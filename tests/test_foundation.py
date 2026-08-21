@@ -92,6 +92,104 @@ class FoundationTests(unittest.TestCase):
             )
             self.assertEqual(["0001_fixture.sql"], check_migrations.validate(root))
 
+    def _write_migration_set(self, temporary: str, bodies: list[str]) -> Path:
+        root = Path(temporary)
+        entries = []
+        for index, body in enumerate(bodies, start=1):
+            name = f"{index:04d}_synthetic.sql"
+            payload = f"-- sklegal:up\n{body}\n-- sklegal:down\nselect 2;\n".encode()
+            (root / name).write_bytes(payload)
+            entries.append(
+                {"file": name, "sha256": hashlib.sha256(payload).hexdigest()}
+            )
+        (root / "manifest.json").write_text(
+            json.dumps({"schema_version": 1, "migrations": entries}),
+            encoding="utf-8",
+        )
+        return root
+
+    def test_migration_lint_accepts_blanket_covered_function(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = self._write_migration_set(
+                temporary,
+                [
+                    "CREATE FUNCTION sklegal_legal.probe(id uuid) RETURNS boolean"
+                    " LANGUAGE sql AS $function$ SELECT true $function$;",
+                    "REVOKE ALL ON ALL FUNCTIONS IN SCHEMA sklegal_legal FROM PUBLIC;",
+                ],
+            )
+            self.assertEqual(2, len(check_migrations.validate(root)))
+
+    def test_migration_lint_rejects_function_created_after_last_blanket(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = self._write_migration_set(
+                temporary,
+                [
+                    "REVOKE ALL ON ALL FUNCTIONS IN SCHEMA sklegal_legal FROM PUBLIC;",
+                    "CREATE FUNCTION sklegal_legal.probe(id uuid) RETURNS boolean"
+                    " LANGUAGE sql AS $function$ SELECT true $function$;",
+                ],
+            )
+            with self.assertRaisesRegex(
+                check_migrations.MigrationError, "missing REVOKE FROM PUBLIC"
+            ):
+                check_migrations.validate(root)
+
+    def test_migration_lint_rejects_recreated_function_missing_revoke(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = self._write_migration_set(
+                temporary,
+                [
+                    "CREATE FUNCTION sklegal_legal.probe(id uuid) RETURNS boolean"
+                    " LANGUAGE sql AS $function$ SELECT true $function$;\n"
+                    "REVOKE ALL ON FUNCTION sklegal_legal.probe(uuid) FROM PUBLIC;\n"
+                    "GRANT EXECUTE ON FUNCTION sklegal_legal.probe(uuid)"
+                    " TO sklegal_runtime;",
+                    "DROP FUNCTION sklegal_legal.probe(uuid);\n"
+                    "CREATE FUNCTION sklegal_legal.probe(id uuid) RETURNS boolean"
+                    " LANGUAGE sql AS $function$ SELECT false $function$;",
+                ],
+            )
+            with self.assertRaisesRegex(
+                check_migrations.MigrationError, "missing REVOKE FROM PUBLIC"
+            ):
+                check_migrations.validate(root)
+
+    def test_migration_lint_rejects_recreated_function_missing_grants(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = self._write_migration_set(
+                temporary,
+                [
+                    "CREATE FUNCTION sklegal_legal.probe(id uuid) RETURNS boolean"
+                    " LANGUAGE sql AS $function$ SELECT true $function$;\n"
+                    "REVOKE ALL ON FUNCTION sklegal_legal.probe(uuid) FROM PUBLIC;\n"
+                    "GRANT EXECUTE ON FUNCTION sklegal_legal.probe(uuid)"
+                    " TO sklegal_runtime;",
+                    "DROP FUNCTION sklegal_legal.probe(uuid);\n"
+                    "CREATE FUNCTION sklegal_legal.probe(id uuid) RETURNS boolean"
+                    " LANGUAGE sql AS $function$ SELECT false $function$;\n"
+                    "REVOKE ALL ON FUNCTION sklegal_legal.probe(uuid) FROM PUBLIC;",
+                ],
+            )
+            with self.assertRaisesRegex(check_migrations.MigrationError, "lost grants"):
+                check_migrations.validate(root)
+
+    def test_migration_lint_accepts_create_or_replace_recreation(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = self._write_migration_set(
+                temporary,
+                [
+                    "CREATE FUNCTION sklegal_legal.probe(id uuid) RETURNS boolean"
+                    " LANGUAGE sql AS $function$ SELECT true $function$;\n"
+                    "REVOKE ALL ON FUNCTION sklegal_legal.probe(uuid) FROM PUBLIC;\n"
+                    "GRANT EXECUTE ON FUNCTION sklegal_legal.probe(uuid)"
+                    " TO sklegal_runtime;",
+                    "CREATE OR REPLACE FUNCTION sklegal_legal.probe(id uuid)"
+                    " RETURNS boolean LANGUAGE sql AS $function$ SELECT false $function$;",
+                ],
+            )
+            self.assertEqual(2, len(check_migrations.validate(root)))
+
     def test_migration_without_reversible_markers_fails_closed(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)

@@ -16,6 +16,37 @@ MIGRATION_NAME = re.compile(r"^(?P<sequence>[0-9]{4})_[a-z0-9_]+\.sql$")
 UP_MARKER = "-- sklegal:up"
 DOWN_MARKER = "-- sklegal:down"
 
+CREATE_FUNCTION = re.compile(
+    r"create\s+(?P<replace>or\s+replace\s+)?function\s+"
+    r"(?P<schema>[a-z_][a-z0-9_]*)\.(?P<name>[a-z_][a-z0-9_]*)\s*"
+    r"\((?P<args>[^)]*)\)",
+    re.IGNORECASE,
+)
+DROP_FUNCTION = re.compile(
+    r"drop\s+function\s+"
+    r"(?P<schema>[a-z_][a-z0-9_]*)\.(?P<name>[a-z_][a-z0-9_]*)\s*"
+    r"\((?P<args>[^)]*)\)",
+    re.IGNORECASE,
+)
+REVOKE_PUBLIC_FUNCTION = re.compile(
+    r"revoke\s+.+?\s+on\s+function\s+"
+    r"(?P<schema>[a-z_][a-z0-9_]*)\.(?P<name>[a-z_][a-z0-9_]*)\s*"
+    r"\((?P<args>[^)]*)\)\s+from\s+public\b",
+    re.IGNORECASE,
+)
+GRANT_FUNCTION = re.compile(
+    r"grant\s+.+?\s+on\s+function\s+"
+    r"(?P<schema>[a-z_][a-z0-9_]*)\.(?P<name>[a-z_][a-z0-9_]*)\s*"
+    r"\((?P<args>[^)]*)\)\s+to\s+(?P<roles>[^;]+);",
+    re.IGNORECASE,
+)
+BLANKET_REVOKE = re.compile(
+    r"revoke\s+all\s+on\s+all\s+functions\s+in\s+schema\s+"
+    r"(?P<schemas>[^;]+?)\s+from\s+public\b",
+    re.IGNORECASE | re.DOTALL,
+)
+ARG_TYPE_PREFIXES = ("timestamp", "time", "double", "character", "bit")
+
 
 class MigrationError(ValueError):
     """Raised when a migration manifest fails closed."""
@@ -44,6 +75,124 @@ def _load_manifest(root: Path) -> dict[str, Any]:
     if not isinstance(payload, dict) or payload.get("schema_version") != 1:
         raise MigrationError("migration manifest schema_version must be 1")
     return payload
+
+
+def _arg_types(args: str) -> str:
+    types = []
+    for raw in args.split(","):
+        arg = re.sub(r"(?i)\s+default\s+.*$", "", raw.strip())
+        if not arg:
+            continue
+        words = arg.split()
+        if len(words) > 1 and words[0].lower() in ("in", "out", "inout", "variadic"):
+            words = words[1:]
+        if len(words) > 1 and words[0].lower() not in ARG_TYPE_PREFIXES:
+            words = words[1:]
+        types.append(" ".join(words))
+    return ", ".join(types)
+
+
+def _signature(match: re.Match[str]) -> str:
+    collapsed = _arg_types(re.sub(r"\s+", " ", match["args"])).lower()
+    return f"{match['schema'].lower()}.{match['name'].lower()}({collapsed})"
+
+
+def validate_function_privileges(root: Path, names: list[str]) -> None:
+    """Require privilege hardening for every sklegal_* migration function.
+
+    PostgreSQL grants EXECUTE on new functions to PUBLIC by default, and the
+    CapAuth definer functions make a missed revoke a real privilege leak. A
+    creation is compliant when its own file revokes PUBLIC explicitly or a
+    blanket schema revoke appears in the same or a later migration. A DROP
+    plus CREATE re-creation loses every privilege, so earlier grants must be
+    re-applied in the same or a later migration; CREATE OR REPLACE preserves
+    privileges and needs neither.
+    """
+
+    creations: list[list[tuple[str, bool]]] = []
+    drops: list[set[str]] = []
+    revokes: list[set[str]] = []
+    grants: list[dict[str, set[str]]] = []
+    blankets: list[set[str]] = []
+    for name in names:
+        up, _down = split_migration(
+            (root / name).read_text(encoding="utf-8"), name=name
+        )
+        file_creates: list[tuple[int, str, bool]] = []
+        for match in CREATE_FUNCTION.finditer(up):
+            if match["schema"].lower().startswith("sklegal_"):
+                file_creates.append(
+                    (match.start(), _signature(match), bool(match["replace"]))
+                )
+        creations.append(
+            [(sig, replaced) for _pos, sig, replaced in sorted(file_creates)]
+        )
+        drops.append({_signature(match) for match in DROP_FUNCTION.finditer(up)})
+        revokes.append(
+            {_signature(match) for match in REVOKE_PUBLIC_FUNCTION.finditer(up)}
+        )
+        file_grants: dict[str, set[str]] = {}
+        for match in GRANT_FUNCTION.finditer(up):
+            roles = {
+                role.strip().lower()
+                for role in match["roles"].split(",")
+                if role.strip()
+            }
+            file_grants.setdefault(_signature(match), set()).update(roles)
+        grants.append(file_grants)
+        file_blankets: set[str] = set()
+        for match in BLANKET_REVOKE.finditer(up):
+            file_blankets.update(
+                re.sub(r"\s+", "", match["schemas"]).lower().split(",")
+            )
+        blankets.append(file_blankets)
+
+    blanket_cover: list[set[str]] = [set() for _ in names]
+    covered: set[str] = set()
+    for index in range(len(names) - 1, -1, -1):
+        covered = covered | blankets[index]
+        blanket_cover[index] = covered
+
+    problems: list[str] = []
+    alive: dict[str, int] = {}
+    accrued: dict[str, set[str]] = {}
+    historical: dict[str, set[str]] = {}
+    for index, name in enumerate(names):
+        for sig in sorted(drops[index]):
+            if sig in alive:
+                del alive[sig]
+                historical[sig] = accrued.pop(sig, set())
+        for sig, replaced in creations[index]:
+            required_grants: set[str] = set()
+            if sig in alive:
+                if not replaced:
+                    required_grants = accrued.get(sig, set())
+                else:
+                    accrued.setdefault(sig, set())
+                    continue
+            else:
+                required_grants = historical.get(sig, set())
+                alive[sig] = index
+                accrued[sig] = set()
+            schema = sig.split(".", maxsplit=1)[0]
+            if sig not in revokes[index] and schema not in blanket_cover[index]:
+                problems.append(f"{name}: missing REVOKE FROM PUBLIC for {sig}")
+            if required_grants:
+                reapplied: set[str] = set()
+                for later in range(index, len(names)):
+                    reapplied.update(grants[later].get(sig, set()))
+                missing = sorted(required_grants - reapplied)
+                if missing:
+                    problems.append(
+                        f"{name}: re-created {sig} lost grants to {missing}"
+                    )
+        for sig, roles in grants[index].items():
+            if sig in alive:
+                accrued.setdefault(sig, set()).update(roles)
+    if problems:
+        raise MigrationError(
+            "function privilege hardening failed: " + "; ".join(problems)
+        )
 
 
 def validate(root: Path = DEFAULT_ROOT) -> list[str]:
@@ -89,6 +238,7 @@ def validate(root: Path = DEFAULT_ROOT) -> list[str]:
     present = {path.name for path in root.glob("*.sql") if path.is_file()}
     if present != declared:
         raise MigrationError("migration files and manifest entries differ")
+    validate_function_privileges(root, names)
     return names
 
 
