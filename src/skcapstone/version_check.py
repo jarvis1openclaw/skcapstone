@@ -22,9 +22,9 @@ ECOSYSTEM_PACKAGES = [
     "skcapstone",
     "capauth",
     "sksecurity",
-    "skcomms",
-    "skchat",
-    "cloud9",
+    "skcomm",
+    "skchat-sovereign",
+    "cloud9-protocol",
 ]
 
 
