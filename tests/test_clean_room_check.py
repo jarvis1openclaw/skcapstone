@@ -244,10 +244,16 @@ class CleanRoomCheckTests(unittest.TestCase):
             process,
             **(containment_options or {}),
         )
-        with mock.patch.object(
-            clean_room_check,
-            "resolve_scratch_root",
-            return_value=scratch,
+        with (
+            mock.patch.object(
+                clean_room_check,
+                "resolve_scratch_root",
+                return_value=scratch,
+            ),
+            mock.patch.object(
+                clean_room_check,
+                "_validate_trusted_executables",
+            ),
         ):
             receipt = clean_room_check.run(
                 repo_root=source,
@@ -1021,6 +1027,7 @@ import os
 import signal
 import sys
 from pathlib import Path
+from unittest import mock
 
 sys.path.insert(0, {str(REPO_ROOT / "scripts")!r})
 import clean_room_check
@@ -1032,11 +1039,12 @@ def emit(event):
     if event.get("event") == "phase" and event.get("phase") == "preflight-validated":
         os.kill(os.getpid(), signal.SIGTERM)
 
-receipt = clean_room_check.run(
-    repo_root=Path({str(REPO_ROOT)!r}),
-    environment={{}},
-    emit=emit,
-)
+with mock.patch.object(clean_room_check, "_validate_trusted_executables"):
+    receipt = clean_room_check.run(
+        repo_root=Path({str(REPO_ROOT)!r}),
+        environment={{}},
+        emit=emit,
+    )
 assert receipt.status == "cancelled"
 assert receipt.reason == "cancelled"
 assert receipt.temporary_cleaned
@@ -1056,6 +1064,15 @@ assert signal.getsignal(signal.SIGTERM) == previous
         self.assertEqual("receipt", receipt["event"])
         self.assertEqual("cancelled", receipt["status"])
         self.assertNotIn("signal", json.dumps(receipt).lower())
+
+    def test_missing_trusted_executable_fails_closed(self) -> None:
+        with tempfile.TemporaryDirectory() as raw:
+            missing = Path(raw) / "missing-executable"
+            with self.assertRaisesRegex(
+                clean_room_check.CleanRoomError,
+                "trusted_executable_unavailable",
+            ):
+                clean_room_check._validate_trusted_executable(missing)
 
     def test_gpg_broker_contract_requires_synthetic_workspace_keyring(self) -> None:
         with tempfile.TemporaryDirectory(dir="/tmp") as raw:
