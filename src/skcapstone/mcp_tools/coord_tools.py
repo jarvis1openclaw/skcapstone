@@ -43,12 +43,18 @@ TOOLS: list[Tool] = [
         name="coord_claim",
         description=(
             "Claim a task on the coordination board for an agent. Prevents duplicate work "
-            "across agents."
+            "across agents. Refuses tasks whose dependencies are not all done unless "
+            "force is true."
         ),
         inputSchema={
             "properties": {
                 "agent_name": {"description": "Agent name claiming the task", "type": "string"},
                 "task_id": {"description": "The task ID to claim", "type": "string"},
+                "force": {
+                    "description": "Claim even when dependencies are not all done",
+                    "type": "boolean",
+                    "default": False,
+                },
             },
             "required": ["task_id", "agent_name"],
             "type": "object",
@@ -204,7 +210,7 @@ async def _handle_coord_claim(args: dict) -> list[TextContent]:
 
     board = Board(_home())
     try:
-        agent = board.claim_task(agent_name, task_id)
+        agent = board.claim_task(agent_name, task_id, force=bool(args.get("force", False)))
         return _json_response(
             {
                 "claimed": True,

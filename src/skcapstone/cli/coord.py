@@ -54,13 +54,26 @@ def register_coord_commands(main: click.Group) -> None:
         views = board.get_task_views()
         agents = board.load_agents()
 
+        # Open cards whose dependencies are not all done are blocked: the
+        # claim gate refuses them without --force, so status must say so.
+        done_ids = {v.task.id for v in views if v.status.value == "done"}
+
+        def _status_label(view) -> str:
+            if (
+                view.status.value == "open"
+                and view.task.dependencies
+                and not set(view.task.dependencies).issubset(done_ids)
+            ):
+                return "blocked"
+            return view.status.value
+
         if parent:
             tag = (*tag, f"parent-{parent}")
         if tag:
             wanted = {t.lower() for t in tag}
             views = [v for v in views if wanted & {t.lower() for t in v.task.tags}]
         if status_filter:
-            views = [v for v in views if v.status.value == status_filter]
+            views = [v for v in views if _status_label(v) == status_filter]
 
         if not views and (tag or status_filter):
             console.print("\n  [dim]No tasks match the given filters.[/]\n")
@@ -110,13 +123,14 @@ def register_coord_commands(main: click.Group) -> None:
             if v.status.value == "done" and status_filter is None:
                 continue
             t = v.task
+            status_label = _status_label(v)
             p_style = priority_colors.get(t.priority.value, "dim")
-            s_style = status_colors.get(v.status.value, "dim")
+            s_style = status_colors.get(status_label, "dim")
             table.add_row(
                 t.id,
                 t.title,
                 Text(t.priority.value.upper(), style=p_style),
-                Text(v.status.value.upper(), style=s_style),
+                Text(status_label.upper(), style=s_style),
                 v.claimed_by or "",
                 ", ".join(t.tags),
             )
@@ -176,8 +190,18 @@ def register_coord_commands(main: click.Group) -> None:
     @click.argument("task_id")
     @click.option("--home", default=AGENT_HOME, type=click.Path())
     @click.option("--agent", required=True, help="Agent name claiming the task.")
-    def coord_claim(task_id, home, agent):
-        """Claim a task for an agent."""
+    @click.option(
+        "--force",
+        is_flag=True,
+        default=False,
+        help="Claim even when the task's dependencies are not all done.",
+    )
+    def coord_claim(task_id, home, agent, force):
+        """Claim a task for an agent.
+
+        A task whose dependencies are not all done is blocked: the claim is
+        refused unless --force is passed.
+        """
         from ..coordination import Board
 
         validate_task_id(task_id)
@@ -186,7 +210,7 @@ def register_coord_commands(main: click.Group) -> None:
         home_path = Path(home).expanduser()
         board = Board(home_path)
         try:
-            ag = board.claim_task(agent, task_id)
+            ag = board.claim_task(agent, task_id, force=force)
             console.print(f"\n  [green]Claimed:[/] [{task_id}] by [bold]{ag.agent}[/]\n")
         except ValueError as e:
             console.print(f"\n  [red]Error:[/] {e}\n")
