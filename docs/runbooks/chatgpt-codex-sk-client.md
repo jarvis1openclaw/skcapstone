@@ -8,9 +8,10 @@ acceptance, updates, rollback, and the failure modes proven by the `chiap04` and
 
 **Status:** operational canary procedure<br>
 **Owner:** SKCapstone<br>
-**Last verified:** 2026-08-20<br>
-**Change evidence:** `chg-a76c0aee`; coordination cards `5a8822dc`, `29ba6bea`,
-`df0c6c26`, and `8b9ee8b3`
+**Last verified:** 2026-08-21<br>
+**Change evidence:** approved change `chg-a76c0aee`; remediation
+`648f62e4`; coordination cards `5a8822dc`, `29ba6bea`, `df0c6c26`, and
+`8b9ee8b3`
 
 Official OpenAI references:
 
@@ -213,6 +214,28 @@ test -s "$SKCAPSTONE_HOME/agents/$SK_AGENT/skwhisper/whisper.md"
 updated` timestamp are the complete background-service acceptance. A present
 file with `Daemon: unknown` means old context can load, but continuous digest
 work is not enabled.
+
+### 3.5 Verify SKMemory vector and graph backends
+
+Run health through the same protected environment wrapper used by the MCP
+child. This validates the effective runtime rather than only the non-secret
+YAML defaults:
+
+```bash
+"$HOME/.local/bin/sk-mcp-env" "$HOME/.skenv/bin/skmemory" health
+```
+
+Acceptance requires:
+
+- `vector.ok: true` with `backend: PGVectorBackend`;
+- `graph.ok: true` with `backend: AGEGraphBackend`;
+- the expected agent graph name (for example, `jarvis_knowledge`); and
+- no database secret or full DSN printed into the change record.
+
+`primary.backend: SQLiteBackend` is expected in the hybrid topology and does
+not mean PGVector or AGE is inactive. The primary SQLite store, PostgreSQL
+vector index, and AGE graph serve different roles. Record only backend names,
+health booleans, and non-sensitive counts as deployment evidence.
 
 ## 4. Linux desktop deployment
 
@@ -578,6 +601,17 @@ stat "$SKCAPSTONE_HOME/agents/$SK_AGENT/skwhisper/whisper.md"
 If the file loads but the service is not active, record the client-context
 test as partial rather than claiming background digestion is enabled.
 
+### 7.5 SKMemory hybrid-backend acceptance
+
+```bash
+"$HOME/.local/bin/sk-mcp-env" "$HOME/.skenv/bin/skmemory" health
+```
+
+Do not accept the client on configuration-file inspection alone. The command
+must report healthy `PGVectorBackend` and `AGEGraphBackend` instances in the
+effective wrapped environment. If an unwrapped invocation differs, repair the
+MCP wrapper or its protected environment source and repeat this check.
+
 ## 8. Safe restart, update, and rollback
 
 ### 8.1 Restart only the Windows app
@@ -659,6 +693,8 @@ codex mcp remove skcomms
 | Linux `$HOME/.codex/config.toml` is correct but Windows GUI still has no MCPs | The Windows app uses `%USERPROFILE%\.codex` | Export `CODEX_HOME=/mnt/c/Users/<windows-user>/.codex` before registration |
 | MCP is listed but fails to start | `codex mcp get <name> --json`; verify wrapper and server are executable absolute Linux paths | Repair the path or `$HOME/.skenv`; do not point the WSL agent at Windows executables |
 | MCP starts but cannot reach SKMemory/Postgres | Check that `~/.config/skmemory/skmem-pg.env` exists, is mode `0600`, and the wrapper is used | Restore the environment file through the approved secret path; never paste it into TOML |
+| SKMemory reports only SQLite, or vector/graph health is false | Compare `skmemory health` with the same command run through `sk-mcp-env`; inspect only variable names and file modes | Repair the wrapper or governed environment file, then require healthy `PGVectorBackend` and `AGEGraphBackend` results before acceptance |
+| Codex stop hook exits with code `127` | Inspect the configured hook command paths and verify each target exists and is executable in the active SK virtual environment | Re-run the current SKMemory/Codex registration or update the stale absolute paths to the installed hook scripts; test the stop hook with an empty JSON object before restarting the client |
 | Skills are missing or legacy | Inspect `$HOME/.agents/skills/<name>/SKILL.md` | Link or install the current skill there and restart Codex |
 | Soul is absent but SKCapstone MCP works | Check the active global `AGENTS.md`, loader, and the three agent variables | Repair bootstrap under the active `CODEX_HOME`; MCP availability alone does not load identity |
 | `Soul loaded: Yes` but the answer still uses a generic name | Existing chat retained its old instruction chain | Restart ChatGPT and test in a new chat |
@@ -692,7 +728,7 @@ codex mcp remove skcomms
 | Host | Platform | Accepted result |
 |---|---|---|
 | `chiap04` | Official Linux desktop package | Linux app-server; four SK MCP entries; Jarvis ritual and SKWhisper context loaded |
-| `chiwk12` | Windows Store app with Ubuntu WSL2 agent | Windows-backed Codex home; WSL-native MCP children; Jarvis / `jarvis-unhinged` / OOF 100%; Windows Terminal preserved during app restart |
+| `chiwk12` | Windows Store app with Ubuntu WSL2 agent | Windows-backed Codex home; WSL-native MCP children; Jarvis / `jarvis-unhinged` / OOF 100%; wrapped SKMemory health confirmed `PGVectorBackend` and `AGEGraphBackend`; Windows Terminal preserved during app restart |
 
 Known implementation gaps:
 
