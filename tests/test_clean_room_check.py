@@ -861,6 +861,11 @@ class CleanRoomCheckTests(unittest.TestCase):
             error_denial = exchange(b"e")
             self.assertEqual(126, json.loads(error_denial)["returncode"])
             self.assertEqual(initial_workers, tuple(broker._workers))
+            deadline = time.monotonic() + 1.0
+            while broker._connections and time.monotonic() < deadline:
+                time.sleep(0.01)
+            self.assertFalse(broker._connections)
+            self.assertTrue(broker._queue.empty())
             counts = budget.snapshot()
             self.assertEqual(303, counts["connection_attempts"])
             self.assertEqual(301, counts["requests_accepted"])
@@ -871,11 +876,6 @@ class CleanRoomCheckTests(unittest.TestCase):
                 + 3 * (len(clean_room_check._denied_response()) + 4),
                 counts["wire_bytes_sent"],
             )
-            deadline = time.monotonic() + 1.0
-            while broker._connections and time.monotonic() < deadline:
-                time.sleep(0.01)
-            self.assertFalse(broker._connections)
-            self.assertTrue(broker._queue.empty())
         finally:
             self.assertTrue(broker.close())
             self.assertTrue(broker.close())
