@@ -7,8 +7,17 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased]
 
+### Documentation
+
+- Recorded the GitHub-first, two-node CMDB package deployment and verification
+  procedure used by card `3799733b`, including the dashboard restart required
+  after updating the in-process `skcoord`/`skdashboard` dependencies.
+
 ### Fixed
 
+- Cleared the repository-wide Ruff gate by normalizing legacy test names and
+  imports, removing unused test imports, and replacing an ambiguous local name;
+  these are test-only cleanups with no runtime behavior change.
 - Restored the packaged `skcapstone-cmdb-reconcile-network.service` contract
   used by ATLAS for governed credentialed CMDB applies. The unit fails closed
   unless the owner-reviewed exact-target/SKVault launcher exists; the legacy

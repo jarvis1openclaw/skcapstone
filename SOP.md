@@ -343,6 +343,27 @@ directory, reload, and compare `systemctl --user cat` with the tagged source.
 Do not disable the legacy timer until the governed network oneshot succeeds and
 its artifact/audit readback is accepted.
 
+**Two-node CMDB package rollout.** Source is promoted through GitHub; never copy
+individual CMDB modules between `.158` and `.41`. On each node, fast-forward the
+three canonical checkouts, reinstall them into the fleet environment, and restart
+the dashboard because it imports both packages in-process:
+
+```bash
+for repo in skcoord skdashboard skcapstone; do
+  git -C "$HOME/clawd/skcapstone-repos/$repo" pull --ff-only origin main
+done
+"$HOME/.skenv/bin/pip" install -e "$HOME/clawd/skcapstone-repos/skcoord"
+"$HOME/.skenv/bin/pip" install -e "$HOME/clawd/skcapstone-repos/skdashboard"
+"$HOME/.skenv/bin/pip" install -e "$HOME/clawd/skcapstone-repos/skcapstone"
+systemctl --user restart skcapstone-dashboard.service
+curl -fsS http://127.0.0.1:7778/api/cmdb/overview
+curl -fsS 'http://127.0.0.1:7778/api/cmdb/search?q=service&limit=1'
+```
+
+If a node does not run `skcapstone-dashboard.service`, reinstall the packages but do
+not invent a service to restart. Verify imports and versions with that node's
+`~/.skenv/bin/python`, and restart only CMDB-consuming units already installed there.
+
 > **Gotcha (orphan/stale pidfile).** `~/.skcapstone/daemon.pid` (per-agent home) is the
 > liveness source `read_pid` / `is_running` read. A hard-killed daemon (or an OOM-kill
 > before the exponential backoff catches it) can leave a stale PID whose number was

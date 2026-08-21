@@ -1,7 +1,7 @@
 """Tests for installer.apply() function."""
 
-from skcapstone.fleet.installer import apply, InstallPlan, InstallStep
 from skcapstone.fleet.install_backends import UNSUPPORTED
+from skcapstone.fleet.installer import InstallPlan, InstallStep, apply
 
 
 def _plan(*steps):

@@ -1,4 +1,4 @@
-from skcapstone.fleet.installer import InstallStep, InstallPlan, InstallResult
+from skcapstone.fleet.installer import InstallPlan, InstallResult, InstallStep
 
 
 def test_install_step_and_plan_are_immutable_records():

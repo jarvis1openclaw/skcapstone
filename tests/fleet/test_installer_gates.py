@@ -245,8 +245,8 @@ def test_apply_proceeds_when_node_has_opted_in_real_seam(paths, operator, monkey
 def test_refresh_inventory_publishes_via_sknoded_run_once(paths, monkeypatch):
     """End-to-end (no mocking of _refresh_inventory itself): a real, non-dry
     apply against a real FleetPaths tree republishes node.json."""
-    from skcapstone.fleet.profile_doctor import DriftReport
     from skcapstone.fleet.paths import self_node_name
+    from skcapstone.fleet.profile_doctor import DriftReport
 
     monkeypatch.setattr("skcapstone.fleet.installer.store.is_frozen", lambda p: False)
     monkeypatch.setattr("skcapstone.fleet.installer.converge.actuation_enabled", lambda p, n: True)
