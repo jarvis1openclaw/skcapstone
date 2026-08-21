@@ -15,6 +15,9 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ### Fixed
 
+- Restored the `main` push trigger for `publish.yml`, making its existing
+  GitHub-owned patch-tag job reachable and bringing the release workflow back
+  into agreement with this SOP. Tag pushes remain the only PyPI upload path.
 - Cleared the repository-wide Ruff gate by normalizing legacy test names and
   imports, removing unused test imports, and replacing an ambiguous local name;
   these are test-only cleanups with no runtime behavior change.
