@@ -15,6 +15,10 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ### Fixed
 
+- Added a fail-closed systemd credential-file path for protected CapAuth
+  signing keys. ATLAS can now sign noninteractively without exposing its
+  passphrase in a unit environment or command line; symlinked, foreign-owned,
+  overlarge, and group/world-accessible credential files are rejected.
 - Restored the `main` push trigger for `publish.yml`, making its existing
   GitHub-owned patch-tag job reachable and bringing the release workflow back
   into agreement with this SOP. The main run publishes the version it tags;

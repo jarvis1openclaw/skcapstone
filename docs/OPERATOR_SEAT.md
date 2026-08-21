@@ -204,6 +204,13 @@ Atlas ships **report-only** and comes live in deliberate, reversible stages. You
 never lose the freeze card at any step.
 
 1. **Install:** `pip install -e .` puts `skoperator` on the path.
+   A protected operator identity should receive its passphrase through a
+   systemd credential named `capauth-passphrase`. Prefer
+   `LoadCredentialEncrypted=` with a host-bound blob created by
+   `systemd-creds encrypt`; the signer also accepts an explicit owner-only
+   `CAPAUTH_PASSPHRASE_FILE` for recovery. It refuses symlinks, foreign
+   ownership, files larger than 4096 bytes, and any group/world permission.
+   Never place the passphrase directly in a unit `Environment=` line.
 2. **Watch it think (report-only):** enable the timer. Atlas runs every 15
    minutes, observes the fleet, reasons, and reports. It writes nothing.
    ```
