@@ -270,7 +270,8 @@ repo has **no `package.json`** to mirror it into. The **tag is** the version.
 1. Add a dated `CHANGELOG.md` entry (Keep-a-Changelog).
 2. `pytest.yml` green + `ci.yml` lint clean (§4).
 3. Merge to `main`. `.github/workflows/publish.yml` **cuts the next patch tag itself**
-   when HEAD is not already tagged, then builds and publishes on the `v*` tag. It
+   when HEAD is not already tagged, then builds and publishes that tagged version in
+   the same GitHub run. A manually pushed `v*` tag builds and publishes directly. It
    refuses to publish a tag that is not on `main`, and refuses a non-release version
    string. To pick the number yourself, tag before merging.
 4. Verify the published version **on PyPI**, not from a green workflow run: a skipped
