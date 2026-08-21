@@ -1,0 +1,19 @@
+[build-system]
+requires = ["setuptools==84.0.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "sklegal-api"
+version = "0.1.0"
+description = "SKLegal API package boundary"
+requires-python = ">=3.12,<3.13"
+license = "GPL-3.0-only"
+dependencies = [
+  "fastapi==0.141.1",
+  "pydantic==2.13.4",
+  "sklegal-capauth",
+  "uvicorn==0.52.4",
+]
+
+[tool.setuptools.packages.find]
+where = ["src"]

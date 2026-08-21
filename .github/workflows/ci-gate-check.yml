@@ -1,0 +1,15 @@
+name: SK standards CI gate check
+
+on:
+  pull_request:
+  push:
+
+permissions:
+  contents: read
+
+jobs:
+  ci-gates:
+    uses: smilinTux/sk-standards/.github/workflows/ci-gate-check.yml@39a7b1d8c3b1ef7245824799edc8b1ab46e660ed
+    with:
+      standards-ref: "39a7b1d8c3b1ef7245824799edc8b1ab46e660ed"
+      soft-fail: false

@@ -1,0 +1,909 @@
+{
+  "schema": "sklegal-doc-haus-provenance/v1",
+  "source_approval_default": "not_approved",
+  "source_approval_rule": "Any source file or line not explicitly covered by an approved_for_attributed_extraction candidate segment is not approved for extraction or adaptation.",
+  "future_attributed_extraction_gate": {
+    "current_card": "SKL-S0-05 copied no source code and its no-copy gate remains strict.",
+    "required_future_control": "A new implementation card must record an exact source-segment-to-destination mapping, preserve required license and copyright notices, test the adapted behavior, and add a narrow reviewed scanner exception before attributed source appears in SKLegal."
+  },
+  "exact_hash_exceptions": [
+    {
+      "project_path": "apps/web/.prettierignore",
+      "source_path": "packages/plugin/.gitignore",
+      "sha256": "e033fb6ca986e7b57245c4400933b04ccdb92e3cf78a8e6d28c760cf47d07d76",
+      "reason": "Reviewed non-implementation configuration collision. Both exact five-byte files contain only the common dist ignore entry."
+    }
+  ],
+  "candidate_text_line_counts": {
+    "apps/web/patches/docxodus@6.4.0.patch": 14,
+    "apps/web/src/App.tsx": 111,
+    "apps/web/src/api/ingest.ts": 415,
+    "apps/web/src/api/opencode.ts": 394,
+    "apps/web/src/components/ChatPanel.tsx": 1267,
+    "apps/web/src/components/CitationView.tsx": 27,
+    "apps/web/src/components/DocumentViewer.tsx": 250,
+    "apps/web/src/components/Markdown.tsx": 31,
+    "apps/web/src/components/ReviewGrid.tsx": 381,
+    "apps/web/src/components/Sidebar.tsx": 359,
+    "apps/web/src/pages/MatterDetail.tsx": 325,
+    "apps/web/src/prefs.ts": 59,
+    "dochaus/lib/citations.ts": 44,
+    "dochaus/lib/docxodus.ts": 23,
+    "dochaus/lib/extract.ts": 67,
+    "dochaus/lib/redlines.ts": 108,
+    "dochaus/tool/cite.ts": 78,
+    "dochaus/tool/redline.ts": 100,
+    "dochaus/tool/tracked-changes.ts": 82,
+    "dochaus/tool/verify-quote.ts": 162,
+    "packages/opencode/src/bus/global.ts": 29,
+    "packages/opencode/src/permission/index.ts": 232,
+    "packages/opencode/test/permission/next.test.ts": 1212,
+    "services/ingest/src/docxodus.ts": 23,
+    "services/ingest/src/grid.ts": 49,
+    "services/ingest/src/redline.ts": 76
+  },
+  "audit": {
+    "card": "SKL-S0-05",
+    "performed_at": "2026-08-20",
+    "performed_by": "codex-licensing",
+    "scope": "Read-only license, provenance, component, generated-code, dependency, and asset audit. No implementation code was copied."
+  },
+  "repository": {
+    "local_path": "/mnt/cloud/onedrive/projects/DAVE-AI/work/doc-haus",
+    "origin": "https://github.com/sure-scale/doc-haus.git",
+    "configured_remotes": [
+      {
+        "name": "origin",
+        "url": "https://github.com/sure-scale/doc-haus.git",
+        "push_url": "https://github.com/sure-scale/doc-haus.git",
+        "fetch_refspecs": [
+          "+refs/heads/*:refs/remotes/origin/*"
+        ]
+      }
+    ],
+    "branch": "dochaus",
+    "head": "f3cdfd15f7b675e651773b3f6a8ef9468f56ed14",
+    "head_commit_time": "2026-06-13T07:23:08+07:00",
+    "origin_branch_head": "f3cdfd15f7b675e651773b3f6a8ef9468f56ed14",
+    "origin_branch_observed_head": "f3cdfd15f7b675e651773b3f6a8ef9468f56ed14",
+    "origin_branch_observed_at": "2026-08-20T05:43:20Z",
+    "origin_branch_observation_role": "Informational read-only remote observation. The locally validated origin_branch_head tracking ref remains the offline reconciliation field.",
+    "origin_default_branch": "dochaus",
+    "upstream_remote_configured": false,
+    "upstream_repository": "https://github.com/anomalyco/opencode.git",
+    "upstream_base": "134f4136da372fdf8f0c3cec2cea3ff81010baf8",
+    "first_fork_commit": "eec2e0a25fa446212ba6de21f2c6f252140aaf4d",
+    "upstream_dev_observed_head": "e0e9bd7d5f2ae9bfa47dae0b82040c57207c9b24",
+    "upstream_dev_observed_at": "2026-08-20T05:25:06Z",
+    "upstream_dev_observation_role": "Informational only. This volatile branch observation is not a reproducibility or lineage pin.",
+    "commits_after_upstream_base": 202,
+    "delta_from_upstream_base": {
+      "files_changed": 328,
+      "insertions": 31888,
+      "deletions": 3091
+    },
+    "submodules": [],
+    "tags_at_head": [],
+    "working_tree": {
+      "clean": true,
+      "entries": [],
+      "porcelain_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "official_read_only_sources": [
+      "https://github.com/sure-scale/doc-haus/commit/f3cdfd15f7b675e651773b3f6a8ef9468f56ed14",
+      "https://github.com/anomalyco/opencode/commit/134f4136da372fdf8f0c3cec2cea3ff81010baf8",
+      "https://github.com/anomalyco/opencode/commit/e0e9bd7d5f2ae9bfa47dae0b82040c57207c9b24"
+    ]
+  },
+  "expected_inventory": {
+    "package_manifests": {
+      "count": 34,
+      "sha256": "31f595ed17c1bb6642bfb636ba710df168e075fdedccea476faa24871b7fffe5"
+    },
+    "lockfiles": {
+      "count": 7,
+      "sha256": "26309cdb67961a47116e2bacc9140f190f3c7ca4addbc8c24e22f95395641064"
+    },
+    "components": {
+      "count": 3857,
+      "sha256": "17f3483292d5ce23e0181d80187869ce3520fee489164dce0a0faf736f02eca7"
+    },
+    "implementation_sources": {
+      "count": 2798,
+      "sha256": "baf9d22247a2725ff3b462846db3f755d469829c6c5bbb4ad2aab6d5a092717a"
+    },
+    "tracked_files": {
+      "count": 5822,
+      "sha256": "e7b6cd91ba62f7f3c772963abeaa67ec45c618b075ae5cc68801e9a2093932cd"
+    },
+    "assets": {
+      "count": 1650,
+      "sha256": "3b50aeac764ea4865def563e030bdec85793314be274d21f304ce6c636b1d297"
+    },
+    "generated_files": {
+      "count": 334,
+      "sha256": "e40af15bd941467ec5056669c06311db88788bf417d194b27a5f743907ff219c"
+    },
+    "patches": {
+      "count": 12,
+      "sha256": "5913bbaed5406582e5ba1cfb5ff01915bc49d9ca1be9dc81054c3086eea636a4"
+    },
+    "candidate_source_fingerprints": {
+      "count": 30,
+      "fingerprint_count": 25312,
+      "verbatim_fingerprint_count": 49392,
+      "wrapper_stripped_fingerprint_count": 47832,
+      "sha256": "9ac44b54eb2aff152a831b4625d4ce0d4ccbc14975e77eb917b01c7d50f10fc6"
+    }
+  },
+  "license_evidence": [
+    {
+      "path": "LICENSE",
+      "sha256": "a2ab1e6ffea9a1e35b951ac429b594a8984f34ed9b936ef93b1a5f1a60d5abc3",
+      "license": "MIT",
+      "notices": [
+        "Copyright (c) 2026 doc.haus contributors",
+        "Copyright (c) 2025 opencode"
+      ],
+      "scope": "Repository source unless a narrower file or dependency notice applies."
+    },
+    {
+      "path": "packages/docs/LICENSE",
+      "sha256": "25b2b8ffd5ed7a8d2b201f215a9ca64d14db709271070d7fb5efa30894655a35",
+      "license": "MIT",
+      "notices": [
+        "Copyright (c) 2023 Mintlify"
+      ],
+      "scope": "packages/docs only"
+    },
+    {
+      "path": "packages/desktop/src/renderer/webview-zoom.ts",
+      "sha256": "b15ce6364a0d189a2a45b3f2ab9bdf5fa51a9ec03d40423df77fa0b4b6400adc",
+      "license": "Apache-2.0 OR MIT",
+      "notices": [
+        "Copyright 2019-2024 Tauri Programme within The Commons Conservancy"
+      ],
+      "scope": "The marked file only"
+    },
+    {
+      "path": "packages/opencode/src/util/proxy-env.ts",
+      "sha256": "169d2d72ab856a347c0f2b194d9b342a39c8e725f637b7460b4dc36f28420190",
+      "license": "MIT",
+      "notices": [
+        "Copyright (C) 2016-2018 Rob Wu"
+      ],
+      "scope": "The adapted proxy-from-env file only"
+    },
+    {
+      "path": "packages/effect-drizzle-sqlite/package.json",
+      "sha256": "d2ac35fbfc036f1a1fd6300a6cd009ce57426395bd994ef85ece6719fce498a7",
+      "license": "MIT",
+      "notices": [
+        "Manifest states MIT, but copied Drizzle internals require a separately preserved upstream provenance record before extraction."
+      ],
+      "scope": "Vendored Effect Drizzle SQLite package boundary"
+    }
+  ],
+  "third_party_content_boundaries": [
+    {
+      "id": "nda-playbook-bonterms-and-onenda",
+      "path": "dochaus/playbooks/playbook-nda/SKILL.md",
+      "sha256": "6829c5bafd8331223cf22e79646b3de21f8bd901a3b86aa8d618d982b17fa42c",
+      "rights": "NOASSERTION",
+      "quarantined": true,
+      "exact_upstream_provenance": "Unresolved exact Bonterms source version, source hash, and adapted-text mapping.",
+      "declared_rights": [
+        {
+          "source": "Bonterms Mutual NDA playbook",
+          "claim": "The local file declares adapted material public domain and freely usable, but does not pin the exact upstream version or map every adaptation."
+        },
+        {
+          "source": "oneNDA",
+          "claim": "The local file describes oneNDA as CC-BY-ND and reference-only, and states that no oneNDA text was copied. This is not a reuse grant."
+        }
+      ],
+      "rule": "Do not ingest, copy, adapt, or reuse this playbook in SKLegal until a governed corpus card pins upstream versions and hashes, maps attribution, and verifies that no oneNDA text is copied."
+    },
+    {
+      "id": "dpa-playbook-common-paper",
+      "path": "dochaus/playbooks/playbook-dpa/SKILL.md",
+      "sha256": "67212c2a071619cd14a1ecdbee98910cee2398e9120a7c9b5b0010b3864fb818",
+      "rights": "NOASSERTION",
+      "quarantined": true,
+      "exact_upstream_provenance": "Unresolved exact Common Paper DPA version, source hash, and adapted-text mapping.",
+      "declared_rights": [
+        {
+          "source": "Common Paper DPA",
+          "claim": "The local file declares CC-BY-4.0 source material, but does not pin the exact upstream version or complete attribution mapping."
+        }
+      ],
+      "rule": "Do not ingest, copy, adapt, or reuse this playbook in SKLegal until a governed corpus card resolves exact provenance and CC-BY-4.0 attribution."
+    },
+    {
+      "id": "saas-msa-playbook-common-paper-and-bonterms",
+      "path": "dochaus/playbooks/playbook-saas-msa/SKILL.md",
+      "sha256": "0f55397893a9e932ee87a54026a2e3fff1fbe97fb28066a193a34d3cbb77823c",
+      "rights": "NOASSERTION",
+      "quarantined": true,
+      "exact_upstream_provenance": "Unresolved exact Common Paper and Bonterms versions, source hashes, and adapted-text mappings.",
+      "declared_rights": [
+        {
+          "source": "Common Paper Cloud Service Agreement standards",
+          "claim": "The local file declares CC-BY-4.0 source material without an exact upstream version or content mapping."
+        },
+        {
+          "source": "Bonterms Cloud Terms Version 1.0",
+          "claim": "The local file declares CC-BY-4.0 source material without a pinned upstream hash or complete attribution mapping."
+        }
+      ],
+      "rule": "Do not ingest, copy, adapt, or reuse this playbook in SKLegal until a governed corpus card resolves exact provenance and attribution for both sources."
+    },
+    {
+      "id": "cuad-taxonomy-content",
+      "path": "dochaus/skill/contract-risk-checklist/references/cuad-taxonomy.md",
+      "sha256": "7f9cebe7bbf33bc072e88494be1259ad19d7f51f60f09734bca4e9166b6004a3",
+      "rights": "NOASSERTION",
+      "quarantined": true,
+      "exact_upstream_provenance": "Unresolved exact CUAD taxonomy release, source hash, and category-to-local-mapping attribution.",
+      "declared_rights": [
+        {
+          "source": "The Atticus Project CUAD taxonomy",
+          "claim": "The local file declares CC-BY-4.0 and reproduces category names, but does not pin the exact upstream release or source hash."
+        }
+      ],
+      "rule": "Do not ingest, copy, adapt, or reuse this taxonomy in SKLegal until a governed corpus card resolves the exact CUAD source and attribution mapping."
+    }
+  ],
+  "copied_adapted_source_boundaries": [
+    {
+      "id": "xterm-addon-serialize-port",
+      "path": "packages/app/src/addons/serialize.ts",
+      "sha256": "157bc8c6bd10b1e7fd32d5e74361506ba99776fe8857bb12123eb2d34dfa808d",
+      "rights": "NOASSERTION",
+      "quarantined": true,
+      "exact_upstream_provenance": "The file describes a substantial xterm.js addon-serialize port but embeds no exact upstream commit, source mapping, or license notice.",
+      "declared_rights": [
+        {
+          "source": "xterm.js addon-serialize",
+          "claim": "Port declared in the local file; exact upstream version and applicable notice are unresolved."
+        }
+      ],
+      "rule": "Do not extract this port until the exact xterm.js source, license, notice, and adaptation boundary are pinned."
+    },
+    {
+      "id": "pi-mono-provider-error-patterns",
+      "path": "packages/opencode/src/provider/error.ts",
+      "sha256": "a451c448b5df2f7d799f5d4865d3e741700fd70fc6f3eb9f04667e61dd7a3f23",
+      "rights": "NOASSERTION",
+      "quarantined": true,
+      "exact_upstream_provenance": "The file links to badlogic/pi-mono at mutable main without an exact commit, source hash, license record, or adaptation mapping.",
+      "declared_rights": [
+        {
+          "source": "badlogic/pi-mono overflow detection patterns",
+          "claim": "Adaptation declared in the local file; exact upstream provenance and licensing are unresolved."
+        }
+      ],
+      "rule": "Do not extract these patterns until the exact pi-mono commit, license, notice, and adapted lines are pinned."
+    }
+  ],
+  "resolved_component_evidence_scope": {
+    "verification": "All 13 records bind an exact name, locked version, and registry license identifier. Every tarball SRI was independently recomputed from the exact tarball bytes and matched the lock.",
+    "distribution_limitation": "These records support audit disposition only. They are not distribution-ready third-party notice bundles and do not replace dependency-specific source, notice, attribution, or redistribution review.",
+    "tarball_license_notice_absences": [
+      "@opencode-ai/plugin@1.16.0",
+      "docxodus@6.4.0"
+    ]
+  },
+  "resolved_third_party_components": [
+    {
+      "name": "docxodus",
+      "version": "6.4.0",
+      "license": "MIT",
+      "integrity": "sha512-8OAM1oyEcwC+BtfeqDZ8e914cTR8OAO0ARU59jyrvSozft2xTqbw0sUij07trt4wMFgpytb2fgqrw41Fvrh7yg==",
+      "evidence": "https://registry.npmjs.org/docxodus/6.4.0",
+      "license_source": "https://github.com/JSv4/Docxodus/blob/5b4dfc2ae41d547e452a5900a0aab8c59c00bcab/LICENSE",
+      "tarball_license_notice_absent": true,
+      "tarball_package_json_sha256": "24dfe93dd06dae3297098a5bcd596136c769a966685c1a7675832329940275e4",
+      "tarball_license_notice": "The exact npm tarball contains no LICENSE or NOTICE file. The immutable upstream tag commit is evidence only and requires a notice-bundle decision before distribution.",
+      "notices": [
+        "Copyright (c) Microsoft Corporation",
+        "Copyright (c) 2025-2026 John Scrudato IV"
+      ]
+    },
+    {
+      "name": "xlsx",
+      "version": "0.18.5",
+      "license": "Apache-2.0",
+      "integrity": "sha512-dmg3LCjBPHZnQp5/F/+nnTa+miPJxUXB6vtk42YjBBKayDNagxGEeIdWApkYPOf3Z3pm3k62Knjzp7lMeTEtFQ==",
+      "evidence": "https://registry.npmjs.org/xlsx/0.18.5",
+      "tarball_license_path": "package/LICENSE",
+      "tarball_license_sha256": "4d2a38ac35cda06a555c84074a819d413339cd3691b822cae50f8f322fe01f64",
+      "notices": [
+        "Copyright (C) 2012-present SheetJS"
+      ]
+    },
+    {
+      "name": "docx",
+      "version": "9.7.1",
+      "license": "MIT",
+      "integrity": "sha512-ilXFf9Moz47ABjFpDiA5s1w9lpb4EFSp7+5iiJSbfyYDM+bpZdAgLlSr7fW4aXhVe/E+F6QCv0EvRVFEd5CsWg==",
+      "evidence": "https://registry.npmjs.org/docx/9.7.1",
+      "tarball_license_path": "package/LICENSE",
+      "tarball_license_sha256": "b5b2364c0c95a26b2a2399d7e706a61acac680be1d5b180b00592ee85830bffb"
+    },
+    {
+      "name": "@fontsource/space-grotesk",
+      "version": "5.2.10",
+      "license": "OFL-1.1",
+      "integrity": "sha512-XNXEbT74OIITPqw2H6HXwPDp85fy43uxfBwFR5PU+9sLnjuLj12KlhVM9nZVN6q6dlKjkuN8JisW/OBxwxgUew==",
+      "evidence": "https://registry.npmjs.org/@fontsource%2Fspace-grotesk/5.2.10",
+      "tarball_license_path": "package/LICENSE",
+      "tarball_license_sha256": "18a4de52385f6b988782639d5d0cc1326e5a8c2de9a7f01d7b20d9aedcc60943"
+    },
+    {
+      "name": "react",
+      "version": "19.2.7",
+      "license": "MIT",
+      "integrity": "sha512-HNe9WslTbXmFK8o8cmwgAeJFSBvt1bPdHCVKtaaV+WlAN36mpT4hcRpwbf3fY56ar2oIXzsBpOAiIRHAdY0OlQ==",
+      "evidence": "https://registry.npmjs.org/react/19.2.7",
+      "tarball_license_path": "package/LICENSE",
+      "tarball_license_sha256": "da6d3703ed11cbe42bd212c725957c98da23cbff1998c05fa4b3d976d1a58e93"
+    },
+    {
+      "name": "react-dom",
+      "version": "19.2.7",
+      "license": "MIT",
+      "integrity": "sha512-t0BRVXvbiE/o20Hfw669rLbMCDWtYZLvmJigy2f0MxsXF+71pxhR3xOkspmsO8h3ZlNzyibAmtCa3l4lYKk6gQ==",
+      "evidence": "https://registry.npmjs.org/react-dom/19.2.7",
+      "tarball_license_path": "package/LICENSE",
+      "tarball_license_sha256": "da6d3703ed11cbe42bd212c725957c98da23cbff1998c05fa4b3d976d1a58e93"
+    },
+    {
+      "name": "react-markdown",
+      "version": "10.1.0",
+      "license": "MIT",
+      "integrity": "sha512-qKxVopLT/TyA6BX3Ue5NwabOsAzm0Q7kAPwq6L+wWDwisYs7R8vZ0nRXqq6rkueboxpkjvLGU9fWifiX/ZZFxQ==",
+      "evidence": "https://registry.npmjs.org/react-markdown/10.1.0",
+      "tarball_license_path": "package/license",
+      "tarball_license_sha256": "f6196c64e144f9a6fa9154c3a80bc8b89615a9567934b83a8951879f06ba2aef"
+    },
+    {
+      "name": "react-router-dom",
+      "version": "7.17.0",
+      "license": "MIT",
+      "integrity": "sha512-fyU2yjGups/hE6Xz0I5ZYbVL8Gx29eCjgpHaRaTaVU+OOAdfRX05KsvyRm0GO8YQwOkhpU3MurW1jyMUJn+zSw==",
+      "evidence": "https://registry.npmjs.org/react-router-dom/7.17.0",
+      "tarball_license_path": "package/LICENSE.md",
+      "tarball_license_sha256": "77c9ee6a9c5d5782fb0c50b50d101189116314c14f7df0a1b0d385fc96a7ba49"
+    },
+    {
+      "name": "mammoth",
+      "version": "1.12.0",
+      "license": "BSD-2-Clause",
+      "integrity": "sha512-cwnK1RIcRdDMi2HRx2EXGYlxqIEh0Oo3bLhorgnsVJi2UkbX1+jKxuBNR9PC5+JaX7EkmJxFPmo6mjLpqShI2w==",
+      "evidence": "https://registry.npmjs.org/mammoth/1.12.0",
+      "tarball_license_path": "package/LICENSE",
+      "tarball_license_sha256": "6663bbd049205d38a496ccacb412a151980b444627d38de218b3b809aef330f1"
+    },
+    {
+      "name": "unpdf",
+      "version": "1.6.2",
+      "license": "MIT",
+      "integrity": "sha512-zQ80ySoPuPHOsvIoRp/nJyQt8TOUoTh1+WBCGcBvlddQNgKDLRwm0AY3x8Q35I7+kIiRSgqMx+Ma2pl9McIp7A==",
+      "evidence": "https://registry.npmjs.org/unpdf/1.6.2",
+      "tarball_license_path": "package/LICENSE",
+      "tarball_license_sha256": "4a57080b8ecdb3a53ec678828121849ce5df877a99b1ad8d50e165d8a2aded1b"
+    },
+    {
+      "name": "hono",
+      "version": "4.10.7",
+      "license": "MIT",
+      "integrity": "sha512-icXIITfw/07Q88nLSkB9aiUrd8rYzSweK681Kjo/TSggaGbOX4RRyxxm71v+3PC8C/j+4rlxGeoTRxQDkaJkUw==",
+      "evidence": "https://registry.npmjs.org/hono/4.10.7",
+      "tarball_license_path": "package/LICENSE",
+      "tarball_license_sha256": "a6ab98e5c77b9070c443eaff2ff81034a6f8cc05a7524d5098eb0f24defa0115"
+    },
+    {
+      "name": "fflate",
+      "version": "0.8.3",
+      "license": "MIT",
+      "integrity": "sha512-tbZNuJrLwGUp3zshBtdy4W+ORxZuIh8a5ilyIEQDC5rY1f3U20JMry0Ll3WBzU58EZKsEuJFXhb5gwv8CsPvgA==",
+      "evidence": "https://registry.npmjs.org/fflate/0.8.3",
+      "tarball_license_path": "package/LICENSE",
+      "tarball_license_sha256": "0a1df3a083d0c010560aa342e87959c8c1070e6fd54545741f083f22d0c8b551"
+    },
+    {
+      "name": "@opencode-ai/plugin",
+      "version": "1.16.0",
+      "license": "MIT",
+      "integrity": "sha512-Plk76tTrJWR43wT8XBkXtSy1N4jFBfEuHpFpb7C3niydqHRih26z1LcbOSkHTFx1XuHGfgBi9+D8cuUn7305AQ==",
+      "evidence": "https://registry.npmjs.org/@opencode-ai%2Fplugin/1.16.0",
+      "tarball_license_notice_absent": true,
+      "tarball_package_json_sha256": "a748879f608d5382b06aca58643eeea1b622b3252f44f2ef4820d7bce2963e56",
+      "tarball_license_notice": "The exact npm tarball contains no LICENSE or NOTICE file. Registry metadata alone is not a distribution-ready notice bundle."
+    }
+  ],
+  "candidates": [
+    {
+      "id": "citation-integrity-pure-core",
+      "category": "citation",
+      "disposition": "approved_for_attributed_extraction",
+      "paths": [
+        {
+          "path": "dochaus/lib/citations.ts",
+          "sha256": "14aad7cf0283d21b6a21f9f1eb4b2ba5b1f7b08e9bb95ea7c0bc1c98329bb483",
+          "segments": [
+            {
+              "start_line": 9,
+              "end_line": 28,
+              "purpose": "Citation shape only"
+            }
+          ]
+        },
+        {
+          "path": "dochaus/lib/extract.ts",
+          "sha256": "b2819ba6580eb7ed42a48c920a10a57d0361d7950167c8298f50d70d1f1ff836",
+          "segments": [
+            {
+              "start_line": 31,
+              "end_line": 55,
+              "purpose": "Regex helper and pure quote matching only"
+            }
+          ]
+        },
+        {
+          "path": "dochaus/tool/verify-quote.ts",
+          "sha256": "d7a55fc0606d96f5694b322fe8461462866866d881452b77485dc471ee89821d",
+          "segments": [
+            {
+              "start_line": 23,
+              "end_line": 56,
+              "purpose": "Normalization and raw-offset map only"
+            }
+          ]
+        }
+      ],
+      "license_basis": "The exact pure source segments are covered by the root MIT license and both root copyright notices. No runtime or rendering dependency is carried.",
+      "copyright_notice_obligations": "Preserve the doc.haus 2026 and OpenCode 2025 notices for extracted logic.",
+      "dependencies": [],
+      "engineering_fit": "The citation shape, pure quote matcher, normalization, and raw-offset mapping fit immutable claim provenance when rebuilt against SKLegal source versions.",
+      "extraction_boundary": "Use attributed extraction or adaptation only for the listed line segments, with source-to-destination mapping and preserved notices. Exclude rendering, format constants, live text extraction, file access, databases, OpenCode tools, and runtime adapters. Bind the adapted implementation to tenant, matter, source version, release, source hash, policy decision, and immutable claim records.",
+      "unresolved_risks": "Duplicate passages can select the wrong occurrence. Empty or very long input can create incorrect matches or excessive regex cost. Unicode normalization and raw-offset reconstruction require adversarial correctness tests."
+    },
+    {
+      "id": "citation-runtime-rendering-adapters",
+      "category": "citation",
+      "disposition": "rejected",
+      "paths": [
+        {
+          "path": "apps/web/src/components/CitationView.tsx",
+          "sha256": "08f3b9a497bca670ba586828b7c30ddd9884e5fdef1b560766a3d907a57f59b5"
+        },
+        {
+          "path": "apps/web/src/components/Markdown.tsx",
+          "sha256": "02e2ba6b9eb2b078541fa23434a7f1879bc2c43ca90daa4ebe03ba5a30200044"
+        },
+        {
+          "path": "dochaus/lib/citations.ts",
+          "sha256": "14aad7cf0283d21b6a21f9f1eb4b2ba5b1f7b08e9bb95ea7c0bc1c98329bb483",
+          "segments": [
+            {
+              "start_line": 1,
+              "end_line": 8,
+              "purpose": "Imports and runtime coupling"
+            },
+            {
+              "start_line": 30,
+              "end_line": 44,
+              "purpose": "Citation formatting constants and rendering"
+            }
+          ]
+        },
+        {
+          "path": "dochaus/lib/extract.ts",
+          "sha256": "b2819ba6580eb7ed42a48c920a10a57d0361d7950167c8298f50d70d1f1ff836",
+          "segments": [
+            {
+              "start_line": 1,
+              "end_line": 29,
+              "purpose": "File and document extraction adapters"
+            },
+            {
+              "start_line": 57,
+              "end_line": 67,
+              "purpose": "Live path extraction adapter"
+            }
+          ]
+        },
+        {
+          "path": "dochaus/tool/cite.ts",
+          "sha256": "d49390d2cff0fbb6c1af2a637cf8419a5018c40f953e13e869202fedf6597b79"
+        },
+        {
+          "path": "dochaus/tool/verify-quote.ts",
+          "sha256": "d7a55fc0606d96f5694b322fe8461462866866d881452b77485dc471ee89821d",
+          "segments": [
+            {
+              "start_line": 1,
+              "end_line": 22,
+              "purpose": "Runtime imports and database helpers"
+            },
+            {
+              "start_line": 58,
+              "end_line": 162,
+              "purpose": "Database and OpenCode tool runtime"
+            }
+          ]
+        }
+      ],
+      "license_basis": "The pinned source is covered by the root MIT license, but license permission does not make the coupled adapters suitable for extraction.",
+      "copyright_notice_obligations": "Preserve root notices if any adapter logic is reconsidered under a separate review.",
+      "dependencies": [
+        {
+          "name": "@opencode-ai/plugin",
+          "version": "1.16.0",
+          "license": "MIT",
+          "adoption": "dependency_only"
+        },
+        {
+          "name": "mammoth",
+          "version": "1.12.0",
+          "license": "BSD-2-Clause",
+          "adoption": "dependency_only"
+        },
+        {
+          "name": "react",
+          "version": "19.2.7",
+          "license": "MIT",
+          "adoption": "dependency_only"
+        },
+        {
+          "name": "react-markdown",
+          "version": "10.1.0",
+          "license": "MIT",
+          "adoption": "dependency_only"
+        },
+        {
+          "name": "unpdf",
+          "version": "1.6.2",
+          "license": "MIT",
+          "adoption": "dependency_only"
+        }
+      ],
+      "engineering_fit": "Visible citations and source verification are useful behaviors, but these files mix them with React rendering, live file extraction, OpenCode tools, and database runtime.",
+      "extraction_boundary": "Do not copy CitationView, Markdown, formatCitations rendering, liveText or extraction adapters, cite tool runtime, or verify-quote database and tool runtime. Reimplement independently around the approved pure citation core and SKLegal policy boundaries.",
+      "unresolved_risks": "ReactMarkdown sanitization, live-path authorization, database tenancy, tool authority, duplicate passage selection, regex cost, Unicode normalization, and offset correctness are unresolved in these adapters."
+    },
+    {
+      "id": "review-grid-domain-core",
+      "category": "review_grid",
+      "disposition": "approved_for_attributed_extraction",
+      "paths": [
+        {
+          "path": "apps/web/src/components/ReviewGrid.tsx",
+          "sha256": "cc793c3f34145250fd20480d2d09baad592e80e34c239d0f6b160dc0a44cdbc4",
+          "segments": [
+            {
+              "start_line": 15,
+              "end_line": 25,
+              "purpose": "Stable question identity and cell identity only"
+            }
+          ]
+        },
+        {
+          "path": "services/ingest/src/grid.ts",
+          "sha256": "15277274dea53651bc0143771a547ea1bc0efd7494cd51eb8b1604fc0ee46fcb",
+          "segments": [
+            {
+              "start_line": 12,
+              "end_line": 34,
+              "purpose": "Grid, citation, reviewer status, and comment data model only"
+            }
+          ]
+        }
+      ],
+      "license_basis": "The exact source segments are covered by the root MIT license. No dependency implementation is carried by this candidate.",
+      "copyright_notice_obligations": "Preserve the doc.haus 2026 and OpenCode 2025 notices for extracted logic.",
+      "dependencies": [],
+      "engineering_fit": "The pure question identity, cell identity, citation, reviewer status, and comment data model fit SKLegal review behavior.",
+      "extraction_boundary": "Use attributed extraction or adaptation only for the listed source segments, with source-to-destination mapping and preserved notices. Exclude XLSX export, React rendering, OpenCode sessions, JSON-file persistence, client-owned merging, browser prompts, and direct writes. Implement typed APIs, PostgreSQL concurrency control, Temporal workflows, CapAuth, tenant and matter scope, and claim-level provenance independently.",
+      "unresolved_risks": "The simple question hash is not collision resistant and must be replaced. Reviewed state needs an immutable receipt and exact model-input record."
+    },
+    {
+      "id": "review-grid-xlsx-export",
+      "category": "review_grid",
+      "disposition": "requires_permission",
+      "paths": [
+        {
+          "path": "apps/web/src/components/ReviewGrid.tsx",
+          "sha256": "cc793c3f34145250fd20480d2d09baad592e80e34c239d0f6b160dc0a44cdbc4",
+          "segments": [
+            {
+              "start_line": 178,
+              "end_line": 211,
+              "purpose": "XLSX export adapter"
+            }
+          ]
+        }
+      ],
+      "license_basis": "The adapter source is root MIT and xlsx 0.18.5 is Apache-2.0, but this audit has not resolved the full transitive and bundled notice chain for adoption.",
+      "copyright_notice_obligations": "Preserve root notices. Before adoption, preserve Apache-2.0, SheetJS notices, modification notices, any applicable NOTICE content, and every resolved transitive notice.",
+      "dependencies": [
+        {
+          "name": "xlsx",
+          "version": "0.18.5",
+          "license": "Apache-2.0",
+          "adoption": "quarantined"
+        }
+      ],
+      "engineering_fit": "Spreadsheet export with citation and reviewer notes is useful, but it is an optional adapter outside the review-grid domain core.",
+      "extraction_boundary": "Do not extract or adopt the listed export adapter until the xlsx bundled and transitive notice chain is resolved. An independent behavioral implementation is acceptable only when its implementers do not receive the rejected source.",
+      "unresolved_risks": "The xlsx dependency's bundled and transitive rights inventory is incomplete, and spreadsheet formula and content safety controls are not present."
+    },
+    {
+      "id": "docx-proposal-conflict-core",
+      "category": "docx",
+      "disposition": "approved_for_attributed_extraction",
+      "paths": [
+        {
+          "path": "dochaus/lib/redlines.ts",
+          "sha256": "b9035e537359711245653cf1bf1ccda5e7a773f9c20b3622bd42a5befde91775",
+          "segments": [
+            {
+              "start_line": 54,
+              "end_line": 65,
+              "purpose": "Pending proposal shape only"
+            },
+            {
+              "start_line": 80,
+              "end_line": 97,
+              "purpose": "Pure conflict predicate only"
+            }
+          ]
+        }
+      ],
+      "license_basis": "The exact source segment is covered by the root MIT license and carries no Docxodus implementation or dependency.",
+      "copyright_notice_obligations": "Preserve the doc.haus 2026 and OpenCode 2025 notices for extracted logic.",
+      "dependencies": [],
+      "engineering_fit": "The proposal shape and pure same-anchor conflict predicate align with SKLegal proposal-first work products.",
+      "extraction_boundary": "Use attributed extraction or adaptation only for lines 54-65 and 80-97, with source-to-destination mapping and preserved notices. Exclude the database query at lines 67-78, Bun SQLite, persistence, file paths, proposal recording, Docxodus, replay, acceptance, and direct mutation. Bind the adapted implementation to exact artifact hashes, CapAuth, outbox, audit receipts, legal holds, and isolated object storage.",
+      "unresolved_risks": "Substring overlap is only a starting rule and requires adversarial tests for Unicode, repeated text, stale anchors, and concurrent proposals."
+    },
+    {
+      "id": "docx-tracked-changes-adapter",
+      "category": "docx",
+      "disposition": "requires_permission",
+      "paths": [
+        {
+          "path": "services/ingest/src/redline.ts",
+          "sha256": "08c4b050b0713dc97dc62923a1c2325276c3ed3b04e1b28d4c62986de6c3b66a"
+        },
+        {
+          "path": "dochaus/tool/redline.ts",
+          "sha256": "1a9c268e3d30b8627f201cff251a126c2c86c704b37d15d8fbccd8df2041b037"
+        },
+        {
+          "path": "dochaus/tool/tracked-changes.ts",
+          "sha256": "9dfd58011759318d4b5dda4068f6ad46b123ad8b5c81cc7035b93c3504982fde"
+        },
+        {
+          "path": "services/ingest/src/docxodus.ts",
+          "sha256": "576b6948ac0f2dc6740451acac40d52764396fcd94ec04bfd61df3bbadd94c06"
+        },
+        {
+          "path": "dochaus/lib/docxodus.ts",
+          "sha256": "3f7016fad3e2bc4405d74987c6dc1ec748cab064c737f05f7a82eaf103f541bd"
+        },
+        {
+          "path": "apps/web/patches/docxodus@6.4.0.patch",
+          "sha256": "14692b7acb939ab4e5d358438cb0b267674abb546bfa97d9aba9c18b2d4b313d"
+        }
+      ],
+      "license_basis": "The integration and patch source are root MIT, and docxodus 6.4.0 is MIT at the pinned lock integrity. Adoption remains quarantined until embedded WebAssembly, Open XML binaries, transitive packages, and patch obligations have a complete notice chain.",
+      "copyright_notice_obligations": "Preserve root notices, the Docxodus MIT license, Microsoft Corporation notice, John Scrudato IV 2025-2026 notice, package integrity, exact patch hash, and all resolved embedded and transitive notices.",
+      "dependencies": [
+        {
+          "name": "docxodus",
+          "version": "6.4.0",
+          "license": "MIT",
+          "adoption": "quarantined"
+        }
+      ],
+      "engineering_fit": "The proposal replay and tracked-change adapter may fit SKLegal after independent rights and safety qualification.",
+      "extraction_boundary": "Do not extract or adopt this adapter now. Resolve embedded and transitive provenance, re-qualify the patch against the exact package, then replace Bun SQLite, file paths, OpenCode prompts, and direct mutation with SKLegal boundaries.",
+      "unresolved_risks": "Embedded and transitive notice chains are incomplete. The patch changes WebAssembly packaging, and acceptance is not transactionally bound to SKLegal authorization and audit."
+    },
+    {
+      "id": "docx-browser-viewer",
+      "category": "docx",
+      "disposition": "rejected",
+      "paths": [
+        {
+          "path": "apps/web/src/components/DocumentViewer.tsx",
+          "sha256": "5fcd0321e6ea7a182f15ed5c9cab1c22ca2c4c096cb5f23b7a0f63c38b8bb11c"
+        }
+      ],
+      "license_basis": "The source is covered by the root MIT license and depends on MIT docxodus 6.4.0.",
+      "copyright_notice_obligations": "Any future fresh implementation using source logic must preserve the root and Docxodus notices.",
+      "dependencies": [
+        {
+          "name": "docxodus",
+          "version": "6.4.0",
+          "license": "MIT",
+          "adoption": "dependency_only"
+        },
+        {
+          "name": "react",
+          "version": "19.2.7",
+          "license": "MIT",
+          "adoption": "dependency_only"
+        }
+      ],
+      "engineering_fit": "The visual review concept is useful, but the component directly renders converted HTML, performs accept-all mutations from the browser, and has no SKLegal exact-version approval or CapAuth boundary.",
+      "extraction_boundary": "Do not copy this component. Reimplement the split document and change-list experience against sanitized output, server authorization, exact artifact hashes, immutable approval receipts, and accessible controls.",
+      "unresolved_risks": "Untrusted DOCX HTML reaches dangerouslySetInnerHTML without an evidenced sanitizer at this boundary. Direct mutations can race artifact changes and policy state."
+    },
+    {
+      "id": "matter-workbench-shell",
+      "category": "workbench",
+      "disposition": "rejected",
+      "paths": [
+        {
+          "path": "apps/web/src/pages/MatterDetail.tsx",
+          "sha256": "6456d74862c31bf079f1bba6642d3ba96b351656d3907394ee1fc3210add700b"
+        },
+        {
+          "path": "apps/web/src/components/ChatPanel.tsx",
+          "sha256": "ee4532f47742736b66bc12806e41567147718497a56f820cd905f5a1df9e4225"
+        },
+        {
+          "path": "apps/web/src/components/Sidebar.tsx",
+          "sha256": "01b62bd634aba6d109a9d40bb3f1ce3ee01f1b47796f7d0e39bc8765e4f0dcda"
+        },
+        {
+          "path": "apps/web/src/App.tsx",
+          "sha256": "ed4336fea499ec182c799c3e1b462f3649e0c46de0f557c7ab5d69bebbb850a9"
+        },
+        {
+          "path": "apps/web/src/api/opencode.ts",
+          "sha256": "2adcaa40d11db821d6fb13f67107295b8ee8c395ce9bf72fda1308714c9738c3"
+        },
+        {
+          "path": "apps/web/src/api/ingest.ts",
+          "sha256": "237c89ba9be33c7af52dbb2c71fdee785de805269f7b3614e3e2ba708647b510"
+        },
+        {
+          "path": "apps/web/src/prefs.ts",
+          "sha256": "7357f81f339a8da1361167fda5843e4e5c0adfecf93f7afe00a407ad32c48cd6"
+        }
+      ],
+      "license_basis": "The exact source is covered by the root MIT license, but licensing permission does not make the coupled implementation suitable for extraction.",
+      "copyright_notice_obligations": "Preserve root notices if any source logic is later reconsidered under a separately reviewed task.",
+      "dependencies": [
+        {
+          "name": "react",
+          "version": "19.2.7",
+          "license": "MIT",
+          "adoption": "dependency_only"
+        },
+        {
+          "name": "react-dom",
+          "version": "19.2.7",
+          "license": "MIT",
+          "adoption": "dependency_only"
+        },
+        {
+          "name": "react-router-dom",
+          "version": "7.17.0",
+          "license": "MIT",
+          "adoption": "dependency_only"
+        }
+      ],
+      "engineering_fit": "The chat, review, and documents information architecture is a useful reference. The code is tightly coupled to directory-scoped OpenCode sessions, direct ingest APIs, browser state, retry loops, and automatic approval preferences.",
+      "extraction_boundary": "Do not copy the workbench source. Reimplement the information architecture using the approved SKLegal React stack, server-owned tenant and matter state, CapAuth, Temporal, typed proposals, provenance views, and no browser-held protected content.",
+      "unresolved_risks": "No multi-tenant authorization model, no conflicts or ethical-wall enforcement, no exact-version approval boundary, browser localStorage use, model-session coupling, and broad component size."
+    },
+    {
+      "id": "opencode-fork-engine-modifications",
+      "category": "workbench",
+      "disposition": "rejected",
+      "paths": [
+        {
+          "path": "packages/opencode/src/bus/global.ts",
+          "sha256": "ce861771c683bb1521cbec837364cf4b02f6d80234d6651adba13e85c42f9dc9"
+        },
+        {
+          "path": "packages/opencode/src/permission/index.ts",
+          "sha256": "dd1d6acfe3ba1c29ecee590fdcbef9f6ea87ee42b00198c67b09094d0f63e724"
+        },
+        {
+          "path": "packages/opencode/test/permission/next.test.ts",
+          "sha256": "3de59cb69be1568ea362582029d04eec3e92520f5cd3d4f71dd9b5eb26a945aa"
+        }
+      ],
+      "license_basis": "OpenCode and the fork modifications are MIT under the root license with the OpenCode 2025 notice.",
+      "copyright_notice_obligations": "Preserve the OpenCode 2025 and doc.haus 2026 notices plus narrower third-party notices throughout the fork if reused.",
+      "dependencies": [],
+      "engineering_fit": "OpenCode provides useful agent-shell concepts, but the full directory and session runtime does not satisfy SKLegal tenancy, CapAuth, deterministic workflow, policy, and audit boundaries.",
+      "extraction_boundary": "Do not import the OpenCode fork or these core modifications. Use behavioral lessons only and implement bounded SKLegal agent specifications and tool gateways in Sprint 3.",
+      "unresolved_risks": "Large transitive dependency surface, ongoing upstream drift, separately marked source and asset boundaries, file-system authority assumptions, and no native legal policy model."
+    },
+    {
+      "id": "branding-demo-template-and-fixture-assets",
+      "category": "workbench",
+      "disposition": "requires_permission",
+      "paths": [
+        {
+          "path": "apps/web/src/assets/dochaus-logo.svg",
+          "sha256": "34564a8f5fdd500a710d780f6249412633ed4b084fa8ff03a8a8408f37907d91"
+        },
+        {
+          "path": "services/ingest/assets/logo.png",
+          "sha256": "2f3e706f61b3474e412b415ec14e6609a29b2e5cbb7edb492fe4868ec115e5c4"
+        },
+        {
+          "path": "dochaus/templates/_base.docx",
+          "sha256": "6874c8b91204ad45c9e7740118325a00c27879cd21572c0054dedc3f38a48a2d"
+        },
+        {
+          "path": "services/ingest/src/fixtures/scanned.pdf",
+          "sha256": "c89c700777ec162c280f2feafbc3983787ea2e7b406692fe1228c57333f1a11c"
+        },
+        {
+          "path": "services/ingest/src/fixtures/text-layer.pdf",
+          "sha256": "a0e445b1c60b01a160eea466deb3d1da1fdb781edbf34cb0316399351b575a2c"
+        }
+      ],
+      "license_basis": "No asset-specific copyright, trademark, template-content, or fixture-source grant was located. Repository-level source licensing is not treated as sufficient evidence for these non-code assets.",
+      "copyright_notice_obligations": "Obtain an attributable owner decision and the original asset rights record before any copy, modification, redistribution, or branding use.",
+      "dependencies": [
+        {
+          "name": "asset-rights-record",
+          "version": "NOASSERTION",
+          "license": "NOASSERTION",
+          "adoption": "quarantined"
+        }
+      ],
+      "engineering_fit": "SKLegal needs its own branding and synthetic legal fixtures. These assets provide no unique implementation behavior.",
+      "extraction_boundary": "Keep every listed asset and all other NOASSERTION media quarantined. Create SKLegal-owned branding and fixture-only test documents under a separate approved task.",
+      "unresolved_risks": "Trademark, font, embedded document author, template text, screenshot subject, personal data, and fixture provenance are not established."
+    }
+  ],
+  "quarantined_boundaries": [
+    {
+      "id": "unresolved-lock-components",
+      "scope": "Every Bun lock package record without an exact resolved_third_party_components match",
+      "rights": "NOASSERTION",
+      "quarantined": true,
+      "rule": "May remain an installed dependency of the audited source, but no dependency source may be copied into SKLegal until separately resolved."
+    },
+    {
+      "id": "media-and-binary-assets",
+      "scope": "All 1650 tracked image, icon, font, video, audio, PDF, DOCX, spreadsheet, presentation, brand ZIP, web manifest, and Android icon XML assets",
+      "rights": "NOASSERTION",
+      "quarantined": true,
+      "rule": "No copy or branding reuse. The audit inventory pins every path and hash."
+    },
+    {
+      "id": "generated-files",
+      "scope": "All 334 generated OpenAPI schema, SDK, SST, migration, snapshot, debug-log, and generated-header files",
+      "rights": "NOASSERTION",
+      "quarantined": true,
+      "rule": "Do not copy generated output. Re-run an approved generator from an independently licensed schema if SKLegal needs equivalent output."
+    },
+    {
+      "id": "vendored-effect-drizzle-internals",
+      "scope": "packages/effect-drizzle-sqlite",
+      "rights": "NOASSERTION",
+      "quarantined": true,
+      "rule": "The local MIT manifest does not replace the missing copied-source provenance and notice chain."
+    },
+    {
+      "id": "root-third-party-patches",
+      "scope": "All root patches other than the separately resolved docxodus patch candidate",
+      "rights": "NOASSERTION",
+      "quarantined": true,
+      "rule": "Each patch is a derivative boundary tied to an exact dependency version and cannot be extracted without that dependency's license evidence."
+    }
+  ]
+}

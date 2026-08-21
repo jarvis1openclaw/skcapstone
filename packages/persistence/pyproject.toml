@@ -1,0 +1,14 @@
+[project]
+name = "sklegal-persistence"
+version = "0.1.0"
+description = "Driver-neutral normalized persistence mapping contract for SKLegal"
+requires-python = ">=3.12,<3.13"
+license = "GPL-3.0-only"
+dependencies = ["sklegal-domain"]
+
+[build-system]
+requires = ["setuptools==84.0.0"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+where = ["src"]

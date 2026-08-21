@@ -1,0 +1,68 @@
+[project]
+name = "sklegal-workspace"
+version = "0.1.0"
+description = "Reproducible engineering workspace for SKLegal"
+requires-python = ">=3.12,<3.13"
+license = "GPL-3.0-only"
+dependencies = []
+
+[dependency-groups]
+dev = [
+  "cyclonedx-bom==7.3.1",
+  "detect-secrets==1.5.0",
+  "mypy==2.3.1",
+  "pip-audit==2.10.1",
+  "pytest==9.1.1",
+  "ruff==0.16.3",
+]
+
+[tool.uv]
+package = false
+
+[tool.uv.sources]
+sklegal-domain = { workspace = true }
+sklegal-capauth = { workspace = true }
+sklegal-policies = { workspace = true }
+sklegal-audit = { workspace = true }
+
+[tool.uv.workspace]
+members = [
+  "services/api",
+  "services/worker",
+  "packages/domain",
+  "packages/capauth",
+  "packages/persistence",
+  "packages/policies",
+  "packages/audit",
+  "packages/model_gateway",
+  "packages/retrieval",
+]
+
+[tool.ruff]
+target-version = "py312"
+line-length = 88
+extend-exclude = [
+  "build",
+  "node_modules",
+  "scripts/check_capacity.py",
+  "scripts/evaluate_security_policy.py",
+  "scripts/security_snapshot.py",
+  "tests/test_capacity_policy.py",
+  "tests/test_security_policy.py",
+]
+
+[tool.ruff.lint]
+select = ["E4", "E7", "E9", "F", "I", "UP"]
+
+[tool.mypy]
+python_version = "3.12"
+check_untyped_defs = true
+disallow_incomplete_defs = true
+no_implicit_optional = true
+warn_redundant_casts = true
+warn_unused_ignores = true
+exclude = ["build/", "node_modules/"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "--strict-config --strict-markers"

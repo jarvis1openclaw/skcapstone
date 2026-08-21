@@ -1,0 +1,6 @@
+# Platform: Linux x86_64
+# Source: official Astral uv GitHub release asset for version 0.12.5.
+UV_VERSION=0.12.5
+UV_ARCHIVE_NAME=uv-x86_64-unknown-linux-gnu.tar.gz
+UV_ARCHIVE_SHA256=68a509da24b06b4223a1c0175fb5eb5bc79342b76cbeff0cfe51ac3f5b17b6b2
+UV_ARCHIVE_URL=https://github.com/astral-sh/uv/releases/download/0.12.5/uv-x86_64-unknown-linux-gnu.tar.gz

@@ -1,0 +1,628 @@
+{
+    "schema_version": 1,
+    "entities": {
+        "Tenant": {
+            "table": "sklegal_identity.tenants",
+            "columns": [
+                "id",
+                "tenant_id",
+                "classification",
+                "status",
+                "name",
+                "version",
+                "created_at",
+                "updated_at"
+            ]
+        },
+        "Client": {
+            "table": "sklegal_legal.clients",
+            "columns": [
+                "id",
+                "tenant_id",
+                "classification",
+                "status",
+                "display_name",
+                "client_kind",
+                "version",
+                "created_at",
+                "updated_at"
+            ]
+        },
+        "Engagement": {
+            "table": "sklegal_legal.engagements",
+            "columns": [
+                "id",
+                "tenant_id",
+                "classification",
+                "status",
+                "client_id",
+                "title",
+                "scope",
+                "valid_from",
+                "valid_to",
+                "version",
+                "created_at",
+                "updated_at"
+            ]
+        },
+        "Matter": {
+            "table": "sklegal_legal.matters",
+            "columns": [
+                "id",
+                "tenant_id",
+                "matter_id",
+                "classification",
+                "completeness",
+                "status",
+                "client_id",
+                "engagement_id",
+                "title",
+                "summary",
+                "opened_at",
+                "closed_at",
+                "version",
+                "created_at",
+                "updated_at"
+            ],
+            "relations": ["sklegal_legal.legacy_aliases"]
+        },
+        "Party": {
+            "table": "sklegal_legal.parties",
+            "columns": [
+                "id",
+                "tenant_id",
+                "matter_id",
+                "classification",
+                "completeness",
+                "status",
+                "display_name",
+                "party_kind",
+                "source_reference_id",
+                "verification_reference_id",
+                "version",
+                "created_at",
+                "updated_at"
+            ]
+        },
+        "PartyRole": {
+            "table": "sklegal_legal.party_roles",
+            "columns": [
+                "id",
+                "tenant_id",
+                "matter_id",
+                "classification",
+                "completeness",
+                "status",
+                "party_id",
+                "role",
+                "valid_from",
+                "valid_to",
+                "source_reference_id",
+                "verification_reference_id",
+                "version",
+                "created_at",
+                "updated_at"
+            ]
+        },
+        "Forum": {
+            "table": "sklegal_legal.forums",
+            "columns": [
+                "id",
+                "tenant_id",
+                "matter_id",
+                "classification",
+                "completeness",
+                "name",
+                "jurisdiction",
+                "forum_kind",
+                "source_reference_id",
+                "version",
+                "created_at",
+                "updated_at"
+            ]
+        },
+        "Proceeding": {
+            "table": "sklegal_legal.proceedings",
+            "columns": [
+                "id",
+                "tenant_id",
+                "matter_id",
+                "classification",
+                "completeness",
+                "status",
+                "title",
+                "forum_id",
+                "docket_number",
+                "valid_from",
+                "valid_to",
+                "version",
+                "created_at",
+                "updated_at"
+            ]
+        },
+        "MatterEvent": {
+            "table": "sklegal_legal.matter_events",
+            "columns": [
+                "id",
+                "tenant_id",
+                "matter_id",
+                "classification",
+                "completeness",
+                "status",
+                "event_type",
+                "description",
+                "occurred_at",
+                "observed_at",
+                "source_reference_id",
+                "verification_reference_id",
+                "version",
+                "created_at",
+                "updated_at"
+            ],
+            "relations": ["sklegal_legal.legacy_aliases"]
+        },
+        "Transaction": {
+            "table": "sklegal_legal.legal_transactions",
+            "columns": [
+                "id",
+                "tenant_id",
+                "matter_id",
+                "classification",
+                "completeness",
+                "status",
+                "title",
+                "description",
+                "effective_at",
+                "version",
+                "created_at",
+                "updated_at"
+            ],
+            "relations": [
+                "sklegal_legal.transaction_party_roles",
+                "sklegal_legal.transaction_source_references"
+            ]
+        },
+        "FactAssertion": {
+            "table": "sklegal_legal.fact_assertions",
+            "columns": [
+                "id",
+                "tenant_id",
+                "matter_id",
+                "classification",
+                "completeness",
+                "status",
+                "subject_ref",
+                "predicate",
+                "value_type",
+                "asserted_value",
+                "source_reference_id",
+                "source_locator",
+                "valid_from",
+                "valid_to",
+                "observed_at",
+                "tension_group_id",
+                "verification_reference_id",
+                "version",
+                "created_at",
+                "updated_at"
+            ]
+        },
+        "TensionGroup": {
+            "table": "sklegal_legal.tension_groups",
+            "columns": [
+                "id",
+                "tenant_id",
+                "matter_id",
+                "classification",
+                "completeness",
+                "status",
+                "title",
+                "selected_assertion_id",
+                "resolution_rationale",
+                "resolved_by",
+                "resolved_at",
+                "version",
+                "created_at",
+                "updated_at"
+            ],
+            "relations": ["sklegal_legal.tension_assertions"]
+        },
+        "EvidenceItem": {
+            "table": "sklegal_legal.evidence_items",
+            "columns": [
+                "id",
+                "tenant_id",
+                "matter_id",
+                "classification",
+                "completeness",
+                "status",
+                "title",
+                "media_type",
+                "content_sha256",
+                "source_reference_id",
+                "verification_reference_id",
+                "version",
+                "created_at",
+                "updated_at"
+            ]
+        },
+        "CustodyEvent": {
+            "table": "sklegal_legal.custody_events",
+            "columns": [
+                "id",
+                "tenant_id",
+                "matter_id",
+                "classification",
+                "completeness",
+                "evidence_item_id",
+                "action",
+                "custodian_id",
+                "occurred_at",
+                "source_reference_id",
+                "version",
+                "created_at",
+                "updated_at"
+            ]
+        },
+        "Authority": {
+            "table": "sklegal_legal.authorities",
+            "columns": [
+                "id",
+                "tenant_id",
+                "matter_id",
+                "classification",
+                "completeness",
+                "status",
+                "title",
+                "citation",
+                "jurisdiction",
+                "authority_kind",
+                "source_reference_id",
+                "valid_from",
+                "valid_to",
+                "applicability_validation_id",
+                "version",
+                "created_at",
+                "updated_at",
+                "system_from"
+            ],
+            "relations": [
+                "sklegal_legal.authority_current",
+                "sklegal_legal.authority_history"
+            ]
+        },
+        "Issue": {
+            "table": "sklegal_legal.issues",
+            "columns": [
+                "id",
+                "tenant_id",
+                "matter_id",
+                "classification",
+                "completeness",
+                "status",
+                "question",
+                "version",
+                "created_at",
+                "updated_at"
+            ]
+        },
+        "Claim": {
+            "table": "sklegal_legal.claims",
+            "columns": [
+                "id",
+                "tenant_id",
+                "matter_id",
+                "classification",
+                "completeness",
+                "status",
+                "issue_id",
+                "label",
+                "statement",
+                "acceptance_validation_id",
+                "version",
+                "created_at",
+                "updated_at"
+            ],
+            "relations": [
+                "sklegal_legal.elements",
+                "sklegal_legal.theory_evidence",
+                "sklegal_legal.theory_authorities"
+            ]
+        },
+        "Defense": {
+            "table": "sklegal_legal.defenses",
+            "columns": [
+                "id",
+                "tenant_id",
+                "matter_id",
+                "classification",
+                "completeness",
+                "status",
+                "issue_id",
+                "label",
+                "statement",
+                "acceptance_validation_id",
+                "version",
+                "created_at",
+                "updated_at"
+            ],
+            "relations": [
+                "sklegal_legal.elements",
+                "sklegal_legal.theory_evidence",
+                "sklegal_legal.theory_authorities"
+            ]
+        },
+        "Element": {
+            "table": "sklegal_legal.elements",
+            "columns": [
+                "id",
+                "tenant_id",
+                "matter_id",
+                "classification",
+                "completeness",
+                "status",
+                "theory_kind",
+                "claim_id",
+                "description",
+                "version",
+                "created_at",
+                "updated_at"
+            ],
+            "relations": ["sklegal_legal.element_evidence"]
+        },
+        "Remedy": {
+            "table": "sklegal_legal.remedies",
+            "columns": [
+                "id",
+                "tenant_id",
+                "matter_id",
+                "classification",
+                "completeness",
+                "status",
+                "claim_id",
+                "description",
+                "version",
+                "created_at",
+                "updated_at"
+            ],
+            "relations": ["sklegal_legal.remedy_authorities"]
+        },
+        "DeadlineCalculation": {
+            "table": "sklegal_legal.deadline_calculations",
+            "columns": [
+                "id",
+                "tenant_id",
+                "matter_id",
+                "classification",
+                "completeness",
+                "trigger_fact_id",
+                "calculation_rule",
+                "candidate_due_at",
+                "calculated_at",
+                "calculation_version",
+                "version",
+                "created_at",
+                "updated_at"
+            ],
+            "relations": ["sklegal_legal.deadline_calculation_sources"]
+        },
+        "Deadline": {
+            "table": "sklegal_legal.deadlines",
+            "columns": [
+                "id",
+                "tenant_id",
+                "matter_id",
+                "classification",
+                "completeness",
+                "status",
+                "title",
+                "candidate_due_at",
+                "operative_due_at",
+                "trigger_fact_id",
+                "calculation_id",
+                "review_validation_id",
+                "completed_at",
+                "version",
+                "created_at",
+                "updated_at"
+            ]
+        },
+        "Task": {
+            "table": "sklegal_legal.tasks",
+            "columns": [
+                "id",
+                "tenant_id",
+                "matter_id",
+                "classification",
+                "completeness",
+                "status",
+                "title",
+                "description",
+                "assigned_principal_id",
+                "due_at",
+                "blocked_reason",
+                "completed_at",
+                "version",
+                "created_at",
+                "updated_at"
+            ]
+        },
+        "Communication": {
+            "table": "sklegal_legal.communications",
+            "columns": [
+                "id",
+                "tenant_id",
+                "matter_id",
+                "classification",
+                "completeness",
+                "status",
+                "direction",
+                "channel",
+                "subject",
+                "work_product_version_id",
+                "work_product_version_number",
+                "work_product_content_sha256",
+                "destination_verified",
+                "destination_sha256",
+                "validation_result_id",
+                "approval_id",
+                "execution_id",
+                "version",
+                "created_at",
+                "updated_at"
+            ],
+            "relations": ["sklegal_legal.communication_participants"]
+        },
+        "WorkProduct": {
+            "table": "sklegal_legal.work_products",
+            "columns": [
+                "id",
+                "tenant_id",
+                "matter_id",
+                "classification",
+                "completeness",
+                "status",
+                "title",
+                "work_product_kind",
+                "current_version_id",
+                "current_version_number",
+                "current_content_sha256",
+                "validation_result_id",
+                "approval_id",
+                "version",
+                "created_at",
+                "updated_at"
+            ]
+        },
+        "WorkProductVersion": {
+            "table": "sklegal_legal.work_product_versions",
+            "columns": [
+                "id",
+                "tenant_id",
+                "matter_id",
+                "classification",
+                "completeness",
+                "status",
+                "work_product_id",
+                "version_number",
+                "content_sha256",
+                "source_artifact_id",
+                "version",
+                "created_at",
+                "updated_at"
+            ]
+        },
+        "ValidationResult": {
+            "table": "sklegal_legal.validations",
+            "columns": [
+                "id",
+                "tenant_id",
+                "matter_id",
+                "classification",
+                "completeness",
+                "subject_kind",
+                "subject_artifact_id",
+                "subject_artifact_version",
+                "subject_content_sha256",
+                "outcome",
+                "validator_principal_id",
+                "validated_at",
+                "rationale",
+                "version",
+                "created_at",
+                "updated_at"
+            ],
+            "relations": ["sklegal_legal.validation_checks"]
+        },
+        "Approval": {
+            "table": "sklegal_legal.approvals",
+            "columns": [
+                "id",
+                "tenant_id",
+                "matter_id",
+                "classification",
+                "completeness",
+                "status",
+                "subject_artifact_id",
+                "subject_artifact_version",
+                "subject_content_sha256",
+                "reviewer_principal_id",
+                "decided_at",
+                "rationale",
+                "revoker_principal_id",
+                "revocation_rationale",
+                "revoked_at",
+                "version",
+                "created_at",
+                "updated_at"
+            ]
+        },
+        "Execution": {
+            "table": "sklegal_legal.executions",
+            "columns": [
+                "id",
+                "tenant_id",
+                "matter_id",
+                "classification",
+                "completeness",
+                "status",
+                "subject_artifact_id",
+                "subject_artifact_version",
+                "subject_content_sha256",
+                "destination_sha256",
+                "idempotency_key",
+                "validation_result_id",
+                "approval_id",
+                "approval_version",
+                "version",
+                "created_at",
+                "updated_at"
+            ],
+            "relations": [
+                "sklegal_legal.approval_history",
+                "sklegal_legal.execution_events",
+                "sklegal_legal.execution_receipts"
+            ]
+        },
+        "ExecutionEvent": {
+            "table": "sklegal_legal.execution_events",
+            "columns": [
+                "id",
+                "tenant_id",
+                "matter_id",
+                "classification",
+                "completeness",
+                "execution_id",
+                "sequence_no",
+                "step",
+                "occurred_at",
+                "correlation_id",
+                "actor_principal_id",
+                "receipt_id",
+                "version",
+                "created_at",
+                "updated_at"
+            ]
+        },
+        "ExecutionReceipt": {
+            "table": "sklegal_legal.execution_receipts",
+            "columns": [
+                "id",
+                "tenant_id",
+                "matter_id",
+                "classification",
+                "completeness",
+                "execution_id",
+                "connector",
+                "external_receipt_id",
+                "artifact_content_sha256",
+                "destination_sha256",
+                "received_at",
+                "verified_at",
+                "version",
+                "created_at",
+                "updated_at"
+            ]
+        }
+    }
+}

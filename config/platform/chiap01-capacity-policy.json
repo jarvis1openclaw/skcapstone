@@ -1,0 +1,61 @@
+{
+  "schema_version": 1,
+  "host": "chiap01",
+  "mount_checks": [
+    {
+      "name": "local-runtime",
+      "path": "/var/lib/docker",
+      "deployment_reserve_gib": 40,
+      "warning_used_percent": 80,
+      "critical_used_percent": 90,
+      "warning_available_after_reserve_gib": 150,
+      "critical_available_after_reserve_gib": 100
+    },
+    {
+      "name": "nfs-project",
+      "path": "/mnt/cloud/onedrive/projects/DAVE-AI/sklegal",
+      "deployment_reserve_gib": 150,
+      "warning_used_percent": 80,
+      "critical_used_percent": 90,
+      "warning_available_after_reserve_gib": 500,
+      "critical_available_after_reserve_gib": 250
+    }
+  ],
+  "proposed_tcp_ports": [
+    {
+      "service": "sklegal-otel-grpc",
+      "bind": "127.0.0.1",
+      "port": 4317
+    },
+    {
+      "service": "sklegal-otel-http",
+      "bind": "127.0.0.1",
+      "port": 4318
+    },
+    {
+      "service": "sklegal-temporal",
+      "bind": "127.0.0.1",
+      "port": 7233
+    },
+    {
+      "service": "sklegal-postgres",
+      "bind": "127.0.0.1",
+      "port": 15433
+    },
+    {
+      "service": "sklegal-api",
+      "bind": "127.0.0.1",
+      "port": 18080
+    },
+    {
+      "service": "sklegal-web",
+      "bind": "127.0.0.1",
+      "port": 18081
+    },
+    {
+      "service": "sklegal-temporal-ui",
+      "bind": "127.0.0.1",
+      "port": 18088
+    }
+  ]
+}

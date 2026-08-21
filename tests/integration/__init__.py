@@ -1,0 +1,1 @@
+"""SKLegal integration contract tests."""

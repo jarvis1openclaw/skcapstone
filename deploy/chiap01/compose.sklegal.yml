@@ -1,0 +1,22 @@
+name: sklegal
+
+services:
+  postgres:
+    image: postgres:17.7-alpine@sha256:a6d31f853205ce20d399df4e33a0b4c715672f232f4ee7440499747e6e02c126
+    container_name: sklegal-postgres
+    restart: unless-stopped
+    env_file:
+      - ./postgres.env
+    ports:
+      - "127.0.0.1:15434:5432"
+    volumes:
+      - sklegal-postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
+      interval: 5s
+      timeout: 5s
+      retries: 30
+
+volumes:
+  sklegal-postgres-data:
+    name: sklegal-postgres-data

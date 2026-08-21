@@ -1,0 +1,53 @@
+{
+  "schema_version": 1,
+  "migrations": [
+    {
+      "file": "0001_persistence_foundation.sql",
+      "sha256": "d4371be6dc9dd014a1819be2a8d814dad538106fc0017c38a3763f8c2e213971"
+    },
+    {
+      "file": "0002_identity_and_access.sql",
+      "sha256": "990d78dbc7f1dc784fe6c1ca05b7f9839a01f9bab1f332404a50ca5e111868fe"
+    },
+    {
+      "file": "0003_legal_records.sql",
+      "sha256": "374b9bfe36cd5dc658617d7eff5184984ecd930a5950222086261a6bbc2776e5"
+    },
+    {
+      "file": "0004_integration_workflow_audit.sql",
+      "sha256": "41f1eab74e21edb9eca000c627b15aea7161858f36aeca3435bda827647b2351"
+    },
+    {
+      "file": "0005_row_level_security.sql",
+      "sha256": "1118d170e5e3970f136519e742e8e2783979a7c3072436d77652a69c670eae21"
+    },
+    {
+      "file": "0006_legal_information_barriers.sql",
+      "sha256": "430f87482e0793297096a58a5b8339a69848a078d7172e5187cfc6c11d284c27"
+    },
+    {
+      "file": "0007_append_only_audit_outbox.sql",
+      "sha256": "7a501b78b3211698310044851b04ea96b8f82242120e40f704b05a1aa2229eaa"
+    },
+    {
+      "file": "0008_capauth_state.sql",
+      "sha256": "dd9b240846a9827c6d964f6e766ac2412cba2b0ee8e324b19c8465f7442ddb7d"
+    },
+    {
+      "file": "0009_capauth_principal_snapshot.sql",
+      "sha256": "ace4609fb3cec8102a9e8b2bbcc412a60c9c2798ff3042015c04027e4ff08475"
+    },
+    {
+      "file": "0010_principal_authentication_subject.sql",
+      "sha256": "e1bd1e14543e6483a794962c1910832796c697565fadfdc3e073aed6c97624b2"
+    },
+    {
+      "file": "0011_capauth_runtime_schema_usage.sql",
+      "sha256": "1ca9033d3edb67c405cce3745d37f6112f3ce5cbf71fb16f336f5858c68f6926"
+    },
+    {
+      "file": "0012_capauth_runtime_type_usage.sql",
+      "sha256": "7fb134138208c49382700a5732955ebbc45fb7d288e118a7b7a30586ccdd113f"
+    }
+  ]
+}

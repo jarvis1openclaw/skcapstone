@@ -1,0 +1,15 @@
+name: SK standards docs check
+
+on:
+  pull_request:
+  push:
+
+permissions:
+  contents: read
+
+jobs:
+  docs:
+    uses: smilinTux/sk-standards/.github/workflows/docs-check.yml@39a7b1d8c3b1ef7245824799edc8b1ab46e660ed
+    with:
+      tiers: "1,2,3"
+      standards-ref: "39a7b1d8c3b1ef7245824799edc8b1ab46e660ed"

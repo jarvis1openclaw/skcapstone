@@ -1,0 +1,102 @@
+{
+  "schema_version": 1,
+  "host": "chiap01",
+  "observed_at": "2026-08-19T21:41:47-05:00",
+  "cpu": {
+    "logical_processors": 32,
+    "model": "AMD Ryzen 9 7950X3D 16-Core Processor"
+  },
+  "memory": {
+    "total_bytes": 66513661952,
+    "available_bytes": 34554101760,
+    "swap_total_bytes": 8589930496,
+    "swap_free_bytes": 8549732352
+  },
+  "mounts": [
+    {
+      "target": "/",
+      "source": "/dev/mapper/ubuntu--vg-ubuntu--lv",
+      "filesystem": "ext4",
+      "total_bytes": 980122034176,
+      "used_bytes": 499820507136,
+      "available_bytes": 430438592512,
+      "used_percent": 54
+    },
+    {
+      "target": "/mnt/cloud/onedrive",
+      "source": "10.0.0.111:/share/cloud/onedrive",
+      "filesystem": "nfs4",
+      "total_bytes": 3396846223360,
+      "used_bytes": 1825540407296,
+      "available_bytes": 1571305816064,
+      "used_percent": 54,
+      "mount_characteristics": [
+        "hard",
+        "nconnect=8",
+        "local_lock=none"
+      ]
+    }
+  ],
+  "listening_tcp_ports": [
+    22,
+    53,
+    111,
+    631,
+    3493,
+    5432,
+    7070,
+    8384,
+    8765,
+    9050,
+    9391,
+    11434,
+    11437,
+    18782,
+    18793,
+    18794,
+    18797,
+    18800,
+    22000,
+    54193,
+    61577
+  ],
+  "docker": {
+    "images": {
+      "count": 8,
+      "active": 3,
+      "size": "128.6GB",
+      "reclaimable": "73.63GB"
+    },
+    "containers": {
+      "count": 4,
+      "active": 3,
+      "size": "111.1MB"
+    },
+    "volumes": [
+      "skmemory_skmem_pg_data"
+    ],
+    "volume_size": "199.1MB",
+    "build_cache_size": "938.3MB",
+    "active_containers": [
+      {
+        "name": "skmem-pg",
+        "named_volumes": [
+          "skmemory_skmem_pg_data"
+        ]
+      },
+      {
+        "name": "hammertime-whisper-large-v3",
+        "named_volumes": []
+      },
+      {
+        "name": "kokoro-tts",
+        "named_volumes": []
+      }
+    ],
+    "bind_mounts": [
+      "/home/skuser01/.local/share/skmemory-runtime/deploy/skmem-pg",
+      "/home/skuser01/.cache/huggingface",
+      "/home/skuser01/services/whisper-large-v3"
+    ]
+  }
+}

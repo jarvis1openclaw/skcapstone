@@ -1,0 +1,78 @@
+{
+  "schema_version": 1,
+  "default_classification": "confidential",
+  "classification_order": [
+    "public",
+    "internal",
+    "confidential",
+    "privileged_work_product",
+    "highly_restricted"
+  ],
+  "external_model_egress": {
+    "public": "conditional",
+    "internal": "conditional",
+    "confidential": "conditional_human_approval",
+    "privileged_work_product": "deny",
+    "highly_restricted": "deny"
+  },
+  "rights_states": {
+    "verified_permissive": "conditional_allow",
+    "verified_restricted": "conditional_allow",
+    "owner_authorized": "conditional_allow",
+    "public_domain_verified": "conditional_allow",
+    "unknown": "quarantine",
+    "unverified": "quarantine",
+    "expired": "quarantine",
+    "revoked": "quarantine"
+  },
+  "rights_controlled_operations": [
+    "read",
+    "retrieve",
+    "corpus_promote",
+    "model_train",
+    "redistribute",
+    "derived_publish",
+    "model_egress"
+  ],
+  "quarantined_operations": [
+    "corpus_promote",
+    "model_train",
+    "redistribute",
+    "derived_publish"
+  ],
+  "quarantine_review_operations": [
+    "read",
+    "retrieve"
+  ],
+  "quarantine_review_purpose": "isolated_quarantine_review",
+  "protected_access_operations": [
+    "backup_restore",
+    "connector_dispatch",
+    "corpus_promote",
+    "derived_publish",
+    "log",
+    "model_egress",
+    "model_train",
+    "read",
+    "redistribute",
+    "retention_delete",
+    "retrieve",
+    "tool_invoke",
+    "workflow_mutation"
+  ],
+  "protected_logging_requires_redaction": [
+    "confidential",
+    "privileged_work_product",
+    "highly_restricted"
+  ],
+  "production_connector_requirements": [
+    "connector_approved",
+    "human_approval",
+    "exact_version_approved",
+    "destination_verified",
+    "idempotency_key"
+  ],
+  "fail_closed_on_missing": true,
+  "legal_hold_overrides_retention": true,
+  "tool_authority_source": "capauth"
+}

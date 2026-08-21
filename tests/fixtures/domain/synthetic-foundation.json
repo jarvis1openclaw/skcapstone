@@ -1,0 +1,42 @@
+{
+  "tenant": {
+    "id": "00000000-0000-4000-8000-000000000001",
+    "tenant_id": "00000000-0000-4000-8000-000000000001",
+    "name": "Synthetic Legal Tenant",
+    "status": "proposed",
+    "created_at": "2026-01-01T00:00:00Z",
+    "updated_at": "2026-01-01T00:00:00Z"
+  },
+  "client": {
+    "id": "00000000-0000-4000-8000-000000000002",
+    "tenant_id": "00000000-0000-4000-8000-000000000001",
+    "display_name": "Synthetic Client",
+    "client_kind": "person",
+    "status": "proposed",
+    "created_at": "2026-01-01T00:00:00Z",
+    "updated_at": "2026-01-01T00:00:00Z"
+  },
+  "engagement": {
+    "id": "00000000-0000-4000-8000-000000000003",
+    "tenant_id": "00000000-0000-4000-8000-000000000001",
+    "client_id": "00000000-0000-4000-8000-000000000002",
+    "title": "Synthetic Advisory Engagement",
+    "scope": "Evaluate a wholly synthetic contract question.",
+    "effective_interval": {},
+    "status": "proposed",
+    "created_at": "2026-01-01T00:00:00Z",
+    "updated_at": "2026-01-01T00:00:00Z"
+  },
+  "matter": {
+    "id": "00000000-0000-4000-8000-000000000004",
+    "matter_id": "00000000-0000-4000-8000-000000000004",
+    "tenant_id": "00000000-0000-4000-8000-000000000001",
+    "client_id": "00000000-0000-4000-8000-000000000002",
+    "engagement_id": "00000000-0000-4000-8000-000000000003",
+    "title": "Synthetic Contract Review",
+    "summary": "A fixture-only matter with no real person or source material.",
+    "status": "proposed",
+    "created_at": "2026-01-01T00:00:00Z",
+    "updated_at": "2026-01-01T00:00:00Z"
+  }
+}
