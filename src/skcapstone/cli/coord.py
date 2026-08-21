@@ -136,7 +136,12 @@ def register_coord_commands(main: click.Group) -> None:
     @coord.command("create")
     @click.option("--home", default=AGENT_HOME, type=click.Path())
     @click.option("--title", required=True, help="Task title.")
-    @click.option("--desc", default="", help="Task description.")
+    @click.option(
+        "--desc",
+        default="",
+        help="Task description. Reference repo-relative paths (e.g. src/foo.py), "
+        "never absolute ones - see 'coord rehome'.",
+    )
     @click.option(
         "--priority", type=click.Choice(["critical", "high", "medium", "low"]), default="medium"
     )
@@ -694,6 +699,37 @@ def register_coord_commands(main: click.Group) -> None:
             k for k, v in (("title", title), ("description", description)) if v is not None
         )
         console.print(f"\n  [green]Described {task_id} ({changed}).[/]\n")
+
+    @coord.command("rehome")
+    @click.argument("old_prefix")
+    @click.argument("new_prefix")
+    @click.option("--home", default=AGENT_HOME, type=click.Path())
+    @click.option("--agent", default=None, help="Writer name (defaults to coord-rehome).")
+    @click.option("--dry-run", is_flag=True, default=False, help="Report matches, write nothing.")
+    def coord_rehome(old_prefix, new_prefix, home, agent, dry_run):
+        """Rewrite a path prefix across every folded card description.
+
+        For each card whose description still mentions OLD_PREFIX, appends one
+        attributed describe event carrying the rewritten text - the established
+        fold pattern, so core.json stays write-once and the rewrite is
+        reversible by swapping the arguments. Use it after a repository move
+        instead of hand-editing dozens of cards.
+        """
+        from ..rehome import rehome_descriptions
+
+        home_path = Path(home).expanduser()
+        try:
+            report = rehome_descriptions(
+                home_path, old_prefix, new_prefix, agent=agent or "", dry_run=dry_run
+            )
+        except ValueError as exc:
+            raise click.UsageError(str(exc)) from None
+        verb = "Would rewrite" if dry_run else "Rewrote"
+        summary = f"{verb} {report['matched']} card(s): {old_prefix} -> {new_prefix}."
+        console.print(f"\n  [green]{summary}[/]")
+        for cid in report["cards"]:
+            console.print(f"    [dim]- {cid}[/]")
+        console.print()
 
     @coord.command("link")
     @click.argument("task_id")
