@@ -284,7 +284,8 @@ class TestCheckCodex:
         agents_text = agents.read_text(encoding="utf-8")
         assert "SKCAPSTONE_CODEX_AGENT_CONTEXT_START" in agents_text
         assert "jarvis" in agents_text
-        assert str(loader) in agents_text
+        assert '"${CODEX_HOME:-$HOME/.codex}/bin/load-sk-agent-context.sh"' in agents_text
+        assert str(loader) not in agents_text
 
         checks = _check_codex()
         assert next(c for c in checks if c.name == "codex:agent_context").passed
@@ -318,7 +319,8 @@ class TestCheckCodex:
         text = agents.read_text()
         assert "SKCAPSTONE_PI_AGENT_CONTEXT_START" in text
         assert "lumina" in text
-        assert str(loader) in text
+        assert '"${PI_CODING_AGENT_DIR:-$HOME/.pi/agent}/bin/load-sk-agent-context.sh"' in text
+        assert str(loader) not in text
 
     def test_context_loader_refuses_to_guess_between_agents(self, tmp_path):
         pi_home = tmp_path / ".pi" / "agent"
