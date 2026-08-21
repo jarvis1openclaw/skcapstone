@@ -15,9 +15,29 @@ TOOLS: list[Tool] = [
         name="coord_status",
         description=(
             "Show the multi-agent coordination board. Lists all tasks with status, priority, "
-            "and assignees. Shows active agents."
+            "and assignees. Shows active agents. Optional tag/parent/status filters bound "
+            "the output (parent matches the 'parent-<id>' tag convention)."
         ),
-        inputSchema={"properties": {}, "required": [], "type": "object"},
+        inputSchema={
+            "properties": {
+                "parent": {
+                    "description": "Only tasks tagged 'parent-<id>' (children of this card)",
+                    "type": "string",
+                },
+                "status": {
+                    "description": "Only tasks in this status",
+                    "enum": ["open", "claimed", "in_progress", "review", "done", "blocked"],
+                    "type": "string",
+                },
+                "tag": {
+                    "description": "Only tasks carrying this tag (repeatable)",
+                    "items": {"type": "string"},
+                    "type": "array",
+                },
+            },
+            "required": [],
+            "type": "object",
+        },
     ),
     Tool(
         name="coord_claim",
@@ -119,13 +139,24 @@ TOOLS: list[Tool] = [
 ]
 
 
-async def _handle_coord_status(_args: dict) -> list[TextContent]:
-    """Return coordination board status."""
+async def _handle_coord_status(args: dict) -> list[TextContent]:
+    """Return coordination board status, with optional tag/parent/status filters."""
     from ..coordination import Board
 
     board = Board(_home())
     views = board.get_task_views()
     agents = board.load_agents()
+
+    tags = list(args.get("tag") or [])
+    parent = args.get("parent")
+    if parent:
+        tags.append(f"parent-{parent}")
+    if tags:
+        wanted = {t.lower() for t in tags}
+        views = [v for v in views if wanted & {t.lower() for t in v.task.tags}]
+    status_filter = args.get("status")
+    if status_filter:
+        views = [v for v in views if v.status.value == status_filter]
 
     return _json_response(
         {
@@ -325,7 +356,9 @@ async def _handle_coord_kanban(_args: dict) -> list[TextContent]:
 
 async def _handle_coord_move(args: dict) -> list[TextContent]:
     """Move a card to a kanban column."""
-    from ..card import CardEvent, CardEventLog, Column
+    from skcoord.lifecycle import transition_task
+
+    from ..card import Column
 
     task_id = args.get("task_id", "")
     column = args.get("column", "")
@@ -334,26 +367,24 @@ async def _handle_coord_move(args: dict) -> list[TextContent]:
     if column not in {c.value for c in Column}:
         return _error_response(f"invalid column '{column}'")
 
-    root = _shared_root()
-    CardEventLog(root).append(
-        CardEvent(
-            card_id=task_id,
-            action="move",
-            column=column,
-            order=args.get("order"),
-            writer=args.get("agent", "") or "",
-        )
-    )
     try:
-        from ..card_store import card_store_write_enabled, mirror_coord_move
-
-        if card_store_write_enabled():
-            mirror_coord_move(
-                root, task_id, column, args.get("agent", "") or "", order=args.get("order")
-            )
-    except Exception:  # noqa: BLE001
-        pass
-    return _json_response({"moved": True, "task_id": task_id, "column": column})
+        receipt = transition_task(
+            _shared_root(),
+            task_id=task_id,
+            column=column,
+            actor=args.get("agent", "") or "coord-move",
+            order=args.get("order"),
+        )
+    except (OSError, RuntimeError, ValueError) as exc:
+        return _error_response(str(exc))
+    return _json_response(
+        {
+            "moved": True,
+            "task_id": task_id,
+            "column": column,
+            "projection_actions": list(receipt.actions),
+        }
+    )
 
 
 # Tools present in this module but intentionally NOT published on the MCP

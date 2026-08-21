@@ -589,6 +589,10 @@ See [Architecture](docs/ARCHITECTURE.md) | [Security Design](docs/SECURITY_DESIG
 
 ## Documentation
 
+- [Qualification evidence](docs/QUALIFICATION.md): immutable review checkpoints,
+  durable sealed artifacts, exact Git dependency audits, and agent lifecycle
+  reconciliation.
+
 | Document | Description |
 |----------|-------------|
 | [Developer Quickstart](../docs/QUICKSTART.md) | Install + first sovereign agent in 5 minutes |

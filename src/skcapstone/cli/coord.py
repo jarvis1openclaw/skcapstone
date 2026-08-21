@@ -26,9 +26,26 @@ def register_coord_commands(main: click.Group) -> None:
         and syncs via Syncthing. Conflict-free by design.
         """
 
+    from .coord_amend import register_coord_amend_commands
+
+    register_coord_amend_commands(coord)
+
     @coord.command("status")
     @click.option("--home", default=AGENT_HOME, type=click.Path())
-    def coord_status(home):
+    @click.option("--tag", multiple=True, help="Only tasks carrying this tag (repeatable).")
+    @click.option(
+        "--parent",
+        default=None,
+        help="Only tasks tagged 'parent-<id>' (children of this epic/card).",
+    )
+    @click.option(
+        "--status",
+        "status_filter",
+        default=None,
+        type=click.Choice(["open", "claimed", "in_progress", "review", "done", "blocked"]),
+        help="Only tasks in this status.",
+    )
+    def coord_status(home, tag, parent, status_filter):
         """Show the coordination board overview."""
         from ..coordination import Board
 
@@ -36,6 +53,18 @@ def register_coord_commands(main: click.Group) -> None:
         board = Board(home_path)
         views = board.get_task_views()
         agents = board.load_agents()
+
+        if parent:
+            tag = (*tag, f"parent-{parent}")
+        if tag:
+            wanted = {t.lower() for t in tag}
+            views = [v for v in views if wanted & {t.lower() for t in v.task.tags}]
+        if status_filter:
+            views = [v for v in views if v.status.value == status_filter]
+
+        if not views and (tag or status_filter):
+            console.print("\n  [dim]No tasks match the given filters.[/]\n")
+            return
 
         if not views and not agents:
             console.print("\n  [dim]Board is empty. Create tasks with:[/]")
@@ -78,7 +107,7 @@ def register_coord_commands(main: click.Group) -> None:
         }
 
         for v in views:
-            if v.status.value == "done":
+            if v.status.value == "done" and status_filter is None:
                 continue
             t = v.task
             p_style = priority_colors.get(t.priority.value, "dim")
@@ -398,7 +427,7 @@ def register_coord_commands(main: click.Group) -> None:
         info = par.get("informational") or []
         if info:
             console.print(
-                f"    [dim]informational (store-authoritative, not gating): " f"{len(info)}[/]"
+                f"    [dim]informational (store-authoritative, not gating): {len(info)}[/]"
             )
             for m in info[:show]:
                 console.print(f"      [dim]{m['id']}: {m['diff']}[/]")
@@ -560,19 +589,54 @@ def register_coord_commands(main: click.Group) -> None:
     @click.option("--agent", default=None, help="Writer name (defaults to host).")
     def coord_move(task_id, column, home, order, agent):
         """Move a card to a kanban column (backlog/ready/doing/review/done)."""
-        from ..card import CardEvent, CardEventLog
-
         home_path = Path(home).expanduser()
-        event = CardEvent(
-            card_id=task_id, action="move", column=column, order=order, writer=agent or ""
-        )
-        CardEventLog(home_path).append(event)
-        from ..card_store import card_store_write_enabled, mirror_coord_move
+        from skcoord.lifecycle import transition_task
 
-        if card_store_write_enabled():
-            mirror_coord_move(home_path, task_id, column, agent or "", order=order)
+        try:
+            receipt = transition_task(
+                home_path,
+                task_id=task_id,
+                column=column,
+                actor=agent or "coord-move",
+                order=order,
+            )
+        except (OSError, RuntimeError, ValueError) as exc:
+            raise click.ClickException(str(exc)) from None
         pos = f" at order {order}" if order is not None else ""
         console.print(f"\n  [green]Moved {task_id} to '{column}'{pos}.[/]\n")
+        if receipt.actions:
+            console.print(
+                f"  [dim]Reconciled {len(receipt.actions)} agent projection change(s).[/]"
+            )
+
+    @coord.command("reconcile-agents")
+    @click.option("--home", default=AGENT_HOME, type=click.Path())
+    @click.option("--repair", is_flag=True, default=False)
+    @click.option("--agent", default="coord-reconcile", help="Receipt writer identity.")
+    @click.option("--stale-seconds", default=3600, type=click.IntRange(min=0))
+    def coord_reconcile_agents(home, repair, agent, stale_seconds):
+        """Audit agent projection drift and optionally repair it explicitly."""
+        import json
+
+        from skcoord.lifecycle import audit_lifecycle, repair_lifecycle
+
+        home_path = Path(home).expanduser()
+        try:
+            if repair:
+                receipt = repair_lifecycle(
+                    home_path,
+                    actor=agent,
+                    stale_after_seconds=stale_seconds,
+                )
+                payload = receipt.to_dict()
+                payload["receipt_path"] = str(receipt.receipt_path)
+            else:
+                payload = audit_lifecycle(home_path).to_dict()
+        except (OSError, RuntimeError, ValueError) as exc:
+            raise click.ClickException(str(exc)) from None
+        console.print(json.dumps(payload, indent=2))
+        if not payload.get("clean", payload.get("after", {}).get("clean", False)):
+            raise click.ClickException("coordination lifecycle is not reconciled")
 
     @coord.command("label")
     @click.argument("task_id")
