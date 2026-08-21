@@ -1,8 +1,10 @@
-"""Folded amendment commands: reprioritize, amend-criteria (card e78fd954).
+"""Folded amendment commands: reprioritize, amend-criteria, void.
 
 Same fold discipline as ``coord describe``: an appended, writer-attributed
 event that the fold applies on read. Birth facts stay write-once in
-``core.json``; every amendment is reversible by re-applying.
+``core.json``; every amendment is reversible by re-applying. ``void``
+(card 325a737f) kills a mistaken card without completing it, so no Joules
+are minted and the changelog stays clean.
 """
 
 from __future__ import annotations
@@ -69,3 +71,25 @@ def register_coord_amend_commands(coord: click.Group) -> None:
         for c in folded:
             console.print(f"    [dim]- {c}[/]")
         console.print()
+
+    @coord.command("void")
+    @click.argument("task_id")
+    @click.option("--reason", required=True, help="Why the card is being voided (audit).")
+    @click.option("--home", default=AGENT_HOME, type=click.Path())
+    @click.option("--agent", default=None, help="Writer name (defaults to host).")
+    def coord_void(task_id, reason, home, agent):
+        """Void a mistakenly created card WITHOUT completing it.
+
+        Appends a writer-attributed void event and archives the card: it
+        leaves the active board, mints no Joules (completion is the only
+        minting path), and never appears in 'coord changelog' output. The
+        card stays on disk and remains foldable for audit.
+        """
+        from ..coord_amendments import void_card
+
+        home_path = Path(home).expanduser()
+        try:
+            void_card(home_path, task_id, reason, agent or "")
+        except ValueError as exc:
+            raise click.ClickException(str(exc)) from None
+        console.print(f"\n  [green]Voided {task_id}.[/] [dim]{reason}[/]\n")

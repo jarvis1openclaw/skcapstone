@@ -1,4 +1,4 @@
-"""Folded amendment helpers for coordination cards (card e78fd954).
+"""Folded amendment helpers for coordination cards (cards e78fd954, 325a737f).
 
 Birth facts (``core.json`` priority / acceptance_criteria) are write-once.
 These helpers amend them the way ``coord describe`` amends the title: an
@@ -13,6 +13,9 @@ edit is reversible by re-applying and the original stays visible in
   skcoord package), so the event is appended to the card's own store log and
   folded skcapstone-side by :func:`current_acceptance_criteria`. The
   upstream fold ignores the unknown action harmlessly.
+- ``void_card`` (card 325a737f) kills a mistakenly created card without
+  completing it: a ``void`` audit event plus the archive mechanism, so no
+  Joules are minted and the changelog stays clean.
 """
 
 from __future__ import annotations
@@ -108,3 +111,58 @@ def current_acceptance_criteria(home: Path, task_id: str) -> list[str]:
         if event.get("action") == "amend_criteria" and isinstance(event.get("criteria"), list):
             criteria = list(event["criteria"])
     return criteria
+
+
+def void_record(home: Path, task_id: str) -> dict | None:
+    """Return the latest void event for a card, or None if never voided.
+
+    Args:
+        home: Shared skcapstone root (``~/.skcapstone``).
+        task_id: The card/task ID to inspect.
+
+    Returns:
+        dict | None: The void event (writer, ts, reason), latest winning.
+    """
+    record = None
+    for event in CardStore(Path(home).expanduser())._read_events(task_id):
+        if event.get("action") == "void":
+            record = event
+    return record
+
+
+def is_voided(home: Path, task_id: str) -> bool:
+    """True when the card has a void event in its store log."""
+    return void_record(home, task_id) is not None
+
+
+def void_card(home: Path, task_id: str, reason: str, agent: str = "") -> None:
+    """Void a mistakenly created card without completing it (card 325a737f).
+
+    Appends a writer-attributed ``void`` event (the audit record, with the
+    reason) to the card's store log, then archives the card so it leaves the
+    active board in both the legacy and store-served projections. It never
+    goes through ``Board.complete_task``, so no Joules are minted
+    (``_mint_joules_for_task`` only fires on completion) and the card never
+    appears in ``coord changelog`` output (the changelog reads non-archived
+    done tasks only). The card stays on disk and remains foldable with
+    ``include_archived=True`` for audit.
+
+    Args:
+        home: Shared skcapstone root (``~/.skcapstone``).
+        task_id: The card/task ID to void.
+        reason: Why the card is being voided (required for audit).
+        agent: Writer attribution (empty defaults to ``mcp``/host).
+
+    Raises:
+        ValueError: If ``reason`` is empty or the card is already voided.
+    """
+    if not reason:
+        raise ValueError("a void reason is required")
+    home = Path(home).expanduser()
+    if is_voided(home, task_id):
+        raise ValueError(f"card {task_id} is already voided")
+    CardStore(home).append_event(task_id, "void", agent or "mcp", reason=reason)
+
+    from .coordination import Board
+
+    Board(home).archive_task(task_id, by=agent or "void")

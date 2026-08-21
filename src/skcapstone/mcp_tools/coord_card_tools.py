@@ -6,9 +6,10 @@ The first three mirror the ``coord describe`` / ``coord label`` /
 means "default to host"), and the same best-effort CardStore mirror for
 ``describe`` when dual-write is enabled. ``coord_reprioritize`` and
 ``coord_amend_criteria`` are the folded amendment verbs (same discipline
-as describe; see ``coord_amendments``). MCP-first agents can now do
-routine board hygiene without shelling out to the CLI (cards 61b97e22,
-e78fd954).
+as describe; see ``coord_amendments``), and ``coord_void`` kills a
+mistaken card without completing it (no Joules, no changelog entry).
+MCP-first agents can now do routine board hygiene without shelling out to
+the CLI (cards 61b97e22, e78fd954, 325a737f).
 """
 
 from __future__ import annotations
@@ -105,6 +106,27 @@ TOOLS: list[Tool] = [
                 "task_id": {"description": "The card/task ID", "type": "string"},
             },
             "required": ["task_id", "criteria"],
+            "type": "object",
+        },
+    ),
+    Tool(
+        name="coord_void",
+        description=(
+            "Void a mistakenly created card WITHOUT completing it: appends a "
+            "writer-attributed void event and archives the card. It leaves the active "
+            "board, mints no Joules, stays out of the changelog, and remains foldable "
+            "for audit."
+        ),
+        inputSchema={
+            "properties": {
+                "agent": {"description": "Writer name (defaults to host)", "type": "string"},
+                "reason": {
+                    "description": "Why the card is being voided (required for audit)",
+                    "type": "string",
+                },
+                "task_id": {"description": "The card/task ID", "type": "string"},
+            },
+            "required": ["task_id", "reason"],
             "type": "object",
         },
     ),
@@ -216,10 +238,26 @@ async def _handle_coord_amend_criteria(args: dict) -> list[TextContent]:
     )
 
 
+async def _handle_coord_void(args: dict) -> list[TextContent]:
+    """Void a mistakenly created card without completing it."""
+    from ..coord_amendments import void_card
+
+    task_id = args.get("task_id", "")
+    reason = args.get("reason", "")
+    if not task_id or not reason:
+        return _error_response("task_id and reason are required")
+    try:
+        void_card(_shared_root(), task_id, reason, args.get("agent", "") or "")
+    except ValueError as exc:
+        return _error_response(str(exc))
+    return _json_response({"voided": True, "task_id": task_id, "reason": reason})
+
+
 HANDLERS: dict = {
     "coord_describe": _handle_coord_describe,
     "coord_label": _handle_coord_label,
     "coord_link": _handle_coord_link,
     "coord_reprioritize": _handle_coord_reprioritize,
     "coord_amend_criteria": _handle_coord_amend_criteria,
+    "coord_void": _handle_coord_void,
 }
