@@ -18,6 +18,28 @@ LOADER_NAME = "load-sk-agent-context.sh"
 PI_START_MARKER = "<!-- SKCAPSTONE_PI_AGENT_CONTEXT_START -->"
 PI_END_MARKER = "<!-- SKCAPSTONE_PI_AGENT_CONTEXT_END -->"
 
+# Host-independent shell references emitted into generated guidance. Absolute
+# paths rot when an AGENTS.md or skill file crosses hosts, so bootstrap
+# instructions always resolve through environment discovery instead.
+CODEX_HOME_REF = "${CODEX_HOME:-$HOME/.codex}"
+PI_HOME_REF = "${PI_CODING_AGENT_DIR:-$HOME/.pi/agent}"
+SK_HOME_REF = "${SKCAPSTONE_HOME:-$HOME/.skcapstone}"
+
+
+def loader_ref(base_ref: str) -> str:
+    """Return a host-independent shell invocation for the context loader.
+
+    Args:
+        base_ref: Shell expression resolving to the tool config home, for
+            example ``CODEX_HOME_REF``.
+
+    Returns:
+        A quoted invocation such as
+        ``"${CODEX_HOME:-$HOME/.codex}/bin/load-sk-agent-context.sh"`` that
+        works unedited on any host.
+    """
+    return f'"{base_ref}/bin/{LOADER_NAME}"'
+
 
 def codex_home() -> Path:
     """Return the Codex config home, honoring CODEX_HOME when set."""
@@ -112,17 +134,14 @@ fi
 """
 
 
-def render_agents_block(
-    *,
-    loader_path: Path,
-    agent_name: str | None = None,
-    skcapstone_home: Path | None = None,
-) -> str:
-    """Render the managed global Codex AGENTS.md block."""
+def render_agents_block(*, agent_name: str | None = None) -> str:
+    """Render the managed global Codex AGENTS.md block.
+
+    The block references the loader and agent home through environment
+    variables instead of absolute paths so the generated guidance works
+    unedited on any host.
+    """
     agent = agent_name or resolve_default_agent()
-    sk_home = (
-        skcapstone_home or Path(os.environ.get("SKCAPSTONE_HOME", "~/.skcapstone")).expanduser()
-    )
     return f"""{START_MARKER}
 # SKCapstone Agent Context
 
@@ -132,14 +151,14 @@ SKSeed, SKPerf, and related local stack work.
 
 Active agent resolution order: `$SKAGENT`, `$SKCAPSTONE_AGENT`,
 `$SKMEMORY_AGENT`, then an explicitly configured `$SK_DEFAULT_AGENT`, or the
-sole installed agent under `{sk_home}/agents/`. Configured fallback:
+sole installed agent under `{SK_HOME_REF}/agents/`. Configured fallback:
 `{agent or "none (explicit selection required)"}`.
 
 At the start of SK* work, identity/status questions, or tasks involving the
 local sovereign stack, run:
 
 ```bash
-{loader_path}
+{loader_ref(CODEX_HOME_REF)}
 ```
 
 Treat that output as the current agent context. When asked who you are, what
@@ -191,7 +210,6 @@ def ensure_codex_setup(
     *,
     home: Path | None = None,
     agent_name: str | None = None,
-    skcapstone_home: Path | None = None,
 ) -> list[str]:
     """Create or repair the global Codex SK agent bootstrap.
 
@@ -220,11 +238,7 @@ def ensure_codex_setup(
 
     ag_path = agents_path(base)
     existing = ag_path.read_text(encoding="utf-8") if ag_path.exists() else ""
-    block = render_agents_block(
-        loader_path=script_path,
-        agent_name=agent_name,
-        skcapstone_home=skcapstone_home,
-    )
+    block = render_agents_block(agent_name=agent_name)
 
     if START_MARKER in existing and END_MARKER in existing:
         before, remainder = existing.split(START_MARKER, 1)
@@ -248,7 +262,6 @@ def ensure_pi_setup(
     *,
     home: Path | None = None,
     agent_name: str | None = None,
-    skcapstone_home: Path | None = None,
 ) -> list[str]:
     """Create or repair Pi's global SK context loader and AGENTS.md."""
     base = home or Path(os.environ.get("PI_CODING_AGENT_DIR", "~/.pi/agent")).expanduser()
@@ -268,22 +281,19 @@ def ensure_pi_setup(
         actions.append(f"made {script_path} executable")
 
     agent = agent_name or resolve_default_agent()
-    sk_home = (
-        skcapstone_home or Path(os.environ.get("SKCAPSTONE_HOME", "~/.skcapstone")).expanduser()
-    )
     block = f"""{PI_START_MARKER}
 # SKCapstone Agent Context
 
 This Pi installation uses the local SK* sovereign agent stack. Resolve the
 active profile from the SKAGENT, SKCAPSTONE_AGENT, and SKMEMORY_AGENT
 environment variables, then an explicitly configured SK_DEFAULT_AGENT, or the
-sole installed agent under `{sk_home}/agents/`. Configured fallback:
+sole installed agent under `{SK_HOME_REF}/agents/`. Configured fallback:
 `{agent or "none (explicit selection required)"}`.
 
 At the start of SK* work, run:
 
 ```bash
-{script_path}
+{loader_ref(PI_HOME_REF)}
 ```
 
 Treat that output as current SKCapstone, SKMemory, and SKWhisper context.
