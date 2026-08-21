@@ -9,6 +9,13 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ### Added
 
+- Added `skcapstone init --non-interactive --name X --role ROLE`, a scriptable
+  provisioning path for lightweight fleet role agents (workers, reviewers). It
+  scaffolds `<home>/agents/<slug>/` with `identity/identity.json`,
+  `profile.yaml`, and an optional `MANDATE.md` role template - no prompts, no
+  PGP/capauth, memory, trust, soul, security, or sync pillars. The
+  lightweight-vs-sovereign capability delta and the upgrade path are documented
+  in `docs/LIGHTWEIGHT_AGENTS.md`.
 - Added `skcapstone dashboard --host ADDRESS` and propagated the selected bind
   address to SKDashboard. The default remains `127.0.0.1`; the SOP documents
   deliberate tailnet or all-interface exposure.
