@@ -1307,10 +1307,12 @@ class DaemonService:
                     logger.info("Consciousness loop loaded")
 
                     # Preload Ollama model into RAM so first real message is fast
+                    warm_model = c_config.ollama_model
+
                     def _ollama_warmup():
                         try:
                             from skseed.llm import ollama_callback
-                            warm_model = getattr(self._consciousness.config, "ollama_model", "llama3.2")
+
                             cb = ollama_callback(model=warm_model)
                             cb("warmup")
                             logger.info("Ollama warmup complete - %s loaded", warm_model)
