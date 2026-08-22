@@ -9,6 +9,7 @@ from pathlib import Path
 
 import click
 
+from ..key_io import read_armored_public_key
 from ._common import SHARED_ROOT, console
 
 # Default grace window for an ASAP schedule (CM P1.2 / design doc section
@@ -43,7 +44,10 @@ def _verified_cab_authorization(
     )
 
     home, profile = _human_profile()
-    public_armor = (home / "identity" / "public.asc").read_text(encoding="utf-8")
+    pub_key_path = home / "identity" / "public.asc"
+    public_armor = read_armored_public_key(pub_key_path)
+    if not public_armor:
+        raise click.ClickException(f"cannot read a usable public key from {pub_key_path}")
     envelope = load_authorization(path)
     if envelope.issuer_fingerprint != profile.key_info.fingerprint:
         raise click.ClickException("authorization signer does not match the human profile")
