@@ -89,10 +89,7 @@ class VcsAuditReceipt:
 
 
 _OUTPUT_SECRET_PATTERNS = (
-    re.compile(
-        r"(?im)(['\"]?authorization['\"]?\s*[:=]\s*['\"]?bearer\s+)"
-        r"[^'\"\s,}]+"
-    ),
+    re.compile(r"(?im)(['\"]?authorization['\"]?\s*[:=]\s*['\"]?bearer\s+)" r"[^'\"\s,}]+"),
     re.compile(r"(?i)(https://)[^/@\s:]+:[^/@\s]+@"),
     re.compile(
         r"(?im)(['\"]?(?:password|secret|api[_-]?key|access[_-]?token|"

@@ -151,6 +151,50 @@ graph TB
   self-healing, daemon lifecycle) this SOP summarizes.
 - `src/skcapstone/context_window.py`: `ContextWindowManager`, per-sender token
   tracking + LLM history compression at 80% of the context budget.
+- `src/skcapstone/operator_seat/skcode_adapter.py`: Atlas's authenticated client for
+  skcode-hostd activity replay, live-stream discovery, steering submission, and
+  receipt lookup. Monitoring and control use separate scopes.
+
+### Atlas live SKHarness monitoring and steering
+
+SKHarness owns execution and serves the transport; Atlas consumes it through
+`operator_seat.skcode_adapter`. The adapter exposes:
+
+- `skcode_activity(...)`: cursor replay with session/run/agent/job/card/contract/
+  lease/role/kind filters;
+- `skcode_live_contract()`: the WebSocket activity URL plus exact monitor/control
+  scopes for a long-lived Atlas or dashboard client;
+- `skcode_control(...)`: an expiring idempotent command for a session, run, agent, or
+  job; and
+- `skcode_control_receipt(...)`: the latest owner receipt for that command.
+
+Set `SKCODE_HOSTD_URL` to the node's governed tailnet skcode-hostd origin (default
+`http://localhost:9394`). Callers supply a CapAuth `skcode`-audience token explicitly;
+the adapter never reads, stores, prints, or refreshes that credential. Monitoring needs
+`skcode.stream`. Message/needs-input steering needs `skcode.inject`; lifecycle actions
+need `skcode.dispatch`. Both pass hostd's corresponding PDP and audit gate. A `queued`
+receipt is durable intent only. Atlas must not report success or update
+a job/card from it; only `applied` means the target owner acted. Hostd applies supported
+interactive session commands itself. Swarm and scheduler/job commands remain queued
+until their long-lived owner composes the SKHarness control mailbox. The checked-in Pi
+swarm qualifier now composes the trusted cancellation owner; job controls and Pi
+mid-turn messages remain explicit queued/unsupported work until their owner adapters
+exist.
+
+Atlas retains the controller-owned lineage on every relevant activity row:
+card and snapshot hash; session/trajectory/run/attempt; stable parent and child agent;
+team; signed plan and contract hashes; lease; base commit; evidence and artifact
+digests. A unique agent ID is an address for attribution and routing, not a capability.
+CapAuth/PDP, parent-child A2A ACLs, the signed contract, and the live owner lease still
+decide whether communication is allowed. Atlas must target IDs learned from the
+authenticated activity/manifest contract, never infer identity from a display name.
+The live rail is bounded; SKHarness copies the same linkage into its durable Arena/A2A
+records, so Atlas can trace work after the visible window has rolled forward without
+creating a second store.
+
+The canonical event, redaction, cursor/gap, multi-node, and command-receipt design lives
+in SKHarness at `docs/architecture/live-agent-observation-and-control.md`. SKCapstone
+does not create a second activity or control store.
 
 **⚠️ coordination / ITIL / cards no longer live here.** `skcoord>=0.1.18` is a **hard
 runtime dependency** (`pyproject.toml`), and `skcapstone.coordination`,

@@ -15,6 +15,11 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ### Fixed
 
+- Restored the enforced Black/Ruff gate after the new coordination-amendment
+  and qualification VCS-audit modules landed with formatting drift.
+- Updated the legacy CMDB seed tests to the schema-driven discovery contract
+  shipped by current `skcoord`, preventing dependency upgrades from breaking
+  the otherwise clean unit-test gate.
 - Added a fail-closed systemd credential-file path for protected CapAuth
   signing keys. ATLAS can now sign noninteractively without exposing its
   passphrase in a unit environment or command line; symlinked, foreign-owned,
@@ -40,6 +45,13 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   PGP/capauth, memory, trust, soul, security, or sync pillars. The
   lightweight-vs-sovereign capability delta and the upgrade path are documented
   in `docs/LIGHTWEIGHT_AGENTS.md`.
+- Extended Atlas's skcode operator adapter with authenticated SKHarness activity
+  replay/live-stream discovery and expiring idempotent steering commands plus receipt
+  lookup. Monitor and control scopes remain separate, and queued commands are never
+  presented as applied work. Replay filters now include job/card/contract/lease IDs so
+  Atlas can preserve the controller-owned cross-agent lineage back to an immutable card,
+  signed contract, source commit, attempt, and evidence rather than treating a display
+  name as identity or authority.
 - Added `skcapstone dashboard --host ADDRESS` and propagated the selected bind
   address to SKDashboard. The default remains `127.0.0.1`; the SOP documents
   deliberate tailnet or all-interface exposure.
