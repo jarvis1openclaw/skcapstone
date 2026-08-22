@@ -1,5 +1,21 @@
 """Governed, read-only legacy matter migration planning."""
 
+from .approved_import import (
+    APPROVAL_STATE,
+    EXECUTION_STATE,
+    ApprovedImportResult,
+    ImportGateError,
+    ImportStateRow,
+    InMemoryPilotImportStore,
+    MappingApproval,
+    PilotImportStore,
+    PostgresPilotImportStore,
+    require_import_approval,
+    reset_disposable_batch,
+    run_approved_import,
+    state_idempotency_key,
+    withdraw_batch,
+)
 from .dry_run import (
     DEFAULT_INCIDENT_ID,
     DEFAULT_PROBLEM_ID,
@@ -23,15 +39,24 @@ from .pilot import (
 )
 
 __all__ = [
+    "APPROVAL_STATE",
+    "ApprovedImportResult",
     "AtomicFactProposal",
     "DEFAULT_INCIDENT_ID",
     "DEFAULT_PROBLEM_ID",
+    "EXECUTION_STATE",
+    "ImportGateError",
     "ImportRecord",
+    "ImportStateRow",
+    "InMemoryPilotImportStore",
     "LegacySourceFile",
+    "MappingApproval",
     "MappingReviewEntry",
     "PilotDryRunReport",
     "PilotImportPlan",
+    "PilotImportStore",
     "PilotImporter",
+    "PostgresPilotImportStore",
     "SourceChangeProof",
     "SourceInventoryEntry",
     "TensionProposal",
@@ -39,5 +64,10 @@ __all__ = [
     "prove_unchanged",
     "render_mapping_review_markdown",
     "render_sha256_manifest",
+    "require_import_approval",
+    "reset_disposable_batch",
+    "run_approved_import",
     "run_pilot_dry_run",
+    "state_idempotency_key",
+    "withdraw_batch",
 ]
