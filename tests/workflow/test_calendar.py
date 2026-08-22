@@ -2,7 +2,6 @@ from datetime import UTC, datetime
 from uuid import uuid4
 
 import pytest
-
 from sklegal_workflow import (
     CalendarEvent,
     CalendarSimulation,
@@ -29,7 +28,11 @@ def trigger(**changes):
 
 def test_business_days_skip_weekend_and_remain_candidate():
     candidate = DeterministicDeadlineCalculator.calculate(
-        trigger(triggered_at=datetime(2026, 8, 21, 15, tzinfo=UTC), period_days=1, day_type="business")
+        trigger(
+            triggered_at=datetime(2026, 8, 21, 15, tzinfo=UTC),
+            period_days=1,
+            day_type="business",
+        )
     )
     assert candidate.candidate_due_at.date().isoformat() == "2026-08-24"
     assert candidate.status == "candidate"

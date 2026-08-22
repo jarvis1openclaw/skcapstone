@@ -21,6 +21,7 @@ package = false
 
 [tool.uv.sources]
 sklegal-connectors-base = { workspace = true }
+sklegal-email = { workspace = true }
 sklegal-domain = { workspace = true }
 sklegal-capauth = { workspace = true }
 sklegal-policies = { workspace = true }
@@ -36,6 +37,12 @@ members = [
   "packages/capauth",
   "packages/connectors/hammertime",
   "packages/connectors/base",
+  "packages/connectors/calendar",
+  "packages/connectors/client_communication",
+  "packages/connectors/email",
+  "packages/connectors/filing",
+  "packages/connectors/legal_sources",
+  "packages/connectors/service",
   "packages/persistence",
   "packages/policies",
   "packages/audit",

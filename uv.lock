@@ -6,15 +6,21 @@ requires-python = "==3.12.*"
 members = [
     "sklegal-api",
     "sklegal-audit",
+    "sklegal-calendar",
     "sklegal-capauth",
+    "sklegal-client-communication-connector",
     "sklegal-connectors-base",
     "sklegal-domain",
+    "sklegal-email",
+    "sklegal-filing-connector",
     "sklegal-hammertime",
+    "sklegal-legal-sources",
     "sklegal-migration",
     "sklegal-model-gateway",
     "sklegal-persistence",
     "sklegal-policies",
     "sklegal-retrieval",
+    "sklegal-service-connector",
     "sklegal-worker",
     "sklegal-workflow",
     "sklegal-workspace",
@@ -1249,6 +1255,17 @@ requires-dist = [
 ]
 
 [[package]]
+name = "sklegal-calendar"
+version = "0.1.0"
+source = { editable = "packages/connectors/calendar" }
+dependencies = [
+    { name = "sklegal-connectors-base" },
+]
+
+[package.metadata]
+requires-dist = [{ name = "sklegal-connectors-base", editable = "packages/connectors/base" }]
+
+[[package]]
 name = "sklegal-capauth"
 version = "0.1.0"
 source = { editable = "packages/capauth" }
@@ -1262,6 +1279,17 @@ requires-dist = [
     { name = "capauth", editable = "vendor/capauth" },
     { name = "pydantic", specifier = "==2.13.4" },
 ]
+
+[[package]]
+name = "sklegal-client-communication-connector"
+version = "0.1.0"
+source = { editable = "packages/connectors/client_communication" }
+dependencies = [
+    { name = "sklegal-connectors-base" },
+]
+
+[package.metadata]
+requires-dist = [{ name = "sklegal-connectors-base", editable = "packages/connectors/base" }]
 
 [[package]]
 name = "sklegal-connectors-base"
@@ -1280,6 +1308,28 @@ dependencies = [
 requires-dist = [{ name = "pydantic", specifier = "==2.13.4" }]
 
 [[package]]
+name = "sklegal-email"
+version = "0.1.0"
+source = { editable = "packages/connectors/email" }
+dependencies = [
+    { name = "sklegal-connectors-base" },
+]
+
+[package.metadata]
+requires-dist = [{ name = "sklegal-connectors-base", editable = "packages/connectors/base" }]
+
+[[package]]
+name = "sklegal-filing-connector"
+version = "0.1.0"
+source = { editable = "packages/connectors/filing" }
+dependencies = [
+    { name = "sklegal-connectors-base" },
+]
+
+[package.metadata]
+requires-dist = [{ name = "sklegal-connectors-base", editable = "packages/connectors/base" }]
+
+[[package]]
 name = "sklegal-hammertime"
 version = "0.1.0"
 source = { editable = "packages/connectors/hammertime" }
@@ -1295,6 +1345,17 @@ requires-dist = [
     { name = "pyyaml", specifier = "==6.0.3" },
     { name = "sklegal-domain", editable = "packages/domain" },
 ]
+
+[[package]]
+name = "sklegal-legal-sources"
+version = "0.1.0"
+source = { editable = "packages/connectors/legal_sources" }
+dependencies = [
+    { name = "pydantic" },
+]
+
+[package.metadata]
+requires-dist = [{ name = "pydantic", specifier = "==2.13.4" }]
 
 [[package]]
 name = "sklegal-migration"
@@ -1370,12 +1431,24 @@ dependencies = [
 requires-dist = [{ name = "pydantic", specifier = "==2.13.4" }]
 
 [[package]]
+name = "sklegal-service-connector"
+version = "0.1.0"
+source = { editable = "packages/connectors/service" }
+dependencies = [
+    { name = "sklegal-connectors-base" },
+]
+
+[package.metadata]
+requires-dist = [{ name = "sklegal-connectors-base", editable = "packages/connectors/base" }]
+
+[[package]]
 name = "sklegal-worker"
 version = "0.1.0"
 source = { editable = "services/worker" }
 dependencies = [
     { name = "pydantic" },
     { name = "sklegal-connectors-base" },
+    { name = "sklegal-email" },
     { name = "temporalio" },
 ]
 
@@ -1383,6 +1456,7 @@ dependencies = [
 requires-dist = [
     { name = "pydantic", specifier = "==2.13.4" },
     { name = "sklegal-connectors-base", editable = "packages/connectors/base" },
+    { name = "sklegal-email", editable = "packages/connectors/email" },
     { name = "temporalio", specifier = "==1.31.0" },
 ]
 

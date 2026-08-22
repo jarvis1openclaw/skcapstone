@@ -3,17 +3,12 @@ requires = ["setuptools==84.0.0"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "sklegal-worker"
+name = "sklegal-calendar"
 version = "0.1.0"
-description = "SKLegal Temporal worker package boundary"
+description = "Simulation-first approval-gated calendar connector"
 requires-python = ">=3.12,<3.13"
 license = "GPL-3.0-only"
-dependencies = [
-  "pydantic==2.13.4",
-  "sklegal-connectors-base",
-  "sklegal-email",
-  "temporalio==1.31.0",
-]
+dependencies = ["sklegal-connectors-base"]
 
 [tool.setuptools.packages.find]
 where = ["src"]

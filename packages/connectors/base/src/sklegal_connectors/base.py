@@ -11,7 +11,7 @@ import hashlib
 from dataclasses import dataclass, replace
 from enum import StrEnum
 from threading import RLock
-from typing import Protocol
+from typing import Protocol, TypedDict, Unpack
 
 
 class ConnectorInvariantError(ValueError):
@@ -113,6 +113,14 @@ class SimulationReceipt:
     simulated: bool = True
 
 
+class _ActionChanges(TypedDict, total=False):
+    approval: ApprovalBinding
+    destination_verified: bool
+    capability_verified: bool
+    receipt: SimulationReceipt
+    failure_reason: str | None
+
+
 @dataclass(frozen=True, slots=True)
 class Action:
     """Immutable legal external action with append-only transition history."""
@@ -175,7 +183,7 @@ class Action:
             artifact_sha256=self.artifact_sha256,
         )
 
-    def _move(self, target: ActionStatus, **changes: object) -> Action:
+    def _move(self, target: ActionStatus, **changes: Unpack[_ActionChanges]) -> Action:
         if target not in _TRANSITIONS[self.status]:
             raise ConnectorInvariantError(
                 f"invalid connector transition {self.status} -> {target}"

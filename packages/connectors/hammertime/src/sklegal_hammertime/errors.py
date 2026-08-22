@@ -58,3 +58,19 @@ class MatterAccessDenied(HammerTimeAdapterError, PermissionError):
     denies access, or when the authorizer itself fails. The adapter never
     defaults to allow for matter-scoped content.
     """
+
+
+class SubmissionError(HammerTimeAdapterError):
+    """A governed HammerTime submission could not complete."""
+
+
+class UnsupportedSubmissionError(SubmissionError, ValueError):
+    """The intake contains a source type outside the approved contract."""
+
+
+class CompletionEvidenceMissingError(SubmissionError):
+    """HammerTime did not return finalizer completion evidence."""
+
+
+class PromotionRejectedError(SubmissionError):
+    """HammerTime QC or release promotion rejected the batch."""
