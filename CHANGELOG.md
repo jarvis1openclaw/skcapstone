@@ -15,6 +15,11 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ### Added
 
+- Added an opt-in, loopback-only Windows browser proxy through each
+  workstation's canonical WSL Tailscale identity. The installer provides
+  shared enable and disable desktop controls, preserves per-profile browser
+  settings for rollback, and denies resolved destinations outside the
+  Tailscale overlay ranges.
 - Added read-only `skfleet node endpoint-audit` reconciliation between
   canonical fleet node identities and live or captured Tailscale status. It
   flags duplicate, stale, mismatched, offline, and ambiguous registrations,
