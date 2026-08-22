@@ -237,6 +237,19 @@ class GraphPins(RetrievalValue):
 
 class ReplicaPins(RetrievalValue):
     replica_replay_lsn: PostgresLsn
+    required_replay_lsn: PostgresLsn | None = None
+
+
+class ProjectionLag(RetrievalValue):
+    lag_events: int = Field(ge=0)
+    lag_seconds: float = Field(ge=0)
+
+    @field_validator("lag_seconds")
+    @classmethod
+    def require_finite_lag(cls, value: float) -> float:
+        if not math.isfinite(value):
+            raise ValueError("projection lag must be finite")
+        return value
 
 
 class ProjectionPins(RetrievalValue):
@@ -252,6 +265,9 @@ class ProjectionPins(RetrievalValue):
     projection_adapter_version: SafeVersion
     projector_version: SafeVersion
     backend_watermark: int = Field(ge=0)
+    lag: ProjectionLag = Field(
+        default_factory=lambda: ProjectionLag(lag_events=0, lag_seconds=0.0)
+    )
     lexical: LexicalPins | None = None
     vector: VectorPins | None = None
     graph: GraphPins | None = None
@@ -692,18 +708,6 @@ class BackendUnavailableComponent(RetrievalValue):
     reason: IncompleteReason
 
 
-class ProjectionLag(RetrievalValue):
-    lag_events: int = Field(ge=0)
-    lag_seconds: float = Field(ge=0)
-
-    @field_validator("lag_seconds")
-    @classmethod
-    def require_finite_lag(cls, value: float) -> float:
-        if not math.isfinite(value):
-            raise ValueError("projection lag must be finite")
-        return value
-
-
 class RetrievalProvenance(RetrievalValue):
     projections: tuple[ProjectionPins, ...] = Field(min_length=1, max_length=2)
     authorization: AuthorizationPins
@@ -932,3 +936,15 @@ class RetrievalCacheKey(RetrievalValue):
         if len(self.physical_partition_ids) != len(set(self.physical_partition_ids)):
             raise ValueError("cache partition identifiers must be unique")
         return self
+
+
+def postgres_lsn_value(lsn: str) -> int:
+    """Return the comparable integer value of one pinned PostgreSQL LSN."""
+
+    high, separator, low = lsn.partition("/")
+    if not separator or not high or not low:
+        raise ValueError("PostgreSQL LSN must use the HEX/HEX shape")
+    try:
+        return (int(high, 16) << 32) + int(low, 16)
+    except ValueError:
+        raise ValueError("PostgreSQL LSN must use hexadecimal segments") from None
