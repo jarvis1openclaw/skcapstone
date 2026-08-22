@@ -11,6 +11,7 @@ license = "GPL-3.0-only"
 dependencies = [
   "pydantic==2.13.4",
   "sklegal-connectors-base",
+  "sklegal-domain",
   "sklegal-email",
   "sklegal-model-gateway",
   "sklegal-retrieval",
