@@ -83,7 +83,10 @@ def test_dashboard_cmdb_overview_and_detail(home):
     registry = home / "registry"
     registry.mkdir()
     (registry / "skmem-pg.json").write_text('{"name":"skmem-pg"}')
-    dc.seed(home)
+    # Populate the isolated fixture through the compatibility importer.  The
+    # dashboard ``seed`` route now performs real local discovery and must not
+    # scan the CI runner from a unit test.
+    CMDBManager(home).seed_from_inventory()
     ov = dc.get_overview(home)
     assert ov["total"] == 1 and ov["types"]
     sid = make_ci_id("service", "skmem-pg")
@@ -92,7 +95,7 @@ def test_dashboard_cmdb_overview_and_detail(home):
     assert "relationships" in detail and "dependents" in detail
 
 
-def test_dashboard_cmdb_routes(home):
+def test_dashboard_cmdb_routes(home, monkeypatch):
     from starlette.testclient import TestClient
 
     from skcapstone.dashboard import create_app
@@ -100,6 +103,12 @@ def test_dashboard_cmdb_routes(home):
     registry = home / "registry"
     registry.mkdir()
     (registry / "skmem-pg.json").write_text('{"name":"skmem-pg"}')
+
+    def _compat_reconcile(target_home, *, apply):
+        assert apply is True
+        return CMDBManager(target_home).seed_from_inventory()
+
+    monkeypatch.setattr(dc, "_local_reconcile", _compat_reconcile)
     client = TestClient(create_app(home))
     response = client.post("/api/cmdb/seed").json()
     assert response["cis"] == 1

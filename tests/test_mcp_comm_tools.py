@@ -29,9 +29,7 @@ def _report(delivered: bool = True) -> DeliveryReport:
     return DeliveryReport(
         envelope_id="env-1",
         delivered=delivered,
-        attempts=[
-            SendResult(success=delivered, transport_name="file", envelope_id="env-1")
-        ],
+        attempts=[SendResult(success=delivered, transport_name="file", envelope_id="env-1")],
     )
 
 
@@ -64,7 +62,9 @@ async def test_send_message_requires_recipient_and_message():
 
 @pytest.mark.asyncio
 async def test_comm_notify_uses_delivered_not_success(stub_from_config):
-    out = _payload(await skcomms_tools._handle_comm_notify({"recipient": "lumina", "message": "hi"}))
+    out = _payload(
+        await skcomms_tools._handle_comm_notify({"recipient": "lumina", "message": "hi"})
+    )
     assert out["sent"] is True
     assert out["confirmed"] is True
     assert out["urgency"] == "normal"
