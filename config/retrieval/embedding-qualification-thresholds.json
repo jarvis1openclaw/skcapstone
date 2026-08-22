@@ -1,0 +1,29 @@
+{
+  "schema": "sklegal-embedding-qualification-thresholds/v1",
+  "card": "cb452f95",
+  "task": "SKL-S3-04C",
+  "parent_task": "SKL-S3-04",
+  "amendment": "AMENDMENT-SKL-S2-10",
+  "thresholds_version": "1.0.0",
+  "approved_at": "2026-08-22",
+  "approval_basis": "Threshold revision 1.0.0 is set by SKL-S3-04C (card cb452f95) under the owner-approved architecture (docs/approval/ARCHITECTURE-APPROVAL.md, board gate SKL-S0-01 card b04de409) and the owner-approved retrieval amendment AMENDMENT-SKL-S2-10 (2026-08-21). Any change to a bound below is a new owner-approved thresholds revision with a new version and fresh qualification evidence, never an in-place edit.",
+  "dataset_freeze_sha256": "c4f829781badfc0139dda420c539ee30d4d43ac7c189aa55114af385ed02d189",
+  "harness_version": "1.0.0",
+  "k_values": [1, 5, 10],
+  "recall_at_k_minimum": [0.6, 0.9, 0.95],
+  "ndcg_at_k_minimum": [0.6, 0.65, 0.7],
+  "mrr_minimum": 0.65,
+  "citation_accuracy_minimum": 0.9,
+  "macro_latency_mean_maximum_seconds": 0.05,
+  "max_latency_maximum_seconds": 0.25,
+  "maximum_leakage_count": 0,
+  "fixture_embedder_waivers": [
+    {
+      "metric": "citation_accuracy",
+      "applies_to_embedder_kind": "deterministic_hash_fixture",
+      "enforced_value_for_real_embedders": 0.9,
+      "reason": "Deterministic hash fixture embedders carry no semantic ranking signal, so exact-citation rank-one hits are chance and every fixture route measures 0.0000. The 0.9000 floor stays enforced for every other embedder kind and binds the first real embedder qualification without any file change."
+    }
+  ],
+  "notes": "Bounds bind macro-averaged measurements of the SKL-S3-04B harness over the pinned dataset freeze. Latency bounds govern the local in-process shadow plane measured by the harness clock; PostgreSQL wire latency belongs to the deployment qualification slices. Leakage tolerates exactly zero events and is never waivable."
+}
