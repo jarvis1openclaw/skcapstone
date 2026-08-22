@@ -19,6 +19,8 @@ with workflow.unsafe.imports_passed_through():
     from .models import (
         ApprovalSignal,
         DispatchReceipt,
+        GovernedProposalInput,
+        ProposalRunOutcome,
         QueueKind,
         RunPhase,
         StepActivityInput,
@@ -52,6 +54,7 @@ ACTIVITY_RUN_TASK_STEP = "run_task_step"
 ACTIVITY_DISPATCH_CONNECTOR = "dispatch_connector"
 ACTIVITY_COMPENSATE_STEP = "compensate_step"
 ACTIVITY_RAISE_STALE_RUN_ALERT = "raise_stale_run_alert"
+ACTIVITY_RUN_GOVERNED_PROPOSAL = "run_governed_proposal"
 
 
 def _config_for(input: TaskWorkflowInput) -> RunConfig:
@@ -260,3 +263,31 @@ class ConnectorDispatchWorkflow:
     @workflow.query
     def phase(self) -> str:
         return self._plan.phase()
+
+
+@workflow.defn
+class GovernedProposalWorkflow:
+    """One governed Qwen proposal run over pinned matter context.
+
+    The workflow body stays deterministic: it only checks the queue
+    contract and delegates every retrieval, gateway, and ledger effect to
+    the run_governed_proposal activity. The activity result carries
+    identifiers and digests only, and the proposal itself stays a typed
+    proposal in the ledger until a separate human decision.
+    """
+
+    @workflow.run
+    async def run(self, input: GovernedProposalInput) -> ProposalRunOutcome:
+        if input.queue not in (QueueKind.INTERACTIVE, QueueKind.LONG_CONTEXT):
+            raise ApplicationError(
+                "governed proposal runs use interactive or long-context queues",
+                non_retryable=True,
+            )
+        outcome: ProposalRunOutcome = await workflow.execute_activity(
+            ACTIVITY_RUN_GOVERNED_PROPOSAL,
+            args=[input.proposal],
+            start_to_close_timeout=timedelta(minutes=30),
+            retry_policy=retry_policy_for(RetryClass.MODEL),
+            result_type=ProposalRunOutcome,
+        )
+        return outcome

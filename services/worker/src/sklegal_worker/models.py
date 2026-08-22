@@ -24,6 +24,7 @@ from pydantic import (
     StringConstraints,
     model_validator,
 )
+from sklegal_domain import DataClassification
 
 Sha256Digest = Annotated[str, StringConstraints(pattern=r"^[0-9a-f]{64}$")]
 Slug = Annotated[
@@ -209,3 +210,76 @@ class TaskWorkflowResult(WorkflowPayload):
     completed_steps: tuple[Slug, ...]
     dispatch_receipt_digest: Sha256Digest | None = None
     finished_at: UtcDateTime
+
+
+SourceRef = Annotated[
+    str,
+    StringConstraints(
+        strip_whitespace=True,
+        min_length=1,
+        max_length=255,
+        pattern=r"^[A-Za-z0-9][A-Za-z0-9._:/@-]*$",
+    ),
+]
+
+
+class SourcePin(WorkflowPayload):
+    """One pinned corpus source the governed run must retrieve from.
+
+    The identifier and SHA-256 are the exact pins from the approved pilot
+    import plan. They never carry source content.
+    """
+
+    source_id: SourceRef
+    source_sha256: Sha256Digest
+
+
+class ProposalRunInput(WorkflowPayload):
+    """Reference-only input for one governed model proposal run.
+
+    The pinned retrieval context is resolved inside the worker process by
+    its context pin identifier, so no retrieval pins, capability token,
+    secret, or protected matter content crosses the workflow history
+    boundary. Instructions are operational task text, not matter content;
+    matter content reaches the prompt only through the in-process
+    retrieval-to-gateway path.
+    """
+
+    run_key: Slug
+    context_pin_id: Slug
+    route_id: Slug
+    purpose: Slug
+    classification: DataClassification
+    capability_ref: Slug
+    instructions: str = Field(min_length=1, max_length=2000)
+
+
+class ProposalRunOutcome(WorkflowPayload):
+    """Content-free result of one governed proposal activity.
+
+    The durable proposal record stays in the proposal ledger; the workflow
+    history carries only identifiers and digests.
+    """
+
+    run_key: Slug
+    proposal_id: str = Field(min_length=1, max_length=255)
+    record_digest: Sha256Digest
+    recorded_at: UtcDateTime
+
+
+class GovernedProposalInput(WorkflowPayload):
+    """Typed input for the governed proposal workflow."""
+
+    identity: RunIdentity
+    queue: QueueKind
+    proposal: ProposalRunInput
+
+    @model_validator(mode="after")
+    def validate_run_contract(self) -> Self:
+        if self.queue not in (QueueKind.INTERACTIVE, QueueKind.LONG_CONTEXT):
+            raise ValueError(
+                "governed proposal runs use interactive or long-context queues"
+            )
+        if self.identity.run_key != self.proposal.run_key:
+            raise ValueError("identity and proposal must share one run key")
+        return self
