@@ -25,6 +25,7 @@ Temporal scenario requires the disposable development stack
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 import os
 import platform
@@ -546,7 +547,10 @@ def _process_snapshot() -> dict[str, Any]:
     rss_kib = next(
         int(line.split()[1]) for line in status.splitlines() if line.startswith("VmRSS")
     )
-    return {"cpu_seconds_total": round(cpu_seconds, 2), "rss_mib": round(rss_kib / 1024, 1)}
+    return {
+        "cpu_seconds_total": round(cpu_seconds, 2),
+        "rss_mib": round(rss_kib / 1024, 1),
+    }
 
 
 # ---------------------------------------------------------------------------
@@ -586,10 +590,10 @@ def _generate_synthetic_key(keyring: Path) -> str:
 
 def _write_issuer_policy(root: Path, fingerprint: str) -> Path:
     from sklegal_capauth import (
+        VERIFIER_POLICY_VERSION,
         Audience,
         Capability,
         PrincipalType,
-        VERIFIER_POLICY_VERSION,
     )
 
     path = root / "trusted-issuers.json"
@@ -687,17 +691,27 @@ def run_signing_scenario(arguments: argparse.Namespace) -> dict[str, Any]:
 
                 return operation
 
-            if arguments.mode == "openpgp":
-                level_results = _run_threaded_load(
+            # Warm the signer (gpg-agent or stub registry) and any lazily
+            # built policy state before the first measured level so cold
+            # start cost does not skew p95. Runs inside the stub context in
+            # stub mode, matching the measured run.
+            def run_levels() -> list[LoadLevelResult]:
+                warmup = make_operation(0)
+                for _ in range(arguments.warmup_operations):
+                    warmup()
+                issue_samples.clear()
+                authorize_samples.clear()
+                return _run_threaded_load(
                     levels, arguments.ops_per_worker, make_operation
                 )
+
+            if arguments.mode == "openpgp":
+                level_results = run_levels()
             else:
                 from capauth.testing import signing_stub  # type: ignore[import-untyped]
 
                 with signing_stub():
-                    level_results = _run_threaded_load(
-                        levels, arguments.ops_per_worker, make_operation
-                    )
+                    level_results = run_levels()
         finally:
             if arguments.mode == "openpgp":
                 if previous_home is None:
@@ -720,6 +734,11 @@ def run_signing_scenario(arguments: argparse.Namespace) -> dict[str, Any]:
 # ---------------------------------------------------------------------------
 
 
+def _digest(*parts: str) -> str:
+    """Deterministic sha256 hex digest for synthetic dispatch fields."""
+    return hashlib.sha256(":".join(parts).encode("utf-8")).hexdigest()
+
+
 def build_workflow_input(run_key: str) -> Any:
     """One synthetic one-step interactive run with an approval gate."""
     from sklegal_worker.models import (
@@ -732,7 +751,7 @@ def build_workflow_input(run_key: str) -> Any:
         TaskWorkflowInput,
     )
 
-    digest = f"{run_key}:artifact"
+    digest = _digest(run_key, "artifact")
     return TaskWorkflowInput(
         identity=RunIdentity(
             tenant_id=TENANT_ID,
@@ -760,7 +779,7 @@ def build_workflow_input(run_key: str) -> Any:
             connector="load-connector",
             artifact_digest=digest,
             approval_id=APPROVAL_ID,
-            destination_digest=f"{run_key}:destination",
+            destination_digest=_digest(run_key, "destination"),
         ),
     )
 
@@ -836,8 +855,10 @@ async def _temporal_run(arguments: argparse.Namespace) -> dict[str, Any]:
                     ),
                 )
                 result: TaskWorkflowResult = await handle.result()
-                if result.dispatch_receipt is None:
-                    raise RuntimeError(f"{run_key} completed without a dispatch receipt")
+                if result.dispatch_receipt_digest is None:
+                    raise RuntimeError(
+                        f"{run_key} completed without a dispatch receipt"
+                    )
                 latencies_ms.append((time.perf_counter() - started) * 1000.0)
             except Exception as exc:  # noqa: BLE001
                 failures.append(f"{run_key}: {type(exc).__name__}: {exc}")
@@ -898,6 +919,12 @@ def parse_arguments(argv: list[str] | None = None) -> argparse.Namespace:
     signing.add_argument("--workers", default="1,2,4,8")
     signing.add_argument("--ops-per-worker", type=int, default=40)
     signing.add_argument("--mode", choices=("openpgp", "stub"), default="openpgp")
+    signing.add_argument(
+        "--warmup-operations",
+        type=int,
+        default=8,
+        help="unmeasured issue-plus-authorize calls before the first level",
+    )
 
     temporal = subparsers.add_parser("temporal", help="Temporal worker burst")
     temporal.add_argument("--address", default="127.0.0.1:17233")
@@ -925,9 +952,7 @@ def main(argv: list[str] | None = None) -> int:
     }
     output = arguments.output
     if output is None:
-        output = (
-            REPO_ROOT / "build" / "benchmarks" / f"load-{arguments.scenario}.json"
-        )
+        output = REPO_ROOT / "build" / "benchmarks" / f"load-{arguments.scenario}.json"
     output.parent.mkdir(parents=True, exist_ok=True)
     output.write_text(
         json.dumps(report, indent=2, sort_keys=True) + "\n", encoding="utf-8"
