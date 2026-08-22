@@ -10,6 +10,9 @@ Every tool call passes through the same fail-closed pipeline:
 5. Only then does the handler run, and its result must validate against the
    tool's pinned output schema artifact before anything is returned.
 
+Every rejection at any step is appended to the gateway's immutable denial
+trail before it raises, so no attack fails silently.
+
 Handlers receive a ToolCallContext containing only sanitized decision
 fields. The presented credential never reaches a handler, a run record, or
 a model-facing payload, so no model ever sees raw credential material.
@@ -35,6 +38,7 @@ from jsonschema.exceptions import SchemaError  # type: ignore[import-untyped]
 from jsonschema.exceptions import ValidationError as JsonValidationError
 from pydantic import Field
 from sklegal_capauth import (
+    AuthorizationDenied,
     BoundaryScope,
     CapabilityAuthorizer,
     PresentedCapability,
@@ -44,7 +48,9 @@ from sklegal_capauth import (
 
 from .contracts import TOOL_CONTRACTS, ToolContract, tool_contract
 from .errors import (
+    AgentSpecError,
     RunInputValidationError,
+    SpecNotFoundError,
     ToolArgumentValidationError,
     ToolBudgetExhaustedError,
     ToolGatewayError,
@@ -96,6 +102,41 @@ class ToolCallRecord(AgentSpecValue):
     correlation_id: UUID
     arguments_sha256: str = Field(pattern=r"^[0-9a-f]{64}$")
     result: dict[str, Any]
+
+
+class DenialRecord(AgentSpecValue):
+    """Immutable audit event for one fail-closed gateway denial.
+
+    Every rejected run or tool call leaves exactly one denial record,
+    including denials raised before the CapAuth authorizer is reached
+    (catalog, allowlist, budget, and validation failures), so an attack
+    can never fail silently. Records carry the pipeline stage and the
+    exception type only: no arguments, results, or credential material
+    are ever copied into the denial trail.
+    """
+
+    stage: str = Field(min_length=1, max_length=64)
+    error: str = Field(min_length=1, max_length=160)
+    tool_id: str | None = Field(default=None, max_length=260)
+    spec_id: str | None = Field(default=None, max_length=260)
+    principal_id: UUID | None = None
+    correlation_id: UUID | None = None
+    occurred_at: datetime
+
+
+# Ordered from most specific to least specific exception type.
+_DENIAL_STAGES: tuple[tuple[type[Exception], str], ...] = (
+    (UnknownToolError, "catalog"),
+    (SpecNotFoundError, "spec-registry"),
+    (ToolNotAllowlistedError, "allowlist"),
+    (ToolBudgetExhaustedError, "budget"),
+    (ToolArgumentValidationError, "argument-validation"),
+    (ToolResultValidationError, "result-validation"),
+    (ToolHandlerUnavailableError, "handler-binding"),
+    (RunInputValidationError, "run-input"),
+    (ToolSchemaIntegrityError, "schema-integrity"),
+    (AuthorizationDenied, "authorization"),
+)
 
 
 class ToolHandler(Protocol):
@@ -210,6 +251,7 @@ class ToolGateway:
         self._schemas_dir = Path(schemas_dir)
         self._handlers = dict(handlers)
         self._clock = clock or (lambda: datetime.now(UTC))
+        self._denials: list[DenialRecord] = []
         self._artifact_index = self._index_artifacts()
         self._validators: dict[
             str, tuple[Draft202012Validator, Draft202012Validator]
@@ -295,6 +337,38 @@ class ToolGateway:
             purpose=contract.purpose,
         )
 
+    @property
+    def denial_records(self) -> tuple[DenialRecord, ...]:
+        """Every fail-closed denial this gateway has raised, in order."""
+
+        return tuple(self._denials)
+
+    def _record_denial(
+        self,
+        exc: Exception,
+        *,
+        tool_id: str | None = None,
+        spec_id: str | None = None,
+        principal_id: UUID | None = None,
+        correlation_id: UUID | None = None,
+    ) -> None:
+        stage = "gateway"
+        for error_type, name in _DENIAL_STAGES:
+            if isinstance(exc, error_type):
+                stage = name
+                break
+        self._denials.append(
+            DenialRecord(
+                stage=stage,
+                error=type(exc).__name__,
+                tool_id=tool_id[:260] if tool_id is not None else None,
+                spec_id=spec_id[:260] if spec_id is not None else None,
+                principal_id=principal_id,
+                correlation_id=correlation_id,
+                occurred_at=self._clock(),
+            )
+        )
+
     def begin_run(
         self,
         spec_id: str,
@@ -311,8 +385,36 @@ class ToolGateway:
         Scope fields come from trusted deterministic code, never from model
         or document content. The run input is validated against the spec's
         pinned input schema artifact before any tool call is possible.
+        Every rejection is recorded in the denial trail before it raises.
         """
 
+        try:
+            return self._begin_run(
+                spec_id,
+                version=version,
+                principal=principal,
+                tenant_id=tenant_id,
+                matter_id=matter_id,
+                workflow_run_id=workflow_run_id,
+                run_input=run_input,
+            )
+        except (ToolGatewayError, AgentSpecError) as exc:
+            self._record_denial(
+                exc, spec_id=spec_id, principal_id=principal.principal_id
+            )
+            raise
+
+    def _begin_run(
+        self,
+        spec_id: str,
+        *,
+        version: int | None = None,
+        principal: PrincipalContext,
+        tenant_id: UUID,
+        matter_id: UUID,
+        workflow_run_id: str,
+        run_input: Mapping[str, Any],
+    ) -> AgentRun:
         record = self._registry.spec(spec_id, version)
         if not isinstance(run_input, Mapping):
             raise RunInputValidationError("run input must be a JSON object")
@@ -344,8 +446,40 @@ class ToolGateway:
         presented: PresentedCapability | None,
         correlation_id: UUID,
     ) -> ToolCallRecord:
-        """Authorize, validate, execute, and record exactly one tool call."""
+        """Authorize, validate, execute, and record exactly one tool call.
 
+        Every rejection is recorded in the denial trail before it raises,
+        so no attack fails silently.
+        """
+
+        try:
+            return self._call(
+                run,
+                tool_id,
+                arguments,
+                principal=principal,
+                presented=presented,
+                correlation_id=correlation_id,
+            )
+        except (ToolGatewayError, AgentSpecError, AuthorizationDenied) as exc:
+            self._record_denial(
+                exc,
+                tool_id=tool_id,
+                principal_id=principal.principal_id,
+                correlation_id=correlation_id,
+            )
+            raise
+
+    def _call(
+        self,
+        run: AgentRun,
+        tool_id: str,
+        arguments: Mapping[str, Any],
+        *,
+        principal: PrincipalContext,
+        presented: PresentedCapability | None,
+        correlation_id: UUID,
+    ) -> ToolCallRecord:
         if not isinstance(run, AgentRun) or run._gateway is not self:
             raise ToolGatewayError("run was not opened by this gateway")
         if principal != run.principal:
