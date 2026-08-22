@@ -22,17 +22,21 @@ class PinnedRecord(Protocol):
 
     legacy_id: str
     relative_path: str
-    frontmatter: Mapping[str, Any]
     body: str
     pin: Any
     registry_pin: Any
+
+    @property
+    def frontmatter(self) -> Mapping[str, Any]: ...
 
 
 class PinnedPacket(Protocol):
     packet_version: int
     facts_pin: Any
-    facts: Mapping[str, Any]
     review_pin: Any | None
+
+    @property
+    def facts(self) -> Mapping[str, Any]: ...
 
 
 def _sha256(value: bytes) -> str:
