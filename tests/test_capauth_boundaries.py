@@ -350,7 +350,7 @@ class ProtectedRouteDependencyTest(unittest.TestCase):
         root = self.rig.issue(parent, grant, max_delegation_depth=1)
         parsed_root = parse_presented_token(raw_leaf(root))
         presented = root.with_child(
-            self.rig.issuer._issue_child(
+            self.rig.issuer.issue_child(
                 parent=parsed_root,
                 principal=child_principal,
                 grant=grant,
@@ -478,7 +478,7 @@ class ProtectedRouteDependencyTest(unittest.TestCase):
         tool_root = self.rig.issue(parent, tool_grant, max_delegation_depth=1)
         parsed_tool_root = parse_presented_token(raw_leaf(tool_root))
         tool_chain = tool_root.with_child(
-            self.rig.issuer._issue_child(
+            self.rig.issuer.issue_child(
                 parent=parsed_tool_root,
                 principal=child_principal,
                 grant=tool_grant,

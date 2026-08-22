@@ -259,7 +259,7 @@ class CapabilityAuthorizationTest(unittest.TestCase):
         )
         parsed_root = parse_presented_token(raw_leaf(root))
         child = root.with_child(
-            self.rig.issuer._issue_child(
+            self.rig.issuer.issue_child(
                 parent=parsed_root,
                 principal=agent,
                 grant=grant,

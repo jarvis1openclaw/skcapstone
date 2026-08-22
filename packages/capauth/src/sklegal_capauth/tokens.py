@@ -451,7 +451,7 @@ class CapabilityIssuer:
         )
         return PresentedCapability.single(raw)
 
-    def _issue_child(
+    def issue_child(
         self,
         *,
         parent: ParsedCapability,
@@ -460,6 +460,8 @@ class CapabilityIssuer:
         ttl_seconds: int,
         max_depth: int,
     ) -> str:
+        """Issue a child credential for a separately validated delegation."""
+
         delegation = DelegationClaims(
             depth=parent.claims.delegation.depth + 1,
             max_depth=max_depth,

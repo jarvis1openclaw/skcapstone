@@ -38,8 +38,6 @@ def _payload(value: object) -> Mapping[str, object]:
     if isinstance(value, (list, tuple)) and len(value) == 1:
         value = value[0]
     if isinstance(value, str):
-        import json
-
         value = json.loads(value)
     if not isinstance(value, Mapping):
         raise ValueError("database adapter returned a non-object payload")

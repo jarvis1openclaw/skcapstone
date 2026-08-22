@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import unittest
+from unittest.mock import patch
 from uuid import UUID, uuid4
 
 from pydantic_core import PydanticSerializationError
@@ -112,6 +113,126 @@ class CapabilityDelegationTest(unittest.TestCase):
             DecisionReason.DELEGATION_CHAIN_INVALID,
         )
 
+    def test_delegator_uses_public_child_issuance_api(self) -> None:
+        root = self.rig.issue(
+            self.service,
+            self.grant,
+            max_delegation_depth=1,
+        )
+        delegator = DelegatingCapabilityIssuer(
+            authorizer=self.rig.authorizer,
+            issuer=self.rig.issuer,
+        )
+
+        with patch.object(
+            self.rig.issuer,
+            "issue_child",
+            wraps=self.rig.issuer.issue_child,
+        ) as issue_child:
+            child = delegator.delegate(
+                parent=root,
+                authenticated_parent=self.service,
+                child_principal=self.agent,
+                child_grant=self.grant,
+                correlation_id=uuid4(),
+            )
+
+        issue_child.assert_called_once()
+        self.assertEqual(len(child.credentials_for_verification()), 2)
+        self.assertFalse(hasattr(self.rig.issuer, "_issue_child"))
+
+    def test_preflight_and_chain_validation_agree_on_attenuation(self) -> None:
+        human = self.rig.principal(PrincipalType.HUMAN)
+        unbound_grant = self.rig.grant(
+            audience=Audience.TOOL,
+            capability=Capability.CORPUS_SEARCH,
+            purpose=Purpose.LEGAL_RESEARCH,
+        )
+        narrowed_grant = self.rig.grant(
+            audience=Audience.TOOL,
+            capability=Capability.CORPUS_SEARCH,
+            purpose=Purpose.LEGAL_RESEARCH,
+            resource_id="corpus-index:narrowed",
+        )
+        api_grant = self.rig.grant()
+        changed_bound_grant = self.rig.grant(
+            audience=Audience.TOOL,
+            capability=Capability.CORPUS_SEARCH,
+            purpose=Purpose.LEGAL_RESEARCH,
+            resource_id="corpus-index:changed",
+        )
+        cases = (
+            ("exact", self.grant, self.agent, self.grant, True),
+            ("optional narrowing", unbound_grant, self.agent, narrowed_grant, True),
+            ("principal type", api_grant, human, api_grant, False),
+            (
+                "bound resource change",
+                self.grant,
+                self.agent,
+                changed_bound_grant,
+                False,
+            ),
+        )
+
+        for label, parent_grant, child_principal, child_grant, expected in cases:
+            with self.subTest(label=label):
+                delegated_root = self.rig.issue(
+                    self.service,
+                    parent_grant,
+                    max_delegation_depth=1,
+                )
+                delegator = DelegatingCapabilityIssuer(
+                    authorizer=self.rig.authorizer,
+                    issuer=self.rig.issuer,
+                )
+                try:
+                    delegator.delegate(
+                        parent=delegated_root,
+                        authenticated_parent=self.service,
+                        child_principal=child_principal,
+                        child_grant=child_grant,
+                        correlation_id=uuid4(),
+                    )
+                except DelegationDenied:
+                    preflight_allowed = False
+                else:
+                    preflight_allowed = True
+
+                signed_root = self.rig.issue(
+                    self.service,
+                    parent_grant,
+                    max_delegation_depth=1,
+                )
+                parsed_root = parse_presented_token(raw_leaf(signed_root))
+                signed_child = signed_root.with_child(
+                    self.rig.issuer.issue_child(
+                        parent=parsed_root,
+                        principal=child_principal,
+                        grant=child_grant,
+                        ttl_seconds=60,
+                        max_depth=1,
+                    )
+                )
+                if expected:
+                    self.rig.authorizer.authorize(
+                        signed_child,
+                        self.rig.request(child_principal, child_grant),
+                    )
+                    chain_allowed = True
+                else:
+                    self.assertEqual(
+                        self.rig.denied_reason(
+                            child_principal,
+                            child_grant,
+                            signed_child,
+                        ),
+                        DecisionReason.OVER_DELEGATED,
+                    )
+                    chain_allowed = False
+
+                self.assertEqual(preflight_allowed, chain_allowed)
+                self.assertEqual(chain_allowed, expected)
+
     def test_parent_can_delegate_only_once(self) -> None:
         root = self.rig.issue(
             self.service,
@@ -188,7 +309,7 @@ class CapabilityDelegationTest(unittest.TestCase):
             max_delegation_depth=1,
         )
         parsed_root = parse_presented_token(raw_leaf(root))
-        child_raw = self.rig.issuer._issue_child(
+        child_raw = self.rig.issuer.issue_child(
             parent=parsed_root,
             principal=self.agent,
             grant=self.grant,
@@ -217,7 +338,7 @@ class CapabilityDelegationTest(unittest.TestCase):
         )
         parsed = parse_presented_token(raw_leaf(expiring_root))
         expiring_child = expiring_root.with_child(
-            self.rig.issuer._issue_child(
+            self.rig.issuer.issue_child(
                 parent=parsed,
                 principal=agent,
                 grant=grant,
@@ -244,7 +365,7 @@ class CapabilityDelegationTest(unittest.TestCase):
             purpose=Purpose.LEGAL_RESEARCH,
             resource_id="corpus-index:narrowed-wrongly",
         )
-        broadened_raw = self.rig.issuer._issue_child(
+        broadened_raw = self.rig.issuer.issue_child(
             parent=parsed,
             principal=self.agent,
             grant=changed_grant,
@@ -266,7 +387,7 @@ class CapabilityDelegationTest(unittest.TestCase):
             )
             parsed = parse_presented_token(raw_leaf(root))
             return root.with_child(
-                self.rig.issuer._issue_child(
+                self.rig.issuer.issue_child(
                     parent=parsed,
                     principal=self.agent,
                     grant=self.grant,

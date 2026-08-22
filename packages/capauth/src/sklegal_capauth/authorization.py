@@ -45,6 +45,90 @@ from .tokens import (
 
 MAX_CLOCK_SKEW_SECONDS = 30
 
+_PRINCIPAL_CHILD_TYPE_ALLOWANCES = {
+    PrincipalType.HUMAN: frozenset({PrincipalType.HUMAN}),
+    PrincipalType.AGENT: frozenset({PrincipalType.AGENT, PrincipalType.SERVICE}),
+    PrincipalType.SERVICE: frozenset(
+        {
+            PrincipalType.AGENT,
+            PrincipalType.SERVICE,
+            PrincipalType.CONNECTOR,
+        }
+    ),
+    PrincipalType.CONNECTOR: frozenset(),
+}
+
+
+def _is_attenuated(
+    parent: ParsedCapability,
+    *,
+    child_principal: PrincipalContext,
+    child_grant: CapabilityGrant,
+    child_depth: int,
+    child_max_depth: int,
+    child_use_limit: int,
+    child_issued_at: datetime,
+    child_expires_at: datetime | None,
+) -> bool:
+    """Apply the single fail-closed rule for requested and signed children."""
+
+    parent_claims = parent.claims
+    parent_grant = parent_claims.grant
+    if parent_grant.capability in NONDELEGABLE_CAPABILITIES:
+        return False
+    if child_depth != parent_claims.delegation.depth + 1:
+        return False
+    if child_max_depth > parent_claims.delegation.max_depth:
+        return False
+    if child_depth > parent_claims.delegation.max_depth:
+        return False
+    if child_issued_at < parent.token.payload.issued_at:
+        return False
+    parent_expires_at = parent.token.payload.expires_at
+    if child_expires_at is None or parent_expires_at is None:
+        return False
+    if child_expires_at > parent_expires_at:
+        return False
+    if child_use_limit > parent_claims.use_limit:
+        return False
+    if child_principal.tenant_id != parent_claims.principal.tenant_id:
+        return False
+    allowed_child_types = _PRINCIPAL_CHILD_TYPE_ALLOWANCES.get(
+        parent_claims.principal.principal_type
+    )
+    if (
+        allowed_child_types is None
+        or child_principal.principal_type not in allowed_child_types
+    ):
+        return False
+    scalar_fields = (
+        "audience",
+        "target",
+        "capability",
+        "tenant_id",
+        "resource_type",
+        "operation",
+        "purpose",
+        "model_route",
+    )
+    if any(
+        getattr(parent_grant, field_name) != getattr(child_grant, field_name)
+        for field_name in scalar_fields
+    ):
+        return False
+    for field_name in (
+        "matter_id",
+        "resource_id",
+        "resource_version",
+        "resource_sha256",
+        "workflow_run_id",
+    ):
+        parent_value = getattr(parent_grant, field_name)
+        child_value = getattr(child_grant, field_name)
+        if parent_value is not None and child_value != parent_value:
+            return False
+    return True
+
 
 class AuthorizationDenied(PermissionError):
     """A fail-closed denial carrying only a sanitized decision."""
@@ -520,7 +604,16 @@ class CapabilityAuthorizer:
                 parent = chain[index - 1]
                 if delegation.parent_credential_digest != parent.credential_digest:
                     return DecisionReason.DELEGATION_CHAIN_INVALID
-                if not self._is_monotonic(parent, item):
+                if not _is_attenuated(
+                    parent,
+                    child_principal=claims.principal,
+                    child_grant=claims.grant,
+                    child_depth=delegation.depth,
+                    child_max_depth=delegation.max_depth,
+                    child_use_limit=claims.use_limit,
+                    child_issued_at=item.token.payload.issued_at,
+                    child_expires_at=item.token.payload.expires_at,
+                ):
                     return DecisionReason.OVER_DELEGATED
         if chain[-1].claims.delegation.depth != len(chain) - 1:
             return DecisionReason.DELEGATION_CHAIN_INVALID
@@ -553,76 +646,6 @@ class CapabilityAuthorizer:
                     else DecisionReason.ANCESTOR_EXPIRED
                 )
         return None
-
-    @staticmethod
-    def _is_monotonic(parent: ParsedCapability, child: ParsedCapability) -> bool:
-        parent_claims = parent.claims
-        child_claims = child.claims
-        parent_grant = parent_claims.grant
-        child_grant = child_claims.grant
-        if parent_grant.capability in NONDELEGABLE_CAPABILITIES:
-            return False
-        if child_claims.delegation.depth != parent_claims.delegation.depth + 1:
-            return False
-        if child_claims.delegation.max_depth > parent_claims.delegation.max_depth:
-            return False
-        if child_claims.delegation.depth > parent_claims.delegation.max_depth:
-            return False
-        if child.token.payload.issued_at < parent.token.payload.issued_at:
-            return False
-        if (
-            child.token.payload.expires_at is None
-            or parent.token.payload.expires_at is None
-        ):
-            return False
-        if child.token.payload.expires_at > parent.token.payload.expires_at:
-            return False
-        if child_claims.use_limit > parent_claims.use_limit:
-            return False
-        if child_claims.principal.tenant_id != parent_claims.principal.tenant_id:
-            return False
-        allowed_children = {
-            PrincipalType.HUMAN: {PrincipalType.HUMAN},
-            PrincipalType.AGENT: {PrincipalType.AGENT, PrincipalType.SERVICE},
-            PrincipalType.SERVICE: {
-                PrincipalType.AGENT,
-                PrincipalType.SERVICE,
-                PrincipalType.CONNECTOR,
-            },
-            PrincipalType.CONNECTOR: set(),
-        }
-        if (
-            child_claims.principal.principal_type
-            not in allowed_children[parent_claims.principal.principal_type]
-        ):
-            return False
-        scalar_fields = (
-            "audience",
-            "target",
-            "capability",
-            "tenant_id",
-            "resource_type",
-            "operation",
-            "purpose",
-            "model_route",
-        )
-        if any(
-            getattr(parent_grant, field_name) != getattr(child_grant, field_name)
-            for field_name in scalar_fields
-        ):
-            return False
-        for field_name in (
-            "matter_id",
-            "resource_id",
-            "resource_version",
-            "resource_sha256",
-            "workflow_run_id",
-        ):
-            parent_value = getattr(parent_grant, field_name)
-            child_value = getattr(child_grant, field_name)
-            if parent_value is not None and child_value != parent_value:
-                return False
-        return True
 
     @staticmethod
     def _request_mismatch(
@@ -782,10 +805,16 @@ class DelegatingCapabilityIssuer:
             parsed_parent = parse_presented_token(raw_chain[-1])
         except Exception:
             raise DelegationDenied("parent credential is malformed") from None
-        if not _is_monotonic_request(
+        parent_claims = parsed_parent.claims
+        if not _is_attenuated(
             parsed_parent,
-            child_principal,
-            child_grant,
+            child_principal=child_principal,
+            child_grant=child_grant,
+            child_depth=parent_claims.delegation.depth + 1,
+            child_max_depth=parent_claims.delegation.max_depth,
+            child_use_limit=1,
+            child_issued_at=parsed_parent.token.payload.issued_at,
+            child_expires_at=parsed_parent.token.payload.expires_at,
         ):
             raise DelegationDenied("delegation would broaden authority")
         request = AuthorizationRequest(
@@ -801,7 +830,7 @@ class DelegatingCapabilityIssuer:
             verified_parent = parse_presented_token(raw_chain[-1])
         except Exception:
             raise DelegationDenied("parent credential is malformed") from None
-        raw_child = self._issuer._issue_child(
+        raw_child = self._issuer.issue_child(
             parent=verified_parent,
             principal=child_principal,
             grant=child_grant,
@@ -809,60 +838,3 @@ class DelegatingCapabilityIssuer:
             max_depth=verified_parent.claims.delegation.max_depth,
         )
         return parent.with_child(raw_child)
-
-
-def _is_monotonic_request(
-    parent: ParsedCapability,
-    child_principal: PrincipalContext,
-    child_grant: CapabilityGrant,
-) -> bool:
-    parent_claims = parent.claims
-    parent_grant = parent_claims.grant
-    if parent_grant.capability in NONDELEGABLE_CAPABILITIES:
-        return False
-    if parent_claims.delegation.depth >= parent_claims.delegation.max_depth:
-        return False
-    allowed_children = {
-        PrincipalType.HUMAN: {PrincipalType.HUMAN},
-        PrincipalType.AGENT: {PrincipalType.AGENT, PrincipalType.SERVICE},
-        PrincipalType.SERVICE: {
-            PrincipalType.AGENT,
-            PrincipalType.SERVICE,
-            PrincipalType.CONNECTOR,
-        },
-        PrincipalType.CONNECTOR: set(),
-    }
-    if (
-        child_principal.principal_type
-        not in allowed_children[parent_claims.principal.principal_type]
-    ):
-        return False
-    if child_principal.tenant_id != parent_claims.principal.tenant_id:
-        return False
-    scalar_fields = (
-        "audience",
-        "target",
-        "capability",
-        "tenant_id",
-        "resource_type",
-        "operation",
-        "purpose",
-        "model_route",
-    )
-    if any(
-        getattr(parent_grant, field_name) != getattr(child_grant, field_name)
-        for field_name in scalar_fields
-    ):
-        return False
-    for field_name in (
-        "matter_id",
-        "resource_id",
-        "resource_version",
-        "resource_sha256",
-        "workflow_run_id",
-    ):
-        parent_value = getattr(parent_grant, field_name)
-        child_value = getattr(child_grant, field_name)
-        if parent_value is not None and child_value != parent_value:
-            return False
-    return True
