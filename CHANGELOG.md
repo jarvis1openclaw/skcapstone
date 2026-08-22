@@ -13,6 +13,13 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   procedure used by card `3799733b`, including the dashboard restart required
   after updating the in-process `skcoord`/`skdashboard` dependencies.
 
+### Added
+
+- Added explicit `skcapstone cmdb plan`, `cmdb apply`, and `cmdb status`
+  operations. Apply validates the evidence batch before writes and delays
+  retirement lifecycle updates until validation succeeds; the existing
+  `cmdb reconcile` command remains compatible with deployed timers.
+
 ### Fixed
 
 - Restored the enforced Black/Ruff gate after the new coordination-amendment
