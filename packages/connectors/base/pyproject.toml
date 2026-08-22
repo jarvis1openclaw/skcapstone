@@ -3,16 +3,12 @@ requires = ["setuptools==84.0.0"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "sklegal-worker"
+name = "sklegal-connectors-base"
 version = "0.1.0"
-description = "SKLegal Temporal worker package boundary"
+description = "Simulation-first shared external-action connector foundation"
 requires-python = ">=3.12,<3.13"
 license = "GPL-3.0-only"
-dependencies = [
-  "pydantic==2.13.4",
-  "sklegal-connectors-base",
-  "temporalio==1.31.0",
-]
+dependencies = []
 
 [tool.setuptools.packages.find]
 where = ["src"]
