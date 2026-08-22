@@ -12,6 +12,7 @@ from .errors import (
     RetrievalAuthorizationError,
     RetrievalError,
     RetrievalIntegrityError,
+    RetrievalReplicaLagError,
     RetrievalRequestError,
     RetrievalUnavailableError,
 )
@@ -34,6 +35,7 @@ from .models import (
     RetrievalRequest,
     RetrievalResult,
     RetrievalScope,
+    postgres_lsn_value,
 )
 from .query_templates import BoundQueryTemplate, QueryTemplateError, bind_query_template
 
@@ -269,6 +271,16 @@ class RetrievalOrchestrator:
                     "required core watermark is not visible",
                     request_id=request.request_id,
                 )
+            replica = projection.replica
+            if replica is not None:
+                required_lsn = replica.required_replay_lsn
+                if required_lsn is None or postgres_lsn_value(
+                    replica.replica_replay_lsn
+                ) < postgres_lsn_value(required_lsn):
+                    raise RetrievalReplicaLagError(
+                        "replica has not replayed the required watermark LSN",
+                        request_id=request.request_id,
+                    )
 
         binding = request.credential_binding
         if (
@@ -428,17 +440,13 @@ class RetrievalOrchestrator:
         self._authorize(request, recheck=True)
         result: RetrievalResult | None = None
         try:
-            trace = RetrievalProvenance(
-                projections=selected,
-                authorization=current,
-                credential_binding=request.credential_binding,
-                template=request.template,
-                retrieval_adapter_version=request.retrieval_adapter_version,
-                structured_filter_sha256=request.structured_filter_sha256,
+            trace = self._make_provenance(
+                request,
+                current,
+                selected,
                 source_ids=(),
                 source_hashes=(),
-                rank_path=(RankSignal.SCOPE_AGGREGATE,),
-                projection_lag=ProjectionLag(lag_events=0, lag_seconds=0.0),
+                rank_signal=RankSignal.SCOPE_AGGREGATE,
             )
             value = RetrievalAggregateValue(
                 provenance=trace,
@@ -604,7 +612,10 @@ class RetrievalOrchestrator:
             source_ids=source_ids,
             source_hashes=source_hashes,
             rank_path=(rank_signal,),
-            projection_lag=ProjectionLag(lag_events=0, lag_seconds=0.0),
+            projection_lag=ProjectionLag(
+                lag_events=max(item.lag.lag_events for item in selected),
+                lag_seconds=max(item.lag.lag_seconds for item in selected),
+            ),
         )
 
     @staticmethod

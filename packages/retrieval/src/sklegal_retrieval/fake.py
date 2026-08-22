@@ -6,14 +6,19 @@ socket, resolve a credential, or consult any legacy retrieval service.
 
 from __future__ import annotations
 
+import hashlib
 import math
 import re
 from collections import Counter
-from collections.abc import Iterable, Sequence
+from collections.abc import Iterable, Mapping, Sequence
 from dataclasses import dataclass
 from threading import RLock
 
-from .errors import RetrievalAuthorizationError, RetrievalUnavailableError
+from .errors import (
+    RetrievalAuthorizationError,
+    RetrievalIntegrityError,
+    RetrievalUnavailableError,
+)
 from .models import (
     AuthorizationPins,
     BackendAggregateRecord,
@@ -30,7 +35,9 @@ from .models import (
     RetrievalScope,
     SourceProvenance,
 )
+from .projector import OutboxEvent, ProjectedRow
 from .query_templates import BoundQueryTemplate
+from .registry import ActivationKey, RegistryLifecycle, RegistryRecord
 
 _WORD_PATTERN = re.compile(r"[A-Za-z0-9]+")
 
@@ -167,6 +174,124 @@ class FakeActiveProjectionRegistry:
                 )
             selected.append(matches[0])
         return tuple(selected)
+
+
+class FakeBrokerBindingStore:
+    """In-memory database-owned binding mapping with optional outage."""
+
+    def __init__(
+        self,
+        bindings: Mapping[str, CredentialBindingPins | None],
+        *,
+        available: bool = True,
+    ) -> None:
+        self._bindings = dict(bindings)
+        self._available = available
+        self.call_count = 0
+
+    def current_binding(self, database_principal: str) -> CredentialBindingPins | None:
+        self.call_count += 1
+        if not self._available:
+            raise RuntimeError("synthetic binding store outage")
+        return self._bindings.get(database_principal)
+
+    def update(
+        self, database_principal: str, binding: CredentialBindingPins | None
+    ) -> None:
+        """Replace one outbox-delivered binding (revocation passes ``None``)."""
+
+        self._bindings[database_principal] = binding
+
+
+class FakeRegistryStore:
+    """In-memory atomic registry store with compare-and-swap semantics."""
+
+    def __init__(
+        self,
+        records: Iterable[RegistryRecord] = (),
+        *,
+        available: bool = True,
+    ) -> None:
+        self._records = tuple(records)
+        self._available = available
+        self._lock = RLock()
+        self._applied_keys: dict[ActivationKey, str] = {}
+
+    def snapshot(self) -> tuple[RegistryRecord, ...]:
+        if not self._available:
+            raise RuntimeError("synthetic registry store outage")
+        with self._lock:
+            return self._records
+
+    def compare_and_swap(
+        self,
+        *,
+        key: ActivationKey,
+        expected_active: tuple[RegistryRecord, ...],
+        next_records: tuple[RegistryRecord, ...],
+        idempotency_key: str,
+    ) -> tuple[RegistryRecord, ...] | None:
+        if not self._available:
+            raise RuntimeError("synthetic registry store outage")
+        with self._lock:
+            if self._applied_keys.get(key) == idempotency_key:
+                return self._records
+            current = tuple(
+                record
+                for record in self._records
+                if ActivationKey.from_scope(record.projection.scope) == key
+            )
+            current_active = tuple(
+                record
+                for record in current
+                if record.lifecycle is RegistryLifecycle.ACTIVE
+            )
+            if set(current_active) != set(expected_active):
+                return None
+            others = tuple(
+                record
+                for record in self._records
+                if ActivationKey.from_scope(record.projection.scope) != key
+            )
+            self._records = others + next_records
+            self._applied_keys[key] = idempotency_key
+            return self._records
+
+
+class FakeProjectionSink:
+    """In-memory idempotent projection sink keyed by retrieval record."""
+
+    def __init__(self, *, available: bool = True) -> None:
+        self._available = available
+        self._applied_keys: set[str] = set()
+        self._rows: dict[str, ProjectedRow] = {}
+        self._watermark = 0
+
+    def apply(self, event: OutboxEvent) -> bool:
+        if not self._available:
+            raise RuntimeError("synthetic projection sink outage")
+        if event.idempotency_key in self._applied_keys:
+            return False
+        record_id = event.row.source.retrieval_record_id
+        prior = self._rows.get(record_id)
+        if prior is not None and prior != event.row:
+            raise RetrievalIntegrityError(
+                "conflicting redelivery of one retrieval record"
+            )
+        self._applied_keys.add(event.idempotency_key)
+        self._rows[record_id] = event.row
+        self._watermark = max(self._watermark, event.event_sequence)
+        return True
+
+    def rows(self) -> tuple[ProjectedRow, ...]:
+        return tuple(self._rows[key] for key in sorted(self._rows, key=str))
+
+    def watermark(self) -> int:
+        return self._watermark
+
+    def state_digest(self) -> str:
+        payload = ":".join(row.canonical_sha256() for row in self.rows())
+        return hashlib.sha256(f"{self._watermark}:{payload}".encode()).hexdigest()
 
 
 class FakeRetrievalExecutor:
@@ -468,7 +593,10 @@ __all__ = [
     "AGE_UNAVAILABLE",
     "FakeActiveProjectionRegistry",
     "FakeAuthorizer",
+    "FakeBrokerBindingStore",
     "FakeCredentialBindingResolver",
+    "FakeProjectionSink",
+    "FakeRegistryStore",
     "FakeRetrievalExecutor",
     "FakeRetrievalRecord",
 ]

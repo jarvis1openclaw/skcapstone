@@ -60,5 +60,11 @@ class RetrievalUnavailableError(RetrievalError):
     code = RetrievalErrorCode.BACKEND_UNAVAILABLE
 
 
+class RetrievalReplicaLagError(RetrievalUnavailableError):
+    """A replica has not replayed the required watermark LSN."""
+
+    code = RetrievalErrorCode.REPLICA_LAG
+
+
 class RetrievalIntegrityError(RetrievalError):
     code = RetrievalErrorCode.INTEGRITY_FAILURE
