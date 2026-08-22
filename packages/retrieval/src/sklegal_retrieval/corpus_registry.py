@@ -66,9 +66,7 @@ class CorpusCounts(RetrievalValue):
     def with_count(self, kind: CorpusCountKind, count: int) -> CorpusCounts:
         """Return a revalidated copy with one category replaced."""
 
-        return CorpusCounts.model_validate(
-            {**self.model_dump(), kind.value: count}
-        )
+        return CorpusCounts.model_validate({**self.model_dump(), kind.value: count})
 
 
 def zero_corpus_counts() -> CorpusCounts:
@@ -177,7 +175,13 @@ class CorpusRegistryEvent(RetrievalValue):
 
 
 class CoreWatermarkLsnIndex(Protocol):
-    """Maps a core outbox watermark to the replica gating LSN."""
+    """Maps a core outbox watermark to the replica gating LSN.
+
+    The index is backed by the core outbox that emitted the event, so every
+    live watermark resolves. Returning ``None`` means the producer cannot
+    pin replica gating for that watermark; ``apply`` then fails closed
+    instead of materializing an entry the replica gate cannot evaluate.
+    """
 
     def required_lsn(self, *, event_sequence: int) -> PostgresLsn | None:
         """Return the required replay LSN for one core watermark, if known."""
@@ -196,7 +200,10 @@ class CorpusRegistryStore(Protocol):
         required_replay_lsn: PostgresLsn | None,
         observed_at: datetime,
     ) -> bool:
-        """Apply one event; return False when its key was already applied."""
+        """Apply one event; return False when its key was already applied.
+
+        A missing replay LSN pin for the event watermark fails closed.
+        """
 
     def reconcile(
         self,
@@ -248,6 +255,10 @@ class InMemoryCorpusRegistryStore:
             raise RetrievalIntegrityError("corpus registry event failed validation")
         if observed_at.tzinfo is None:
             raise RetrievalIntegrityError("registry observation time must be aware")
+        if required_replay_lsn is None:
+            raise RetrievalIntegrityError(
+                "corpus registry requires a replay LSN pin for every applied event"
+            )
         with self._lock:
             if event.idempotency_key in self._applied_keys:
                 return False

@@ -282,9 +282,7 @@ class DeepCorpusReconciler:
                     counts=counts,
                     core_watermark=entry.core_watermark if entry else 0,
                     core_event_sha256=entry.core_event_sha256 if entry else None,
-                    required_replay_lsn=(
-                        entry.required_replay_lsn if entry else None
-                    ),
+                    required_replay_lsn=(entry.required_replay_lsn if entry else None),
                     lag=(
                         entry.lag
                         if entry
@@ -348,9 +346,7 @@ class DeepCorpusReconciler:
                     observed_count=len(observed_sources),
                 )
             )
-        missing_sources = tuple(
-            sorted(set(expected_sources) - set(observed_sources))
-        )
+        missing_sources = tuple(sorted(set(expected_sources) - set(observed_sources)))
         if missing_sources:
             findings.append(
                 CorpusDiscrepancy(
