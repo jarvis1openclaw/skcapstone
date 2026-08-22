@@ -14,10 +14,10 @@ fold behavior, release order is strict:
 2. In a fresh environment, install the published skcoord artifact from the
    registry, with no sibling checkout, editable install, VCS dependency, or
    `PYTHONPATH` overlay.
-3. Verify every new import and behavior against that artifact. For the 0.1.18
-   floor, this includes `skcoord.lifecycle`, acceptance-criteria amendments in
-   `CardStore.fold()`, the same criteria in `Board.get_task_views()`, and the
-   downstream CLI and MCP amendment tests.
+3. Verify every new import and behavior against that artifact. For the 0.1.28
+   floor, this includes the existing lifecycle and authoritative criteria-fold
+   contracts plus `skcoord.cmdb_scheduler`, its disabled default policy, lease,
+   incident routing, and retention helpers.
 4. Raise the skcapstone dependency floor to the verified skcoord version.
 5. Only then release skcapstone.
 
