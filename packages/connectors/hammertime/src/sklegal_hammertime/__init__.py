@@ -16,6 +16,10 @@ from .bridge import (
     SubmissionPlan,
     SubmissionResult,
 )
+from .candidate_inspection import (
+    OfficialDraftingCandidateInspector,
+    OfficialDraftingCandidateReport,
+)
 from .errors import (
     AdapterUnavailableError,
     AmbiguousLegacyIdError,
@@ -125,6 +129,8 @@ __all__ = [
     "OfficialDraftingReleaseReport",
     "OfficialDraftingReleaseRequest",
     "OfficialDraftingSource",
+    "OfficialDraftingCandidateInspector",
+    "OfficialDraftingCandidateReport",
     "ProjectionQualificationEvidence",
     "QualificationFinding",
     "QualificationFindingCode",
