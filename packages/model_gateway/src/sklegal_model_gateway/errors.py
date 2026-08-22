@@ -69,3 +69,55 @@ class SecretResolutionError(ModelGatewayError):
 
 class PolicyUnavailableError(ModelGatewayError):
     """Raised when the egress policy cannot be loaded; fails closed."""
+
+
+class TransportProfileNotFoundError(ModelGatewayError):
+    """Raised when a route names a transport profile absent from the store."""
+
+
+class TransportProfileDisabledError(ModelGatewayError):
+    """Raised when a pinned transport profile is present but disabled."""
+
+
+class TransportProfileStaleError(ModelGatewayError):
+    """Raised when a transport profile no longer matches its pinned hash."""
+
+
+class TransportBindingError(ModelGatewayError):
+    """Raised when a profile kind cannot bind the pinned route provider."""
+
+
+class ServedModelAttributionError(ProviderContractError):
+    """Raised when served-model attribution is missing, spoofed, or conflicting."""
+
+
+class CapacityDomainNotFoundError(ModelGatewayError):
+    """Raised when a route names a capacity domain absent from the registry."""
+
+
+class CapacityQueueTimeoutError(ModelGatewayError):
+    """Raised when a queued request waits past the domain queue deadline."""
+
+
+class CatalogLookupError(ModelGatewayError):
+    """Raised when an alias, bucket, or member lookup fails; fails closed."""
+
+
+class BucketPolicyError(ModelGatewayError):
+    """Raised when a bucket request is ineligible for the classification."""
+
+
+class SourceRightsDeniedError(ModelGatewayError):
+    """Raised when source rights quarantine model egress; fails closed."""
+
+
+class FreeRouteDeniedError(ModelGatewayError):
+    """Raised when a free route lacks policy approval for the request."""
+
+
+class RetryBudgetExceededError(ModelGatewayError):
+    """Raised when observed gateway retries exceed the pinned budget."""
+
+
+class AuditUnavailableError(ModelGatewayError):
+    """Raised when attributable audit cannot be recorded; fails closed."""

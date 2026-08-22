@@ -1,0 +1,17 @@
+{
+  "schema": "sklegal-capacity-policy/v1",
+  "purpose": "Direct and registry Qwen paths share one four-active, four-queued, 30-second capacity domain unless live measurement approves a new envelope. The ninth request is rejected outright rather than queued.",
+  "domains": [
+    {
+      "domain_id": "qwen.chiap08.shared.v1",
+      "max_active": 4,
+      "max_queued": 4,
+      "queue_wait_seconds": 30,
+      "shared_across": [
+        "chiap08.direct-qwen.v1",
+        "chiap08.skgateway-chat.v1"
+      ],
+      "notes": "Capacity cannot be double-counted across direct and registry aliases of the same served model."
+    }
+  ]
+}

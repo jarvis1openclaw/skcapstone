@@ -1,0 +1,43 @@
+{
+  "schema": "sklegal-skgateway-source-pin/v1",
+  "card": "bbf206c3",
+  "purpose": "Frozen upstream source and custody record for SKGateway qualification. No provider secrets, tokens, or literal private addresses appear here.",
+  "upstream": {
+    "repository_url": "https://github.com/smilinTux/skgateway.git",
+    "planning_review_commit": "b4b4115df9a6d5c9c4621d98207a1074e2737ef5",
+    "license": "MIT",
+    "install_command": "npm ci",
+    "install_host": "chiap08",
+    "install_path": "/opt/skgateway",
+    "vendored_into_sklegal": false,
+    "vendoring_decision": "Do not vendor the upstream checkout into SKLegal unless a later source and maintenance decision explicitly requires it."
+  },
+  "dependency_audit": {
+    "planning_observation": "The planning checkout installed js-yaml@4.1.1; npm audit --omit=dev reported one high-severity YAML denial-of-service advisory set.",
+    "gate": "Clear the high-severity advisory through a pinned, tested upstream source or a reviewed lockfile update. Do not apply an unreviewed blanket audit fix. Rerun the full gateway suite before deployment."
+  },
+  "records_to_capture_on_install": [
+    "repository URL",
+    "pinned commit",
+    "lockfile hash",
+    "Node and npm versions",
+    "dependency audit output",
+    "configuration hash",
+    "unit test hash",
+    "service identity",
+    "install path",
+    "observed time",
+    "rollback tag"
+  ],
+  "live_path_gate": {
+    "control_list_ref": "packages/model_gateway/src/sklegal_model_gateway/skgateway.py:LIVE_PATH_CONTROLS",
+    "gate_revision": "skgateway-live-path-gate/v1",
+    "requirement": "Prove every control on the exact deployed commit's production routeAndSend entrypoint. A control that exists only in an alternate library path or the test suite does not satisfy the gate.",
+    "protected_traffic": "denied until the gate passes and a human approves activation"
+  },
+  "secrets": {
+    "sklegal_side": "Store only secret references and environment variable names. Runtime values use an owner-only 0600 EnvironmentFile or stronger injection.",
+    "skgateway_side": "Provider API keys are optional, added one at a time by the human owner through the approved secret-management workflow, and never pasted into a shell command, shell history, systemd unit, repository, prompt, log, test fixture, dashboard, or completion evidence.",
+    "network": "Bind the proxy and dashboard to the narrowest interface. Remote access requires authenticated TLS and network policy."
+  }
+}

@@ -88,6 +88,43 @@ Tests prove immutability and the absence of callable handles.
   `SecretResolver` from the route's secret reference and never appears in
   config, prompts, logs, or evidence.
 
+## Transport seam (SKL-S3-10)
+
+Direct Qwen and SKGateway are two transport bindings for the same pinned
+routes; switching between them is a deployment change only. A route may name
+a `transport_profile_id` from `config/model_gateway/deployment/transport-profiles.json`
+(schema `sklegal-transport-profile-store/v1`). Each profile pins its kind
+(`direct_qwen`, `skgateway_chat`, or `openai_responses`), an environment
+variable `endpoint_reference` (literal addresses are rejected), a content
+SHA-256, and, for SKGateway, the CapAuth service identity and capability
+scope instead of a provider secret. The store fails closed on unknown,
+disabled, stale-hash, or wrong-kind bindings, and a route with a bound
+profile must not carry a `secret_reference`.
+
+- Routes that share a `capacity_domain_id` draw from one admission envelope
+  (`CapacityDomainController`, default four active plus four queued with a
+  30 second queue deadline, `qwen.chiap08.shared.v1`), so direct and
+  SKGateway calls cannot double-book the same served model. The ninth
+  in-flight request raises `ProviderSaturationError`; a queue wait past the
+  deadline raises `CapacityQueueTimeoutError`.
+- `config/model_gateway/deployment/model-catalog.json` resolves the exact
+  Qwen alias `qwen3-32b` to the served model `Qwen3-32B-Q6-K-xlw-20250428`
+  and resolves S/M/L/XL workload buckets under trust-zone floors: `public`
+  maps only to public-zone buckets, `internal` to internal-or-stricter, and
+  confidential and above require a sovereign-local member plus a recorded
+  human approval. Quarantined source-rights states deny, and free routes
+  apply only where policy-approved.
+- `SkGatewayChatProvider` adapts an OpenAI-compatible Chat Completions
+  transport. It fails closed before any transport call unless
+  `SkGatewayLivePathGate` shows all `LIVE_PATH_CONTROLS` enforced at gate
+  revision `skgateway-live-path-gate/v1`, and the served model must agree
+  across the response body, the `x_skgateway` attribution block, and any
+  header attribute or the call raises `ServedModelAttributionError`.
+  Structured output is validated client-side against the pinned schema;
+  the adapter never requests provider-side JSON mode.
+- `audit_records.py` provides content-free audit records (identifiers and
+  policy references only) plus fail-closed sinks.
+
 ## Onboarding checkpoint
 
 Before any OpenAI route is enabled for protected matter content, a human
