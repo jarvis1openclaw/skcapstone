@@ -628,6 +628,14 @@ class ReadOnlyEnforcementTests(AdapterTestCase):
             fixture.INCIDENT_ID, parent_legacy_id=fixture.PROBLEM_ID
         )
         self.assertTrue(directions.pin)
+        inventory = self.adapter.list_matter_artifacts(fixture.PROBLEM_ID)
+        self.assertTrue(all(item.pin for item in inventory.artifacts))
+        artifact = self.adapter.read_matter_artifact(
+            fixture.INCIDENT_ID,
+            f"{fixture.INCIDENT_DIR_RELATIVE}/validation-report.json",
+            parent_legacy_id=fixture.PROBLEM_ID,
+        )
+        self.assertTrue(artifact.pin)
 
     def test_full_api_surface_runs_on_read_only_filesystem(self) -> None:
         for dirpath, dirnames, filenames in os.walk(self.root):
@@ -661,6 +669,15 @@ class ReadOnlyEnforcementTests(AdapterTestCase):
         )
         self.adapter.get_owner_directions(
             fixture.INCIDENT_ID, parent_legacy_id=fixture.PROBLEM_ID
+        )
+        self.adapter.list_matter_artifacts(fixture.PROBLEM_ID)
+        self.adapter.list_matter_artifacts(
+            fixture.INCIDENT_ID, parent_legacy_id=fixture.PROBLEM_ID
+        )
+        self.adapter.read_matter_artifact(
+            fixture.INCIDENT_ID,
+            f"{fixture.INCIDENT_DIR_RELATIVE}/validation-report.json",
+            parent_legacy_id=fixture.PROBLEM_ID,
         )
 
     def test_adapter_exposes_no_write_surface(self) -> None:
@@ -711,6 +728,122 @@ class ReadOnlyEnforcementTests(AdapterTestCase):
                     pattern.search(text),
                     f"write-capable call {pattern.pattern!r} found in {source.name}",
                 )
+
+
+class MatterArtifactInventoryTests(AdapterTestCase):
+    def test_inventory_pins_every_regular_file_in_the_matter_tree(self) -> None:
+        inventory = self.adapter.list_matter_artifacts(fixture.PROBLEM_ID)
+
+        self.assertEqual(
+            inventory.matter_root, f"incidents/problems/{fixture.PROBLEM_SLUG}"
+        )
+        paths = {item.pin.relative_path for item in inventory.artifacts}
+        expected = {
+            fixture.PROBLEM_RELATIVE,
+            fixture.INCIDENT_RELATIVE,
+            f"{fixture.INCIDENT_DIR_RELATIVE}/validation-report.json",
+            f"{fixture.INCIDENT_DIR_RELATIVE}/packet-v1-facts.json",
+            f"{fixture.INCIDENT_DIR_RELATIVE}/packet-v2-facts.json",
+            f"{fixture.INCIDENT_DIR_RELATIVE}/phase-0-wave-1-v2-review.md",
+            f"{fixture.INCIDENT_DIR_RELATIVE}/correspondence/OWNER-DIRECTIONS.md",
+        }
+        self.assertEqual(paths, expected)
+        for item in inventory.artifacts:
+            self.assertEqual(
+                item.pin.content_sha256,
+                fixture.fixture_sha256(self.root, item.pin.relative_path),
+            )
+            self.assertEqual(
+                item.byte_count,
+                len((self.root / item.pin.relative_path).read_bytes()),
+            )
+            self.assertEqual(item.modified_at.tzinfo, UTC)
+            self.assertEqual(item.pin.observed_at, FIXED_NOW)
+        self.assertEqual(inventory.skipped, [])
+
+    def test_inventory_for_activity_scopes_to_the_incident_dir(self) -> None:
+        inventory = self.adapter.list_matter_artifacts(
+            fixture.INCIDENT_ID, parent_legacy_id=fixture.PROBLEM_ID
+        )
+
+        self.assertEqual(inventory.matter_root, fixture.INCIDENT_DIR_RELATIVE)
+        paths = {item.pin.relative_path for item in inventory.artifacts}
+        self.assertIn(fixture.INCIDENT_RELATIVE, paths)
+        self.assertNotIn(fixture.PROBLEM_RELATIVE, paths)
+
+    def test_inventory_fails_closed_without_matter_authorization(self) -> None:
+        unauthorized = HammerTimeReleaseAdapter(root=self.root, clock=lambda: FIXED_NOW)
+        with self.assertRaises(MatterAccessDenied):
+            unauthorized.list_matter_artifacts(fixture.PROBLEM_ID)
+        denied = HammerTimeReleaseAdapter(
+            root=self.root,
+            matter_authorizer=lambda request: False,
+            clock=lambda: FIXED_NOW,
+        )
+        with self.assertRaises(MatterAccessDenied):
+            denied.list_matter_artifacts(fixture.PROBLEM_ID)
+
+    def test_inventory_skips_symlinks_and_inbox_without_following(self) -> None:
+        problem_dir = self.root / "incidents" / "problems" / fixture.PROBLEM_SLUG
+        (problem_dir / "inbox").mkdir()
+        (problem_dir / "inbox" / "queued.md").write_text("denied\n")
+        os.symlink("PROBLEM.md", problem_dir / "linked.md")
+
+        inventory = self.adapter.list_matter_artifacts(fixture.PROBLEM_ID)
+        paths = {item.pin.relative_path for item in inventory.artifacts}
+
+        self.assertNotIn(f"incidents/problems/{fixture.PROBLEM_SLUG}/linked.md", paths)
+        self.assertFalse(any("inbox" in path.lower() for path in paths))
+        skipped = "\n".join(inventory.skipped)
+        self.assertIn("linked.md:symlink", skipped)
+        self.assertIn("inbox:forbidden-inbox", skipped)
+
+    def test_read_matter_artifact_reads_gated_content_with_hash_check(self) -> None:
+        relative = f"{fixture.INCIDENT_DIR_RELATIVE}/validation-report.json"
+        expected = fixture.fixture_sha256(self.root, relative)
+
+        read = self.adapter.read_matter_artifact(
+            fixture.INCIDENT_ID,
+            relative,
+            parent_legacy_id=fixture.PROBLEM_ID,
+            expected_sha256=expected,
+        )
+        self.assertEqual(read.pin.content_sha256, expected)
+        self.assertIn(b"source_preservation", read.content)
+
+        with self.assertRaises(SourceHashMismatchError):
+            self.adapter.read_matter_artifact(
+                fixture.INCIDENT_ID,
+                relative,
+                parent_legacy_id=fixture.PROBLEM_ID,
+                expected_sha256="0" * 64,
+            )
+
+    def test_read_matter_artifact_refuses_paths_outside_the_matter_tree(self) -> None:
+        with self.assertRaises(ForbiddenPathError):
+            self.adapter.read_matter_artifact(
+                fixture.PROBLEM_ID,
+                fixture.REFERENCE_RELATIVE,
+            )
+        with self.assertRaises(ForbiddenPathError):
+            self.adapter.read_matter_artifact(
+                fixture.PROBLEM_ID,
+                "incidents/_incident-registry.md",
+            )
+        with self.assertRaises(ForbiddenPathError):
+            self.adapter.read_matter_artifact(
+                fixture.PROBLEM_ID,
+                f"incidents/problems/{fixture.PROBLEM_SLUG}/../_incident-registry.md",
+            )
+
+    def test_read_matter_artifact_fails_closed_without_authorization(self) -> None:
+        unauthorized = HammerTimeReleaseAdapter(root=self.root, clock=lambda: FIXED_NOW)
+        with self.assertRaises(MatterAccessDenied):
+            unauthorized.read_matter_artifact(
+                fixture.INCIDENT_ID,
+                f"{fixture.INCIDENT_DIR_RELATIVE}/validation-report.json",
+                parent_legacy_id=fixture.PROBLEM_ID,
+            )
 
 
 if __name__ == "__main__":
