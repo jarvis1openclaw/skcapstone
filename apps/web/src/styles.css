@@ -230,6 +230,60 @@ a:hover {
   font-size: 0.875rem;
 }
 
+.sl-claim-review {
+  width: 100%;
+}
+
+.sl-claim-review > section {
+  padding-block: var(--sl-space-4);
+  border-top: 1px solid var(--sl-border);
+}
+
+.sl-claim-review .sl-record-list li {
+  flex-wrap: wrap;
+}
+
+.sl-review-path {
+  padding: var(--sl-space-3);
+  border: 1px solid var(--sl-border);
+  border-radius: 4px;
+  background: var(--sl-parchment);
+}
+
+.sl-review-path ul {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sl-space-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.sl-review-path a,
+.sl-challenge-list summary {
+  display: inline-flex;
+  align-items: center;
+  min-height: var(--sl-min-target);
+  padding: var(--sl-space-2) var(--sl-space-3);
+}
+
+.sl-challenge-list details {
+  margin-block-end: var(--sl-space-2);
+  border: 1px solid var(--sl-border);
+  border-radius: 4px;
+  background: var(--sl-surface);
+}
+
+.sl-challenge-list summary {
+  width: 100%;
+  cursor: pointer;
+  font-weight: 600;
+}
+
+.sl-challenge-detail {
+  padding: 0 var(--sl-space-4) var(--sl-space-4);
+}
+
 .sl-hash {
   font-family: var(--sl-font-mono);
   font-size: 0.75rem;

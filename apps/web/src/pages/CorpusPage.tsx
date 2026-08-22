@@ -12,7 +12,7 @@
  * on every request; this page is presentation only.
  */
 
-import { useState } from "react";
+import { useRef, useState, type KeyboardEvent, type ReactNode } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
 
@@ -297,13 +297,14 @@ export function CorpusResearchView(props: {
 }
 
 function SupportPanel(props: {
+  id: string;
   title: string;
   records: readonly ClaimSupportRecord[];
   emptyLabel: string;
 }) {
-  const { title, records, emptyLabel } = props;
+  const { id, title, records, emptyLabel } = props;
   return (
-    <section aria-label={title}>
+    <section id={id} aria-label={title} tabIndex={-1}>
       <h4>{title}</h4>
       {records.length === 0 ? (
         <p className="sl-record-meta">{emptyLabel}</p>
@@ -376,9 +377,10 @@ function ApplicabilityFactors(props: {
 }
 
 function ChallengeHistory(props: {
+  claimId: string;
   challenges: ClaimLedgerEntry["challenges"];
 }) {
-  const { challenges } = props;
+  const { claimId, challenges } = props;
   if (challenges.length === 0) {
     return (
       <p className="sl-record-meta">
@@ -387,37 +389,77 @@ function ChallengeHistory(props: {
     );
   }
   return (
-    <ul className="sl-record-list">
-      {challenges.map((challenge) => (
-        <li key={challenge.challengeId}>
-          <StatusBadge
-            status={statusOrFallback(
-              challengeIndependence,
-              challenge.independence,
-            )}
-          />
-          <StatusBadge
-            status={statusOrFallback(challengeOutcome, challenge.outcome)}
-          />
-          <span className="sl-record-meta">
-            {" "}
-            {challenge.challengerProvider}/{challenge.challengerModelName}/
-            {challenge.challengerModelRevision} at {challenge.issuedAt}
-            {challenge.sawChallengedConclusion
-              ? " (challenger saw the challenged conclusion)"
-              : ""}
-          </span>
-          {challenge.defects.map((defect) => (
-            <p key={`${challenge.challengeId}-${defect.defectKind}`}>
-              <span className="sl-record-meta">
-                Defect {defect.defectKind}:{" "}
-              </span>
-              {defect.description}
-            </p>
-          ))}
-        </li>
-      ))}
-    </ul>
+    <div className="sl-challenge-list">
+      {challenges.map((challenge, index) => {
+        const blind =
+          challenge.independence === "independent" &&
+          !challenge.sawChallengedConclusion;
+        return (
+          <details key={challenge.challengeId} open>
+            <summary>
+              Challenge {index + 1}: {challenge.outcome}
+            </summary>
+            <div className="sl-challenge-detail">
+              <StatusBadge
+                status={statusOrFallback(
+                  challengeIndependence,
+                  challenge.independence,
+                )}
+              />
+              <StatusBadge
+                status={statusOrFallback(challengeOutcome, challenge.outcome)}
+              />
+              <dl className="sl-detail-list">
+                <dt>Challenge record</dt>
+                <dd>{challenge.challengeId}</dd>
+                <dt>Challenger</dt>
+                <dd>
+                  {challenge.challengerProvider}/{challenge.challengerModelName}
+                  /{challenge.challengerModelRevision}
+                </dd>
+                <dt>Issued</dt>
+                <dd>{challenge.issuedAt}</dd>
+                <dt>Independence check</dt>
+                <dd>{challenge.independence}</dd>
+                <dt>Conclusion exposure</dt>
+                <dd>
+                  {challenge.sawChallengedConclusion
+                    ? "Challenger saw the challenged conclusion"
+                    : "Challenger did not see the challenged conclusion"}
+                </dd>
+                <dt>Challenge outcome</dt>
+                <dd>{challenge.outcome}</dd>
+              </dl>
+              {!blind && (
+                <p role="alert">
+                  This record does not satisfy a blind, independent challenge.
+                  It remains visible as a review defect.
+                </p>
+              )}
+              {challenge.defects.length === 0 ? (
+                <p className="sl-record-meta">
+                  No challenge defect is recorded.
+                </p>
+              ) : (
+                <ul className="sl-record-list">
+                  {challenge.defects.map((defect) => (
+                    <li
+                      key={`${challenge.challengeId}-${defect.defectKind}`}
+                      id={`${claimId}-defect-${challenge.challengeId}-${defect.defectKind}`}
+                    >
+                      <span className="sl-record-meta">
+                        Defect {defect.defectKind}:{" "}
+                      </span>
+                      {defect.description}
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+          </details>
+        );
+      })}
+    </div>
   );
 }
 
@@ -507,52 +549,283 @@ function ClaimGateSummary(props: { gate: ClaimLedgerEntry["gate"] }) {
   );
 }
 
+const claimReviewSteps = [
+  ["summary", "Claim and gate"],
+  ["support", "Support"],
+  ["counter-support", "Counter-support"],
+  ["applicability", "Authority applicability"],
+  ["challenges", "Blind challenges"],
+  ["record-gaps", "Record gaps"],
+  ["reviewer-history", "Reviewer history"],
+  ["state-transitions", "State transitions"],
+] as const;
+
+/** Resolve arrow, Home, and End keys for the claim review navigation. */
+export function reviewStepIndexForKey(
+  key: string,
+  currentIndex: number,
+  stepCount: number,
+): number | null {
+  if (stepCount <= 0) {
+    return null;
+  }
+  switch (key) {
+    case "ArrowRight":
+    case "ArrowDown":
+      return currentIndex < 0 ? 0 : (currentIndex + 1) % stepCount;
+    case "ArrowLeft":
+    case "ArrowUp":
+      return currentIndex < 0 ? 0 : (currentIndex - 1 + stepCount) % stepCount;
+    case "Home":
+      return 0;
+    case "End":
+      return stepCount - 1;
+    default:
+      return null;
+  }
+}
+
+function ClaimReviewPath(props: { claimId: string }) {
+  const listRef = useRef<HTMLUListElement>(null);
+  const onKeyDown = (event: KeyboardEvent<HTMLUListElement>) => {
+    const links = listRef.current?.querySelectorAll<HTMLAnchorElement>(
+      "a[data-claim-review-step]",
+    );
+    if (links === undefined || links.length === 0) {
+      return;
+    }
+    const currentIndex = Array.from(links).findIndex(
+      (link) => link === document.activeElement,
+    );
+    const nextIndex = reviewStepIndexForKey(
+      event.key,
+      currentIndex,
+      links.length,
+    );
+    if (nextIndex === null) {
+      return;
+    }
+    event.preventDefault();
+    links.item(nextIndex).focus();
+  };
+
+  return (
+    <nav aria-label="Claim keyboard review path" className="sl-review-path">
+      <p className="sl-record-meta" id={`${props.claimId}-review-help`}>
+        Review every step in order. Use Tab or the arrow keys to move through
+        the path, Home or End to jump, and Enter to open a step.
+      </p>
+      <ul
+        ref={listRef}
+        onKeyDown={onKeyDown}
+        aria-describedby={`${props.claimId}-review-help`}
+      >
+        {claimReviewSteps.map(([key, label], index) => (
+          <li key={key}>
+            <a href={`#claim-${props.claimId}-${key}`} data-claim-review-step>
+              {index + 1}. {label}
+            </a>
+          </li>
+        ))}
+      </ul>
+    </nav>
+  );
+}
+
+interface ClaimRecordGap {
+  key: string;
+  description: string;
+}
+
+/** Derive visible review gaps without changing or harmonizing ledger data. */
+export function claimRecordGaps(
+  entry: ClaimLedgerEntry,
+): readonly ClaimRecordGap[] {
+  const gaps: ClaimRecordGap[] = [];
+  if (entry.support.length === 0) {
+    gaps.push({
+      key: "support_missing",
+      description: "No exact supporting source span is recorded.",
+    });
+  }
+  if (entry.applicability.length === 0) {
+    gaps.push({
+      key: "applicability_missing",
+      description: "No Authority applicability evaluation is recorded.",
+    });
+  }
+  if (entry.challenges.length === 0) {
+    gaps.push({
+      key: "blind_challenge_missing",
+      description: "No blind challenge record is available.",
+    });
+  }
+  if (entry.reviewHistory.length === 0) {
+    gaps.push({
+      key: "human_review_missing",
+      description: "No attributable human reviewer decision is recorded.",
+    });
+  }
+  if (entry.gate === null) {
+    gaps.push({
+      key: "claim_gate_missing",
+      description: "No deterministic claim gate evaluation is recorded.",
+    });
+  }
+  if (entry.stateTransitions.length === 0) {
+    gaps.push({
+      key: "state_history_missing",
+      description: "No claim state transition history is recorded.",
+    });
+  }
+  return gaps;
+}
+
+function ReviewSection(props: {
+  id: string;
+  label: string;
+  children: ReactNode;
+}) {
+  return (
+    <section id={props.id} aria-label={props.label} tabIndex={-1}>
+      {props.children}
+    </section>
+  );
+}
+
+function ClaimRecordGaps(props: { entry: ClaimLedgerEntry }) {
+  const gaps = claimRecordGaps(props.entry);
+  if (gaps.length === 0) {
+    return (
+      <p role="status">
+        No missing review records were detected for this claim version.
+      </p>
+    );
+  }
+  return (
+    <div role="alert">
+      <p>
+        This claim has {gaps.length} record {gaps.length === 1 ? "gap" : "gaps"}
+        . Missing records remain unresolved and block a complete review.
+      </p>
+      <ul className="sl-record-list">
+        {gaps.map((gap) => (
+          <li key={gap.key} id={`claim-${props.entry.claimId}-gap-${gap.key}`}>
+            <strong>{gap.key}</strong>
+            <span>{gap.description}</span>
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
+
 function ClaimLedgerEntryView(props: { entry: ClaimLedgerEntry }) {
   const { entry } = props;
+  const hasTraceableSource =
+    entry.support.length > 0 || entry.counterSupport.length > 0;
   return (
     <li id={`claim-${entry.claimId}`}>
-      <span>
-        <strong>{entry.statement}</strong>
-      </span>
-      <StatusBadge status={statusOrFallback(claimStatus, entry.status)} />
-      <StatusBadge
-        status={statusOrFallback(
-          supportVerificationState,
-          entry.supportVerificationState,
-        )}
-      />
-      <span className="sl-record-meta">
-        Claim {entry.claimId} / version {entry.version} / updated{" "}
-        {entry.updatedAt} / policy revision{" "}
-        <span className="sl-hash">{entry.policyRevision}</span>
-      </span>
-      <ClaimGateSummary gate={entry.gate} />
-      <SupportPanel
-        title="Support"
-        records={entry.support}
-        emptyLabel="No supporting source span is recorded for this claim."
-      />
-      <SupportPanel
-        title="Counter-support"
-        records={entry.counterSupport}
-        emptyLabel="No counter-support source span is recorded for this claim."
-      />
-      <section aria-label="Authority applicability factors">
-        <h4>Authority applicability factors</h4>
-        <ApplicabilityFactors factors={entry.applicability} />
-      </section>
-      <section aria-label="Blind challenge history">
-        <h4>Blind challenge history</h4>
-        <ChallengeHistory challenges={entry.challenges} />
-      </section>
-      <section aria-label="Reviewer history">
-        <h4>Reviewer history</h4>
-        <ReviewerHistory reviews={entry.reviewHistory} />
-      </section>
-      <section aria-label="Claim state transitions">
-        <h4>Claim state transitions</h4>
-        <StateTransitionHistory transitions={entry.stateTransitions} />
-      </section>
+      <article
+        className="sl-claim-review"
+        aria-labelledby={`claim-${entry.claimId}-heading`}
+      >
+        <h3 id={`claim-${entry.claimId}-heading`}>
+          Claim review {entry.claimId}
+        </h3>
+        <ClaimReviewPath claimId={entry.claimId} />
+        <ReviewSection
+          id={`claim-${entry.claimId}-summary`}
+          label="Claim and gate"
+        >
+          <h4>Claim and gate</h4>
+          {hasTraceableSource ? (
+            <p>
+              <strong>{entry.statement}</strong>
+            </p>
+          ) : (
+            <div role="alert">
+              <strong>Untraceable claim statement withheld</strong>
+              <p>
+                No exact support or counter-support source span is recorded, so
+                this interface will not render a summary-only claim answer.
+              </p>
+            </div>
+          )}
+          <StatusBadge status={statusOrFallback(claimStatus, entry.status)} />
+          <StatusBadge
+            status={statusOrFallback(
+              supportVerificationState,
+              entry.supportVerificationState,
+            )}
+          />
+          <span className="sl-record-meta">
+            Claim {entry.claimId} / version {entry.version} / updated{" "}
+            {entry.updatedAt} / policy revision{" "}
+            <span className="sl-hash">{entry.policyRevision}</span>
+          </span>
+          <ClaimGateSummary gate={entry.gate} />
+        </ReviewSection>
+        <SupportPanel
+          id={`claim-${entry.claimId}-support`}
+          title="Support"
+          records={entry.support}
+          emptyLabel="No supporting source span is recorded for this claim."
+        />
+        <SupportPanel
+          id={`claim-${entry.claimId}-counter-support`}
+          title="Counter-support"
+          records={entry.counterSupport}
+          emptyLabel="No counter-support source span is recorded for this claim."
+        />
+        <section
+          id={`claim-${entry.claimId}-applicability`}
+          aria-label="Authority applicability factors"
+          tabIndex={-1}
+        >
+          <h4>Authority applicability factors</h4>
+          <ApplicabilityFactors factors={entry.applicability} />
+        </section>
+        <section
+          id={`claim-${entry.claimId}-challenges`}
+          aria-label="Blind challenge workflow"
+          tabIndex={-1}
+        >
+          <h4>Blind challenge workflow</h4>
+          <p className="sl-record-meta">
+            Challenge records are read-only. Model findings cannot approve the
+            claim or alter workflow state.
+          </p>
+          <ChallengeHistory
+            claimId={entry.claimId}
+            challenges={entry.challenges}
+          />
+        </section>
+        <section
+          id={`claim-${entry.claimId}-record-gaps`}
+          aria-label="Record gaps"
+          tabIndex={-1}
+        >
+          <h4>Record gaps</h4>
+          <ClaimRecordGaps entry={entry} />
+        </section>
+        <section
+          id={`claim-${entry.claimId}-reviewer-history`}
+          aria-label="Reviewer history"
+          tabIndex={-1}
+        >
+          <h4>Reviewer history</h4>
+          <ReviewerHistory reviews={entry.reviewHistory} />
+        </section>
+        <section
+          id={`claim-${entry.claimId}-state-transitions`}
+          aria-label="Claim state transitions"
+          tabIndex={-1}
+        >
+          <h4>Claim state transitions</h4>
+          <StateTransitionHistory transitions={entry.stateTransitions} />
+        </section>
+      </article>
     </li>
   );
 }
