@@ -175,3 +175,103 @@ export interface MatterWorkspace {
   audit: readonly WorkspaceAuditEntry[];
   provenance: WorkspaceProvenance;
 }
+
+/**
+ * Corpus research shapes (SKL-S4-03A). Search is matter-scoped; every
+ * response carries the full retrieval trace so a result can always be
+ * traced to its release, projection generation, and rank path. A corpus
+ * row is an unverified research proposal, never controlling Authority.
+ */
+
+/** One selectable scope chip in the governed search bar. */
+export interface CorpusScopeOption {
+  scope: "this_matter" | "tenant_corpus" | "official_sources";
+  state: "active" | "unavailable";
+  reason: string | null;
+}
+
+/** Full S2-10 retrieval trace behind one search response. */
+export interface CorpusTrace {
+  scopeKind: string;
+  tenantId: string;
+  matterId: string;
+  releaseId: string;
+  projectionGeneration: number;
+  currentProjectionGeneration: number;
+  projectionStale: boolean;
+  backendWatermark: number;
+  lagEvents: number;
+  lagSeconds: number;
+  queryTemplateId: string;
+  queryTemplateVersion: string;
+  queryTemplateSha256: string;
+  rankPath: readonly string[];
+  retrievalAdapterVersion: string;
+  sourceIds: readonly string[];
+  sourceHashes: readonly string[];
+}
+
+/** One ranked corpus row with its exact source locator. */
+export interface CorpusResult {
+  rank: number;
+  score: number;
+  snippet: string;
+  sourceId: string;
+  title: string;
+  citation: string;
+  classification: string;
+  origin: string;
+  verificationState: string;
+  sourceVersion: string;
+  sourceSha256: string;
+  documentId: string;
+  chunkId: string;
+  chunkSha256: string;
+  sourceLocator: string;
+  spanKind: string;
+  spanStart: number;
+  spanEnd: number;
+  spanPage: number | null;
+  supersessionStatus: string;
+}
+
+export interface CorpusSearchResponse {
+  matterId: string;
+  query: string;
+  scopeOptions: readonly CorpusScopeOption[];
+  results: readonly CorpusResult[];
+  trace: CorpusTrace;
+}
+
+/** Accessible exact source span with full provenance. */
+export interface CorpusSpanAvailable {
+  state: "available";
+  sourceId: string;
+  sourceVersion: string;
+  sourceSha256: string;
+  documentId: string;
+  citation: string;
+  title: string;
+  classification: string;
+  sourceLocator: string;
+  spanKind: string;
+  spanStart: number;
+  spanEnd: number;
+  spanPage: number | null;
+  spanText: string;
+  supersessionStatus: string;
+  jurisdiction: string | null;
+}
+
+/**
+ * Denied source span: the shape structurally excludes span text, the
+ * locator, and every hash, so a denial can never leak protected content.
+ */
+export interface CorpusSpanDenied {
+  state: "denied";
+  sourceId: string;
+  denialReason: string;
+  denialMessage: string;
+}
+
+export type CorpusSpan = CorpusSpanAvailable | CorpusSpanDenied;

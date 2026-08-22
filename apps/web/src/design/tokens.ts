@@ -173,6 +173,18 @@ export const approvalState = {
   rejected: { label: "Rejected", glyph: "\u2715", tone: "critical" },
 } as const satisfies Record<string, StatusPresentation>;
 
+/** Corpus supersession semantics for the source-span viewer. */
+export const supersessionStatus = {
+  current: { label: "Current", glyph: "\u2713", tone: "positive" },
+  superseded: { label: "Superseded", glyph: "\u2190", tone: "caution" },
+} as const satisfies Record<string, StatusPresentation>;
+
+/** Corpus span accessibility semantics for the source-span viewer. */
+export const spanAccessibility = {
+  available: { label: "Source accessible", glyph: "\u2713", tone: "positive" },
+  denied: { label: "Source not accessible", glyph: "\u2715", tone: "critical" },
+} as const satisfies Record<string, StatusPresentation>;
+
 export const typography = {
   fontFamilyBase:
     'ui-sans-serif, system-ui, "Segoe UI", Roboto, Helvetica, Arial, sans-serif',

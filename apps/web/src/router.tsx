@@ -31,6 +31,7 @@ import { ClientsPage } from "./pages/ClientsPage";
 import { ClientDetailPage } from "./pages/ClientDetailPage";
 import { MattersPage } from "./pages/MattersPage";
 import { MatterDetailPage } from "./pages/MatterDetailPage";
+import { CorpusPage } from "./pages/CorpusPage";
 import { ForbiddenPage, NotFoundPage } from "./pages/StatusPages";
 
 /** Route path to capability requirement, asserted complete by router tests. */
@@ -155,8 +156,15 @@ const corpusRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/corpus",
   beforeLoad: guardRoute("corpus"),
+  validateSearch: (search: Record<string, unknown>): { matterId?: string } => ({
+    matterId:
+      typeof search.matterId === "string" && search.matterId.length > 0
+        ? search.matterId
+        : undefined,
+  }),
   component: function CorpusComponent() {
-    return <PlaceholderPage title="Corpus" card="SKL-S4-03" />;
+    const { matterId } = corpusRoute.useSearch();
+    return <CorpusPage matterId={matterId ?? null} />;
   },
 });
 

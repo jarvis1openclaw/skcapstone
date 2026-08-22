@@ -13,6 +13,8 @@ import { ApiError, apiErrorFromStatus, apiErrorFromCause } from "./errors";
 import type {
   ClientDetail,
   ClientSummary,
+  CorpusSearchResponse,
+  CorpusSpan,
   MatterDetail,
   MatterSummary,
   MatterWorkspace,
@@ -71,6 +73,42 @@ export class ApiClient {
     }
   }
 
+  private async postJson<T>(
+    path: string,
+    body: unknown,
+  ): Promise<ApiResult<T>> {
+    const correlationId = newCorrelationId();
+    const credential = this.credentials.loadActive();
+    const headers: Record<string, string> = {
+      Accept: "application/json",
+      "Content-Type": "application/json",
+      "X-Correlation-ID": correlationId,
+      "X-SKLegal-Tenant": this.tenantId(),
+    };
+    if (credential !== null) {
+      headers.Authorization = `Bearer ${credential.token}`;
+    }
+    let response: Response;
+    try {
+      response = await this.fetchImpl(`${this.baseUrl}${path}`, {
+        method: "POST",
+        headers,
+        body: JSON.stringify(body),
+      });
+    } catch (cause) {
+      throw apiErrorFromCause(cause, correlationId);
+    }
+    if (!response.ok) {
+      throw apiErrorFromStatus(response.status, correlationId);
+    }
+    try {
+      const data = (await response.json()) as T;
+      return { data, correlationId };
+    } catch (cause) {
+      throw apiErrorFromCause(cause, correlationId);
+    }
+  }
+
   listClients(): Promise<ApiResult<readonly ClientSummary[]>> {
     return this.request("/v1/clients");
   }
@@ -90,6 +128,25 @@ export class ApiClient {
   getMatterWorkspace(matterId: string): Promise<ApiResult<MatterWorkspace>> {
     return this.request(
       `/v1/matters/${encodeURIComponent(matterId)}/workspace`,
+    );
+  }
+
+  searchCorpus(
+    matterId: string,
+    query: string,
+  ): Promise<ApiResult<CorpusSearchResponse>> {
+    return this.postJson(
+      `/v1/matters/${encodeURIComponent(matterId)}/corpus/search`,
+      { query },
+    );
+  }
+
+  getCorpusSpan(
+    matterId: string,
+    sourceId: string,
+  ): Promise<ApiResult<CorpusSpan>> {
+    return this.request(
+      `/v1/matters/${encodeURIComponent(matterId)}/corpus/sources/${encodeURIComponent(sourceId)}/span`,
     );
   }
 }
