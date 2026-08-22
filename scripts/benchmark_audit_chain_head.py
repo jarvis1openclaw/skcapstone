@@ -274,24 +274,20 @@ class BenchDatabase:
         self._run_tool(MIGRATION_RUNNER, *arguments, "--user", "sklegal_migrator")
 
     def _wait_ready(self) -> None:
-        for attempt in range(120):
+        # pg_isready answers during the entrypoint's temporary init server,
+        # before POSTGRES_DB exists, so readiness must require a real query
+        # against the benchmark database itself.
+        for attempt in range(240):
             ready = subprocess.run(
-                [
-                    "docker",
-                    "exec",
-                    self.container,
-                    "pg_isready",
-                    "--username",
-                    "postgres",
-                    "--dbname",
-                    DATABASE,
-                ],
+                self._psql_command("postgres"),
+                input="SELECT 1;",
                 capture_output=True,
                 text=True,
+                check=False,
             )
             if ready.returncode == 0:
                 return
-            if attempt == 119:
+            if attempt == 239:
                 raise RuntimeError("disposable PostgreSQL readiness timeout")
             time.sleep(0.25)
 
