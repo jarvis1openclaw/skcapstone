@@ -106,6 +106,15 @@ def _load_entry(path: Path) -> Optional[MemoryEntry]:
         pass
     try:
         data = json.loads(path.read_text(encoding="utf-8"))
+        # The active tiers are shared with the unified SKMemory backend. Its
+        # canonical schema uses ``id`` rather than the legacy engine's
+        # ``memory_id``. Treat those records as owned by SKMemory instead of
+        # constructing a legacy entry with the old model's blank default; the
+        # latter used to feed thousands of valid unified records into the
+        # legacy promoter as the unsafe ``.json`` candidate.
+        if isinstance(data, dict) and "id" in data and "memory_id" not in data:
+            logger.debug("Skipping unified SKMemory record in legacy loader: %s", path)
+            return None
         entry = MemoryEntry(**data)
         _require_memory_id(entry.memory_id)
         return entry
