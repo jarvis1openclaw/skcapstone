@@ -179,8 +179,35 @@ def _load_capauth(card: IdentityCard) -> None:
     if pub_key_path.exists():
         try:
             card.public_key = pub_key_path.read_text(encoding="utf-8").strip()
+        except UnicodeDecodeError:
+            # CapAuth may store public.asc as a binary OpenPGP key despite the
+            # .asc name; convert it to ASCII armor via PGPy when available.
+            card.public_key = _armor_binary_key(pub_key_path)
         except OSError as exc:
             logger.warning("Failed to read public key from %s: %s", pub_key_path, exc)
+
+
+def _armor_binary_key(pub_key_path: Path) -> str:
+    """Convert a binary OpenPGP public key file to ASCII armor.
+
+    CapAuth sometimes writes public.asc as raw binary OpenPGP packets
+    instead of ASCII-armored text. Parse it with PGPy (when installed)
+    and re-emit the armored form.
+
+    Args:
+        pub_key_path: Path to the binary key file.
+
+    Returns:
+        str: The ASCII-armored public key, or "" if it cannot be parsed.
+    """
+    try:
+        import pgpy
+
+        key, _ = pgpy.PGPKey.from_file(str(pub_key_path))
+        return str(key).strip()
+    except Exception as exc:  # noqa: BLE001
+        logger.warning("Failed to parse binary public key from %s: %s", pub_key_path, exc)
+        return ""
 
 
 def _load_runtime(home: Path, card: IdentityCard) -> None:
