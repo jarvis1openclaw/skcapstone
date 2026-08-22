@@ -45,6 +45,13 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   PGP/capauth, memory, trust, soul, security, or sync pillars. The
   lightweight-vs-sovereign capability delta and the upgrade path are documented
   in `docs/LIGHTWEIGHT_AGENTS.md`.
+- Extended Atlas's skcode operator adapter with authenticated SKHarness activity
+  replay/live-stream discovery and expiring idempotent steering commands plus receipt
+  lookup. Monitor and control scopes remain separate, and queued commands are never
+  presented as applied work. Replay filters now include job/card/contract/lease IDs so
+  Atlas can preserve the controller-owned cross-agent lineage back to an immutable card,
+  signed contract, source commit, attempt, and evidence rather than treating a display
+  name as identity or authority.
 - Added `skcapstone dashboard --host ADDRESS` and propagated the selected bind
   address to SKDashboard. The default remains `127.0.0.1`; the SOP documents
   deliberate tailnet or all-interface exposure.
