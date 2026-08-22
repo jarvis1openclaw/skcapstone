@@ -439,3 +439,14 @@ Every task begins by loading SK context, reading `AGENTS.md`, checking the SKCap
 - **Tests:** Missing artifact, wrong source version, stale projection, scope collapse, retrieval of a superseded rule as current, alias drift, promotion failure, and rollback.
 - **Acceptance:** The candidate release is healthy, reversible, source-complete, conflict-preserving, and addressable by immutable HammerTime release and artifact references.
 - **Prohibited:** Do not promote to UAT or production without the existing release gates, mutate HammerTime through the SKLegal read-only adapter, or use a release reference as external-action authorization.
+
+### SKL-S6-05A: Add batch-scoped official drafting candidate release builder
+
+- **Agent:** Deterministic HammerTime release engineering
+- **Size:** M
+- **Dependencies:** `SKL-S6-03`, `SKL-S6-04`, `SKL-S2-01`
+- **Objective:** Build an immutable dev candidate manifest from only the sealed official drafting batch without repository-wide corpus discovery or alias mutation.
+- **Implementation:** Follow `docs/tasks/SKL-S6-05A-TDD.md`. Validate the explicit finalized file list, rights evidence, completion evidence, normalized hashes, decompositions, profile artifacts, and existing dev projection bindings. Dry run emits a content-free plan and writes nothing. Apply mode may write only a new release manifest through the HammerTime release contract.
+- **Tests:** Dry-run no-write proof, missing source, unrelated file, Inbox path rejection, quarantined rights, changed normalized hash, missing or stale decomposition, projection mismatch, existing release collision, and alias immutability.
+- **Acceptance:** One exact 14-source candidate is reproducible, source-complete, profile-linked, and ready for the parent S6-05 qualification gates without changing a runtime alias.
+- **Prohibited:** Do not scan or process HammerTime Inbox, discover the repository corpus implicitly, change processing state, rebuild shared stores, promote an alias, or include unrelated sources.
