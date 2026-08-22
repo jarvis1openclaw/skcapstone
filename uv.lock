@@ -9,6 +9,7 @@ members = [
     "sklegal-capauth",
     "sklegal-domain",
     "sklegal-hammertime",
+    "sklegal-migration",
     "sklegal-model-gateway",
     "sklegal-persistence",
     "sklegal-policies",
@@ -1286,6 +1287,23 @@ requires-dist = [
     { name = "pydantic", specifier = "==2.13.4" },
     { name = "pyyaml", specifier = "==6.0.3" },
     { name = "sklegal-domain", editable = "packages/domain" },
+]
+
+[[package]]
+name = "sklegal-migration"
+version = "0.1.0"
+source = { editable = "packages/migration" }
+dependencies = [
+    { name = "pydantic" },
+    { name = "sklegal-domain" },
+    { name = "sklegal-hammertime" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "pydantic", specifier = "==2.13.4" },
+    { name = "sklegal-domain", editable = "packages/domain" },
+    { name = "sklegal-hammertime", editable = "packages/connectors/hammertime" },
 ]
 
 [[package]]
