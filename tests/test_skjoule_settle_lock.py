@@ -86,6 +86,33 @@ def _journal(home: Path) -> list[dict]:
 # --------------------------------------------------------------------------- #
 
 
+def _load_skharness_joules():
+    """Import skharness's joule module, or None when it cannot check the contract.
+
+    skharness is deliberately NOT a dependency of skcapstone (the arrow runs the
+    other way), so this is a soft import. A skharness that predates the settle
+    lock (it landed in skharness 0.3.15) cannot verify the cross-repo half of
+    the contract either, so it counts as unavailable here.
+    """
+    try:
+        import skharness.autocode.joules as hj
+    except ImportError:
+        return None
+    required = ("SETTLE_LOCK_NAME", "SETTLE_LOCK_TIMEOUT", "_settle_lock_path", "settle_lock")
+    if not all(hasattr(hj, name) for name in required):
+        return None
+    return hj
+
+
+SKHARNESS_JOULES = _load_skharness_joules()
+
+#: Why the cross-repo tests skip when skharness cannot verify the contract.
+SKHARNESS_UNAVAILABLE = (
+    "skharness with the settle-lock contract (>= 0.3.15) is not installed here, "
+    "so the cross-repo half of the lock contract is unverified in this environment"
+)
+
+
 class TestCrossRepoLockPath:
     """skharness and skcapstone must contend for the same file, byte for byte."""
 
@@ -95,6 +122,7 @@ class TestCrossRepoLockPath:
         assert _settle_lock_path(AGENT, tmp_path) == wallet_dir / SETTLE_LOCK_NAME
         assert SETTLE_LOCK_NAME == ".settle.lock"
 
+    @pytest.mark.skipif(SKHARNESS_JOULES is None, reason=SKHARNESS_UNAVAILABLE)
     def test_resolution_matches_skharness_byte_for_byte(self, tmp_path: Path):
         """The literal check above pins skcapstone; this pins the pair.
 
@@ -104,11 +132,8 @@ class TestCrossRepoLockPath:
         only thing that turns a silent drift in either repo into a red test
         rather than an unprotected wallet.
         """
-        hj = pytest.importorskip(
-            "skharness.autocode.joules",
-            reason="skharness is not installed here, so the cross-repo half of "
-            "the lock contract is unverified in this environment",
-        )
+        hj = SKHARNESS_JOULES
+        assert hj is not None  # guaranteed by the skipif above
 
         assert sj.SETTLE_LOCK_NAME == hj.SETTLE_LOCK_NAME
         assert sj.SETTLE_LOCK_TIMEOUT == hj.SETTLE_LOCK_TIMEOUT
@@ -123,6 +148,7 @@ class TestCrossRepoLockPath:
                     f"wallet protect nothing."
                 )
 
+    @pytest.mark.skipif(SKHARNESS_JOULES is None, reason=SKHARNESS_UNAVAILABLE)
     def test_skharness_and_skcapstone_actually_exclude_each_other(self, tmp_path: Path):
         """Equal paths are the mechanism; mutual exclusion is the property.
 
@@ -131,10 +157,8 @@ class TestCrossRepoLockPath:
         through. This holds skharness's lock and checks that skcapstone's is
         refused, then checks the reverse.
         """
-        hj = pytest.importorskip(
-            "skharness.autocode.joules",
-            reason="skharness is not installed here",
-        )
+        hj = SKHARNESS_JOULES
+        assert hj is not None  # guaranteed by the skipif above
 
         with hj.settle_lock(AGENT, home=tmp_path) as theirs:
             assert theirs is True
