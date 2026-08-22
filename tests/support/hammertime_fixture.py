@@ -37,6 +37,7 @@ INCIDENT_RELATIVE = (
 )
 INCIDENT_DIR_RELATIVE = f"incidents/problems/{PROBLEM_SLUG}/incidents/{INCIDENT_DIR}"
 REFERENCE_RELATIVE = "reference/legal/fixture-reference.md"
+SOURCE_SHA256 = "f" * 64
 
 PROBLEM_MARKDOWN = f"""---
 problem_id: {PROBLEM_ID}
@@ -126,6 +127,7 @@ REFERENCE_MARKDOWN = """---
 title: "Fixture reference"
 category: legal
 checksum: sha256:ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff
+source_sha256: ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff
 ---
 
 # Fixture Reference
@@ -151,7 +153,10 @@ def _release_manifest(release_id: str, target: str) -> dict[str, object]:
             "unchanged": [],
         },
         "document_counts": {"new": 1, "changed": 0, "deleted": 0, "unchanged": 0},
-        "verification": {"qdrant_collection_ok": True},
+        "verification": {
+            "qdrant_collection_ok": True,
+            "graph_rebuild_ok": True,
+        },
         "decomposed_snapshot": {"snapshot_hash": "fixture", "file_count": 1},
     }
 
@@ -180,7 +185,11 @@ def _decomposition() -> dict[str, object]:
     return {
         "source_file": REFERENCE_RELATIVE,
         "decomposed_at": "2099-01-02T00:00:00+00:00",
-        "frontmatter": {"title": "Fixture reference", "category": "legal"},
+        "frontmatter": {
+            "title": "Fixture reference",
+            "category": "legal",
+            "source_sha256": SOURCE_SHA256,
+        },
         "stats": {
             "chunks": 1,
             "claims": 1,
