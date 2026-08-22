@@ -104,6 +104,8 @@ from .skgateway import (
     SkGatewayChatTransport,
     SkGatewayLivePathGate,
     SkGatewayLivePathReport,
+    SkGatewayRouteAuthorizationEvidence,
+    SkGatewayRoutePolicyVerifier,
 )
 from .transport_profiles import (
     PROFILE_STORE_SCHEMA,
@@ -192,6 +194,8 @@ __all__ = [
     "SkGatewayChatTransport",
     "SkGatewayLivePathGate",
     "SkGatewayLivePathReport",
+    "SkGatewayRouteAuthorizationEvidence",
+    "SkGatewayRoutePolicyVerifier",
     "SourceRightsDeniedError",
     "TokenUsage",
     "TransportBindingError",

@@ -159,6 +159,19 @@ class SkGatewayTrustedStateBackend(Protocol):
     ) -> SkGatewayTrustedSnapshot: ...
 
 
+class SkGatewayRouteVerifier(Protocol):
+    """Verify a trusted snapshot against canonical route and egress policy."""
+
+    def verify(
+        self,
+        *,
+        service_identity: str,
+        capability: str,
+        resource: Mapping[str, str],
+        context: Mapping[str, str],
+    ) -> object: ...
+
+
 class PostgresSkGatewayTrustedStateBackend:
     """Load one atomic, current authorization snapshot from PostgreSQL."""
 
@@ -207,11 +220,13 @@ class CanonicalSkGatewayFactsResolver:
         self,
         *,
         backend: SkGatewayTrustedStateBackend,
+        route_verifier: SkGatewayRouteVerifier,
         service_identity: str,
     ) -> None:
         if not service_identity or not service_identity.strip():
             raise ValueError("service identity is required")
         self._backend = backend
+        self._route_verifier = route_verifier
         self._service_identity = service_identity
 
     def resolve(self, request: SkGatewayAuthzRequest) -> SkGatewayTrustedFacts:
@@ -232,6 +247,12 @@ class CanonicalSkGatewayFactsResolver:
             raise ValueError("trusted resource scope does not match the requested scope")
         if facts.context != request.context:
             raise ValueError("trusted policy context does not match the requested context")
+        self._route_verifier.verify(
+            service_identity=self._service_identity,
+            capability=facts.capability,
+            resource=facts.resource,
+            context=facts.context,
+        )
         return facts
 
 

@@ -67,6 +67,18 @@ class _TrustedStateBackend:
         return self.value  # type: ignore[return-value]
 
 
+class _RouteVerifier:
+    def __init__(self, *, fail: bool = False) -> None:
+        self.fail = fail
+        self.calls: list[dict[str, object]] = []
+
+    def verify(self, **kwargs: object) -> object:
+        self.calls.append(kwargs)
+        if self.fail:
+            raise RuntimeError("route policy unavailable")
+        return object()
+
+
 def _client(evaluator: _Evaluator, resolver: _Resolver | None = None) -> TestClient:
     app = FastAPI()
     service_identity = "capauth:sklegal-model-gateway@chiap01.skworld"
@@ -293,8 +305,10 @@ def test_canonical_resolver_returns_only_exact_current_snapshot() -> None:
             facts=facts,
         )
     )
+    route_verifier = _RouteVerifier()
     resolver = CanonicalSkGatewayFactsResolver(
         backend=backend,
+        route_verifier=route_verifier,
         service_identity="capauth:sklegal-model-gateway@chiap01.skworld",
     )
     request = {
@@ -308,6 +322,14 @@ def test_canonical_resolver_returns_only_exact_current_snapshot() -> None:
         "capauth:sklegal-model-gateway@chiap01.skworld"
     )
     assert backend.calls[0]["request"] == SkGatewayAuthzRequest.model_validate(request)
+    assert route_verifier.calls == [
+        {
+            "service_identity": "capauth:sklegal-model-gateway@chiap01.skworld",
+            "capability": "skgateway.infer",
+            "resource": {"tenant_id": "tenant-1", "matter_id": "matter-1"},
+            "context": {"classification": "public", "route_id": "route-1"},
+        }
+    ]
 
 
 def test_canonical_resolver_denies_wire_scope_mismatch() -> None:
@@ -326,6 +348,7 @@ def test_canonical_resolver_denies_wire_scope_mismatch() -> None:
     )
     resolver = CanonicalSkGatewayFactsResolver(
         backend=backend,
+        route_verifier=_RouteVerifier(),
         service_identity="capauth:sklegal-model-gateway@chiap01.skworld",
     )
     request = SkGatewayAuthzRequest(
@@ -336,6 +359,35 @@ def test_canonical_resolver_denies_wire_scope_mismatch() -> None:
     )
     with pytest.raises(ValueError, match="resource scope"):
         resolver.resolve(request)
+
+
+def test_canonical_resolver_fails_closed_when_route_policy_denies() -> None:
+    facts = SkGatewayTrustedFacts(
+        subject="agent-1",
+        capability="skgateway.infer",
+        resource={"route_id": "route-1"},
+        context={"classification": "public"},
+    )
+    resolver = CanonicalSkGatewayFactsResolver(
+        backend=_TrustedStateBackend(
+            SkGatewayTrustedSnapshot(
+                revision="policy-8",
+                service_identity="capauth:sklegal-model-gateway@chiap01.skworld",
+                facts=facts,
+            )
+        ),
+        route_verifier=_RouteVerifier(fail=True),
+        service_identity="capauth:sklegal-model-gateway@chiap01.skworld",
+    )
+    with pytest.raises(RuntimeError, match="route policy unavailable"):
+        resolver.resolve(
+            SkGatewayAuthzRequest(
+                subject="agent-1",
+                capability="skgateway.infer",
+                resource={"route_id": "route-1"},
+                context={"classification": "public"},
+            )
+        )
 
 
 def test_postgres_backend_parses_one_atomic_snapshot() -> None:

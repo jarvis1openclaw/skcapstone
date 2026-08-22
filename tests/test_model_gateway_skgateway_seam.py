@@ -37,6 +37,7 @@ from sklegal_model_gateway import (
     SchemaRegistry,
     SkGatewayChatProvider,
     SkGatewayLivePathGate,
+    SkGatewayRoutePolicyVerifier,
     TransportBindingError,
     TransportKind,
     TransportProfile,
@@ -57,8 +58,10 @@ from sklegal_model_gateway.audit_records import (
 from sklegal_model_gateway.errors import (
     BucketPolicyError,
     CapabilityDeniedError,
+    EgressDeniedError,
     FreeRouteDeniedError,
     ProviderUnavailableError,
+    RouteNotFoundError,
     ServedModelAttributionError,
     SourceRightsDeniedError,
 )
@@ -397,6 +400,86 @@ class TransportProfileStoreTests(unittest.TestCase):
         self.assertFalse(skgateway.enabled)
         self.assertEqual(TransportKind.SKGATEWAY_CHAT, skgateway.kind)
         self.assertEqual("skgateway.infer", skgateway.capability_scope)
+
+
+class SkGatewayRoutePolicyVerifierTests(unittest.TestCase):
+    def _verifier(
+        self,
+        *,
+        route: ModelRouteRecord | None = None,
+        profile: TransportProfile | None = None,
+    ) -> SkGatewayRoutePolicyVerifier:
+        return SkGatewayRoutePolicyVerifier(
+            routes=RouteRegistry(
+                (route or make_route(
+                    route_id="qwen.corpus-summary.skgateway.v1",
+                    transport_profile_id="test.skgateway-chat.v1",
+                ),),
+                registry_revision=REGISTRY_REVISION,
+            ),
+            transport_profiles=make_store(profile or make_profile()),
+            egress=PolicyFileEgressGate(POLICY_PATH),
+        )
+
+    def test_exact_enabled_local_route_is_authorized(self) -> None:
+        evidence = self._verifier().verify(
+            service_identity="capauth:test-model-gateway@test.skworld",
+            capability="skgateway.infer",
+            resource={"route_id": "qwen.corpus-summary.skgateway.v1"},
+            context={"classification": "highly_restricted"},
+        )
+        self.assertEqual(REGISTRY_REVISION, evidence.route_registry_revision)
+        self.assertEqual("c" * 64, evidence.transport_profile_revision)
+        self.assertEqual(64, len(evidence.egress_policy_revision))
+
+    def test_unknown_route_fails_closed(self) -> None:
+        with self.assertRaises(RouteNotFoundError):
+            self._verifier().verify(
+                service_identity="capauth:test-model-gateway@test.skworld",
+                capability="skgateway.infer",
+                resource={"route_id": "qwen.unknown.v1"},
+                context={"classification": "public"},
+            )
+
+    def test_disabled_profile_fails_closed(self) -> None:
+        with self.assertRaises(TransportProfileDisabledError):
+            self._verifier(profile=make_profile(enabled=False)).verify(
+                service_identity="capauth:test-model-gateway@test.skworld",
+                capability="skgateway.infer",
+                resource={"route_id": "qwen.corpus-summary.skgateway.v1"},
+                context={"classification": "public"},
+            )
+
+    def test_identity_and_capability_mismatch_fail_closed(self) -> None:
+        verifier = self._verifier()
+        for identity, capability in (
+            ("capauth:wrong@test.skworld", "skgateway.infer"),
+            ("capauth:test-model-gateway@test.skworld", "matter.manage"),
+        ):
+            with self.subTest(identity=identity, capability=capability):
+                with self.assertRaises(CapabilityDeniedError):
+                    verifier.verify(
+                        service_identity=identity,
+                        capability=capability,
+                        resource={
+                            "route_id": "qwen.corpus-summary.skgateway.v1"
+                        },
+                        context={"classification": "public"},
+                    )
+
+    def test_classification_above_route_ceiling_is_denied(self) -> None:
+        route = make_route(
+            route_id="qwen.corpus-summary.skgateway.v1",
+            transport_profile_id="test.skgateway-chat.v1",
+            egress_classification_ceiling=DataClassification.INTERNAL,
+        )
+        with self.assertRaises(EgressDeniedError):
+            self._verifier(route=route).verify(
+                service_identity="capauth:test-model-gateway@test.skworld",
+                capability="skgateway.infer",
+                resource={"route_id": "qwen.corpus-summary.skgateway.v1"},
+                context={"classification": "confidential"},
+            )
 
 
 class SharedCapacityDomainTests(unittest.TestCase):

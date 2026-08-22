@@ -28,10 +28,15 @@ does not satisfy this gate.
 from __future__ import annotations
 
 from collections.abc import Mapping
+from dataclasses import dataclass
 from typing import Any, Protocol
 
+from sklegal_domain import DataClassification
+
+from .egress import EgressGate
 from .errors import (
     CapabilityDeniedError,
+    EgressDeniedError,
     ModelGatewayError,
     ProviderContractError,
     ProviderUnavailableError,
@@ -45,6 +50,8 @@ from .models import (
     TransportKind,
 )
 from .providers import ProviderCall, ProviderResult
+from .registry import RouteRegistry
+from .transport_profiles import TransportProfileStore
 
 LIVE_PATH_CONTROLS: tuple[str, ...] = (
     "capauth_identity",
@@ -62,6 +69,75 @@ LIVE_PATH_CONTROLS: tuple[str, ...] = (
 )
 
 CONTROL_GATE_REVISION = "skgateway-live-path-gate/v1"
+
+
+@dataclass(frozen=True, slots=True)
+class SkGatewayRouteAuthorizationEvidence:
+    """Revisions proving one trusted gateway route authorization check."""
+
+    route_registry_revision: str
+    transport_profile_revision: str
+    egress_policy_revision: str
+
+
+class SkGatewayRoutePolicyVerifier:
+    """Verify trusted SKGateway facts against canonical routing controls."""
+
+    def __init__(
+        self,
+        *,
+        routes: RouteRegistry,
+        transport_profiles: TransportProfileStore,
+        egress: EgressGate,
+    ) -> None:
+        self._routes = routes
+        self._transport_profiles = transport_profiles
+        self._egress = egress
+
+    def verify(
+        self,
+        *,
+        service_identity: str,
+        capability: str,
+        resource: Mapping[str, str],
+        context: Mapping[str, str],
+    ) -> SkGatewayRouteAuthorizationEvidence:
+        if capability != "skgateway.infer":
+            raise CapabilityDeniedError("gateway capability is not permitted")
+        route_id = resource.get("route_id")
+        classification_value = context.get("classification")
+        if not route_id or not classification_value:
+            raise CapabilityDeniedError(
+                "gateway route and classification selectors are required"
+            )
+        try:
+            classification = DataClassification(classification_value)
+        except ValueError as exc:
+            raise CapabilityDeniedError(
+                "gateway classification selector is not permitted"
+            ) from exc
+        route = self._routes.route(route_id)
+        if not route.enabled:
+            raise CapabilityDeniedError("gateway route is disabled")
+        profile = self._transport_profiles.resolve(route)
+        if profile.kind is not TransportKind.SKGATEWAY_CHAT:
+            raise CapabilityDeniedError("route is not bound to SKGateway")
+        if profile.service_identity != service_identity:
+            raise CapabilityDeniedError("gateway service identity is not permitted")
+        if profile.capability_scope != capability:
+            raise CapabilityDeniedError("gateway capability scope is not permitted")
+        decision = self._egress.decide(
+            route=route,
+            classification=classification,
+            human_approval_ref=context.get("human_approval_ref"),
+        )
+        if not decision.allow:
+            raise EgressDeniedError("gateway classification egress is denied")
+        return SkGatewayRouteAuthorizationEvidence(
+            route_registry_revision=self._routes.registry_revision,
+            transport_profile_revision=self._transport_profiles.store_revision,
+            egress_policy_revision=decision.policy_revision,
+        )
 
 
 class SkGatewayLivePathReport(Protocol):
