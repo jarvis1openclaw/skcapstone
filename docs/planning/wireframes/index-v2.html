@@ -1,0 +1,966 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SKLegal AI-first Matter analysis wireframes - SKL-UI-03</title>
+<style>
+  :root {
+    --ink: #18181b;
+    --ink-soft: #3f3f46;
+    --paper: #fbf7ef;
+    --surface: #f4ede0;
+    --sunken: #e8ddca;
+    --line: #cdbda6;
+    --copper: #9a3412;
+    --copper-dark: #7c2d12;
+    --blue: #1d4ed8;
+    --blue-soft: #dbeafe;
+    --green: #166534;
+    --green-soft: #dcfce7;
+    --amber: #92400e;
+    --amber-soft: #fef3c7;
+    --red: #991b1b;
+    --red-soft: #fee2e2;
+    --violet: #6d28d9;
+    --violet-soft: #ede9fe;
+    --slate-soft: #e7e5e4;
+    --shadow: 0 8px 28px rgba(28, 25, 23, 0.12);
+  }
+  * { box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  body {
+    margin: 0;
+    font-family: ui-sans-serif, system-ui, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    color: var(--ink);
+    background: var(--sunken);
+    line-height: 1.45;
+  }
+  a { color: inherit; }
+  code, .mono { font-family: ui-monospace, Menlo, Consolas, monospace; font-size: 0.86em; }
+  .deck-nav {
+    position: sticky;
+    top: 0;
+    z-index: 30;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.35rem;
+    padding: 0.55rem 1rem;
+    color: var(--paper);
+    background: var(--ink);
+    box-shadow: var(--shadow);
+  }
+  .deck-nav strong { margin-right: 0.6rem; }
+  .deck-nav a {
+    padding: 0.15rem 0.55rem;
+    border: 1px solid #57534e;
+    border-radius: 999px;
+    color: #eadfce;
+    font-size: 0.76rem;
+    text-decoration: none;
+  }
+  .deck-nav a:hover, .deck-nav a:focus-visible { background: var(--copper-dark); outline: 2px solid #fff; }
+  .screen { max-width: 1280px; margin: 2rem auto; padding: 0 0.75rem; scroll-margin-top: 4rem; }
+  .screen-head {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 0.45rem 1.25rem;
+    padding: 0.7rem 1rem;
+    color: var(--paper);
+    background: var(--ink);
+    border-radius: 10px 10px 0 0;
+  }
+  .screen-head .route { font-size: 1.05rem; font-weight: 800; }
+  .screen-head .meta { color: #d6c7b2; font-size: 0.76rem; }
+  .screen-head .meta b { color: #fff4dd; }
+  .frame {
+    min-height: 420px;
+    padding: 0.75rem;
+    border: 2px solid var(--ink);
+    border-top: 0;
+    border-radius: 0 0 10px 10px;
+    background: var(--paper);
+  }
+  .cover { max-width: 1160px; margin: 2rem auto; padding: 2rem; border: 2px solid var(--ink); border-radius: 12px; background: var(--paper); box-shadow: var(--shadow); }
+  .cover h1 { margin: 0 0 0.4rem; color: var(--copper-dark); font-size: clamp(1.8rem, 4vw, 3rem); }
+  .cover h2, .frame h2 { margin: 1.4rem 0 0.5rem; color: var(--copper-dark); font-size: 1.08rem; }
+  .cover p { max-width: 78ch; }
+  .kicker { color: var(--copper); font-size: 0.75rem; font-weight: 800; letter-spacing: 0.08em; text-transform: uppercase; }
+  .grid2 { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0.7rem; }
+  .grid3 { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 0.7rem; }
+  .grid4 { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 0.7rem; }
+  .row { display: flex; gap: 0.65rem; align-items: flex-start; }
+  .col { display: flex; flex-direction: column; gap: 0.65rem; }
+  .grow { flex: 1; min-width: 0; }
+  .wf {
+    position: relative;
+    min-height: 2.2rem;
+    padding: 0.7rem;
+    border: 2px dashed #8b7c67;
+    border-radius: 8px;
+    background: var(--surface);
+  }
+  .wf.solid { border-style: solid; border-color: var(--ink-soft); }
+  .wf.dark { color: var(--paper); background: var(--ink); border-color: var(--ink); }
+  .lbl { margin-bottom: 0.3rem; color: var(--ink-soft); font-size: 0.68rem; font-weight: 800; letter-spacing: 0.07em; text-transform: uppercase; }
+  .dark .lbl { color: #d6c7b2; }
+  .note { color: var(--ink-soft); font-size: 0.76rem; }
+  .small { font-size: 0.76rem; }
+  .tag {
+    display: inline-block;
+    margin: 0.08rem 0.12rem 0.08rem 0;
+    padding: 0.08rem 0.48rem;
+    border: 1px solid;
+    border-radius: 999px;
+    font-size: 0.68rem;
+    font-weight: 800;
+  }
+  .good { color: var(--green); background: var(--green-soft); border-color: var(--green); }
+  .info { color: var(--blue); background: var(--blue-soft); border-color: var(--blue); }
+  .warn { color: var(--amber); background: var(--amber-soft); border-color: var(--amber); }
+  .bad { color: var(--red); background: var(--red-soft); border-color: var(--red); }
+  .model { color: var(--violet); background: var(--violet-soft); border-color: var(--violet); }
+  .neutral { color: var(--ink-soft); background: var(--slate-soft); border-color: #78716c; }
+  .course { color: var(--copper-dark); background: #ffedd5; border-color: var(--copper); }
+  .btn {
+    display: inline-block;
+    padding: 0.3rem 0.72rem;
+    border: 2px solid var(--copper);
+    border-radius: 6px;
+    color: var(--copper-dark);
+    background: var(--paper);
+    font-size: 0.78rem;
+    font-weight: 800;
+    text-decoration: none;
+  }
+  .btn.primary { color: #fff; background: var(--copper); }
+  .btn.ai { color: #fff; background: var(--violet); border-color: var(--violet); }
+  .btn.disabled { color: #78716c; background: #f5f5f4; border-color: #a8a29e; }
+  table { width: 100%; border-collapse: collapse; font-size: 0.76rem; }
+  th, td { padding: 0.38rem 0.46rem; border: 1px dashed #91836f; text-align: left; vertical-align: top; }
+  th { background: var(--sunken); font-size: 0.68rem; letter-spacing: 0.04em; text-transform: uppercase; }
+  .appbar { display: flex; flex-wrap: wrap; align-items: center; gap: 0.8rem; margin: -0.75rem -0.75rem 0.7rem; padding: 0.55rem 0.85rem; color: var(--paper); background: var(--ink); }
+  .appbar .logo { font-weight: 900; letter-spacing: 0.04em; }
+  .appbar nav { display: flex; flex: 1; flex-wrap: wrap; gap: 0.75rem; font-size: 0.78rem; }
+  .appbar .here { color: #fff4dd; border-bottom: 2px solid var(--copper); }
+  .matter-shell { display: grid; grid-template-columns: 210px minmax(0, 1fr); gap: 0.7rem; }
+  .sidenav { display: flex; flex-direction: column; gap: 0.28rem; padding: 0.6rem; border: 2px solid var(--ink-soft); border-radius: 8px; background: var(--surface); font-size: 0.78rem; }
+  .sidenav div { padding: 0.26rem 0.42rem; border-radius: 5px; }
+  .sidenav .here { color: #fff; background: var(--copper); font-weight: 800; }
+  .ribbon { display: flex; flex-wrap: wrap; gap: 0.28rem; }
+  .ribbon span { padding: 0.18rem 0.55rem; border: 2px solid var(--ink-soft); border-radius: 999px; background: var(--slate-soft); font-size: 0.68rem; font-weight: 800; }
+  .ribbon .done { color: var(--green); background: var(--green-soft); border-color: var(--green); }
+  .ribbon .active { color: var(--violet); background: var(--violet-soft); border-color: var(--violet); }
+  .rank { display: grid; grid-template-columns: 52px minmax(0, 1fr) 180px; gap: 0.65rem; align-items: start; }
+  .rank-number { display: grid; place-items: center; width: 44px; height: 44px; color: #fff; background: var(--copper); border-radius: 50%; font-size: 1.05rem; font-weight: 900; }
+  .metric { display: grid; grid-template-columns: 96px minmax(0, 1fr) 32px; gap: 0.3rem; align-items: center; margin: 0.18rem 0; font-size: 0.66rem; }
+  .bar { height: 8px; overflow: hidden; border-radius: 99px; background: #d6d3d1; }
+  .bar i { display: block; height: 100%; background: var(--violet); }
+  .lane { border-left: 6px solid; }
+  .lane.course-lane { border-left-color: var(--copper); }
+  .lane.authority-lane { border-left-color: var(--blue); }
+  .lane.matter-lane { border-left-color: var(--green); }
+  .lane.model-lane { border-left-color: var(--violet); }
+  .lane.human-lane { border-left-color: var(--amber); }
+  .callout { padding: 0.65rem 0.8rem; border-left: 5px solid var(--amber); background: var(--amber-soft); font-size: 0.78rem; }
+  .flow { display: flex; flex-wrap: wrap; align-items: stretch; gap: 0.35rem; }
+  .flow .node { padding: 0.45rem 0.62rem; border: 2px solid var(--ink-soft); border-radius: 7px; background: var(--surface); font-size: 0.72rem; font-weight: 800; }
+  .flow .arrow { align-self: center; color: var(--copper); font-weight: 900; }
+  .status-line { display: flex; flex-wrap: wrap; gap: 0.35rem; align-items: center; }
+  .score { font-size: 1.4rem; font-weight: 900; color: var(--violet); }
+  .version-link { margin-left: auto; border-color: #a8a29e !important; }
+  @media (max-width: 920px) {
+    .grid4, .grid3 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .matter-shell { grid-template-columns: 1fr; }
+    .sidenav { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); }
+    .rank { grid-template-columns: 44px minmax(0, 1fr); }
+    .rank > :last-child { grid-column: 2; }
+  }
+  @media (max-width: 620px) {
+    .grid4, .grid3, .grid2 { grid-template-columns: 1fr; }
+    .row { flex-direction: column; }
+    .sidenav { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  }
+</style>
+</head>
+<body>
+
+<nav class="deck-nav" aria-label="Wireframe sections">
+  <strong>SKLegal AI-first v2</strong>
+  <a href="index.html">Version 1</a>
+  <a href="#cover">Decision</a>
+  <a href="#operating-model">AI operating model</a>
+  <a href="#corpus-map">Corpus map</a>
+  <a href="#cockpit">Matter cockpit</a>
+  <a href="#intake">AI intake</a>
+  <a href="#artifacts">Artifacts</a>
+  <a href="#elements">Element matrix</a>
+  <a href="#recommendation">Recommendation</a>
+  <a href="#strategy">Strategy and Authority</a>
+  <a href="#challenge">Agent team</a>
+  <a href="#model-routing">Model routing</a>
+  <a href="#workproduct">Work Product</a>
+  <a href="#deadlines">Deadlines and actions</a>
+  <a href="#evidence">Source and run evidence</a>
+  <a href="#case-log">Case log</a>
+  <a href="#failures">Failure states</a>
+  <a href="#delivery">Delivery map</a>
+</nav>
+
+<main>
+
+<section class="screen" id="cover">
+  <div class="cover">
+    <div class="kicker">SKL-UI-03 - ecf6d536 - synthetic content only</div>
+    <h1>SKLegal becomes an active AI case team</h1>
+    <p>The AI drives intake, issue spotting, Element mapping, research routing, gap detection, ranked next steps, challenge, drafting, Deadline monitoring, and continuous re-analysis. Humans set the objective and make the small number of decisions that legally bind a strategy, artifact, or external action.</p>
+    <p><span class="tag model">AI default</span> <span class="tag good">human controlled effect</span> <span class="tag info">source grounded</span> <span class="tag warn">jurisdiction verified</span></p>
+
+    <h2>Architecture verdict</h2>
+    <div class="grid3">
+      <div class="wf solid">
+        <div class="lbl">Already coherent</div>
+        <p class="small">Matter records, immutable provenance, policy-filtered retrieval, typed proposals, CapAuth, Temporal, claim support, Work Product versions, Approvals, audit, and simulation-first connectors.</p>
+      </div>
+      <div class="wf solid">
+        <div class="lbl">Product gap</div>
+        <p class="small">No typed Matter recommendation schema, strategist agent, joined Issue and Authority read model, challenge workflow, scoring policy, or AI-first cockpit yet.</p>
+      </div>
+      <div class="wf solid">
+        <div class="lbl">Version 2 decision</div>
+        <p class="small">Keep <code>/matters/$matterId</code> as the center. Put the AI team, ranked proposals, proof matrix, strategy, Authority, challenge, and drafting inside the authorized Matter.</p>
+      </div>
+    </div>
+
+    <h2>Non-negotiable evidence equation</h2>
+    <div class="flow">
+      <div class="node">Course instruction</div><div class="arrow">+</div>
+      <div class="node">Current Authority</div><div class="arrow">+</div>
+      <div class="node">Matter facts and evidence</div><div class="arrow">+</div>
+      <div class="node">Procedural posture and Deadlines</div><div class="arrow">+</div>
+      <div class="node">Model inference</div><div class="arrow">=</div>
+      <div class="node">Ranked typed proposal</div>
+    </div>
+    <p class="note">No lane can silently impersonate another. The proposal remains inert until deterministic gates and the required human decision pass.</p>
+
+    <h2>Research basis</h2>
+    <p class="small"><code>140</code> mapped course documents, <code>39</code> media documents, <code>160</code> ordinary private retrieval files, <code>10</code> Proceeding phases, <code>11</code> Matter types, <code>389</code> procedures, <code>212</code> Work Product candidates, <code>375</code> topics, <code>162</code> jurisdiction signals, <code>431</code> defined terms, and <code>12</code> verified skills with <code>42</code> unique curated routes.</p>
+    <p><a class="btn" href="../../research/HOWTOWININCOURT-ARCHITECTURE-REVIEW-2026-08-22.md">Open corpus review</a> <a class="btn" href="../../research/SKGATEWAY-INTEGRATION-REVIEW-2026-08-22.md">Open SKGateway review</a> <a class="btn" href="COMPONENT-API-MAP-V2.md">Open component map</a></p>
+  </div>
+</section>
+
+<section class="screen" id="operating-model">
+  <div class="screen-head">
+    <span class="route">AI operating model</span>
+    <span class="meta">Architecture: <b>model gateway + versioned agent specs + Temporal + human decision gates</b></span>
+  </div>
+  <div class="frame">
+    <div class="grid4">
+      <div class="wf solid">
+        <div class="lbl">1. Observe - automatic</div>
+        <p class="small">Watch new Matter Events, Evidence Items, artifacts, Authority updates, orders, Deadlines, responses, and Work Product changes.</p>
+        <span class="tag model">always on</span>
+      </div>
+      <div class="wf solid">
+        <div class="lbl">2. Analyze - automatic</div>
+        <p class="small">Rebuild the Issue map, Element coverage, contradictions, jurisdiction state, record gaps, and ranked next steps.</p>
+        <span class="tag model">AI driven</span>
+      </div>
+      <div class="wf solid">
+        <div class="lbl">3. Prepare - automatic</div>
+        <p class="small">Propose Tasks, evidence requests, research queries, Deadline candidates, and draft Work Products with bracketed unknowns.</p>
+        <span class="tag model">proposal only</span>
+      </div>
+      <div class="wf solid">
+        <div class="lbl">4. Bind or act - human gate</div>
+        <p class="small">Accept strategy, resolve a material tension, approve an exact artifact hash, or authorize an external dispatch.</p>
+        <span class="tag warn">human decision</span>
+      </div>
+    </div>
+    <h2>Continuous case loop</h2>
+    <div class="flow">
+      <div class="node">New evidence or event</div><div class="arrow">-&gt;</div>
+      <div class="node">Policy and scope check</div><div class="arrow">-&gt;</div>
+      <div class="node">Pinned retrieval</div><div class="arrow">-&gt;</div>
+      <div class="node">Qwen analysis</div><div class="arrow">-&gt;</div>
+      <div class="node">Deterministic validation</div><div class="arrow">-&gt;</div>
+      <div class="node">Blind challenge</div><div class="arrow">-&gt;</div>
+      <div class="node">Ranked proposals</div><div class="arrow">-&gt;</div>
+      <div class="node">Human decision when required</div>
+    </div>
+    <div class="callout" style="margin-top:0.8rem;"><b>Design rule:</b> routine analysis should not wait for a human click. State mutation and legal effect still require the exact existing gate. This gives maximum AI leverage without letting a model invent authority or dispatch itself.</div>
+  </div>
+</section>
+
+<section class="screen" id="corpus-map">
+  <div class="screen-head">
+    <span class="route">Private corpus strategy map</span>
+    <span class="meta">Owner: <b>HammerTime source and provenance</b> - Consumer: <b>SKLegal governed retrieval</b></span>
+  </div>
+  <div class="frame">
+    <div class="grid3">
+      <div class="wf solid course-lane lane">
+        <div class="lbl">Foundation</div>
+        <p class="small">Juris Dictionary, Elements, planning, burden of proof, maxims, legal research, citations, rules of court.</p>
+        <span class="tag course">source skill</span>
+      </div>
+      <div class="wf solid course-lane lane">
+        <div class="lbl">Proceeding phase</div>
+        <p class="small">Pleadings, service, discovery, motions, evidence, trial, post-judgment, and appeal.</p>
+        <span class="tag course">procedural skills</span>
+      </div>
+      <div class="wf solid course-lane lane">
+        <div class="lbl">Matter type</div>
+        <p class="small">Contracts and debt, foreclosure, family and custody, property and title, criminal, general civil.</p>
+        <span class="tag course">matter skills</span>
+      </div>
+    </div>
+    <h2>Deterministic retrieval route</h2>
+    <table>
+      <thead><tr><th>Proceeding phase</th><th>Primary course route</th><th>AI objective</th><th>Typical proposal</th></tr></thead>
+      <tbody>
+        <tr><td>Pre-filing</td><td><code>planning -> elements -> causes</code></td><td>Build the Issue, Claim, Defense, Element, and proof map</td><td>Investigation plan or pleading prerequisites</td></tr>
+        <tr><td>Pleadings</td><td><code>complaints or answers -> defenses -> forms</code></td><td>Identify allegations, admissions, denials, and affirmative defenses</td><td>Complaint or Answer Work Product</td></tr>
+        <tr><td>Discovery</td><td><code>discovery -> compelling -> depositions</code></td><td>Target record gaps and authenticate proof</td><td>Admissions, production, interrogatories, deposition plan</td></tr>
+        <tr><td>Motion practice</td><td><code>motions -> argument -> summary</code></td><td>Match requested relief to the established record and Authority</td><td>Motion, memorandum, and proposed order</td></tr>
+        <tr><td>Trial and evidence</td><td><code>evidence -> objections -> trial</code></td><td>Test admissibility, witnesses, exhibits, and error preservation</td><td>Exhibit plan, objection log, witness examination</td></tr>
+        <tr><td>Post-judgment and appeal</td><td><code>collecting or show-cause -> appeals</code></td><td>Preserve the record, enforce, challenge, or appeal</td><td>Enforcement motion, writ request, appeal record plan</td></tr>
+      </tbody>
+    </table>
+    <div class="callout" style="margin-top:0.8rem;"><b>Coverage rule:</b> the 12 curated skills cover 42 unique source routes, not the whole 160-file retrieval set. Full-corpus passages outside a verified skill route display as <code>unrouted course passage</code> and cannot by themselves make a recommendation ready.</div>
+  </div>
+</section>
+
+<section class="screen" id="cockpit">
+  <div class="screen-head">
+    <span class="route">/matters/$matterId - AI cockpit</span>
+    <span class="meta">Capability: <b>matter.read</b> - Existing read: <b>GET /v1/matters/{id}/workspace</b> - Analysis contracts: <b>planned</b></span>
+  </div>
+  <div class="frame">
+    <div class="appbar">
+      <span class="logo">SKLegal</span>
+      <nav><span>Home</span><span>Clients</span><span class="here">Matters</span><span>Calendar</span><span>Work queue</span><span>Corpus</span></nav>
+      <span class="tag good">Tenant: Synthetic Lab</span>
+      <span class="tag model">AI case team active</span>
+    </div>
+    <div class="matter-shell">
+      <aside class="sidenav">
+        <div class="here">AI cockpit</div><div>Overview</div><div>Parties</div><div>Case activity</div><div>Facts and tensions</div><div>Evidence</div><div>Files and artifacts</div><div>Issues and claims</div><div>Authorities</div><div>Work Products</div><div>Deadlines</div><div>Actions and receipts</div><div>Provenance</div>
+      </aside>
+      <div class="col">
+        <div class="wf solid">
+          <div class="lbl">Matter scope and pinned context</div>
+          <b>Synthetic Vehicle Contract Matter</b>
+          <span class="tag good">Matter member</span>
+          <span class="tag info">contract</span>
+          <span class="tag info">discovery phase</span>
+          <span class="tag warn">Illinois circuit court - verify division</span>
+          <p class="note">Matter snapshot <code>ms-41</code> - private course release <code>HTWC-2026-08-20</code> - Authority snapshot <code>UNKNOWN</code> - policy decision <code>pol-902</code></p>
+        </div>
+        <div class="wf dark">
+          <div class="lbl">Ask the AI case team</div>
+          <div class="row">
+            <div class="wf grow" style="background:#fff;color:var(--ink);min-height:58px;">What should we do next to prove breach and preserve the current discovery deadline?</div>
+            <span class="btn ai">Analyze Matter</span>
+          </div>
+          <p class="small">Quick runs: <span class="tag model">find missing proof</span> <span class="tag model">challenge our best theory</span> <span class="tag model">prepare next Work Product</span> <span class="tag model">recheck all Deadlines</span></p>
+        </div>
+        <div class="wf">
+          <div class="lbl">Continuous analysis workflow</div>
+          <div class="ribbon">
+            <span class="done">scope passed</span><span class="done">snapshot pinned</span><span class="done">course routed</span><span class="done">Issues mapped</span><span class="active">Authority review</span><span>blind challenge</span><span>human decision</span><span>drafting</span>
+          </div>
+        </div>
+        <div class="grid3">
+          <div class="wf"><div class="lbl">Proof coverage</div><div class="score">63%</div><span class="tag warn">2 material gaps</span><p class="note">4 of 6 proposed Elements have support.</p></div>
+          <div class="wf"><div class="lbl">Deadline posture</div><div class="score">11d</div><span class="tag warn">candidate only</span><p class="note">Trigger and current rule still require review.</p></div>
+          <div class="wf"><div class="lbl">Analysis freshness</div><div class="score">4m</div><span class="tag good">auto-rerun current</span><p class="note">Last event: Evidence Item added.</p></div>
+        </div>
+        <div class="wf solid">
+          <div class="lbl">Top ranked proposals</div>
+          <div class="rank">
+            <div class="rank-number">1</div>
+            <div><b>Verify the controlling discovery rule and trigger before relying on the candidate due date</b><p class="note">High waiver impact. Course guidance supports strict timeline control, but current Authority is not yet pinned.</p><span class="tag authority info">Current Authority missing</span> <span class="tag warn">Deadline blocked</span></div>
+            <div><span class="btn ai">Open proposal</span><p class="note">AI can research and prepare. Human reviews the operative Deadline.</p></div>
+          </div>
+          <hr style="border:0;border-top:1px dashed #91836f;margin:0.7rem 0;">
+          <div class="rank">
+            <div class="rank-number">2</div>
+            <div><b>Close the consideration and performance proof gaps before drafting summary relief</b><p class="note">Targets two unsupported proposed Elements using document production and a focused admission set.</p><span class="tag course">Course instruction</span> <span class="tag good">Matter evidence linked</span> <span class="tag model">Qwen proposal</span></div>
+            <div><span class="btn ai">Prepare evidence plan</span><p class="note">Creates proposed Tasks and discovery Work Products.</p></div>
+          </div>
+          <hr style="border:0;border-top:1px dashed #91836f;margin:0.7rem 0;">
+          <div class="rank">
+            <div class="rank-number">3</div>
+            <div><b>Run a contrary-Authority and alternate-defense challenge</b><p class="note">Before drafting, test formation, performance, damages, waiver, and procedural prerequisites from the opposing position.</p><span class="tag model">independent challenge planned</span></div>
+            <div><span class="btn ai">Run challenge</span><p class="note">Same-model review is labeled variance testing.</p></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="screen" id="intake">
+  <div class="screen-head">
+    <span class="route">AI-guided Matter intake and readiness</span>
+    <span class="meta">AI prepares structure - Human confirms scope and material facts - Policy runs first</span>
+  </div>
+  <div class="frame">
+    <div class="grid2">
+      <div class="wf solid">
+        <div class="lbl">Drop the case record</div>
+        <p><b>Add pleadings, orders, notices, correspondence, exhibits, transcripts, and your objective.</b></p>
+        <p class="note">Files enter only through the approved Matter source path. This wireframe does not process HammerTime Inbox.</p>
+        <span class="btn ai">Start AI intake proposal</span>
+      </div>
+      <div class="wf solid">
+        <div class="lbl">AI asks only for gaps that change the plan</div>
+        <ol class="small">
+          <li>Which court and division currently own the Proceeding?</li>
+          <li>What relief is requested by each side?</li>
+          <li>What was served, when, by whom, and how?</li>
+          <li>Which facts are admitted, disputed, unknown, or contradicted?</li>
+          <li>What immediate result should the strategy optimize?</li>
+        </ol>
+      </div>
+    </div>
+    <h2>Structured intake proposal</h2>
+    <table>
+      <thead><tr><th>Field group</th><th>AI proposes</th><th>Deterministic or human check</th></tr></thead>
+      <tbody>
+        <tr><td>Security and scope</td><td>Tenant, Client, Engagement, Matter, classification, privilege candidates</td><td>CapAuth, membership, conflict, ethical wall, rights, retention, hold</td></tr>
+        <tr><td>Proceeding</td><td>Forum, jurisdiction, court level, docket, posture, phase</td><td>Official record and human confirmation</td></tr>
+        <tr><td>Legal map</td><td>Issues, potential Claims and Defenses, Remedies, proposed Elements and burdens</td><td>Current Authority and human review</td></tr>
+        <tr><td>Matter record</td><td>Atomic Fact Assertions, Evidence Items, parties, roles, Matter Events, tensions</td><td>Exact source spans, hashes, custody, review state</td></tr>
+        <tr><td>Time</td><td>Trigger candidates, dates, event sequence, Deadline candidates</td><td>Rule source, timezone, deterministic calculation, reviewer</td></tr>
+        <tr><td>Objective</td><td>Immediate preservation, information, pleading, motion, hearing, trial, appeal, or enforcement goal</td><td>Human selects the operating objective</td></tr>
+      </tbody>
+    </table>
+    <div class="callout" style="margin-top:0.8rem;"><b>Fail-closed readiness:</b> the AI may continue organizing authorized material when an Authority or Deadline lane is incomplete, but it must mark the affected recommendation blocked and ask the next highest-value question.</div>
+  </div>
+</section>
+
+<section class="screen" id="artifacts">
+  <div class="screen-head">
+    <span class="route">Matter artifacts and evidence intake</span>
+    <span class="meta">Original preserved - AI organized - Human confirms material classifications - No direct HammerTime path</span>
+  </div>
+  <div class="frame">
+    <div class="grid3">
+      <div class="wf solid">
+        <div class="lbl">Provide case material</div>
+        <p><b>Drop files, scan or photograph pages, paste text, or select an existing Matter item.</b></p>
+        <p class="small">Pleadings, orders, exhibits, contracts, correspondence, photos, audio, video, transcripts, spreadsheets, research, and prior Work Products.</p>
+        <p><span class="btn ai">Add to this Matter</span> <span class="btn">Choose existing item</span></p>
+      </div>
+      <div class="wf solid">
+        <div class="lbl">AI intake pipeline</div>
+        <div class="ribbon"><span class="done">quarantine scan</span><span class="done">hash original</span><span class="done">deduplicate</span><span class="active">OCR or transcribe</span><span>classify</span><span>extract facts</span><span>link gaps</span></div>
+        <p class="small">The original stays immutable. Derived text, thumbnails, redactions, translations, and model summaries become separately hashed children with exact lineage.</p>
+      </div>
+      <div class="wf solid">
+        <div class="lbl">Ask for what is missing</div>
+        <p class="small">The AI converts proof gaps into proposed artifact requests with purpose, target Element, requested format, custodian, due state, and collection method.</p>
+        <p><span class="btn ai">Build missing-artifact list</span> <span class="btn">Prepare secure request</span></p>
+        <p class="note">Preparing a request does not send it. Communication and dispatch use their existing Approval gates.</p>
+      </div>
+    </div>
+
+    <h2>Artifact inbox for this Matter</h2>
+    <table>
+      <thead><tr><th>Item</th><th>AI classification</th><th>Provenance</th><th>Case links</th><th>Review and next step</th></tr></thead>
+      <tbody>
+        <tr><td><b>Executed agreement.pdf</b><br><span class="tag good">original sealed</span></td><td>Contract - proposed<br>signature pages detected</td><td>Source: client upload<br><code>sha256: 41...ac</code><br>received 2026-08-22 14:03Z</td><td>Claim C-4<br>formation Elements 1 and 2<br>Fact Assertions F-11 and F-12</td><td><span class="tag warn">confirm parties</span><br><span class="btn ai">Review extracted facts</span></td></tr>
+        <tr><td><b>Inspection photos.zip</b><br><span class="tag warn">8 children</span></td><td>Images - proposed<br>capture metadata preserved</td><td>Source: Matter upload<br>parent and child hashes<br>custody event recorded</td><td>Breach Element<br>Evidence Items E-21 to E-28</td><td><span class="tag warn">authenticate source</span><br><span class="btn">Open contact sheet</span></td></tr>
+        <tr><td><b>Voicemail.m4a</b><br><span class="tag model">local transcription ready</span></td><td>Communication - proposed<br>speaker UNKNOWN</td><td>Original audio plus derived transcript<br>model route and timestamp spans</td><td>Potential admission<br>Tension group TG-3</td><td><span class="tag bad">identity unresolved</span><br><span class="btn ai">Ask highest-value question</span></td></tr>
+      </tbody>
+    </table>
+
+    <h2>One artifact, complete lineage</h2>
+    <div class="flow">
+      <div class="node">Original bytes and source identity</div><div class="arrow">-&gt;</div>
+      <div class="node">Hash and custody event</div><div class="arrow">-&gt;</div>
+      <div class="node">Derived text or media</div><div class="arrow">-&gt;</div>
+      <div class="node">Fact and Evidence proposals</div><div class="arrow">-&gt;</div>
+      <div class="node">Element and Issue links</div><div class="arrow">-&gt;</div>
+      <div class="node">Work Product use</div><div class="arrow">-&gt;</div>
+      <div class="node">Approval and receipt</div>
+    </div>
+    <div class="callout" style="margin-top:0.8rem;"><b>Easy by default, defensible underneath:</b> one Add button starts the process. The system quietly preserves filenames, MIME types, byte counts, hashes, source, acquisition time, custody, extraction versions, model runs, human corrections, links, exports, and every later use.</div>
+  </div>
+</section>
+
+<section class="screen" id="elements">
+  <div class="screen-head">
+    <span class="route">Issue and essential Elements proof matrix</span>
+    <span class="meta">Domain foundation exists - Joined analysis read and decision contracts are planned under S3-05 and S4-03</span>
+  </div>
+  <div class="frame">
+    <div class="wf solid">
+      <div class="lbl">Issue: Did the supplier breach the synthetic purchase agreement?</div>
+      <p class="small"><span class="tag model">AI proposed</span> <span class="tag warn">burden requires current Authority verification</span> <span class="tag neutral">human not yet accepted</span></p>
+      <table>
+        <thead><tr><th>Element</th><th>Burden</th><th>Fact Assertions</th><th>Evidence Items</th><th>Authority</th><th>Support state</th><th>AI next move</th></tr></thead>
+        <tbody>
+          <tr><td>Offer and acceptance</td><td>Client - proposed</td><td>Signed agreement on stated date</td><td><span class="tag good">contract.pdf verified</span></td><td><span class="tag warn">applicability pending</span></td><td><span class="tag good">supported</span></td><td>Verify complete agreement and amendments</td></tr>
+          <tr><td>Consideration</td><td>Client - proposed</td><td>Payment promised and transferred</td><td><span class="tag warn">bank record missing</span></td><td><span class="tag warn">applicability pending</span></td><td><span class="tag bad">record gap</span></td><td>Request or preserve payment evidence</td></tr>
+          <tr><td>Client performance</td><td>Client - proposed</td><td>Payment and cooperation</td><td><span class="tag warn">partial support</span></td><td><span class="tag warn">applicability pending</span></td><td><span class="tag warn">contested</span></td><td>Map performance documents and contrary email</td></tr>
+          <tr><td>Opposing breach</td><td>Client - proposed</td><td>Delivery did not match agreement</td><td><span class="tag good">inspection images</span></td><td><span class="tag warn">applicability pending</span></td><td><span class="tag good">supported</span></td><td>Authenticate inspection and delivery record</td></tr>
+          <tr><td>Damages and remedy</td><td>Client - proposed</td><td>Repair and substitute purchase costs</td><td><span class="tag warn">estimate only</span></td><td><span class="tag warn">remedy scope pending</span></td><td><span class="tag bad">material gap</span></td><td>Obtain paid invoices and calculate remedy</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="grid3" style="margin-top:0.7rem;">
+      <div class="wf lane matter-lane"><div class="lbl">Matter facts</div><p class="small">Facts remain asserted, reviewed, disputed, or tensioned. The model never upgrades them to proven.</p></div>
+      <div class="wf lane authority-lane"><div class="lbl">Authority and burden</div><p class="small">Official sources determine the actual Elements, burden, remedy, and procedural prerequisites for this Proceeding.</p></div>
+      <div class="wf lane model-lane"><div class="lbl">AI proof planner</div><p class="small">Continuously finds the missing proof that most improves a dispositive or preservation objective.</p></div>
+    </div>
+  </div>
+</section>
+
+<section class="screen" id="recommendation">
+  <div class="screen-head">
+    <span class="route">Ranked recommendation detail</span>
+    <span class="meta">New typed contract owed by S3-05 and S5-02 - No hidden single-score legal confidence</span>
+  </div>
+  <div class="frame">
+    <div class="wf solid">
+      <div class="rank">
+        <div class="rank-number">2</div>
+        <div>
+          <div class="lbl">Proposal rec-204 version 3</div>
+          <h2 style="margin-top:0;">Close payment and performance gaps with a focused discovery package</h2>
+          <p class="small">Objective: improve Element coverage before requesting summary relief. Proposed outputs: one evidence-preservation Task, one production request draft, and one admissions draft limited by the current rule verification lane.</p>
+          <span class="tag model">typed proposal</span> <span class="tag course">course routed</span> <span class="tag warn">Authority incomplete</span> <span class="tag warn">human decision required</span>
+        </div>
+        <div><div class="lbl">Overall rank</div><div class="score">2 of 7</div><p class="note">Scoring policy <code>candidate-v0</code>. Weights are not approved architecture.</p></div>
+      </div>
+    </div>
+    <div class="grid2" style="margin-top:0.7rem;">
+      <div class="wf">
+        <div class="lbl">Visible scorecard</div>
+        <div class="metric"><span>Deadline impact</span><span class="bar"><i style="width:76%"></i></span><b>76</b></div>
+        <div class="metric"><span>Element impact</span><span class="bar"><i style="width:91%"></i></span><b>91</b></div>
+        <div class="metric"><span>Authority fit</span><span class="bar"><i style="width:42%"></i></span><b>42</b></div>
+        <div class="metric"><span>Evidence ready</span><span class="bar"><i style="width:61%"></i></span><b>61</b></div>
+        <div class="metric"><span>Reversibility</span><span class="bar"><i style="width:88%"></i></span><b>88</b></div>
+        <div class="metric"><span>Challenge pass</span><span class="bar"><i style="width:54%"></i></span><b>54</b></div>
+        <p class="note">The UI also shows contrary support, gap severity, burden, cost, privilege, disclosure, sanction, and remedy risk. No dimension is buried.</p>
+      </div>
+      <div class="wf">
+        <div class="lbl">Prerequisites and consequences</div>
+        <table>
+          <tr><th>Before acting</th><td>Verify court, rule set, discovery cap, service method, cutoff, and existing scheduling order.</td></tr>
+          <tr><th>If accepted</th><td>Create proposed Tasks and draft Work Products. Do not dispatch.</td></tr>
+          <tr><th>If delayed</th><td>Candidate discovery window may narrow. Operative consequence remains UNKNOWN until Authority lane passes.</td></tr>
+          <tr><th>If rejected</th><td>Record rationale and re-rank the remaining alternatives without hiding this history.</td></tr>
+        </table>
+      </div>
+    </div>
+    <h2>Proposition-level support lanes</h2>
+    <div class="grid2">
+      <div class="wf lane course-lane"><div class="lbl">Course instruction</div><p class="small">Planning and discovery lessons recommend mapping each essential Element to facts, evidence, and discovery tools. Exact release, source path, hash, and span shown.</p><span class="tag course">instructional only</span></div>
+      <div class="wf lane authority-lane"><div class="lbl">Current Authority</div><p class="small">Official discovery rule, local rule, scheduling order, response time, and request limit are not fully qualified.</p><span class="tag bad">blocks operative draft</span></div>
+      <div class="wf lane matter-lane"><div class="lbl">Matter record</div><p class="small">Contract and inspection Evidence Items support formation and breach. Payment proof and final damages remain incomplete.</p><span class="tag warn">2 material gaps</span></div>
+      <div class="wf lane model-lane"><div class="lbl">Model inference</div><p class="small">Qwen proposes that targeted discovery is the most reversible action with the highest Element impact.</p><span class="tag model">confidence: medium</span></div>
+      <div class="wf lane human-lane"><div class="lbl">Human decision</div><p class="small">No decision yet. Available controls preserve model separation from state.</p><span class="btn">Challenge</span> <span class="btn ai">Accept as proposed Tasks</span> <span class="btn">Reject</span></div>
+      <div class="wf"><div class="lbl">Record gaps and counter-support</div><p class="small">Contrary email suggests performance was delayed by the Client. Payment amount and date remain unverified. The AI proposes the next query and Evidence request for each gap.</p></div>
+    </div>
+  </div>
+</section>
+
+<section class="screen" id="strategy">
+  <div class="screen-head">
+    <span class="route">Course strategy and jurisdiction overlay</span>
+    <span class="meta">Separate sources, roles, effective dates, and applicability - Never blend course instruction into Authority</span>
+  </div>
+  <div class="frame">
+    <div class="grid2">
+      <div class="wf solid lane course-lane">
+        <div class="lbl">HowToWinInCourt strategy lane</div>
+        <p><b>Contract + discovery route</b></p>
+        <ol class="small">
+          <li>Map formation, performance, breach, damages, and defenses.</li>
+          <li>Link each proposed Element to Matter facts and proof.</li>
+          <li>Use focused discovery to close material record gaps.</li>
+          <li>Build the written record before seeking dispositive relief.</li>
+          <li>Preserve objections, rulings, and transcripts for later review.</li>
+        </ol>
+        <p class="note">Source class: course instruction. Source routes, release, hash, and spans remain visible.</p>
+      </div>
+      <div class="wf solid lane authority-lane">
+        <div class="lbl">Current jurisdiction lane</div>
+        <table>
+          <tr><th>Forum</th><td>Illinois circuit court - division UNKNOWN</td></tr>
+          <tr><th>Controlling rules</th><td>Current civil, evidence, local, standing, and scheduling sources required</td></tr>
+          <tr><th>Effective date</th><td>Required for every qualified Authority</td></tr>
+          <tr><th>Contrary Authority</th><td>Search not complete</td></tr>
+          <tr><th>Applicability</th><td><span class="tag bad">not ready</span></td></tr>
+        </table>
+        <p class="note">Official source connectors and Authority review decide applicability. The model may propose factors, never the final status alone.</p>
+      </div>
+    </div>
+    <h2>Source-role drift detector</h2>
+    <div class="wf solid">
+      <table>
+        <thead><tr><th>Retrieved source</th><th>What it actually is</th><th>Current official source</th><th>AI handling</th></tr></thead>
+        <tbody>
+          <tr><td>Florida Supreme Court hearing transcript discussing admission-request limits</td><td><span class="tag warn">advocate statement</span> not a ruling</td><td>SC2024-0779 adopted a 30-request limit effective 2026-04-01</td><td>Show conflict, demote Authority role, route to current rule</td></tr>
+          <tr><td>Course discovery passage using historical admissible-evidence formula</td><td><span class="tag course">aged course instruction</span></td><td>Current federal Rule 26 uses relevance and proportionality</td><td>Preserve source text, label historical formulation, apply current rule lane</td></tr>
+          <tr><td>Model summary of either source</td><td><span class="tag model">model inference</span></td><td>None until exact quote and applicability validators pass</td><td>Never promote by confidence or similarity</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="callout" style="margin-top:0.8rem;"><b>Evidence-neutral rule:</b> disputed or unconventional arguments are not suppressed by labels. They are represented faithfully, then tested against exact sources, the Matter record, current Authority, jurisdiction, posture, adverse treatment, and procedural consequence.</div>
+  </div>
+</section>
+
+<section class="screen" id="challenge">
+  <div class="screen-head">
+    <span class="route">AI case team and challenge swarm</span>
+    <span class="meta">Bounded agent specifications - Exact tool allowlists - One Matter scope - Typed outputs only</span>
+  </div>
+  <div class="frame">
+    <div class="grid4">
+      <div class="wf solid"><div class="lbl">Intake analyst</div><p class="small">Classifies Matter type, Proceeding phase, parties, events, facts, and immediate gaps.</p><span class="tag model">local Qwen</span></div>
+      <div class="wf solid"><div class="lbl">Proof strategist</div><p class="small">Maps Claims, Defenses, Elements, burdens, Fact Assertions, Evidence Items, and Remedies.</p><span class="tag model">local Qwen</span></div>
+      <div class="wf solid"><div class="lbl">Course researcher</div><p class="small">Routes HowToWinInCourt sources by phase and Matter type, with exact spans and role labels.</p><span class="tag model">local Qwen</span></div>
+      <div class="wf solid"><div class="lbl">Authority reviewer</div><p class="small">Tests official sources, hierarchy, effective date, applicability, quotations, and contrary Authority.</p><span class="tag warn">validator + review</span></div>
+      <div class="wf solid"><div class="lbl">Deadline analyst</div><p class="small">Extracts trigger candidates. Deterministic hooks calculate dates and a human reviews consequential results.</p><span class="tag info">hybrid</span></div>
+      <div class="wf solid"><div class="lbl">Adversarial challenger</div><p class="small">Attacks prerequisites, source roles, element proof, admissibility, remedy, procedural barriers, and downside risk.</p><span class="tag model">independent route preferred</span></div>
+      <div class="wf solid"><div class="lbl">Work Product assembler</div><p class="small">Uses only DRAFT_READY Claims, bracketed unknowns, verified citations, and selected style profiles.</p><span class="tag model">frontier optional</span></div>
+      <div class="wf solid"><div class="lbl">Orchestrator</div><p class="small">Temporal owns retries, reruns, human waits, cancellation, and resumable analysis. The model does not own the workflow.</p><span class="tag good">deterministic</span></div>
+    </div>
+    <h2>Challenge result</h2>
+    <div class="grid2">
+      <div class="wf lane model-lane"><div class="lbl">Primary proposal run</div><p class="small"><code>matter-strategist v1 - planned</code><br>Course route complete, proof gaps found, Authority lane incomplete.</p><span class="tag model">route unresolved until registry pin</span></div>
+      <div class="wf lane human-lane"><div class="lbl">Challenge disposition</div><p class="small">Found: source-role defect, one contrary Fact Assertion, two missing Evidence Items, and a candidate Deadline without current Authority.</p><span class="tag warn">requires rework</span> <span class="btn ai">Apply proposed corrections</span></div>
+    </div>
+    <p class="note">Same-model challenge is labeled variance testing. Independent-model review is used only when egress and source-rights policy allow the exact context.</p>
+  </div>
+</section>
+
+<section class="screen" id="model-routing">
+  <div class="screen-head">
+    <span class="route">Provider-neutral model routing seam</span>
+    <span class="meta">Planning card <b>31194edb</b> - Implementation card <b>bbf206c3</b> - App contracts name logical routes, never hosts</span>
+  </div>
+  <div class="frame">
+    <div class="flow">
+      <div class="node">Versioned Agent spec</div><div class="arrow">-&gt;</div>
+      <div class="node">Logical SKLegal route ID</div><div class="arrow">-&gt;</div>
+      <div class="node">CapAuth, Matter policy, rights, egress</div><div class="arrow">-&gt;</div>
+      <div class="node">Pinned prompt and Proposal schema</div><div class="arrow">-&gt;</div>
+      <div class="node">Deployment transport profile</div><div class="arrow">-&gt;</div>
+      <div class="node">Exact served-model evidence</div><div class="arrow">-&gt;</div>
+      <div class="node">Strict typed Proposal validation</div>
+    </div>
+
+    <h2>Interchangeable deployment bindings</h2>
+    <div class="grid2">
+      <div class="wf solid lane matter-lane">
+        <div class="lbl">Initial and rollback binding - direct local Qwen</div>
+        <p class="small">The logical local route calls the approved local Qwen service through a deployment profile. Private hosts and operator aliases remain secret configuration and run evidence, not app or agent state.</p>
+        <p><span class="tag good">sovereign local</span> <span class="tag info">concrete model</span> <span class="tag warn">concrete transport still owed</span></p>
+      </div>
+      <div class="wf solid lane model-lane">
+        <div class="lbl">Preferred future binding - qualified SKGateway</div>
+        <p class="small">The same logical route calls SKGateway's OpenAI-compatible Chat Completions surface. SKGateway selects a concrete backend or an approved bucket and returns exact attribution.</p>
+        <p><span class="tag model">router</span> <span class="tag warn">protected use blocked</span> <span class="tag neutral">implementation card bbf206c3</span></p>
+      </div>
+    </div>
+    <p class="callout"><b>Switch rule:</b> changing direct Qwen to SKGateway cannot change the Agent spec, Matter input, prompt hash, output schema, legal gate, or Proposal shape. Only the deployment binding and its observed routing evidence change.</p>
+
+    <h2>Route and execution evidence</h2>
+    <table>
+      <thead><tr><th>Contract identity</th><th>Deployment identity</th><th>Observed execution identity</th></tr></thead>
+      <tbody>
+        <tr><td>Logical route ID<br>purpose and workload class<br>prompt and schema hashes<br>classification ceiling<br>timeout and retry policy</td><td>Transport profile ID and revision<br>direct Qwen, SKGateway Chat, or direct OpenAI Responses<br>credential reference, never value<br>allowed concrete model or bucket policy</td><td>Gateway commit and config hash<br>request and correlation IDs<br>backend and capacity domain<br>bucket and member<br>exact served model<br>retry, failover, usage, and timing</td></tr>
+      </tbody>
+    </table>
+
+    <h2>Workload buckets and model sizing</h2>
+    <div class="grid3">
+      <div class="wf"><div class="lbl">Workload class</div><p class="small"><code>S / M / L / XL</code> expresses the minimum task capability and risk. Matter strategy and long-context challenge will normally be L or XL.</p><span class="tag warn">hard floor after evaluation</span></div>
+      <div class="wf"><div class="lbl">Model size metadata</div><p class="small">Parameter count and active parameters help describe a model. They do not prove reasoning, structured output, citation, or legal-task performance.</p><span class="tag neutral">separate axis</span></div>
+      <div class="wf"><div class="lbl">Sensitivity and trust zone</div><p class="small">Public and internal may use qualified buckets. Confidential, highly restricted, privileged, and private-course context starts on a concrete sovereign-local route.</p><span class="tag bad">no permissive fallback</span></div>
+    </div>
+
+    <h2>Qualification gates before SKGateway receives protected context</h2>
+    <table>
+      <thead><tr><th>Gate</th><th>Reviewed upstream reality</th><th>SKLegal requirement</th></tr></thead>
+      <tbody>
+        <tr><td>API compatibility</td><td>Chat Completions surface, not the OpenAI Responses API used by the existing frontier adapter</td><td>New Chat transport, schema parity, client-side validation, and cancellation tests</td></tr>
+        <tr><td>Identity and policy</td><td>Modules exist, but upstream states the current live proxy path does not invoke all CapAuth and policy stages</td><td>Exact live entrypoint must fail closed on identity, capability, Matter policy, classification, rights, and egress</td></tr>
+        <tr><td>Qwen capacity</td><td>Direct and registry aliases reach one physical four-slot service</td><td>One shared capacity domain, bounded queue, no double counting, cancellation recovery</td></tr>
+        <tr><td>Dynamic models</td><td>Buckets and free-model discovery exist</td><td>Pinned catalog and policy revisions, allowed members, exact attribution, held-out task evaluation</td></tr>
+        <tr><td>Secrets</td><td>Backends name environment variables</td><td>Human-supplied keys enter only secret custody and owner-only runtime injection</td></tr>
+        <tr><td>Invalid config</td><td>Upstream documentation describes fallback to defaults after invalid YAML</td><td>Deployment preflight rejects missing, invalid, stale, or unexpectedly defaulted production config</td></tr>
+        <tr><td>Dependency audit</td><td>Reviewed pin installs <code>js-yaml@4.1.1</code> with one high-severity YAML denial-of-service advisory set</td><td>Pin a reviewed upstream or lockfile update, then rerun full tests and audit before deployment</td></tr>
+      </tbody>
+    </table>
+
+    <h2>Free-model lane</h2>
+    <div class="flow">
+      <div class="node">Public synthetic task</div><div class="arrow">-&gt;</div>
+      <div class="node">Provider rights and retention review</div><div class="arrow">-&gt;</div>
+      <div class="node">Schema, citation, context, and task eval</div><div class="arrow">-&gt;</div>
+      <div class="node">Qualified public bucket member</div><div class="arrow">-&gt;</div>
+      <div class="node">Exact attribution and cost evidence</div>
+    </div>
+    <p class="note">Free is a price attribute only. Remote free models do not receive Matter or private corpus content by default. Local Qwen remains the cost-free protected route.</p>
+  </div>
+</section>
+
+<section class="screen" id="workproduct">
+  <div class="screen-head">
+    <span class="route">AI Work Product assembly</span>
+    <span class="meta">S4-04 planned contracts - Exact version and hash - Frontier formatting remains provider-neutral and policy gated</span>
+  </div>
+  <div class="frame">
+    <div class="grid3">
+      <div class="wf solid"><div class="lbl">1. Grounding set</div><p class="small">Select DRAFT_READY Claims, supporting and contrary Authority, Matter Evidence, requested relief, and approved style profile.</p><span class="tag warn">1 Claim blocked</span></div>
+      <div class="wf solid"><div class="lbl">2. Model route</div><p class="small">Local Qwen prepares substantive structure. A policy-approved frontier route may assemble, compare, and format.</p><span class="tag model">served model shown per run</span></div>
+      <div class="wf solid"><div class="lbl">3. Deterministic validation</div><p class="small">Exact quotes, citations, source spans, jurisdiction, required sections, unknowns, styles, and artifact hash.</p><span class="tag good">no model waiver</span></div>
+    </div>
+    <div class="grid2" style="margin-top:0.7rem;">
+      <div class="wf solid">
+        <div class="lbl">Draft editor</div>
+        <p><b>Proposed request for production - version 2</b></p>
+        <p class="small">1. Produce the complete executed agreement and every amendment identified in Evidence Item E-12.</p>
+        <p class="small">2. Produce records showing payment received on <span class="tag warn">[DATE UNKNOWN]</span>.</p>
+        <p class="small">3. Produce the inspection and delivery records linked to Claim C-4.</p>
+        <span class="tag good">sentence 1 grounded</span> <span class="tag warn">sentence 2 blocked by gap</span>
+      </div>
+      <div class="wf">
+        <div class="lbl">Version, route, and readiness</div>
+        <table>
+          <tr><th>Work Product</th><td><code>wp-81 v2</code></td></tr>
+          <tr><th>Substantive route</th><td>local Qwen route - exact pin shown at run time</td></tr>
+          <tr><th>Assembly route</th><td><span class="tag neutral">frontier route not registered</span></td></tr>
+          <tr><th>Claim gate</th><td><span class="tag warn">DRAFT_READY partial</span></td></tr>
+          <tr><th>Artifact hash</th><td><code>sha256: pending render</code></td></tr>
+          <tr><th>Approval</th><td><span class="tag neutral">not requested</span></td></tr>
+        </table>
+        <p style="margin-bottom:0;"><span class="btn ai">AI resolve bracketed gaps</span> <span class="btn">Compare versions</span> <span class="btn disabled">Approve exact hash</span></p>
+      </div>
+    </div>
+    <div class="callout" style="margin-top:0.8rem;"><b>Maximum AI leverage:</b> the system can automatically create draft alternatives, check every sentence, repair formatting, rerun citations, and prepare a review packet. Approval still binds one exact version and any edit invalidates it.</div>
+  </div>
+</section>
+
+<section class="screen" id="deadlines">
+  <div class="screen-head">
+    <span class="route">AI Tasks, Deadlines, and external-action handoff</span>
+    <span class="meta">AI proposes and monitors - Deterministic services calculate and transition - Human approves consequential effects</span>
+  </div>
+  <div class="frame">
+    <div class="grid3">
+      <div class="wf solid">
+        <div class="lbl">AI-created proposed Tasks</div>
+        <table><tr><th>Task</th><th>State</th></tr><tr><td>Obtain current scheduling order</td><td><span class="tag good">safe to accept</span></td></tr><tr><td>Prepare payment Evidence request</td><td><span class="tag model">proposal</span></td></tr><tr><td>Draft discovery package</td><td><span class="tag warn">Authority blocked</span></td></tr></table>
+      </div>
+      <div class="wf solid">
+        <div class="lbl">Candidate Deadline detail</div>
+        <table><tr><th>Trigger</th><td>Discovery served - source span linked</td></tr><tr><th>Rule</th><td>UNKNOWN until official source verified</td></tr><tr><th>Timezone</th><td>America/Chicago</td></tr><tr><th>Calculation</th><td><span class="tag bad">not operative</span></td></tr><tr><th>Reviewer</th><td>unassigned</td></tr></table>
+      </div>
+      <div class="wf solid">
+        <div class="lbl">AI watch service</div>
+        <p class="small">Rechecks Deadlines after new orders, service evidence, corrected triggers, calendar updates, and Authority changes.</p>
+        <span class="tag model">continuous monitor</span> <span class="tag good">supersession aware</span>
+      </div>
+    </div>
+    <h2>External action remains a separate exact-version workflow</h2>
+    <div class="flow">
+      <div class="node">draft</div><div class="arrow">-&gt;</div>
+      <div class="node">validated</div><div class="arrow">-&gt;</div>
+      <div class="node">approved</div><div class="arrow">-&gt;</div>
+      <div class="node">queued</div><div class="arrow">-&gt;</div>
+      <div class="node">dispatched</div><div class="arrow">-&gt;</div>
+      <div class="node">receipt_verified</div>
+    </div>
+    <p class="note">Accepting a recommendation does not file, serve, email, mail, schedule, or communicate. It may create a proposed Task or Work Product. The later connector workflow revalidates destination, capability, policy, exact artifact version, Approval, and receipt.</p>
+  </div>
+</section>
+
+<section class="screen" id="evidence">
+  <div class="screen-head">
+    <span class="route">Exact source span and model-run evidence</span>
+    <span class="meta">S4-03A + S3-02 + S3-03 - Source role, retrieval trace, model pin, and policy evidence</span>
+  </div>
+  <div class="frame">
+    <div class="grid2">
+      <div class="wf solid">
+        <div class="lbl">Source span viewer</div>
+        <p><span class="tag course">Course instruction</span> <b>Planning lesson</b></p>
+        <table>
+          <tr><th>Release</th><td><code>HTWC-2026-08-20</code></td></tr>
+          <tr><th>Source</th><td><code>normalized/course-pages/planning-...md</code></td></tr>
+          <tr><th>Content hash</th><td><code>sha256: exact source hash</code></td></tr>
+          <tr><th>Locator</th><td>chunk and line span</td></tr>
+          <tr><th>Source role</th><td>course lesson - instructional</td></tr>
+          <tr><th>Retrieval route</th><td><code>matter_type=contract + phase=discovery</code></td></tr>
+          <tr><th>Trace</th><td>template ID, generation, rank path, watermark</td></tr>
+        </table>
+        <p class="note">Exact text appears here in the real UI. Synthetic wireframes do not reproduce the private source passage.</p>
+      </div>
+      <div class="wf solid">
+        <div class="lbl">Agent Run evidence drawer</div>
+        <table>
+          <tr><th>Run and spec</th><td><code>run-1042 / matter-strategist v1</code> <span class="tag neutral">planned</span></td></tr>
+          <tr><th>Route</th><td>provider-neutral route ID and registry revision</td></tr>
+          <tr><th>Served model</th><td>exact provider name and revision at run time</td></tr>
+          <tr><th>Prompt and schema</th><td>pinned IDs and SHA-256 hashes</td></tr>
+          <tr><th>Context</th><td>Matter snapshot, corpus release, Authority snapshot</td></tr>
+          <tr><th>Policy</th><td>decision reference, classification, egress, redactions</td></tr>
+          <tr><th>Usage</th><td>duration, tokens, retry, saturation state</td></tr>
+          <tr><th>Audit</th><td>correlation ID, sanitized events, proposal hash</td></tr>
+        </table>
+      </div>
+    </div>
+    <div class="callout" style="margin-top:0.8rem;"><b>Model naming coherence:</b> SKLegal stores a logical local Qwen route and the exact run evidence. HammerTime's operator alias and historical semantic label remain provenance, not hard-coded domain truth.</div>
+  </div>
+</section>
+
+<section class="screen" id="case-log">
+  <div class="screen-head">
+    <span class="route">Matter activity log and full provenance record</span>
+    <span class="meta">Human-readable case log over immutable Matter Events, Agent Runs, audit records, versions, Approvals, Execution Events, and receipts</span>
+  </div>
+  <div class="frame">
+    <div class="grid3">
+      <div class="wf solid">
+        <div class="lbl">Case activity</div>
+        <p class="small">One chronological view of court events, service, communications, Evidence Items, Tasks, Deadlines, Work Products, decisions, and outcomes.</p>
+        <span class="tag good">reviewer friendly</span>
+      </div>
+      <div class="wf solid">
+        <div class="lbl">AI and system activity</div>
+        <p class="small">Every retrieval, model run, tool call, recommendation version, challenge, automatic rerun, policy decision, and failure links to replay evidence.</p>
+        <span class="tag model">machine complete</span>
+      </div>
+      <div class="wf solid">
+        <div class="lbl">Artifact and action lineage</div>
+        <p class="small">Every original, derived artifact, Work Product version, validation, Approval, dispatch, provider response, and receipt stays bound by ID, version, and hash.</p>
+        <span class="tag info">tamper evident</span>
+      </div>
+    </div>
+
+    <div class="wf solid" style="margin-top:0.7rem;">
+      <div class="row">
+        <div class="grow"><div class="lbl">Filter the Matter log</div><p class="small"><span class="tag neutral">all activity</span> <span class="tag course">sources</span> <span class="tag model">AI</span> <span class="tag good">human decisions</span> <span class="tag info">artifacts</span> <span class="tag warn">Deadlines</span> <span class="tag neutral">external actions</span></p></div>
+        <div><span class="btn">Export case chronology</span> <span class="btn">Build provenance bundle</span></div>
+      </div>
+      <table>
+        <thead><tr><th>When</th><th>Who or what</th><th>Activity</th><th>Inputs and outputs</th><th>Evidence and effect</th></tr></thead>
+        <tbody>
+          <tr><td>14:03Z</td><td>Client upload<br><span class="tag info">human</span></td><td>Provided executed agreement</td><td>Source artifact A-31<br><code>sha256: 41...ac</code></td><td>Original sealed, custody recorded<br>no legal conclusion</td></tr>
+          <tr><td>14:04Z</td><td>Artifact intake workflow<br><span class="tag good">deterministic</span></td><td>Scanned, hashed, deduplicated, extracted</td><td>A-31 original<br>A-32 derived text</td><td>Tool versions, extraction logs, and parent-child lineage linked</td></tr>
+          <tr><td>14:06Z</td><td>Intake analyst<br><span class="tag model">local Qwen</span></td><td>Proposed two Fact Assertions and one Evidence Item link</td><td>Matter snapshot ms-41<br>Agent Run run-1039</td><td>Proposal only, source spans linked<br>human confirmation pending</td></tr>
+          <tr><td>14:09Z</td><td>Proof strategist<br><span class="tag model">local Qwen</span></td><td>Reranked recommendation R-7 from 4 to 2</td><td>Proposal v3 to v4<br>scoring policy candidate-v0</td><td>Reason: formation support improved<br>Authority gap unchanged</td></tr>
+          <tr><td>14:22Z</td><td>Reviewer J. Example<br><span class="tag good">human</span></td><td>Confirmed party identities, corrected effective date</td><td>F-11 v2, F-12 v1 superseded</td><td>Attributable decision and correction reason preserved</td></tr>
+          <tr><td>15:01Z</td><td>Work Product validator<br><span class="tag good">deterministic</span></td><td>Validated draft wp-81 v2</td><td>Artifact hash plus source manifest</td><td>Not approved, not queued, no external effect</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h2>Review and production bundles</h2>
+    <div class="grid4">
+      <div class="wf"><div class="lbl">Case chronology</div><p class="small">Verified Matter Events, filings, service, hearings, communications, evidence, decisions, and Deadlines.</p><span class="btn ai">AI build draft</span></div>
+      <div class="wf"><div class="lbl">Artifact manifest</div><p class="small">Original and derived artifacts with hashes, metadata, custody, privilege, retention, and Matter links.</p><span class="btn ai">Prepare manifest</span></div>
+      <div class="wf"><div class="lbl">Analysis dossier</div><p class="small">Corpus spans, Authority snapshot, Matter snapshot, model and tool runs, proposal versions, challenges, and dispositions.</p><span class="btn ai">Prepare dossier</span></div>
+      <div class="wf"><div class="lbl">Action and receipt log</div><p class="small">Exact approved artifacts, destinations, capability and policy decisions, dispatch transitions, responses, and receipts.</p><span class="btn ai">Prepare action log</span></div>
+    </div>
+    <p class="note">Exports are derived Work Products. Each export receives its own manifest and hash and never replaces the underlying append-only records.</p>
+  </div>
+</section>
+
+<section class="screen" id="failures">
+  <div class="screen-head">
+    <span class="route">Failure and incomplete states</span>
+    <span class="meta">The AI keeps useful work moving where safe and exposes exactly which proposal lane is blocked</span>
+  </div>
+  <div class="frame">
+    <table>
+      <thead><tr><th>State</th><th>UI treatment</th><th>Automatic AI behavior</th><th>What stays blocked</th></tr></thead>
+      <tbody>
+        <tr><td>Policy unavailable or access denied</td><td>Uniform denial, no source oracle</td><td>No retrieval, no prompt, sanitized audit only</td><td>All protected analysis</td></tr>
+        <tr><td>Corpus route stale or unavailable</td><td>Show pinned release and failed component</td><td>Retry through Temporal, preserve prior proposal as stale</td><td>New course-derived recommendation state</td></tr>
+        <tr><td>Authority missing, stale, or contrary</td><td>Show exact defect beside recommendation</td><td>Generate official-source query and applicability checklist</td><td>Operative Deadline, Claim readiness, filing-ready draft</td></tr>
+        <tr><td>Fact tension or Evidence gap</td><td>Show both assertions and missing proof</td><td>Propose evidence-preservation, discovery, or clarification Tasks</td><td>Affected Element and grounded sentence</td></tr>
+        <tr><td>Model timeout, saturation, or schema failure</td><td>Typed failure with run and retry state</td><td>Retry only under pinned Temporal policy or route to approved alternative</td><td>Partial output never enters state</td></tr>
+        <tr><td>Frontier egress denied</td><td>Keep local proposal and explain policy lane</td><td>Continue with local Qwen and deterministic formatting where possible</td><td>External-provider context transfer</td></tr>
+        <tr><td>Challenge finds material defect</td><td>Demote rank and show defect history</td><td>Repair source bundle, rerun proof map, or propose alternative</td><td>Acceptance until review state permits</td></tr>
+        <tr><td>Artifact changed after Approval</td><td>Approval invalidated, new hash highlighted</td><td>Rerun validation and prepare new review packet</td><td>Queue and dispatch</td></tr>
+        <tr><td>Artifact missing, duplicate, corrupt, or extraction incomplete</td><td>Keep original intake record and show exact defect</td><td>Quarantine, deduplicate, retry approved extraction, or request a replacement</td><td>Derived Fact Assertions, affected analysis, and production use</td></tr>
+      </tbody>
+    </table>
+    <p class="note">No failure falls back to unscoped cache, raw model memory, another Tenant, HammerTime Qdrant, or a consumer browser session.</p>
+  </div>
+</section>
+
+<section class="screen" id="delivery">
+  <div class="screen-head">
+    <span class="route">Implementation and backend delivery map</span>
+    <span class="meta">Planning only - Existing task dependencies and human gates remain in force</span>
+  </div>
+  <div class="frame">
+    <div class="grid3">
+      <div class="wf solid">
+        <div class="lbl">Wave A - analysis contract</div>
+        <ol class="small"><li>Define source roles and Instructional Proposition.</li><li>Define Matter Analysis and Recommendation proposal schemas.</li><li>Define visible scorecard and hard eligibility gates.</li><li>Freeze synthetic evaluation Matters.</li></ol>
+        <span class="tag warn">new scoped card required</span>
+      </div>
+      <div class="wf solid">
+        <div class="lbl">Wave B - retrieval and assurance</div>
+        <ol class="small"><li>Route by Matter type and Proceeding phase.</li><li>Add full-corpus discovery with route state.</li><li>Build current Authority applicability lane.</li><li>Add contrary support and source-role validators.</li></ol>
+        <span class="tag info">S2-04 + S3-05 + S4-03</span>
+      </div>
+      <div class="wf solid">
+        <div class="lbl">Wave C - AI case team</div>
+        <ol class="small"><li>Version strategist and challenge agent specs.</li><li>Pin logical routes and transport profiles.</li><li>Qualify direct Qwen, then SKGateway binding.</li><li>Expose complete Agent Run and served-model evidence.</li></ol>
+        <span class="tag info">S3-03 + S5-02</span>
+      </div>
+      <div class="wf solid">
+        <div class="lbl">Wave D - cockpit UI</div>
+        <ol class="small"><li>Join Issues, Elements, Authority, and support.</li><li>Render ranked proposals and proof matrix.</li><li>Add artifact intake, lineage, and request surfaces.</li><li>Add the unified Matter activity and provenance log.</li></ol>
+        <span class="tag info">S4-03</span>
+      </div>
+      <div class="wf solid">
+        <div class="lbl">Wave E - Work Products</div>
+        <ol class="small"><li>Connect DRAFT_READY Claims to assembler.</li><li>Add local and approved frontier routes.</li><li>Validate citations, formatting, and preview.</li><li>Bind exact hash Approval and supersession.</li></ol>
+        <span class="tag info">S4-04</span>
+      </div>
+      <div class="wf solid">
+        <div class="lbl">Wave F - pilot and qualification</div>
+        <ol class="small"><li>Run one governed Qwen proposal workflow.</li><li>Blind challenge and human disposition.</li><li>Replay complete evidence.</li><li>Keep connectors in simulation until qualified.</li></ol>
+        <span class="tag info">S5-02 + S5-03</span>
+      </div>
+    </div>
+    <h2>Current reality versus planned contract</h2>
+    <table>
+      <thead><tr><th>Surface</th><th>Current reality</th><th>Version 2 dependency</th></tr></thead>
+      <tbody>
+        <tr><td>Matter shell and existing records</td><td><span class="tag good">implemented</span> workspace aggregate</td><td>Extend joined read without weakening membership</td></tr>
+        <tr><td>Issues, Claims, Elements, Authority, support</td><td><span class="tag good">domain and persistence foundation</span> <span class="tag warn">no analysis API</span></td><td>S3-05 and S4-03 contracts</td></tr>
+        <tr><td>Corpus retrieval traces</td><td><span class="tag info">package surface</span></td><td>S2-04 completion and S4-03A UI</td></tr>
+        <tr><td>Ranked recommendations</td><td><span class="tag bad">schema missing</span></td><td>New typed proposal and evaluated scoring policy</td></tr>
+        <tr><td>AI strategist and challenge team</td><td><span class="tag bad">specs missing</span></td><td>S3-03 and S5-02</td></tr>
+        <tr><td>SKGateway deployment binding</td><td><span class="tag info">upstream Qwen, bucket, capacity, and audit foundations</span> <span class="tag bad">SKLegal Chat adapter and protected live-path qualification missing</span></td><td>bbf206c3 after 31194edb</td></tr>
+        <tr><td>Work Product assembly</td><td><span class="tag info">domain and tool output exist</span> <span class="tag bad">route and API missing</span></td><td>S4-04</td></tr>
+        <tr><td>Artifact intake and requests</td><td><span class="tag info">Evidence Item and source-reference foundations</span> <span class="tag bad">unified intake UI missing</span></td><td>S2-02, S2-03, S4-03, and new scoped UI contract</td></tr>
+        <tr><td>Unified Matter activity log</td><td><span class="tag info">workspace audit slice and durable audit foundation</span> <span class="tag bad">joined projection and export missing</span></td><td>S1-05, S4-02, and new scoped projection contract</td></tr>
+        <tr><td>Human proposal decision</td><td><span class="tag bad">general decision surface missing</span></td><td>S3-05 and S4-04 exact subject binding</td></tr>
+        <tr><td>External actions</td><td><span class="tag good">state-machine foundation</span></td><td>S5-03 qualification before activation</td></tr>
+      </tbody>
+    </table>
+    <p style="margin-bottom:0;"><a class="btn" href="index.html">Compare version 1</a> <a class="btn" href="COMPONENT-API-MAP-V2.md">Detailed component map</a> <a class="btn" href="../../research/HOWTOWININCOURT-ARCHITECTURE-REVIEW-2026-08-22.md">Corpus report</a> <a class="btn" href="../../research/SKGATEWAY-INTEGRATION-REVIEW-2026-08-22.md">SKGateway report</a></p>
+  </div>
+</section>
+
+</main>
+</body>
+</html>

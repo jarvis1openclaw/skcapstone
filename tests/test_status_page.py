@@ -61,20 +61,27 @@ class StatusPageTests(unittest.TestCase):
 
     def test_status_content_preserves_current_gates_and_legal_vocabulary(self) -> None:
         required_phrases = (
-            "Architecture approved",
-            "Build and qualification",
+            "The foundation is real",
+            "Visible progress",
+            "UI first, dependency safe",
+            "35</strong><span>Done",
+            "21</strong><span>Blocked",
             "Simulation only",
+            "UI deployed",
             "No production deployment",
+            "No production application deployment",
             "No HammerTime Inbox processing",
             "No additional matter migration",
             "No outbound legal action",
             "Models produce typed proposals only",
             "Client or Matter content",
             "b04de409",
-            "8137c2f5",
-            "5ab203ce",
-            "f8d425e1",
-            "b688c5db",
+            "6775be53",
+            "18ba75ba",
+            "e5ff5976",
+            "c4ef2a90",
+            "07cca7a9",
+            "74b36366",
         )
         for phrase in required_phrases:
             with self.subTest(phrase=phrase):

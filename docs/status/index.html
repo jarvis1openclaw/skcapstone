@@ -54,11 +54,24 @@
         margin: 0;
         color: var(--ink);
         background:
-          radial-gradient(circle at 12% 0%, rgba(207, 138, 82, 0.15), transparent 28rem),
-          radial-gradient(circle at 88% 18%, rgba(91, 116, 104, 0.12), transparent 30rem),
+          radial-gradient(
+            circle at 12% 0%,
+            rgba(207, 138, 82, 0.15),
+            transparent 28rem
+          ),
+          radial-gradient(
+            circle at 88% 18%,
+            rgba(91, 116, 104, 0.12),
+            transparent 30rem
+          ),
           linear-gradient(180deg, var(--canvas-warm), var(--canvas));
         font-family:
-          Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI",
+          Inter,
+          ui-sans-serif,
+          system-ui,
+          -apple-system,
+          BlinkMacSystemFont,
+          "Segoe UI",
           sans-serif;
         line-height: 1.6;
       }
@@ -69,7 +82,11 @@
         z-index: -1;
         background-image:
           linear-gradient(rgba(255, 255, 255, 0.018) 1px, transparent 1px),
-          linear-gradient(90deg, rgba(255, 255, 255, 0.018) 1px, transparent 1px);
+          linear-gradient(
+            90deg,
+            rgba(255, 255, 255, 0.018) 1px,
+            transparent 1px
+          );
         background-size: 48px 48px;
         content: "";
         pointer-events: none;
@@ -489,7 +506,11 @@
         bottom: 44px;
         left: 42px;
         width: 1px;
-        background: linear-gradient(var(--sage), var(--copper), var(--ink-faint));
+        background: linear-gradient(
+          var(--sage),
+          var(--copper),
+          var(--ink-faint)
+        );
         content: "";
       }
 
@@ -691,8 +712,11 @@
         gap: 64px;
         border: 1px solid rgba(209, 143, 132, 0.24);
         border-radius: var(--radius-lg);
-        background:
-          linear-gradient(135deg, rgba(58, 33, 30, 0.74), rgba(23, 20, 17, 0.86));
+        background: linear-gradient(
+          135deg,
+          rgba(58, 33, 30, 0.74),
+          rgba(23, 20, 17, 0.86)
+        );
       }
 
       .boundary-panel h2 {
@@ -1005,29 +1029,32 @@
         <div class="shell">
           <p class="eyebrow">
             Read-only snapshot
-            <time datetime="2026-08-21T14:42:00-05:00">August 21, 2026 at 2:42 PM CDT</time>
+            <time datetime="2026-08-21T22:45:00-05:00"
+              >August 21, 2026 at 10:45 PM CDT</time
+            >
           </p>
           <div class="hero-grid">
             <div>
               <h1 id="page-title">
-                Architecture approved.<br />
-                <span class="accent">Build and qualification</span> are active.
+                The foundation is real.<br />
+                <span class="accent">Visible progress</span> is first now.
               </h1>
               <p class="hero-lead">
-                SKLegal has moved from design into governed implementation. The core legal
-                domain, PostgreSQL and row-level security, CapAuth integration, audit and
-                outbox foundation, reproducible workspace, and platform baseline are complete.
-                Policy review, production composition, HammerTime integration, durable agent
-                workflows, and the legal workbench are now advancing in parallel through
-                dependency-eligible cards.
+                SKLegal has moved from architecture into working foundations.
+                The legal domain, PostgreSQL isolation, CapAuth integration,
+                policy enforcement, audit and outbox, Temporal workflows,
+                read-only HammerTime access, and the React application shell are
+                complete. Delivery is now rebalanced around a visible web UI,
+                followed by the first useful Client and Matter workspace.
               </p>
             </div>
             <aside class="brief" aria-label="Current delivery posture">
               <p class="brief-label">Current posture</p>
-              <strong>Foundation to integration</strong>
+              <strong>UI first, dependency safe</strong>
               <p>
-                Architecture is settled. Core foundations are implemented, with remaining
-                security review and hardening still controlling downstream readiness.
+                The progress surface can ship now with public status only.
+                Protected workspace features still wait for their exact
+                importer, policy, retrieval, and assurance dependencies.
               </p>
             </aside>
           </div>
@@ -1036,29 +1063,43 @@
             <div class="status-item">
               <dt>Architecture</dt>
               <dd>
-                <span class="status-value approved"><span class="status-dot"></span>Approved</span>
-                <span class="status-detail">Human gate b04de409 is complete</span>
+                <span class="status-value approved"
+                  ><span class="status-dot"></span>Approved</span
+                >
+                <span class="status-detail"
+                  >Human gate b04de409 is complete</span
+                >
               </dd>
             </div>
             <div class="status-item">
               <dt>Delivery mode</dt>
               <dd>
-                <span class="status-value active"><span class="status-dot"></span>Build and review</span>
-                <span class="status-detail">Eligible leaf cards only</span>
+                <span class="status-value active"
+                  ><span class="status-dot"></span>UI deployed</span
+                >
+                <span class="status-detail"
+                  >Fast track card 6775be53 is complete</span
+                >
               </dd>
             </div>
             <div class="status-item">
               <dt>External actions</dt>
               <dd>
-                <span class="status-value held"><span class="status-dot"></span>Simulation only</span>
+                <span class="status-value held"
+                  ><span class="status-dot"></span>Simulation only</span
+                >
                 <span class="status-detail">No dispatch authority</span>
               </dd>
             </div>
             <div class="status-item">
               <dt>Pilot and production</dt>
               <dd>
-                <span class="status-value closed"><span class="status-dot"></span>Gates closed</span>
-                <span class="status-detail">No migration or deployment authorization</span>
+                <span class="status-value closed"
+                  ><span class="status-dot"></span>Gates closed</span
+                >
+                <span class="status-detail"
+                  >Progress UI only; production remains locked</span
+                >
               </dd>
             </div>
           </dl>
@@ -1073,22 +1114,31 @@
               <h2 id="board-title">SKCapstone board snapshot</h2>
             </div>
             <p>
-              94 SKLegal-labeled records are shown here after excluding this page's publishing
-              card. Counts include leaf tasks, parent containers, qualification cards, and
-              planning records, so they are workflow volume, not a percent-complete measure.
+              75 direct child records of epic 3457eb15 are shown here. Counts
+              include leaf tasks, sprint containers, qualification cards, and
+              planning records, so they are workflow volume, not a
+              percent-complete measure.
             </p>
           </div>
 
           <div class="metric-grid" aria-label="SKLegal workflow counts">
-            <div class="metric done"><strong>15</strong><span>Done</span></div>
-            <div class="metric review"><strong>12</strong><span>In review</span></div>
-            <div class="metric doing"><strong>7</strong><span>Active</span></div>
-            <div class="metric ready"><strong>8</strong><span>Ready</span></div>
-            <div class="metric backlog"><strong>52</strong><span>Backlog</span></div>
+            <div class="metric done"><strong>35</strong><span>Done</span></div>
+            <div class="metric review">
+              <strong>1</strong><span>In review</span>
+            </div>
+            <div class="metric doing">
+              <strong>1</strong><span>Active</span>
+            </div>
+            <div class="metric ready">
+              <strong>17</strong><span>Ready</span>
+            </div>
+            <div class="metric backlog">
+              <strong>21</strong><span>Blocked</span>
+            </div>
           </div>
           <p class="count-note">
-            Source: SKCapstone card fold at snapshot time. Board state remains the system of
-            record and can change after this page is opened.
+            Source: SKCapstone card fold at snapshot time. Board state remains
+            the system of record and can change after this page is opened.
           </p>
         </div>
       </section>
@@ -1097,12 +1147,13 @@
         <div class="shell">
           <div class="section-heading">
             <div>
-              <p class="kicker">Delivery sequence</p>
-              <h2 id="roadmap-title">Six governed phases</h2>
+              <p class="kicker">Rebalanced delivery sequence</p>
+              <h2 id="roadmap-title">Seven UI-first execution waves</h2>
             </div>
             <p>
-              Parallel work is allowed only where explicit dependencies are complete. An active
-              later-phase card does not mean every earlier release gate has cleared.
+              Original sprint IDs and dependencies stay intact. The waves show
+              execution order, not permission to bypass a claim, review, or
+              release gate.
             </p>
           </div>
 
@@ -1110,89 +1161,105 @@
             <li class="roadmap-item complete">
               <span class="phase-number" aria-hidden="true">00</span>
               <div class="phase-title">
-                <span class="phase-tag complete">Complete</span>
-                <h3>Architecture and readiness</h3>
-                <p>Sprint 0</p>
+                <span class="phase-tag complete">Shipped</span>
+                <h3>Governed foundation</h3>
+                <p>Sprint 0 and core Sprint 1</p>
               </div>
               <div class="phase-copy">
                 <p>
-                  Human architecture approval, platform qualification, threat and source-rights
-                  controls, the reproducible workspace, and Doc Haus provenance review are done.
+                  Architecture, platform, legal domain, persistence, CapAuth,
+                  policy, audit, Temporal workflows, read-only corpus access,
+                  and the React shell have evidence.
                 </p>
               </div>
             </li>
-            <li class="roadmap-item current">
+            <li class="roadmap-item complete">
               <span class="phase-number" aria-hidden="true">01</span>
               <div class="phase-title">
-                <span class="phase-tag current">Review and hardening</span>
-                <h3>Legal and security foundation</h3>
-                <p>Sprint 1</p>
+                <span class="phase-tag complete">Deployed</span>
+                <h3>Visible progress UI</h3>
+                <p>SKL-UI-01</p>
               </div>
               <div class="phase-copy">
                 <p>
-                  Four of five core cards are done. Conflicts, privilege, ethical walls,
-                  retention, and holds are in review. Production CapAuth composition and quality
-                  corrections remain active review work.
+                  This status experience is healthy on chiap01 loopback with
+                  public project facts, health checks, no remote assets, and no
+                  protected Matter data.
                 </p>
               </div>
             </li>
             <li class="roadmap-item current">
               <span class="phase-number" aria-hidden="true">02</span>
               <div class="phase-title">
-                <span class="phase-tag current">Active</span>
-                <h3>HammerTime integration</h3>
-                <p>Sprint 2</p>
+                <span class="phase-tag current">Next vertical slice</span>
+                <h3>First useful Matter workspace</h3>
+                <p>S2-02 to S4-02, plus S4-05</p>
               </div>
               <div class="phase-copy">
                 <p>
-                  The read-only release and artifact adapter is in active implementation. Pilot
-                  import, governed ingestion, retrieval adapters, corpus registry, and legal
-                  source connectors remain queued behind their gates.
+                  Build the lossless pilot importer, then expose its governed
+                  Client and Matter snapshot. Tasks and deadlines can advance in
+                  parallel on completed dependencies.
                 </p>
               </div>
             </li>
             <li class="roadmap-item current">
               <span class="phase-number" aria-hidden="true">03</span>
               <div class="phase-title">
-                <span class="phase-tag current">Active</span>
-                <h3>Agents and legal assurance</h3>
-                <p>Sprint 3</p>
+                <span class="phase-tag current">Backend active</span>
+                <h3>Retrieval and legal assurance</h3>
+                <p>S2-04 to S3-05 to S4-03</p>
               </div>
               <div class="phase-copy">
                 <p>
-                  Temporal foundations, CapAuth signing performance, and audit-chain write
-                  serialization are active. Provider routing, tool mediation, retrieval
-                  evaluation, and claim release gates remain future work.
+                  Retrieval adapters are active. Corpus health, evaluation,
+                  provider routing, tool mediation, and claim gates follow
+                  before research views can ship.
                 </p>
               </div>
             </li>
-            <li class="roadmap-item current">
+            <li class="roadmap-item">
               <span class="phase-number" aria-hidden="true">04</span>
               <div class="phase-title">
-                <span class="phase-tag current">Active edge</span>
-                <h3>Legal workbench</h3>
-                <p>Sprint 4</p>
+                <span class="phase-tag current">Parallel corpus lane</span>
+                <h3>Official drafting standards</h3>
+                <p>Sprint 6</p>
               </div>
               <div class="phase-copy">
                 <p>
-                  The accessible design system and application shell are in active build. Action
-                  failure semantics and dispatch ownership are being documented before connector
-                  implementation can advance.
+                  Official-source inventory is active. Acquisition, HammerTime
+                  intake, style profiles, and release follow their own rights,
+                  provenance, and completion gates.
                 </p>
               </div>
             </li>
             <li class="roadmap-item">
               <span class="phase-number" aria-hidden="true">05</span>
               <div class="phase-title">
-                <span class="phase-tag gated">Gated</span>
-                <h3>Pilot proof and rollout</h3>
-                <p>Sprint 5</p>
+                <span class="phase-tag gated">Deferred depth</span>
+                <h3>Work products and actions</h3>
+                <p>S4-04 and S4-06</p>
               </div>
               <div class="phase-copy">
                 <p>
-                  Structured import, governed Qwen workflow, action simulation, security and
-                  recovery qualification, and human acceptance have not started. Production
-                  rollout remains outside current authority.
+                  Document drafting and external-action connectors stay behind
+                  assurance, exact-version approval, simulation, capability, and
+                  receipt gates.
+                </p>
+              </div>
+            </li>
+            <li class="roadmap-item">
+              <span class="phase-number" aria-hidden="true">06</span>
+              <div class="phase-title">
+                <span class="phase-tag gated">Gated</span>
+                <h3>Pilot proof and rollout gate</h3>
+                <p>Sprint 5 remains last</p>
+              </div>
+              <div class="phase-copy">
+                <p>
+                  The approved single Matter pilot, governed Qwen workflow,
+                  security and recovery proof, and human acceptance remain the
+                  final gate before any production decision.
                 </p>
               </div>
             </li>
@@ -1208,65 +1275,69 @@
               <h2 id="focus-title">Where work is moving now</h2>
             </div>
             <p>
-              This is a curated view of material active and review lanes. Exact lifecycle and
-              ownership remain in SKCapstone.
+              This is the new critical path across the original sprints. Exact
+              lifecycle, dependency, and ownership state remains in SKCapstone.
             </p>
           </div>
 
           <div class="focus-grid">
             <article class="focus-card">
               <span class="card-index">01</span>
-              <h3>Policy foundation review</h3>
+              <h3>Progress UI deployment</h3>
               <p>
-                Conflicts, privilege, ethical walls, retention, and legal holds are undergoing
-                review before downstream protected retrieval is treated as ready.
+                This status page now runs as a hardened loopback web service
+                that shows the user something real without crossing
+                protected-data gates.
               </p>
-              <span class="card-ref">SKL-S1-04 · 8137c2f5</span>
+              <span class="card-ref">SKL-UI-01 · 6775be53</span>
             </article>
             <article class="focus-card">
               <span class="card-index">02</span>
-              <h3>CapAuth composition</h3>
+              <h3>Pilot importer</h3>
               <p>
-                Dedicated issuer custody, durable revocation replay, protected-route health, and
-                sanitized audit adapters are moving through review and qualification.
+                The lossless importer is the shortest dependency path to a
+                meaningful Client and Matter workspace using the one approved
+                pilot scope.
               </p>
-              <span class="card-ref">SKL-S1-03A · d9552c4c</span>
+              <span class="card-ref">SKL-S2-02 · 18ba75ba</span>
             </article>
             <article class="focus-card">
               <span class="card-index">03</span>
-              <h3>Read-only corpus boundary</h3>
+              <h3>Client and Matter workspace</h3>
               <p>
-                The first HammerTime integration wraps approved releases, manifests, artifacts,
-                hashes, and legacy resolution behind typed read-only APIs.
+                This is the first product vertical slice. It follows the
+                importer and preserves parties, events, facts, evidence,
+                tensions, gaps, and provenance.
               </p>
-              <span class="card-ref">SKL-S2-01 · 5ab203ce</span>
+              <span class="card-ref">SKL-S4-02 · e5ff5976</span>
             </article>
             <article class="focus-card">
               <span class="card-index">04</span>
-              <h3>Durable workflow base</h3>
+              <h3>Governed retrieval</h3>
               <p>
-                Temporal workflow foundations and task queues are being built alongside measured
-                signer and audit serialization limits.
+                Policy-filtered PostgreSQL retrieval and graph adapters are the
+                other active backend lane supporting the useful vertical slice.
               </p>
-              <span class="card-ref">SKL-S3-01 · f8d425e1</span>
+              <span class="card-ref">SKL-S2-04 · c4ef2a90</span>
             </article>
             <article class="focus-card">
               <span class="card-index">05</span>
-              <h3>Application shell</h3>
+              <h3>Tasks and deadlines</h3>
               <p>
-                The responsive, accessible product shell is active, including design tokens,
-                protected navigation, status semantics, and error boundaries.
+                This user-visible lane is dependency-ready now and can move
+                without waiting for model routing or external connector depth.
               </p>
-              <span class="card-ref">SKL-S4-01 · b688c5db</span>
+              <span class="card-ref">SKL-S4-05 · 07cca7a9</span>
             </article>
             <article class="focus-card">
               <span class="card-index">06</span>
-              <h3>Action workflow contract</h3>
+              <h3>Official standards research</h3>
               <p>
-                Failure, cancellation, retry, receipt reconciliation, and dispatch ownership are
-                being specified before any connector can move beyond simulation.
+                Sprint 6 now inventories official government drafting guidance.
+                It remains a parallel corpus lane and does not delay the first
+                visible workspace.
               </p>
-              <span class="card-ref">SKL-S4-08 · 48fde7c1</span>
+              <span class="card-ref">SKL-S6-01 · 74b36366</span>
             </article>
           </div>
         </div>
@@ -1280,8 +1351,9 @@
               <h2 id="gates-title">Release and authority gates</h2>
             </div>
             <p>
-              Models produce typed proposals only. Workflow state, authorization, approvals, and
-              external actions remain deterministic, policy-mediated, and human-gated.
+              Models produce typed proposals only. Workflow state,
+              authorization, approvals, and external actions remain
+              deterministic, policy-mediated, and human-gated.
             </p>
           </div>
 
@@ -1289,28 +1361,40 @@
             <article class="gate">
               <div>
                 <h3>Architecture approval</h3>
-                <p>Recorded on August 19, 2026 with a pinned review artifact hash.</p>
+                <p>
+                  Recorded on August 19, 2026 with a pinned review artifact
+                  hash.
+                </p>
               </div>
               <span class="gate-state clear">Cleared</span>
             </article>
             <article class="gate">
               <div>
-                <h3>Foundation acceptance</h3>
-                <p>Core implementation is largely complete, with policy and composition review open.</p>
+                <h3>Visible progress surface</h3>
+                <p>
+                  Public status content may run on loopback with no protected
+                  records.
+                </p>
               </div>
-              <span class="gate-state open">Open</span>
+              <span class="gate-state clear">Cleared</span>
             </article>
             <article class="gate">
               <div>
-                <h3>Integration readiness</h3>
-                <p>Read-only HammerTime work is active. Broader migration and ingestion gates remain.</p>
+                <h3>First Matter workspace</h3>
+                <p>
+                  The pilot importer is ready, and the workspace remains blocked
+                  until it completes.
+                </p>
               </div>
               <span class="gate-state open">Open</span>
             </article>
             <article class="gate">
               <div>
                 <h3>Production and dispatch</h3>
-                <p>No production deployment or live connector dispatch is authorized.</p>
+                <p>
+                  No production deployment or live connector dispatch is
+                  authorized.
+                </p>
               </div>
               <span class="gate-state locked">Locked</span>
             </article>
@@ -1324,12 +1408,13 @@
             <p class="eyebrow">Still outside scope</p>
             <h2 id="boundary-title">The red lines remain intact.</h2>
             <p>
-              Architecture approval authorizes governed implementation. It does not grant
-              operational, migration, deployment, or legal-action authority.
+              The UI-first directive authorizes this local progress surface. It
+              does not grant broader production, migration, connector, or
+              legal-action authority.
             </p>
           </div>
           <ul class="boundary-list">
-            <li>No production deployment</li>
+            <li>No production application deployment</li>
             <li>No external account creation</li>
             <li>No HammerTime Inbox processing</li>
             <li>No additional matter migration</li>
@@ -1347,8 +1432,8 @@
               <h2 id="evidence-title">Source documents</h2>
             </div>
             <p>
-              This page is a presentation snapshot. The approval record, TDD, delivery plan, and
-              live SKCapstone board remain authoritative.
+              This page is a presentation snapshot. The approval record, TDD,
+              delivery plan, and live SKCapstone board remain authoritative.
             </p>
           </div>
 
@@ -1362,8 +1447,15 @@
               <strong>Subagent task TDDs</strong>
             </a>
             <a class="source-link" href="../planning/EPIC-SPRINT-PLAN.md">
-              <span>Delivery sequence</span>
-              <strong>Epic and sprint plan</strong>
+              <span>Approved baseline</span>
+              <strong>Original epic and sprint plan</strong>
+            </a>
+            <a
+              class="source-link"
+              href="../planning/UI-FIRST-EXECUTION-PLAN.md"
+            >
+              <span>Current execution order</span>
+              <strong>UI-first execution plan</strong>
             </a>
           </div>
         </div>
@@ -1373,11 +1465,12 @@
     <footer class="site-footer">
       <div class="shell footer-inner">
         <p>
-          Read-only delivery snapshot generated from the SKCapstone board and repository evidence
-          on August 21, 2026. Refresh against the live board before using status in a decision.
-          This page contains no Client or Matter content.
+          Read-only delivery snapshot generated from the SKCapstone board and
+          repository evidence on August 21, 2026 at 10:45 PM CDT. Refresh
+          against the live board before using status in a decision. This page
+          contains no Client or Matter content.
         </p>
-        <span class="footer-ref">SKL-STATUS-01 · e88c89b4</span>
+        <span class="footer-ref">SKL-UI-01 · 6775be53</span>
       </div>
     </footer>
   </body>

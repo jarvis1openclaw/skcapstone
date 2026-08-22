@@ -1,0 +1,718 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SKLegal wireframe deck - SKL-UI-02</title>
+<style>
+  /* Tokens mirrored from apps/web/src/design/tokens.ts (approved design, section 16) */
+  :root {
+    --ink: #1c1917; --ink-soft: #44403c;
+    --parchment: #faf6ef; --surface: #f3ecdf; --sunken: #eae0cd;
+    --border: #d8cbb6; --copper: #9a3412; --copper-strong: #7c2d12;
+    --focus: #1d4ed8;
+    --pos-fg: #166534; --pos-bg: #dcfce7;
+    --cau-fg: #92400e; --cau-bg: #fef3c7;
+    --cri-fg: #991b1b; --cri-bg: #fee2e2;
+    --inf-fg: #1e40af; --inf-bg: #dbeafe;
+    --neu-fg: #44403c; --neu-bg: #e7e5e4;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: ui-sans-serif, system-ui, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+         background: var(--sunken); color: var(--ink); line-height: 1.5; }
+  code, .mono { font-family: ui-monospace, Menlo, Consolas, monospace; font-size: 0.85em; }
+
+  /* Deck chrome */
+  .deck-nav { position: sticky; top: 0; z-index: 20; background: var(--ink); color: var(--parchment);
+              padding: 0.5rem 1rem; display: flex; flex-wrap: wrap; gap: 0.35rem; align-items: center; }
+  .deck-nav strong { margin-right: 0.75rem; color: var(--parchment); }
+  .deck-nav a { color: #e7d9c2; font-size: 0.8rem; text-decoration: none; padding: 0.15rem 0.5rem;
+                border: 1px solid #57504a; border-radius: 999px; }
+  .deck-nav a:hover { background: var(--copper-strong); color: #fff; }
+
+  .screen { max-width: 1200px; margin: 2rem auto; scroll-margin-top: 3.5rem; }
+  .screen-head { background: var(--ink); color: var(--parchment); padding: 0.6rem 1rem;
+                 border-radius: 8px 8px 0 0; display: flex; flex-wrap: wrap; gap: 0.5rem 1.5rem;
+                 align-items: baseline; }
+  .screen-head .route { font-weight: 700; font-size: 1.05rem; }
+  .screen-head .meta { font-size: 0.78rem; color: #cdbfae; }
+  .screen-head .meta b { color: #f0e3cd; }
+  .frame { background: var(--parchment); border: 2px solid var(--ink); border-top: none;
+           border-radius: 0 0 8px 8px; padding: 0; min-height: 420px; }
+
+  /* Wireframe primitives */
+  .wf { border: 2px dashed #8a7f6d; border-radius: 6px; background: var(--surface);
+        padding: 0.6rem; position: relative; min-height: 2.2rem; }
+  .wf.solid { border-style: solid; border-color: var(--ink-soft); }
+  .wf.dark { background: var(--ink); color: var(--parchment); border-color: var(--ink); }
+  .wf .lbl { font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.06em;
+             color: var(--ink-soft); font-weight: 600; }
+  .wf.dark .lbl { color: #cdbfae; }
+  .tag { display: inline-block; font-size: 0.68rem; font-weight: 700; padding: 0.05rem 0.45rem;
+         border-radius: 999px; border: 1px solid; margin: 0.1rem 0.15rem 0.1rem 0; }
+  .t-pos { color: var(--pos-fg); background: var(--pos-bg); border-color: var(--pos-fg); }
+  .t-cau { color: var(--cau-fg); background: var(--cau-bg); border-color: var(--cau-fg); }
+  .t-cri { color: var(--cri-fg); background: var(--cri-bg); border-color: var(--cri-fg); }
+  .t-inf { color: var(--inf-fg); background: var(--inf-bg); border-color: var(--inf-fg); }
+  .t-neu { color: var(--neu-fg); background: var(--neu-bg); border-color: #78716c; }
+  .anno { position: absolute; top: -0.55rem; right: 0.5rem; background: var(--copper); color: #fff;
+          font-size: 0.65rem; font-weight: 700; padding: 0.05rem 0.5rem; border-radius: 999px; }
+  .btn { display: inline-block; border: 2px solid var(--copper); color: var(--copper-strong);
+         background: var(--parchment); border-radius: 6px; padding: 0.25rem 0.8rem;
+         font-size: 0.8rem; font-weight: 600; }
+  .btn.primary { background: var(--copper); color: #fff; }
+  .btn.danger { border-color: var(--cri-fg); color: var(--cri-fg); }
+  .row { display: flex; gap: 0.6rem; }
+  .col { display: flex; flex-direction: column; gap: 0.6rem; }
+  .grow { flex: 1; }
+  .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 0.6rem; }
+  .grid3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 0.6rem; }
+  table.wft { width: 100%; border-collapse: collapse; font-size: 0.8rem; }
+  table.wft th, table.wft td { border: 1px dashed #8a7f6d; padding: 0.3rem 0.5rem; text-align: left; }
+  table.wft th { background: var(--sunken); font-size: 0.72rem; text-transform: uppercase; }
+  .appbar { display: flex; align-items: center; gap: 1rem; background: var(--ink); color: var(--parchment);
+            padding: 0.5rem 1rem; border-radius: 6px 6px 0 0; }
+  .appbar .logo { font-weight: 800; letter-spacing: 0.04em; }
+  .appbar nav { display: flex; gap: 0.8rem; font-size: 0.85rem; flex: 1; }
+  .appbar nav span { border-bottom: 2px solid transparent; padding-bottom: 0.1rem; }
+  .appbar nav span.here { border-color: var(--copper); font-weight: 700; }
+  .sidenav { width: 170px; flex: none; background: var(--surface); border: 2px solid var(--ink-soft);
+             border-radius: 6px; padding: 0.6rem; display: flex; flex-direction: column; gap: 0.35rem;
+             font-size: 0.82rem; }
+  .sidenav div { padding: 0.2rem 0.4rem; border-radius: 4px; }
+  .sidenav div.here { background: var(--copper); color: #fff; font-weight: 700; }
+  .content { flex: 1; padding: 0.75rem; display: flex; flex-direction: column; gap: 0.6rem; }
+  .pagebody { display: flex; gap: 0.6rem; padding: 0.6rem; }
+  .sk { height: 0.8em; background: #ddd2bd; border-radius: 3px; display: inline-block; }
+  h3.zone { font-size: 0.85rem; color: var(--copper-strong); margin-bottom: 0.2rem; }
+  .note { font-size: 0.75rem; color: var(--ink-soft); font-style: italic; }
+  .cover { max-width: 1100px; margin: 2rem auto; background: var(--parchment); border: 2px solid var(--ink);
+           border-radius: 8px; padding: 2rem; }
+  .cover h1 { color: var(--copper-strong); margin-bottom: 0.5rem; }
+  .cover h2 { color: var(--copper-strong); margin: 1.5rem 0 0.5rem; font-size: 1.1rem; }
+  .flow { display: flex; align-items: stretch; gap: 0.4rem; flex-wrap: wrap; margin: 0.5rem 0; }
+  .flow .node { border: 2px solid var(--ink); background: var(--surface); border-radius: 6px;
+                padding: 0.4rem 0.7rem; font-size: 0.8rem; font-weight: 600; }
+  .flow .arr { align-self: center; color: var(--copper); font-weight: 800; }
+  .sm { display: flex; align-items: center; gap: 0.3rem; flex-wrap: wrap; font-size: 0.8rem; }
+  .sm .st { border: 2px solid var(--ink); border-radius: 999px; padding: 0.15rem 0.7rem;
+            background: var(--surface); font-weight: 600; }
+  .sm .st.cur { background: var(--cau-bg); border-color: var(--cau-fg); }
+  .sm .st.done { background: var(--pos-bg); border-color: var(--pos-fg); }
+  .sm .arr { color: var(--copper); font-weight: 800; }
+</style>
+</head>
+<body>
+
+<nav class="deck-nav">
+  <strong>SKLegal wireframes (SKL-UI-02)</strong>
+  <a href="index-v2.html">Open AI-first version 2</a>
+  <a href="#cover">Cover</a>
+  <a href="#s-signin">Sign-in</a>
+  <a href="#s-home">Home</a>
+  <a href="#s-clients">Clients</a>
+  <a href="#s-client">Client detail</a>
+  <a href="#s-matters">Matters</a>
+  <a href="#s-matter">Matter workspace</a>
+  <a href="#s-facts">Facts and tensions</a>
+  <a href="#s-evidence">Evidence</a>
+  <a href="#s-comms">Communications</a>
+  <a href="#s-audit">Audit</a>
+  <a href="#s-research">Research and claims</a>
+  <a href="#s-docs">Documents</a>
+  <a href="#s-calendar">Calendar</a>
+  <a href="#s-queue">Work queue</a>
+  <a href="#s-corpus">Corpus</a>
+  <a href="#s-agents">Agent runs</a>
+  <a href="#s-approvals">Approvals</a>
+  <a href="#s-action">External action</a>
+  <a href="#s-admin">Administration</a>
+</nav>
+
+<!-- ============================ COVER ============================ -->
+<section class="screen" id="cover">
+  <div class="cover">
+    <h1>SKLegal product wireframe deck</h1>
+    <p class="note">Card SKL-UI-02 (35db7563). Owner directive 2026-08-22. Synthetic content only.
+    Lo-fi layout contract for every approved screen. Each screen header cites the owning board card,
+    the route capability from <code>apps/web/src/auth/authorization.ts</code>, and the backend surface it binds to.</p>
+    <p style="margin-top:0.75rem;"><a class="btn primary" href="index-v2.html">Review AI-first Matter analysis version 2</a></p>
+
+    <h2>Sitemap (routes already registered in apps/web/src/router.tsx)</h2>
+    <table class="wft">
+      <tr><th>Route</th><th>Screen</th><th>Owning card</th><th>Build state</th></tr>
+      <tr><td class="mono">/sign-in</td><td>Sign-in</td><td>SKL-S4-01</td><td><span class="tag t-pos">built</span></td></tr>
+      <tr><td class="mono">/</td><td>Home</td><td>SKL-S4-01</td><td><span class="tag t-pos">built</span></td></tr>
+      <tr><td class="mono">/clients, /clients/$id</td><td>Clients</td><td>SKL-S4-01 / S4-02</td><td><span class="tag t-pos">built</span></td></tr>
+      <tr><td class="mono">/matters, /matters/$id</td><td>Matter workspace</td><td>SKL-S4-02</td><td><span class="tag t-cau">in progress (e5ff5976)</span></td></tr>
+      <tr><td class="mono">/calendar</td><td>Calendar and deadlines</td><td>SKL-S4-05</td><td><span class="tag t-cau">placeholder, backend done</span></td></tr>
+      <tr><td class="mono">/work-queue</td><td>Tasks and action queue</td><td>SKL-S4-05 / S4-06</td><td><span class="tag t-cau">placeholder</span></td></tr>
+      <tr><td class="mono">/corpus</td><td>Research, claim ledger, sources</td><td>SKL-S4-03</td><td><span class="tag t-cri">open (f31e9c1e)</span></td></tr>
+      <tr><td class="mono">/agent-runs</td><td>Governed model runs</td><td>SKL-S3-02 / S3-03</td><td><span class="tag t-cri">open</span></td></tr>
+      <tr><td class="mono">/approvals</td><td>Human approval inbox</td><td>SKL-S1-04A / S4-06</td><td><span class="tag t-cri">open</span></td></tr>
+      <tr><td class="mono">/administration</td><td>Policy, walls, connectors</td><td>SKL-S1-04A / S2-06</td><td><span class="tag t-cri">open</span></td></tr>
+    </table>
+
+    <h2>System data flow (approved architecture)</h2>
+    <div class="flow">
+      <div class="node">React shell<br><span class="note">apps/web</span></div>
+      <div class="arr">-&gt;</div>
+      <div class="node">FastAPI services/api<br><span class="note">tenant + capability scoped</span></div>
+      <div class="arr">-&gt;</div>
+      <div class="node">CapAuth verify<br><span class="note">packages/capauth</span></div>
+      <div class="arr">-&gt;</div>
+      <div class="node">Policy gates<br><span class="note">packages/policies (conflicts, walls, privilege)</span></div>
+      <div class="arr">-&gt;</div>
+      <div class="node">Domain<br><span class="note">packages/domain</span></div>
+    </div>
+    <div class="flow">
+      <div class="node">PostgreSQL core<br><span class="note">packages/persistence, RLS</span></div>
+      <div class="node">Retrieval plane<br><span class="note">packages/retrieval, pgvector + FTS + AGE</span></div>
+      <div class="node">Temporal<br><span class="note">packages/workflow</span></div>
+      <div class="node">Model gateway<br><span class="note">packages/model_gateway, Qwen3 / OpenAI</span></div>
+      <div class="node">Connectors<br><span class="note">packages/connectors, simulation-first</span></div>
+      <div class="node">Audit + outbox<br><span class="note">packages/audit, append-only</span></div>
+    </div>
+    <p class="note">Every mutation emits run-ID-correlated audit events. Models return typed proposals only;
+    they never mutate workflow state. External actions follow the approved six-state machine:
+    draft, validated, approved, queued, dispatched, receipt_verified.</p>
+  </div>
+</section>
+<!-- ============================ SIGN IN ============================ -->
+<section class="screen" id="s-signin">
+  <div class="screen-head">
+    <span class="route">/sign-in</span>
+    <span class="meta">Owner <b>SKL-S4-01</b> (done) - Capability: none (pre-auth) - Backend: <b>services/api auth session + CapAuth principal resolution</b></span>
+  </div>
+  <div class="frame">
+    <div style="max-width:420px;margin:3rem auto;" class="col">
+      <div class="wf solid" style="text-align:center;padding:1.5rem;">
+        <div class="lbl">SKLegal logo and product mark</div>
+        <div style="font-size:1.4rem;font-weight:800;color:var(--copper-strong);">SKLegal</div>
+      </div>
+      <div class="wf"><div class="lbl">Sign-in method selector</div>
+        <div class="row" style="margin-top:0.3rem;"><span class="btn primary">Hardware key / PGP</span><span class="btn">SSO (tenant)</span></div>
+      </div>
+      <div class="wf"><span class="anno">fail closed</span><div class="lbl">Capability preview</div>
+        <p class="note">After auth: shows resolved principal, tenant memberships, and expiry of the session capability. No client or matter data pre-auth.</p></div>
+      <div class="wf"><div class="lbl">Error region</div><span class="tag t-cri">credential expired</span><span class="tag t-neu">correlation ID shown for support</span></div>
+    </div>
+  </div>
+</section>
+
+<!-- ============================ HOME ============================ -->
+<section class="screen" id="s-home">
+  <div class="screen-head">
+    <span class="route">/ (home)</span>
+    <span class="meta">Owner <b>SKL-S4-01</b> (done) - Capability: <code>home</code> - Backend: <b>services/api aggregate read models (packages/persistence)</b></span>
+  </div>
+  <div class="frame">
+    <div class="appbar"><span class="logo">SKLegal</span>
+      <nav><span class="here">Home</span><span>Clients</span><span>Matters</span><span>Calendar</span><span>Work queue</span><span>Corpus</span><span>Approvals</span></nav>
+      <span class="wf dark" style="padding:0.15rem 0.6rem;min-height:0;"><span class="lbl">Tenant switcher: DAVE-AI</span></span>
+      <span class="wf dark" style="padding:0.15rem 0.6rem;min-height:0;"><span class="lbl">Casey (human principal)</span></span>
+    </div>
+    <div class="content">
+      <div class="grid3">
+        <div class="wf"><span class="anno">S4-05</span><div class="lbl">My deadlines next 14 days</div>
+          <table class="wft"><tr><th>Deadline</th><th>Matter</th><th>State</th></tr>
+          <tr><td>Discovery response</td><td>Liberty Auto</td><td><span class="tag t-cau">! Due soon</span></td></tr>
+          <tr><td>Status conference</td><td>Matter 002</td><td><span class="tag t-inf">o Upcoming</span></td></tr></table></div>
+        <div class="wf"><span class="anno">S1-04A</span><div class="lbl">Approvals waiting on me</div>
+          <p><span class="tag t-cau">3 pending</span></p>
+          <p class="note">Work product release, external email dispatch, conflict waiver decision.</p></div>
+        <div class="wf"><span class="anno">S3-03</span><div class="lbl">Agent runs needing review</div>
+          <p><span class="tag t-inf">2 proposals</span> <span class="tag t-neu">0 failed</span></p></div>
+      </div>
+      <div class="wf"><span class="anno">S4-02</span><div class="lbl">Active matters strip</div>
+        <div class="row" style="margin-top:0.3rem;">
+          <div class="wf solid grow"><b>Liberty Auto v. Insurer</b><br><span class="tag t-pos">Active</span> <span class="note">pilot matter</span></div>
+          <div class="wf solid grow"><b>Matter 002</b><br><span class="tag t-pos">Active</span></div>
+          <div class="wf solid grow"><b>Matter 003</b><br><span class="tag t-cau">On hold</span></div>
+        </div></div>
+      <div class="wf"><span class="anno">S2-05</span><div class="lbl">System health strip (bounded, no protected detail)</div>
+        <span class="tag t-pos">retrieval plane ok</span><span class="tag t-pos">Temporal ok</span><span class="tag t-cau">projection lag 4m</span><span class="tag t-pos">audit chain verified</span></div>
+    </div>
+  </div>
+</section>
+
+<!-- ============================ CLIENTS ============================ -->
+<section class="screen" id="s-clients">
+  <div class="screen-head">
+    <span class="route">/clients</span>
+    <span class="meta">Owner <b>SKL-S4-01</b> (done) - Capability: <code>clients</code> - API: <code>GET /v1/clients</code> (existing client.ts)</span>
+  </div>
+  <div class="frame"><div class="pagebody">
+    <div class="sidenav"><div>Home</div><div class="here">Clients</div><div>Matters</div><div>Calendar</div><div>Work queue</div><div>Corpus</div><div>Approvals</div></div>
+    <div class="content">
+      <div class="row">
+        <div class="wf grow"><div class="lbl">Search clients (tenant-scoped, policy-filtered)</div><span class="sk" style="width:60%"></span></div>
+        <span class="btn primary">New client (capability: client.create)</span>
+      </div>
+      <div class="wf"><div class="lbl">Client table</div>
+        <table class="wft">
+          <tr><th>Client</th><th>Matters</th><th>Conflict check</th><th>Open deadlines</th><th>Status</th></tr>
+          <tr><td>Liberty Auto Group</td><td>1</td><td><span class="tag t-pos">clear</span></td><td>2</td><td><span class="tag t-pos">Active</span></td></tr>
+          <tr><td>Client B</td><td>2</td><td><span class="tag t-pos">clear</span></td><td>0</td><td><span class="tag t-pos">Active</span></td></tr>
+          <tr><td>Prospect C</td><td>0</td><td><span class="tag t-cau">review pending</span></td><td>-</td><td><span class="tag t-neu">Intake</span></td></tr>
+        </table>
+        <p class="note">Rows hidden, not blanked, when a wall or conflict hold applies. No denied row ever renders.</p></div>
+    </div>
+  </div></div>
+</section>
+
+<!-- ============================ CLIENT DETAIL ============================ -->
+<section class="screen" id="s-client">
+  <div class="screen-head">
+    <span class="route">/clients/$clientId</span>
+    <span class="meta">Owner <b>SKL-S4-02</b> (in progress) - Capability: <code>clientDetail</code> - API: <code>GET /v1/clients/{id}</code> + engagements + parties</span>
+  </div>
+  <div class="frame"><div class="pagebody">
+    <div class="sidenav"><div>Home</div><div class="here">Clients</div><div>Matters</div><div>Calendar</div><div>Work queue</div><div>Corpus</div><div>Approvals</div></div>
+    <div class="content">
+      <div class="wf solid"><div class="lbl">Client header</div>
+        <b>Liberty Auto Group</b> <span class="tag t-pos">Active</span>
+        <span class="note">- engagement: General counsel 2026 - responsible principal: Casey</span></div>
+      <div class="grid2">
+        <div class="wf"><span class="anno">S1-04</span><div class="lbl">Conflict and wall panel</div>
+          <p><span class="tag t-pos">no adverse party collision</span> <span class="tag t-neu">walls: none</span></p>
+          <p class="note">Every decision links to its human decision record and CapAuth capability.</p></div>
+        <div class="wf"><span class="anno">S4-02</span><div class="lbl">Engagements and matters</div>
+          <table class="wft"><tr><th>Matter</th><th>Status</th><th>Open items</th></tr>
+          <tr><td>Liberty Auto v. Insurer</td><td><span class="tag t-pos">Active</span></td><td>4</td></tr></table></div>
+      </div>
+      <div class="wf"><div class="lbl">Communication log summary</div><span class="sk" style="width:80%"></span></div>
+    </div>
+  </div></div>
+</section>
+
+<!-- ============================ MATTERS ============================ -->
+<section class="screen" id="s-matters">
+  <div class="screen-head">
+    <span class="route">/matters</span>
+    <span class="meta">Owner <b>SKL-S4-02</b> (in progress) - Capability: <code>matters</code> - API: <code>GET /v1/matters</code> (existing client.ts)</span>
+  </div>
+  <div class="frame"><div class="pagebody">
+    <div class="sidenav"><div>Home</div><div>Clients</div><div class="here">Matters</div><div>Calendar</div><div>Work queue</div><div>Corpus</div><div>Approvals</div></div>
+    <div class="content">
+      <div class="row">
+        <div class="wf grow"><div class="lbl">Filter: status / responsible / deadline window</div><span class="sk" style="width:50%"></span></div>
+        <span class="btn primary">Open matter (from approved engagement)</span>
+      </div>
+      <div class="wf"><div class="lbl">Matter table</div>
+        <table class="wft">
+          <tr><th>Matter</th><th>Client</th><th>Status</th><th>Next deadline</th><th>Pending approvals</th><th>Provenance</th></tr>
+          <tr><td>Liberty Auto v. Insurer</td><td>Liberty Auto Group</td><td><span class="tag t-pos">Active</span></td><td><span class="tag t-cau">! 2026-08-29</span></td><td>1</td><td><span class="tag t-inf">HammerTime release R-014</span></td></tr>
+          <tr><td>Matter 002</td><td>Client B</td><td><span class="tag t-pos">Active</span></td><td><span class="tag t-inf">o 2026-09-12</span></td><td>0</td><td><span class="tag t-neu">native</span></td></tr>
+        </table></div>
+    </div>
+  </div></div>
+</section>
+<!-- ============================ MATTER WORKSPACE ============================ -->
+<section class="screen" id="s-matter">
+  <div class="screen-head">
+    <span class="route">/matters/$matterId - tab: Overview</span>
+    <span class="meta">Owner <b>SKL-S4-02</b> (in progress) - Capability: <code>matterDetail</code> - API: <code>GET /v1/matters/{id}</code> aggregate (domain + persistence)</span>
+  </div>
+  <div class="frame"><div class="pagebody">
+    <div class="sidenav">
+      <div class="here">Overview</div><div>Parties</div><div>Timeline</div><div>Facts and tensions</div>
+      <div>Evidence</div><div>Communications</div><div>Documents</div><div>Deadlines</div><div>Audit</div>
+    </div>
+    <div class="content">
+      <div class="wf solid"><div class="lbl">Matter header</div>
+        <b>Liberty Auto v. Insurer</b> <span class="tag t-pos">Active</span>
+        <span class="tag t-inf">Pilot import: release R-014, hash-pinned</span>
+        <div class="note">Tenant: DAVE-AI - matter membership enforced server-side (RLS + policy gate)</div></div>
+      <div class="grid3">
+        <div class="wf"><span class="anno">S4-02</span><div class="lbl">Stage summary</div>
+          <div class="sm"><span class="st done">Intake</span><span class="arr">-&gt;</span><span class="st cur">Discovery</span><span class="arr">-&gt;</span><span class="st">Pretrial</span></div></div>
+        <div class="wf"><span class="anno">S4-05</span><div class="lbl">Next deadlines</div>
+          <table class="wft"><tr><td>Discovery response</td><td><span class="tag t-cau">! 2026-08-29</span></td></tr>
+          <tr><td>Expert disclosure</td><td><span class="tag t-inf">o 2026-09-30</span></td></tr></table></div>
+        <div class="wf"><span class="anno">S1-04A</span><div class="lbl">Approvals pending</div>
+          <span class="tag t-cau">1 work product release</span></div>
+      </div>
+      <div class="grid2">
+        <div class="wf"><span class="anno">S3-05</span><div class="lbl">Open issues and claim readiness</div>
+          <table class="wft"><tr><th>Issue</th><th>Claims</th><th>Gate</th></tr>
+          <tr><td>Coverage denial</td><td>3 / 3 supported</td><td><span class="tag t-pos">CLAIM_READY</span></td></tr>
+          <tr><td>Diminished value</td><td>1 / 2 supported</td><td><span class="tag t-cau">blocked: missing authority</span></td></tr></table></div>
+        <div class="wf"><span class="anno">S4-02</span><div class="lbl">Unresolved tensions (never hidden)</div>
+          <span class="tag t-cau">2 name variants</span> <span class="tag t-cau">1 date conflict</span>
+          <p class="note">Tension groups surface here until a human resolves them. No silent harmonization.</p></div>
+      </div>
+      <div class="wf"><span class="anno">S1-05</span><div class="lbl">Recent activity (correlated run IDs)</div>
+        <span class="sk" style="width:90%"></span><br><span class="sk" style="width:70%"></span></div>
+    </div>
+  </div></div>
+</section>
+
+<!-- ============================ FACTS AND TENSIONS ============================ -->
+<section class="screen" id="s-facts">
+  <div class="screen-head">
+    <span class="route">/matters/$matterId - tab: Facts and tensions</span>
+    <span class="meta">Owner <b>SKL-S4-02</b> - Capability: <code>matterDetail</code> - API: fact assertions + tension groups (packages/domain, S2-02 importer provenance)</span>
+  </div>
+  <div class="frame"><div class="pagebody">
+    <div class="sidenav">
+      <div>Overview</div><div>Parties</div><div>Timeline</div><div class="here">Facts and tensions</div>
+      <div>Evidence</div><div>Communications</div><div>Documents</div><div>Deadlines</div><div>Audit</div>
+    </div>
+    <div class="content">
+      <div class="row">
+        <div class="wf grow"><span class="anno">S2-02</span><div class="lbl">Atomic fact assertions (source-pinned)</div>
+          <table class="wft">
+            <tr><th>Fact</th><th>Source span</th><th>Confidence</th><th>Status</th></tr>
+            <tr><td>Vehicle purchase date 2025-11-03</td><td><span class="tag t-inf">R-014 / doc 12 p.3</span></td><td>high</td><td><span class="tag t-pos">asserted</span></td></tr>
+            <tr><td>Repair attempt count: 3 or 4</td><td><span class="tag t-cau">conflicting spans</span></td><td>split</td><td><span class="tag t-cau">tension open</span></td></tr>
+          </table></div>
+      </div>
+      <div class="wf"><span class="anno">S1-04A</span><div class="lbl">Tension group detail (human resolution only)</div>
+        <div class="grid2">
+          <div class="wf solid"><div class="lbl">Variant A</div><p class="note">"Liberty Auto Group LLC" - source doc 4 - hash 9f2...</p></div>
+          <div class="wf solid"><div class="lbl">Variant B</div><p class="note">"Liberty Automotive" - source doc 9 - hash 71c...</p></div>
+        </div>
+        <div class="row" style="margin-top:0.4rem;"><span class="btn primary">Resolve (human, audited)</span><span class="btn">Keep both (preserved)</span></div>
+        <p class="note">Models may propose; only a human decision record resolves. Resolution is versioned and reversible.</p></div>
+    </div>
+  </div></div>
+</section>
+
+<!-- ============================ EVIDENCE ============================ -->
+<section class="screen" id="s-evidence">
+  <div class="screen-head">
+    <span class="route">/matters/$matterId - tab: Evidence</span>
+    <span class="meta">Owner <b>SKL-S4-02</b> - Capability: <code>matterDetail</code> - API: evidence items via read-only HammerTime adapter (packages/retrieval + S2-01)</span>
+  </div>
+  <div class="frame"><div class="pagebody">
+    <div class="sidenav">
+      <div>Overview</div><div>Parties</div><div>Timeline</div><div>Facts and tensions</div>
+      <div class="here">Evidence</div><div>Communications</div><div>Documents</div><div>Deadlines</div><div>Audit</div>
+    </div>
+    <div class="content">
+      <div class="wf"><div class="lbl">Evidence register</div>
+        <table class="wft">
+          <tr><th>Item</th><th>Type</th><th>Source hash</th><th>Privilege label</th><th>Linked facts</th></tr>
+          <tr><td>Purchase agreement</td><td>document</td><td class="mono">9f2c...</td><td><span class="tag t-neu">none</span></td><td>2</td></tr>
+          <tr><td>Repair invoice set</td><td>document</td><td class="mono">a41b...</td><td><span class="tag t-neu">none</span></td><td>3</td></tr>
+          <tr><td>Attorney memo draft</td><td>work product</td><td class="mono">e77d...</td><td><span class="tag t-cri">privileged</span></td><td>1</td></tr>
+        </table></div>
+      <div class="grid2">
+        <div class="wf"><span class="anno">S2-01</span><div class="lbl">Artifact preview (read-only adapter)</div>
+          <div class="wf solid" style="min-height:120px;"><p class="note">Rendered from HammerTime release artifact; path construction forbidden outside the adapter.</p></div></div>
+        <div class="wf"><span class="anno">S1-04</span><div class="lbl">Classification and hold banner</div>
+          <span class="tag t-cri">legal hold active</span> <span class="tag t-neu">retention: matter + 7y</span>
+          <p class="note">Denied material cannot enter retrieval, model context, export, or audit detail.</p></div>
+      </div>
+    </div>
+  </div></div>
+</section>
+
+<!-- ============================ COMMUNICATIONS ============================ -->
+<section class="screen" id="s-comms">
+  <div class="screen-head">
+    <span class="route">/matters/$matterId - tab: Communications</span>
+    <span class="meta">Owner <b>SKL-S4-02 + S4-06F</b> - Capability: <code>matterDetail</code> - API: communication records + connector receipts (packages/connectors)</span>
+  </div>
+  <div class="frame"><div class="pagebody">
+    <div class="sidenav">
+      <div>Overview</div><div>Parties</div><div>Timeline</div><div>Facts and tensions</div>
+      <div>Evidence</div><div class="here">Communications</div><div>Documents</div><div>Deadlines</div><div>Audit</div>
+    </div>
+    <div class="content">
+      <div class="wf"><div class="lbl">Communication log (inbound and outbound, receipt-linked)</div>
+        <table class="wft">
+          <tr><th>When</th><th>Channel</th><th>Counterparty</th><th>State</th><th>Receipt</th></tr>
+          <tr><td>2026-08-18</td><td>email</td><td>Client</td><td><span class="tag t-pos">receipt_verified</span></td><td class="mono">sim-rcpt-881</td></tr>
+          <tr><td>2026-08-15</td><td>client letter</td><td>Client</td><td><span class="tag t-inf">dispatched (sim)</span></td><td class="mono">pending</td></tr>
+        </table></div>
+      <div class="wf"><span class="anno">S4-06F</span><div class="lbl">Compose via connector (simulation-first)</div>
+        <span class="btn">New draft (creates external action in draft state)</span>
+        <p class="note">Nothing sends without exact-version approval and destination verification.</p></div>
+    </div>
+  </div></div>
+</section>
+
+<!-- ============================ AUDIT TAB ============================ -->
+<section class="screen" id="s-audit">
+  <div class="screen-head">
+    <span class="route">/matters/$matterId - tab: Audit</span>
+    <span class="meta">Owner <b>SKL-S4-02 + S1-05</b> - Capability: <code>matterDetail</code> + audit.read - API: append-only audit query (packages/audit)</span>
+  </div>
+  <div class="frame"><div class="pagebody">
+    <div class="sidenav">
+      <div>Overview</div><div>Parties</div><div>Timeline</div><div>Facts and tensions</div>
+      <div>Evidence</div><div>Communications</div><div>Documents</div><div>Deadlines</div><div class="here">Audit</div>
+    </div>
+    <div class="content">
+      <div class="wf"><span class="anno">S1-05</span><div class="lbl">Run replay selector</div>
+        <span class="sk" style="width:45%"></span> <span class="btn">Replay run</span>
+        <p class="note">One run replays across API, workflow, tool, model, human, and connector events.</p></div>
+      <div class="wf"><div class="lbl">Event stream (tamper-evident, chain verified)</div>
+        <table class="wft">
+          <tr><th>Time</th><th>Actor</th><th>Event</th><th>Policy decision</th><th>Chain</th></tr>
+          <tr><td>05:01:02</td><td>Casey (human)</td><td>approval granted</td><td class="mono">pol-881</td><td><span class="tag t-pos">verified</span></td></tr>
+          <tr><td>04:58:40</td><td>Qwen3 (local)</td><td>proposal emitted</td><td class="mono">pol-880</td><td><span class="tag t-pos">verified</span></td></tr>
+          <tr><td>04:58:31</td><td>retrieval svc</td><td>corpus query</td><td class="mono">pol-879</td><td><span class="tag t-pos">verified</span></td></tr>
+        </table>
+        <p class="note">Protected content is redacted by default; identifiers only.</p></div>
+    </div>
+  </div></div>
+</section>
+<!-- ============================ RESEARCH AND CLAIMS ============================ -->
+<section class="screen" id="s-research">
+  <div class="screen-head">
+    <span class="route">/corpus - Research, claim ledger, source viewer</span>
+    <span class="meta">Owner <b>SKL-S4-03</b> (open, f31e9c1e) - Capability: <code>corpus</code> - API: <b>packages/retrieval (S2-04 policy-filtered adapters) + claim ledger (S3-05)</b></span>
+  </div>
+  <div class="frame"><div class="pagebody">
+    <div class="sidenav"><div>Home</div><div>Clients</div><div>Matters</div><div>Calendar</div><div>Work queue</div><div class="here">Corpus</div><div>Approvals</div></div>
+    <div class="content">
+      <div class="wf"><span class="anno">S2-04</span><div class="lbl">Governed search bar (exact-first, then semantic)</div>
+        <span class="sk" style="width:55%"></span> <span class="btn primary">Search</span>
+        <span class="note">Scope chips:</span> <span class="tag t-inf">this matter</span> <span class="tag t-neu">tenant corpus</span> <span class="tag t-neu">official sources</span></div>
+      <div class="grid2">
+        <div class="wf"><span class="anno">S2-04</span><div class="lbl">Result list with retrieval trace</div>
+          <table class="wft">
+            <tr><th>Authority / source</th><th>Rank path</th><th>Release</th><th>Trace</th></tr>
+            <tr><td>IL Lemon Law 815 ILCS 380</td><td class="mono">exact-cite</td><td>R-006</td><td class="mono">tr-221</td></tr>
+            <tr><td>GPO Style Manual (official)</td><td class="mono">pgvector gen-3</td><td>S6-cand</td><td class="mono">tr-224</td></tr>
+          </table>
+          <p class="note">Every result identifies tenant/matter scope, release, source hashes, projection generation, query-template ID, and watermark (S2-10 contract).</p></div>
+        <div class="wf"><span class="anno">S4-03</span><div class="lbl">Source-span viewer (exact quotation)</div>
+          <div class="wf solid" style="min-height:110px;"><p class="note">Highlighted span, exact locator, source hash, supersession status. Inaccessible sources render a denial state, never a leak.</p></div>
+          <span class="tag t-cau">authority superseded? check</span> <span class="tag t-inf">jurisdiction: IL</span></div>
+      </div>
+      <div class="wf"><span class="anno">S3-05</span><div class="lbl">Claim ledger for this matter</div>
+        <table class="wft">
+          <tr><th>Claim</th><th>Support</th><th>Counter-support</th><th>Blind challenge</th><th>Gate</th></tr>
+          <tr><td>Vehicle qualifies as lemon</td><td>3 spans</td><td>1 span</td><td><span class="tag t-pos">passed</span></td><td><span class="tag t-pos">CLAIM_READY</span></td></tr>
+          <tr><td>Timely notice given</td><td>1 span</td><td>0</td><td><span class="tag t-cau">unresolved defect</span></td><td><span class="tag t-cau">blocked</span></td></tr>
+        </table>
+        <p class="note">Similarity alone never qualifies authority. Failed gates cannot be waived by model output.</p></div>
+    </div>
+  </div></div>
+</section>
+
+<!-- ============================ DOCUMENTS / DRAFTING ============================ -->
+<section class="screen" id="s-docs">
+  <div class="screen-head">
+    <span class="route">/matters/$matterId - tab: Documents (drafting and redlines)</span>
+    <span class="meta">Owner <b>SKL-S4-04</b> (open, 2e5462d8) - Capability: matterDetail + workproduct.write - API: <b>work product service (packages/domain + persistence), DOCX export worker (Temporal)</b></span>
+  </div>
+  <div class="frame"><div class="pagebody">
+    <div class="sidenav">
+      <div>Overview</div><div>Parties</div><div>Timeline</div><div>Facts and tensions</div>
+      <div>Evidence</div><div>Communications</div><div class="here">Documents</div><div>Deadlines</div><div>Audit</div>
+    </div>
+    <div class="content">
+      <div class="row">
+        <div class="wf grow"><span class="anno">S4-04</span><div class="lbl">Work product list (versioned, hash-pinned)</div>
+          <table class="wft">
+            <tr><th>Document</th><th>Version</th><th>Approval</th><th>Gate</th></tr>
+            <tr><td>Demand letter</td><td>v3</td><td><span class="tag t-cau">Pending approval</span></td><td><span class="tag t-pos">DRAFT_READY</span></td></tr>
+            <tr><td>Complaint draft</td><td>v1</td><td><span class="tag t-neu">draft</span></td><td><span class="tag t-cau">claims incomplete</span></td></tr>
+          </table></div>
+        <span class="btn primary">New draft from template (claim-grounded)</span>
+      </div>
+      <div class="grid2">
+        <div class="wf"><span class="anno">S4-04</span><div class="lbl">Editor with bracketed unknowns</div>
+          <div class="wf solid" style="min-height:110px;">
+            <p class="note">"...on <span class="tag t-cau">[PURCHASE DATE - unresolved tension]</span> the vehicle..."
+            Every factual sentence links to its claim ledger entry. Unknowns block DRAFT_READY.</p></div></div>
+        <div class="wf"><span class="anno">S4-04</span><div class="lbl">Version compare and DOCX tracked changes</div>
+          <div class="wf solid" style="min-height:60px;"><p class="note">v2 to v3 diff preview; export produces genuine DOCX tracked changes, not flat text.</p></div>
+          <div class="row" style="margin-top:0.4rem;"><span class="btn">Export DOCX (tracked)</span><span class="btn">Preview PDF</span><span class="btn primary">Approve exact hash</span></div>
+          <p class="note">Any edit after approval invalidates the approval and forces re-validation.</p></div>
+      </div>
+    </div>
+  </div></div>
+</section>
+
+<!-- ============================ CALENDAR ============================ -->
+<section class="screen" id="s-calendar">
+  <div class="screen-head">
+    <span class="route">/calendar</span>
+    <span class="meta">Owner <b>SKL-S4-05</b> (backend done, UI placeholder) - Capability: <code>calendar</code> - API: <b>deadline engine + ICS export + calendar connector sim (packages/workflow)</b></span>
+  </div>
+  <div class="frame"><div class="pagebody">
+    <div class="sidenav"><div>Home</div><div>Clients</div><div>Matters</div><div class="here">Calendar</div><div>Work queue</div><div>Corpus</div><div>Approvals</div></div>
+    <div class="content">
+      <div class="grid2">
+        <div class="wf"><div class="lbl">Month grid (deadline state semantics, never color-only)</div>
+          <div class="wf solid" style="min-height:150px;"><p class="note">Calendar grid. Each entry carries glyph + label: Met / Upcoming / Due soon / Overdue.</p>
+          <span class="tag t-cau">! 08-29 Discovery response</span> <span class="tag t-inf">o 09-12 Status conf</span></div></div>
+        <div class="wf"><span class="anno">S4-05</span><div class="lbl">Deadline detail with rule provenance</div>
+          <table class="wft">
+            <tr><th>Field</th><th>Value</th></tr>
+            <tr><td>Trigger</td><td>Interrogatories served 2026-07-30</td></tr>
+            <tr><td>Rule</td><td class="mono">IL S.Ct. R. 213(d) + 28 days</td></tr>
+            <tr><td>Computation</td><td>deterministic hook, timezone America/Chicago</td></tr>
+            <tr><td>Confidence</td><td><span class="tag t-pos">rule-verified</span></td></tr>
+            <tr><td>Reviewer</td><td>Casey (human)</td></tr>
+          </table>
+          <p class="note">Contingent printed dates never become operative deadlines without explicit review.</p></div>
+      </div>
+      <div class="wf"><div class="lbl">Reminder and supersession strip</div>
+        <span class="tag t-inf">reminder -7d</span> <span class="tag t-inf">reminder -1d</span> <span class="tag t-neu">supersedes order of 2026-07-12</span>
+        <span class="btn">ICS export</span> <span class="btn">Push via calendar connector (sim)</span></div>
+    </div>
+  </div></div>
+</section>
+
+<!-- ============================ WORK QUEUE ============================ -->
+<section class="screen" id="s-queue">
+  <div class="screen-head">
+    <span class="route">/work-queue</span>
+    <span class="meta">Owner <b>SKL-S4-05 + S4-06</b> - Capability: <code>workQueue</code> - API: <b>task store + external-action state machine (packages/workflow + connectors)</b></span>
+  </div>
+  <div class="frame"><div class="pagebody">
+    <div class="sidenav"><div>Home</div><div>Clients</div><div>Matters</div><div>Calendar</div><div class="here">Work queue</div><div>Corpus</div><div>Approvals</div></div>
+    <div class="content">
+      <div class="grid3">
+        <div class="wf"><div class="lbl">My tasks (work, not rule deadlines)</div>
+          <table class="wft"><tr><td>Review tension group T-2</td><td><span class="tag t-cau">high</span></td></tr>
+          <tr><td>Approve demand letter v3</td><td><span class="tag t-cau">high</span></td></tr></table></div>
+        <div class="wf"><span class="anno">S4-06</span><div class="lbl">External actions in flight</div>
+          <table class="wft"><tr><th>Action</th><th>State</th></tr>
+          <tr><td>Email: status update</td><td><span class="tag t-cau">awaiting approval</span></td></tr>
+          <tr><td>Filing: appearance</td><td><span class="tag t-inf">validated (sim)</span></td></tr></table></div>
+        <div class="wf"><span class="anno">S3-01</span><div class="lbl">Workflow runs (Temporal)</div>
+          <span class="tag t-pos">2 running</span> <span class="tag t-neu">0 stale</span>
+          <p class="note">Stale-run alerts surface here with run IDs.</p></div>
+      </div>
+      <div class="wf"><div class="lbl">Queue filters: matter / energy / due window</div><span class="sk" style="width:40%"></span></div>
+    </div>
+  </div></div>
+</section>
+<!-- ============================ CORPUS ADMIN ============================ -->
+<section class="screen" id="s-corpus">
+  <div class="screen-head">
+    <span class="route">/corpus - Corpus registry and health</span>
+    <span class="meta">Owner <b>SKL-S2-05</b> (open, f5ed9d24) - Capability: corpus.read - API: <b>materialized corpus registry + reconciliation jobs (packages/retrieval)</b></span>
+  </div>
+  <div class="frame"><div class="pagebody">
+    <div class="sidenav"><div>Home</div><div>Clients</div><div>Matters</div><div>Calendar</div><div>Work queue</div><div class="here">Corpus</div><div>Approvals</div></div>
+    <div class="content">
+      <div class="grid3">
+        <div class="wf"><div class="lbl">Release registry</div>
+          <table class="wft"><tr><th>Release</th><th>Scope</th><th>State</th></tr>
+          <tr><td>R-014 Liberty Auto</td><td>matter</td><td><span class="tag t-pos">promoted</span></td></tr>
+          <tr><td>S6 official standards</td><td>tenant</td><td><span class="tag t-cau">candidate</span></td></tr></table></div>
+        <div class="wf"><span class="anno">S2-05</span><div class="lbl">Coverage counts (materialized, bounded)</div>
+          <p class="note">sources 142 - normalized 142 - decomposed 140 - vector gen-3 140 - graph 138 - rejects 2 - orphans 0</p></div>
+        <div class="wf"><span class="anno">S2-05</span><div class="lbl">Reconciliation</div>
+          <span class="tag t-pos">last deep reconcile 02:00</span> <span class="tag t-cau">projection lag 4m</span>
+          <p class="note">Health endpoint stays inside budget; deep reconcile runs scheduled, never inline.</p></div>
+      </div>
+    </div>
+  </div></div>
+</section>
+
+<!-- ============================ AGENT RUNS ============================ -->
+<section class="screen" id="s-agents">
+  <div class="screen-head">
+    <span class="route">/agent-runs</span>
+    <span class="meta">Owner <b>SKL-S3-02 / S3-03</b> - Capability: <code>agentRuns</code> - API: <b>Temporal runs + model gateway evidence (packages/workflow, packages/model_gateway)</b></span>
+  </div>
+  <div class="frame"><div class="pagebody">
+    <div class="sidenav"><div>Home</div><div>Clients</div><div>Matters</div><div>Calendar</div><div>Work queue</div><div>Corpus</div><div class="here">Agent runs</div><div>Approvals</div></div>
+    <div class="content">
+      <div class="wf"><span class="anno">S3-03</span><div class="lbl">Run list (bounded agent specs only)</div>
+        <table class="wft">
+          <tr><th>Run</th><th>Spec + version</th><th>Model route</th><th>State</th><th>Output</th></tr>
+          <tr><td class="mono">run-991</td><td>issue-analyst v3</td><td>Qwen3 local</td><td><span class="tag t-cau">awaiting review</span></td><td><span class="tag t-inf">typed proposal</span></td></tr>
+          <tr><td class="mono">run-987</td><td>deadline-extractor v2</td><td>Qwen3 local</td><td><span class="tag t-pos">accepted</span></td><td><span class="tag t-inf">typed proposal</span></td></tr>
+        </table></div>
+      <div class="grid2">
+        <div class="wf"><span class="anno">S3-02</span><div class="lbl">Run detail: context and policy evidence</div>
+          <p class="note">Pinned prompt hash, model version, context budget, egress classification, capability ID used, policy decision IDs. Raw prompts never leave the local stack by default.</p></div>
+        <div class="wf"><span class="anno">S5-02</span><div class="lbl">Proposal review panel</div>
+          <div class="wf solid" style="min-height:70px;"><p class="note">Typed proposal with source links; challenge button runs the blind-challenge spec.</p></div>
+          <div class="row" style="margin-top:0.4rem;"><span class="btn primary">Accept (human)</span><span class="btn danger">Reject</span><span class="btn">Challenge</span></div></div>
+      </div>
+    </div>
+  </div></div>
+</section>
+
+<!-- ============================ APPROVALS ============================ -->
+<section class="screen" id="s-approvals">
+  <div class="screen-head">
+    <span class="route">/approvals</span>
+    <span class="meta">Owner <b>SKL-S1-04A + S4-06</b> - Capability: <code>approvals</code> - API: <b>governed human decision APIs (bb103650) + action approvals (packages/connectors)</b></span>
+  </div>
+  <div class="frame"><div class="pagebody">
+    <div class="sidenav"><div>Home</div><div>Clients</div><div>Matters</div><div>Calendar</div><div>Work queue</div><div>Corpus</div><div class="here">Approvals</div></div>
+    <div class="content">
+      <div class="wf"><span class="anno">S1-04A</span><div class="lbl">Approval inbox (exact-version, separation of duties)</div>
+        <table class="wft">
+          <tr><th>Item</th><th>Type</th><th>Version / hash</th><th>Requested by</th><th>Action</th></tr>
+          <tr><td>Demand letter v3</td><td>work product release</td><td class="mono">sha256:44aa...</td><td>agent run-991</td><td><span class="btn primary">Review</span></td></tr>
+          <tr><td>Email to client</td><td>external action</td><td class="mono">act-2231 v1</td><td>Casey</td><td><span class="btn primary">Review</span></td></tr>
+          <tr><td>Conflict waiver</td><td>policy decision</td><td class="mono">dec-0091</td><td>intake flow</td><td><span class="btn primary">Review</span></td></tr>
+        </table></div>
+      <div class="wf"><div class="lbl">Decision record preview</div>
+        <p class="note">Every approval or rejection is attributable, idempotent, effective-time bounded, and immediately revocable. Superseded authority fails closed at effect time.</p></div>
+    </div>
+  </div></div>
+</section>
+
+<!-- ============================ EXTERNAL ACTION DETAIL ============================ -->
+<section class="screen" id="s-action">
+  <div class="screen-head">
+    <span class="route">/work-queue - external action detail</span>
+    <span class="meta">Owner <b>SKL-S4-06 A-F + S4-08</b> - Capability: action.approve - Architecture: <b>docs/architecture/EXTERNAL-ACTION-STATE-MACHINE.md</b></span>
+  </div>
+  <div class="frame"><div class="content">
+    <div class="wf solid"><div class="lbl">Action: email to client - act-2231</div>
+      <div class="sm" style="margin-top:0.4rem;">
+        <span class="st done">draft</span><span class="arr">-&gt;</span>
+        <span class="st done">validated</span><span class="arr">-&gt;</span>
+        <span class="st cur">approved</span><span class="arr">-&gt;</span>
+        <span class="st">queued</span><span class="arr">-&gt;</span>
+        <span class="st">dispatched</span><span class="arr">-&gt;</span>
+        <span class="st">receipt_verified</span>
+      </div>
+      <p class="note" style="margin-top:0.4rem;">Failure, cancel, and retry edges documented per S4-08. Temporal owns dispatch orchestration (S4-07); the outbox never initiates provider calls.</p></div>
+    <div class="grid3">
+      <div class="wf"><span class="anno">S4-06A</span><div class="lbl">Destination verification</div>
+        <span class="tag t-pos">verified</span><p class="note">Exact destination pinned at approval; mismatch blocks dispatch.</p></div>
+      <div class="wf"><span class="anno">S1-03</span><div class="lbl">Capability check</div>
+        <span class="tag t-pos">scoped capability valid</span><p class="note">Short TTL, one-use at dispatch, revocation checked at effect time.</p></div>
+      <div class="wf"><span class="anno">S4-06B</span><div class="lbl">Receipt and reconciliation</div>
+        <span class="tag t-neu">simulation mode</span><p class="note">Connector stays simulation-only until individually qualified and activated (S5-03).</p></div>
+    </div>
+    <div class="wf"><div class="lbl">Immutable audit strip</div>
+      <span class="sk" style="width:85%"></span><p class="note">Every transition is an append-only event with run ID, capability ID, and policy decision ID.</p></div>
+  </div></div>
+</section>
+
+<!-- ============================ ADMINISTRATION ============================ -->
+<section class="screen" id="s-admin">
+  <div class="screen-head">
+    <span class="route">/administration</span>
+    <span class="meta">Owner <b>SKL-S1-04A + S2-06</b> - Capability: <code>administration</code> - API: <b>policy admin APIs (bb103650) + connector registry (b5b771be)</b></span>
+  </div>
+  <div class="frame"><div class="pagebody">
+    <div class="sidenav"><div>Home</div><div>Clients</div><div>Matters</div><div>Calendar</div><div>Work queue</div><div>Corpus</div><div>Approvals</div><div class="here">Administration</div></div>
+    <div class="content">
+      <div class="grid2">
+        <div class="wf"><span class="anno">S1-04</span><div class="lbl">Ethical walls and matter membership</div>
+          <table class="wft"><tr><th>Wall</th><th>Matters</th><th>Members excluded</th><th>State</th></tr>
+          <tr><td>Wall A</td><td>002 / 003</td><td>2 principals</td><td><span class="tag t-pos">enforced</span></td></tr></table></div>
+        <div class="wf"><span class="anno">S1-04A</span><div class="lbl">Retention and legal holds</div>
+          <span class="tag t-cri">1 hold active</span> <span class="tag t-neu">default: matter + 7y</span></div>
+        <div class="wf"><span class="anno">S2-06</span><div class="lbl">Source connector registry</div>
+          <table class="wft"><tr><th>Source</th><th>Rights</th><th>Health</th><th>Mode</th></tr>
+          <tr><td>Illinois courts</td><td><span class="tag t-pos">reviewed</span></td><td><span class="tag t-pos">ok</span></td><td>read</td></tr>
+          <tr><td>Court filing (EFM)</td><td><span class="tag t-cau">terms pending</span></td><td><span class="tag t-neu">off</span></td><td><span class="tag t-cau">simulation</span></td></tr></table></div>
+        <div class="wf"><span class="anno">S1-03</span><div class="lbl">Principals and capability audit</div>
+          <p class="note">Human, agent, service, connector principals; delegation chains; revocation log. Raw tokens never shown.</p></div>
+      </div>
+    </div>
+  </div></div>
+</section>
+
+</body>
+</html>
