@@ -3,6 +3,7 @@
 from .activities import (
     ApprovalGate,
     DispatchLedger,
+    FileDispatchLedger,
     InMemoryStaleAlertSink,
     SimulatedDispatchLedger,
     SimulatedStepDriver,
@@ -64,7 +65,13 @@ from .state import (
     RunEvent,
     WorkflowRunMachine,
 )
-from .worker import WorkerSpec, build_worker, worker_specs
+from .worker import (
+    WorkerSpec,
+    WORKER_DATA_CONVERTER,
+    build_worker,
+    connect_worker_client,
+    worker_specs,
+)
 from .workflows import (
     ConnectorDispatchWorkflow,
     MatterBatchWorkflow,
@@ -81,6 +88,7 @@ __all__ = [
     "RETRY_SPECS",
     "TASK_QUEUE_NAMES",
     "TERMINAL_PHASES",
+    "WORKER_DATA_CONVERTER",
     "AdmissionRejectedError",
     "AdmissionTicket",
     "ApprovalGate",
@@ -92,6 +100,7 @@ __all__ = [
     "DispatchReceipt",
     "DispatchRequest",
     "EventKind",
+    "FileDispatchLedger",
     "InMemoryStaleAlertSink",
     "LongContextAdmission",
     "MatterBatchWorkflow",
@@ -127,6 +136,7 @@ __all__ = [
     "WorkflowRunMachine",
     "attempts_exhausted",
     "build_worker",
+    "connect_worker_client",
     "is_retryable",
     "retry_policy_for",
     "retry_spec_for",

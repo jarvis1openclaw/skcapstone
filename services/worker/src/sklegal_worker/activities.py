@@ -9,9 +9,13 @@ policy denials, and model outages without touching workflow code.
 
 from __future__ import annotations
 
+import asyncio
 import hashlib
+import json
+import os
 from collections.abc import Callable, Mapping
 from datetime import UTC, datetime
+from pathlib import Path
 from typing import Protocol
 from uuid import UUID
 
@@ -119,6 +123,95 @@ class SimulatedDispatchLedger:
         return receipt
 
 
+class FileDispatchLedger:
+    """Crash-durable JSON-file ledger keyed on the dispatch idempotency key.
+
+    The in-memory ledger cannot survive a worker process death between the
+    external dispatch and the receipt write-back, so replay after a kill
+    depends on receipts persisting outside the worker. This ledger keeps the
+    same idempotency contract as ``SimulatedDispatchLedger`` but stores state
+    in one JSON file written atomically (temporary file, flush, fsync,
+    rename). Recording the same request after a restart returns the original
+    receipt without a second entry; a different payload under a taken key is
+    a conflict; an unreadable state file fails closed.
+    """
+
+    def __init__(self, path: Path) -> None:
+        self._path = path
+
+    def _load(self) -> dict[str, dict[str, str]]:
+        if not self._path.exists():
+            return {"receipts": {}, "fingerprints": {}}
+        try:
+            state = json.loads(self._path.read_text(encoding="utf-8"))
+        except (OSError, ValueError) as exc:
+            raise WorkflowInvariantError(
+                "dispatch ledger state is unreadable"
+            ) from exc
+        if not isinstance(state, dict) or not isinstance(
+            state.get("receipts"), dict
+        ) or not isinstance(state.get("fingerprints"), dict):
+            raise WorkflowInvariantError("dispatch ledger state is malformed")
+        return state
+
+    def _store(self, state: dict[str, dict[str, str]]) -> None:
+        temporary = self._path.with_suffix(self._path.suffix + ".tmp")
+        with temporary.open("w", encoding="utf-8") as handle:
+            json.dump(state, handle, indent=2, sort_keys=True)
+            handle.flush()
+            os.fsync(handle.fileno())
+        os.replace(temporary, self._path)
+
+    @property
+    def recorded_count(self) -> int:
+        return len(self._load()["receipts"])
+
+    def receipts(self) -> dict[str, DispatchReceipt]:
+        """Return every recorded receipt keyed by idempotency key."""
+
+        return {
+            key: DispatchReceipt(
+                idempotency_key=key,
+                receipt_digest=value["receipt_digest"],
+                recorded_at=datetime.fromisoformat(value["recorded_at"]),
+            )
+            for key, value in sorted(self._load()["receipts"].items())
+        }
+
+    def record(self, request: DispatchRequest, *, at: datetime) -> DispatchReceipt:
+        fingerprint = _digest(
+            "dispatch",
+            request.connector,
+            request.artifact_digest,
+            str(request.approval_id),
+            request.destination_digest,
+        )
+        state = self._load()
+        existing = state["receipts"].get(request.idempotency_key)
+        if existing is not None:
+            if state["fingerprints"][request.idempotency_key] != fingerprint:
+                raise WorkflowInvariantError(
+                    "dispatch idempotency key reused with a different payload"
+                )
+            return DispatchReceipt(
+                idempotency_key=request.idempotency_key,
+                receipt_digest=existing["receipt_digest"],
+                recorded_at=datetime.fromisoformat(existing["recorded_at"]),
+            )
+        receipt = DispatchReceipt(
+            idempotency_key=request.idempotency_key,
+            receipt_digest=_digest("receipt", request.idempotency_key, fingerprint),
+            recorded_at=at,
+        )
+        state["receipts"][request.idempotency_key] = {
+            "receipt_digest": receipt.receipt_digest,
+            "recorded_at": at.isoformat(),
+        }
+        state["fingerprints"][request.idempotency_key] = fingerprint
+        self._store(state)
+        return receipt
+
+
 class StaleAlertSink(Protocol):
     """Records stale-run alerts; returns False for duplicates."""
 
@@ -146,7 +239,15 @@ class InMemoryStaleAlertSink:
 
 
 class WorkerActivities:
-    """Activity set shared by all four task queues (simulation mode)."""
+    """Activity set shared by all four task queues (simulation mode).
+
+    ``run_task_step`` heartbeats to Temporal every ``heartbeat_seconds`` while
+    its driver runs so a killed worker is detected at the activity heartbeat
+    timeout instead of the longer ``StartToClose`` timeout. The driver runs
+    in a thread executor because a blocking driver would stall the worker
+    event loop and no heartbeat could ever be sent. Heartbeat payloads carry
+    only content-free markers (run key, step name, tick count).
+    """
 
     def __init__(
         self,
@@ -156,18 +257,51 @@ class WorkerActivities:
         dispatch_ledger: DispatchLedger | None = None,
         stale_sink: StaleAlertSink | None = None,
         clock: Callable[[], datetime] = _utcnow,
+        heartbeat_seconds: float | None = 10.0,
     ) -> None:
+        if heartbeat_seconds is not None and heartbeat_seconds <= 0:
+            raise ValueError("heartbeat_seconds must be positive when set")
         self._step_driver = step_driver or SimulatedStepDriver()
         self._approval_gate = approval_gate or StaticApprovalGate({})
         self._dispatch_ledger = dispatch_ledger or SimulatedDispatchLedger()
         self._stale_sink = stale_sink or InMemoryStaleAlertSink()
         self._clock = clock
+        self._heartbeat_seconds = heartbeat_seconds
+
+    @property
+    def heartbeat_seconds(self) -> float | None:
+        return self._heartbeat_seconds
+
+    async def _run_step_with_heartbeats(
+        self, request: StepActivityInput, at: datetime
+    ) -> str:
+        loop = asyncio.get_running_loop()
+        running = loop.run_in_executor(
+            None, lambda: self._step_driver.run(request, at=at)
+        )
+        while True:
+            done, _pending = await asyncio.wait(
+                {running}, timeout=self._heartbeat_seconds
+            )
+            if done:
+                return running.result()
+            if activity.in_activity():
+                activity.heartbeat(
+                    {
+                        "run_key": request.run_key,
+                        "step": request.step.name,
+                        "tick": True,
+                    }
+                )
 
     @activity.defn
     async def run_task_step(self, request: StepActivityInput) -> StepOutcome:
         """Execute one typed step through the injected driver."""
         at = self._clock()
-        digest = self._step_driver.run(request, at=at)
+        if self._heartbeat_seconds is None:
+            digest = self._step_driver.run(request, at=at)
+        else:
+            digest = await self._run_step_with_heartbeats(request, at)
         return StepOutcome(
             run_key=request.run_key,
             step_name=request.step.name,

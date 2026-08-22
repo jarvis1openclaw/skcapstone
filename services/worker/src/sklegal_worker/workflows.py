@@ -36,6 +36,16 @@ _STEP_TIMEOUTS: dict[QueueKind, timedelta] = {
     QueueKind.CONNECTOR: timedelta(minutes=2),
 }
 
+# Workers heartbeat from run_task_step at an interval well below these
+# timeouts (the activity default is 10 seconds), so a killed worker is
+# redelivered at the heartbeat timeout instead of the StartToClose timeout.
+_STEP_HEARTBEAT_TIMEOUTS: dict[QueueKind, timedelta] = {
+    QueueKind.INTERACTIVE: timedelta(seconds=60),
+    QueueKind.BATCH: timedelta(minutes=5),
+    QueueKind.LONG_CONTEXT: timedelta(minutes=5),
+    QueueKind.CONNECTOR: timedelta(seconds=30),
+}
+
 # Activity names mirror the WorkerActivities method names registered on each
 # worker; the guard test asserts these constants match the decorated methods.
 ACTIVITY_RUN_TASK_STEP = "run_task_step"
@@ -99,6 +109,7 @@ class _PlanRunner:
                     ACTIVITY_RUN_TASK_STEP,
                     args=[StepActivityInput(run_key=config.run_key, step=step)],
                     start_to_close_timeout=_STEP_TIMEOUTS[input.queue],
+                    heartbeat_timeout=_STEP_HEARTBEAT_TIMEOUTS[input.queue],
                     retry_policy=retry_policy_for(step.retry_class),
                     result_type=StepOutcome,
                 )
