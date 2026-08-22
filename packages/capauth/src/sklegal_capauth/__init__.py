@@ -40,6 +40,15 @@ from .boundaries import (
     ProtectedBoundary,
     ToolCapabilityBoundary,
 )
+from .custody import (
+    CustodyCoherence,
+    CustodyValidationError,
+    KeyCapability,
+    parse_gpg_capabilities,
+    read_owner_passphrase,
+    validate_declared_capabilities,
+    validate_key_coherence,
+)
 from .issuer import (
     CASEY_IDENTITY_FINGERPRINT,
     CUSTODY_SCHEMA,
@@ -129,6 +138,8 @@ __all__ = [
     "CapAuthManifestSigner",
     "Capability",
     "CapabilityAuthorizer",
+    "CustodyCoherence",
+    "CustodyValidationError",
     "CapabilityClaims",
     "CapabilityGrant",
     "CapabilityIssuer",
@@ -150,6 +161,7 @@ __all__ = [
     "IssuerCustodyError",
     "IssuerCustodyPolicy",
     "IssuerPolicyRevocation",
+    "KeyCapability",
     "IssuerPolicyStore",
     "IssuerSigningHandle",
     "ModelCapabilityBoundary",
@@ -181,6 +193,10 @@ __all__ = [
     "TrustedIssuerBackend",
     "TrustedIssuerGrant",
     "TrustedIssuerPolicyDocument",
+    "parse_gpg_capabilities",
+    "read_owner_passphrase",
+    "validate_declared_capabilities",
+    "validate_key_coherence",
     "TrustedIssuerSnapshot",
     "UnavailableAuditSink",
     "UnavailableReplayBackend",
