@@ -15,6 +15,8 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ### Fixed
 
+- Restored the enforced Black/Ruff gate after the new coordination-amendment
+  and qualification VCS-audit modules landed with formatting drift.
 - Added a fail-closed systemd credential-file path for protected CapAuth
   signing keys. ATLAS can now sign noninteractively without exposing its
   passphrase in a unit environment or command line; symlinked, foreign-owned,
