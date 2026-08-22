@@ -62,6 +62,12 @@ class PostgresQueryRunner(Protocol):
     ) -> Sequence[Mapping[str, object]]: ...
 
 
+#: The only statement this adapter may issue for exact vector retrieval.
+VECTOR_EXACT_STATEMENT = "SELECT * FROM sklegal_retrieval.vector_exact_v1(%s, %s)"
+
+LEXICAL_SEARCH_STATEMENT = "SELECT * FROM sklegal_retrieval.lexical_search_v1(%s, %s)"
+
+
 @dataclass(frozen=True, slots=True)
 class _PostgresCall:
     statement: str
@@ -73,7 +79,7 @@ class _PostgresCall:
 _POSTGRES_CALLS: Mapping[str, _PostgresCall] = MappingProxyType(
     {
         "lexical.search.v1": _PostgresCall(
-            statement=("SELECT * FROM sklegal_retrieval.lexical_search_v1(%s, %s)"),
+            statement=(LEXICAL_SEARCH_STATEMENT),
             parameter_names=("query_text", "max_results"),
             expected_components=(RetrievalComponent.LEXICAL,),
         ),
@@ -84,7 +90,7 @@ _POSTGRES_CALLS: Mapping[str, _PostgresCall] = MappingProxyType(
             aggregate_kind=RetrievalAggregateKind.COUNT,
         ),
         "vector.exact.v1": _PostgresCall(
-            statement=("SELECT * FROM sklegal_retrieval.vector_exact_v1(%s, %s)"),
+            statement=VECTOR_EXACT_STATEMENT,
             parameter_names=("query_embedding", "max_results"),
             expected_components=(RetrievalComponent.VECTOR,),
         ),
@@ -436,7 +442,9 @@ class PostgresRetrievalAdapter:
 
 
 __all__ = [
+    "LEXICAL_SEARCH_STATEMENT",
     "PostgresBackendResult",
     "PostgresQueryRunner",
     "PostgresRetrievalAdapter",
+    "VECTOR_EXACT_STATEMENT",
 ]
