@@ -86,12 +86,8 @@ def test_atlas_control_submits_exact_command_and_reads_receipt(monkeypatch):
     def opener(request, timeout):
         calls.append(request)
         if request.method == "POST":
-            return _Response(
-                {"command": {"command_id": "cmd-1"}, "receipt": {"status": "queued"}}
-            )
-        return _Response(
-            {"command": {"command_id": "cmd-1"}, "receipt": {"status": "applied"}}
-        )
+            return _Response({"command": {"command_id": "cmd-1"}, "receipt": {"status": "queued"}})
+        return _Response({"command": {"command_id": "cmd-1"}, "receipt": {"status": "applied"}})
 
     monkeypatch.setenv("SKCODE_HOSTD_URL", "https://node41.example")
     queued = skcode_adapter.skcode_control(
@@ -107,9 +103,7 @@ def test_atlas_control_submits_exact_command_and_reads_receipt(monkeypatch):
     assert queued["receipt"]["status"] == "queued"
     assert sent["target_id"] == "scout-1" and sent["action"] == "cancel"
     assert calls[0].headers["Authorization"] == "Bearer wire-token"
-    applied = skcode_adapter.skcode_control_receipt(
-        "cmd-1", token="wire-token", opener=opener
-    )
+    applied = skcode_adapter.skcode_control_receipt("cmd-1", token="wire-token", opener=opener)
     assert applied["receipt"]["status"] == "applied"
     assert calls[1].full_url.endswith("/api/v1/control/cmd-1")
 
