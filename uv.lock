@@ -9,6 +9,7 @@ members = [
     "sklegal-capauth",
     "sklegal-connectors-base",
     "sklegal-domain",
+    "sklegal-filing-connector",
     "sklegal-hammertime",
     "sklegal-legal-sources",
     "sklegal-migration",
@@ -1279,6 +1280,17 @@ dependencies = [
 
 [package.metadata]
 requires-dist = [{ name = "pydantic", specifier = "==2.13.4" }]
+
+[[package]]
+name = "sklegal-filing-connector"
+version = "0.1.0"
+source = { editable = "packages/connectors/filing" }
+dependencies = [
+    { name = "sklegal-connectors-base" },
+]
+
+[package.metadata]
+requires-dist = [{ name = "sklegal-connectors-base", editable = "packages/connectors/base" }]
 
 [[package]]
 name = "sklegal-hammertime"
