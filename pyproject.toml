@@ -39,6 +39,7 @@ members = [
   "packages/audit",
   "packages/model_gateway",
   "packages/retrieval",
+  "packages/migration",
 ]
 
 [tool.ruff]
