@@ -40,6 +40,12 @@ any matched node is unsafe to route.
 - `configured_endpoint_mismatch`: the one active peer does not own a declared
   endpoint. Routing fails closed.
 - `no_active_endpoint`: all mapped peers are offline. Routing fails closed.
+- `declared_multi_runtime`: every active peer owns exactly one role-scoped
+  `tailscale-windows`, `tailscale-linux`, `tailscale-wsl`, or `tailscale-wsl2`
+  address, and the observed operating system agrees with that role. The report
+  emits an `active_routes` entry for each peer and routing is safe. This supports
+  a Windows workstation whose WSL2 runtime intentionally runs its own Tailscale
+  node without treating undeclared dual-active identities as safe.
 
 `retirement_candidates` is a plan field, not deletion authorization. Before
 retiring a device in the Tailscale admin plane, verify its exact node ID,
