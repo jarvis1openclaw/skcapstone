@@ -29,6 +29,7 @@ sklegal-policies = { workspace = true }
 sklegal-audit = { workspace = true }
 sklegal-hammertime = { workspace = true }
 sklegal-migration = { workspace = true }
+sklegal-retrieval = { workspace = true }
 capauth = { path = "vendor/capauth", editable = true }
 
 [tool.uv.workspace]

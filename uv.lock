@@ -1245,6 +1245,7 @@ dependencies = [
     { name = "sklegal-capauth" },
     { name = "sklegal-migration" },
     { name = "sklegal-policies" },
+    { name = "sklegal-retrieval" },
     { name = "uvicorn" },
 ]
 
@@ -1256,6 +1257,7 @@ requires-dist = [
     { name = "sklegal-capauth", editable = "packages/capauth" },
     { name = "sklegal-migration", editable = "packages/migration" },
     { name = "sklegal-policies", editable = "packages/policies" },
+    { name = "sklegal-retrieval", editable = "packages/retrieval" },
     { name = "uvicorn", specifier = "==0.52.4" },
 ]
 
