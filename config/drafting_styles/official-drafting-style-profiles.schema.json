@@ -1,0 +1,20 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "SKLegal official drafting style profiles",
+  "type": "object",
+  "required": ["schema_version", "batch", "semantic_provenance", "review_status", "sources", "rules"],
+  "properties": {
+    "schema_version": {"const": "sklegal-official-drafting-style-profiles-v1"},
+    "batch": {"type": "object", "required": ["run_id", "normalized_root", "source_count"], "properties": {"run_id": {"const": "2026-08-21-official-government-style-manuals"}, "normalized_root": {"type": "string"}, "source_count": {"const": 14}}},
+    "semantic_provenance": {"$ref": "#/$defs/provenance"},
+    "review_status": {"enum": ["human_review_required", "human_reviewed"]},
+    "sources": {"type": "array", "minItems": 14, "items": {"$ref": "#/$defs/source"}},
+    "rules": {"type": "array", "minItems": 15, "items": {"$ref": "#/$defs/rule"}}
+  },
+  "$defs": {
+    "provenance": {"type": "object", "required": ["engine", "model", "run_id", "provenance_file", "prompt_sha256", "output_sha256"], "properties": {"engine": {"const": "local Qwen3.8"}, "model": {"type": "string", "minLength": 1}, "run_id": {"const": "2026-08-21-official-government-style-manuals"}, "provenance_file": {"type": "string", "minLength": 1}, "prompt_sha256": {"pattern": "^[0-9a-f]{64}$"}, "output_sha256": {"pattern": "^[0-9a-f]{64}$"}}},
+    "source": {"type": "object", "required": ["source_id", "issuing_body", "version", "scope", "normalized_path", "source_sha256"], "properties": {"source_id": {"type": "string"}, "issuing_body": {"type": "string"}, "version": {"type": "string"}, "scope": {"type": "string"}, "normalized_path": {"type": "string"}, "source_sha256": {"pattern": "^[0-9a-f]{64}$"}, "currentness": {"type": "string"}}},
+    "locator": {"type": "object", "required": ["normalized_path", "line_start", "line_end", "anchor"], "properties": {"normalized_path": {"type": "string"}, "line_start": {"type": "integer", "minimum": 1}, "line_end": {"type": "integer", "minimum": 1}, "anchor": {"type": "string", "minLength": 1}}},
+    "rule": {"type": "object", "required": ["rule_id", "category", "rule_text", "modality", "scope", "exceptions", "uncertainty", "contradictions", "supersession", "review_status", "source", "semantic_provenance", "authority_boundary"], "properties": {"rule_id": {"type": "string"}, "category": {"enum": ["core_principles", "document_settings", "typography", "capitalization", "abbreviations", "punctuation", "numbers", "lists", "tables", "citations", "correspondence", "plain_language", "accessibility", "web_content", "legislative_drafting", "regulatory_drafting", "court_specific_rules"]}, "rule_text": {"type": "string", "minLength": 1}, "modality": {"enum": ["must", "should", "may", "informational"]}, "scope": {"type": "string", "minLength": 1}, "exceptions": {"type": "array", "items": {"type": "string"}}, "uncertainty": {"type": "string", "minLength": 1}, "contradictions": {"type": "array", "items": {"type": "string"}}, "supersession": {"type": "object", "required": ["status", "details"], "properties": {"status": {"enum": ["none_identified", "historical", "explicitly_cancels", "currentness_review_required"]}, "details": {"type": "string"}}}, "review_status": {"enum": ["human_review_required", "human_reviewed"]}, "source": {"type": "object", "required": ["source_id", "issuing_body", "version", "source_sha256", "locator"], "properties": {"source_id": {"type": "string"}, "issuing_body": {"type": "string"}, "version": {"type": "string"}, "source_sha256": {"pattern": "^[0-9a-f]{64}$"}, "locator": {"$ref": "#/$defs/locator"}}}, "semantic_provenance": {"$ref": "#/$defs/provenance"}, "authority_boundary": {"const": "typed_style_proposal_only; no workflow authority, approval, or external-action authorization"}}}
+  }
+}

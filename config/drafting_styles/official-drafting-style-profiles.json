@@ -1,0 +1,809 @@
+{
+  "schema_version": "sklegal-official-drafting-style-profiles-v1",
+  "batch": {
+    "run_id": "2026-08-21-official-government-style-manuals",
+    "normalized_root": "reference/intake/2026-08-21-official-government-style-manuals/",
+    "source_count": 14
+  },
+  "semantic_provenance": {
+    "engine": "local Qwen3.8",
+    "model": "qwen3.8-27b-huihui-abliterated-q4_k_m",
+    "run_id": "2026-08-21-official-government-style-manuals",
+    "provenance_file": "reference/intake/2026-08-21-official-government-style-manuals/qwen/source-routing.provenance.json",
+    "prompt_sha256": "e319c4d27055b8335966af7cf79e2a749334021d15a2619d7d58e95926a0370c",
+    "output_sha256": "33ee16196be5b47913b756fde3dc8d58c2532da99199512448d2b58f9b6bca83"
+  },
+  "review_status": "human_review_required",
+  "sources": [
+    {
+      "source_id": "GPO-2016",
+      "issuing_body": "U.S. Government Publishing Office",
+      "version": "31st edition, 2016",
+      "scope": "general federal publication and printing",
+      "normalized_path": "reference/intake/2026-08-21-official-government-style-manuals/documents/gpo-style-manual-2016-pdf.md",
+      "source_sha256": "da9de9500079e885f54dc8dfe63f62ebbaa3535ce6398333fafbed46f5ce512f",
+      "currentness": "current official edition"
+    },
+    {
+      "source_id": "HOLC-STYLE-2022",
+      "issuing_body": "House Office of Legislative Counsel",
+      "version": "December 2022",
+      "scope": "House legislative drafting",
+      "normalized_path": "reference/intake/2026-08-21-official-government-style-manuals/documents/house-manual-on-drafting-style-2022-pdf.md",
+      "source_sha256": "7e68eb1c2b6c2a3230ca46b48976557afde2c488ee756cf3a3bbfed7624dbafa",
+      "currentness": "current"
+    },
+    {
+      "source_id": "HOLC-INTRO-2025",
+      "issuing_body": "House Office of Legislative Counsel",
+      "version": "revised January 13, 2025",
+      "scope": "overview of federal legislative drafting",
+      "normalized_path": "reference/intake/2026-08-21-official-government-style-manuals/documents/house-introduction-to-legislative-drafting-2025-pdf.md",
+      "source_sha256": "6bea8ff0940b0c0f76810fe8dfc62e0e17a985f608866fb409e8b451f6155841",
+      "currentness": "current"
+    },
+    {
+      "source_id": "OFR-DDH-2018-R2.2",
+      "issuing_body": "Office of the Federal Register",
+      "version": "August 2018, revision 2.2 June 2025",
+      "scope": "Federal Register rules, proposed rules, notices",
+      "normalized_path": "reference/intake/2026-08-21-official-government-style-manuals/documents/ofr-document-drafting-handbook-2018-r2-2-pdf.md",
+      "source_sha256": "23228934343294b0cd9785703bf287a86258ec716ecd62d9332ee09cb695ebc6",
+      "currentness": "current revision"
+    },
+    {
+      "source_id": "OFR-IBR-2023",
+      "issuing_body": "Office of the Federal Register",
+      "version": "June 2023, revision August 28, 2023",
+      "scope": "incorporation by reference in the Code of Federal Regulations",
+      "normalized_path": "reference/intake/2026-08-21-official-government-style-manuals/documents/ofr-incorporation-by-reference-handbook-2023-pdf.md",
+      "source_sha256": "42f4d8dff64dea49152d3f54aa104febabc2c511e603898b800e687a9c7a53cd",
+      "currentness": "currentness stated in routing"
+    },
+    {
+      "source_id": "NARA-STYLE-2024",
+      "issuing_body": "National Archives and Records Administration",
+      "version": "updated December 9, 2024",
+      "scope": "NARA communications and usage",
+      "normalized_path": "reference/intake/2026-08-21-official-government-style-manuals/documents/nara-writing-style-guide-2024-pdf.md",
+      "source_sha256": "5dc307a30e56435a1231690f6889660d544c70fa75ddb0418ed3cd324d914e46",
+      "currentness": "current"
+    },
+    {
+      "source_id": "EIA-STYLE-2020",
+      "issuing_body": "Energy Information Administration",
+      "version": "December 2020",
+      "scope": "EIA external analytical communications",
+      "normalized_path": "reference/intake/2026-08-21-official-government-style-manuals/documents/eia-writing-style-guide-2020-pdf.md",
+      "source_sha256": "6d89adec71d4f02d07dba1579bde2df0278cde1fd0b64b9aea9fb27b956ff635",
+      "currentness": "currentness review required"
+    },
+    {
+      "source_id": "DOE-TECH-STYLE-2015",
+      "issuing_body": "Department of Energy Technical Standards Program",
+      "version": "May 2015",
+      "scope": "DOE standards, handbooks, and specifications",
+      "normalized_path": "reference/intake/2026-08-21-official-government-style-manuals/documents/doe-technical-standards-style-guidance-2015-pdf.md",
+      "source_sha256": "3bbbd7c89f3cf0b67355f04385d6eac1d7d8f4f837f963f16f22e89ead007d0f",
+      "currentness": "current official posting"
+    },
+    {
+      "source_id": "NIJ-STYLE-2022",
+      "issuing_body": "National Institute of Justice",
+      "version": "2022 identifier, evidence updated February 2025",
+      "scope": "NIJ publications and web writing",
+      "normalized_path": "reference/intake/2026-08-21-official-government-style-manuals/documents/nij-style-guide-2022-pdf.md",
+      "source_sha256": "866c9200bb0edee1b2554c698ad691c251e6940c06ffac374425b72e39db08b1",
+      "currentness": "currentness discrepancy requires review"
+    },
+    {
+      "source_id": "DOI-CORR-2014",
+      "issuing_body": "Department of the Interior",
+      "version": "October 22, 2014",
+      "scope": "DOI secretarial correspondence",
+      "normalized_path": "reference/intake/2026-08-21-official-government-style-manuals/documents/doi-secretarial-correspondence-handbook-2014-pdf.md",
+      "source_sha256": "b35625ceaf8517eb09d4c74e1dc66a01b94e359afbedcb1c52aa1eb8ba624f68",
+      "currentness": "currentness review required"
+    },
+    {
+      "source_id": "USCG-CORR-2024",
+      "issuing_body": "U.S. Coast Guard",
+      "version": "February 2024",
+      "scope": "USCG electronic and paper correspondence",
+      "normalized_path": "reference/intake/2026-08-21-official-government-style-manuals/documents/uscg-correspondence-manual-2024-pdf.md",
+      "source_sha256": "2410e971aebf6de25071b71b6b76668a62bbacb8da6d304db5e5519b77ace7c0",
+      "currentness": "current; cancels COMDTINST M5216.4D"
+    },
+    {
+      "source_id": "CA7-TYPOGRAPHY",
+      "issuing_body": "U.S. Court of Appeals for the Seventh Circuit",
+      "version": "2020 edition",
+      "scope": "Seventh Circuit briefs and other papers",
+      "normalized_path": "reference/intake/2026-08-21-official-government-style-manuals/documents/seventh-circuit-practitioners-handbook-pdf.md",
+      "source_sha256": "495bc24c2cc417b98355f42543a6d20549476cdf322b3e8e621d9bce901024ce",
+      "currentness": "currentness review required"
+    },
+    {
+      "source_id": "EPA-STYLE-2009",
+      "issuing_body": "Environmental Protection Agency",
+      "version": "January 2009",
+      "scope": "EPA communications, design, accessibility, and production",
+      "normalized_path": "reference/intake/2026-08-21-official-government-style-manuals/documents/epa-communication-product-standards-stylebook-2009-pdf.md",
+      "source_sha256": "8cfa2453421751d1c9c6a5f60c56dccc00c283d411bd51d33b9e28bc7f748df4",
+      "currentness": "archived; supersession unknown"
+    },
+    {
+      "source_id": "WH-CORR-HIST",
+      "issuing_body": "White House, Ford Administration",
+      "version": "1975",
+      "scope": "historical executive correspondence",
+      "normalized_path": "reference/intake/2026-08-21-official-government-style-manuals/documents/white-house-correspondence-manual-historical-ford-pdf.md",
+      "source_sha256": "da509600d3c650c9ea747a1d2e1d48e935d8e638b4cdf111381302cc5346228b",
+      "currentness": "historical; never current"
+    }
+  ],
+  "rules": [
+    {
+      "rule_id": "SPR-001",
+      "category": "core_principles",
+      "rule_text": "Use the most specific guide for the document's issuing body and declared scope; retain the general federal baseline outside that scope.",
+      "modality": "should",
+      "scope": "federal drafting profile selection",
+      "exceptions": [
+        "Agency or court-specific guidance controls within its declared scope."
+      ],
+      "uncertainty": "Routing is based on the supplied Qwen3.8 evidence excerpts; full rule text requires review.",
+      "contradictions": [
+        "GPO-2016 baseline versus agency supplements is a preserved routing conflict."
+      ],
+      "supersession": {
+        "status": "none_identified",
+        "details": "No general supersession inferred."
+      },
+      "review_status": "human_review_required",
+      "source": {
+        "source_id": "GPO-2016",
+        "issuing_body": "U.S. Government Publishing Office",
+        "version": "31st edition, 2016",
+        "source_sha256": "da9de9500079e885f54dc8dfe63f62ebbaa3535ce6398333fafbed46f5ce512f",
+        "locator": {
+          "normalized_path": "reference/intake/2026-08-21-official-government-style-manuals/qwen/source-routing.md",
+          "line_start": 1,
+          "line_end": 25,
+          "anchor": "batch scope and source routing table"
+        }
+      },
+      "semantic_provenance": {
+        "engine": "local Qwen3.8",
+        "model": "qwen3.8-27b-huihui-abliterated-q4_k_m",
+        "run_id": "2026-08-21-official-government-style-manuals",
+        "provenance_file": "reference/intake/2026-08-21-official-government-style-manuals/qwen/source-routing.provenance.json",
+        "prompt_sha256": "e319c4d27055b8335966af7cf79e2a749334021d15a2619d7d58e95926a0370c",
+        "output_sha256": "33ee16196be5b47913b756fde3dc8d58c2532da99199512448d2b58f9b6bca83"
+      },
+      "authority_boundary": "typed_style_proposal_only; no workflow authority, approval, or external-action authorization"
+    },
+    {
+      "rule_id": "SPR-002",
+      "category": "document_settings",
+      "rule_text": "For DOE technical standards, use the prescribed document hierarchy, cover material, numbering, and section structure; do not transfer it to unrelated scopes.",
+      "modality": "should",
+      "scope": "DOE technical standards, handbooks, specifications",
+      "exceptions": [
+        "Handbooks do not use non-referential shall statements."
+      ],
+      "uncertainty": "Exact template variants require human review of the full manual.",
+      "contradictions": [],
+      "supersession": {
+        "status": "none_identified",
+        "details": "No supersession stated in the source routing."
+      },
+      "review_status": "human_review_required",
+      "source": {
+        "source_id": "DOE-TECH-STYLE-2015",
+        "issuing_body": "Department of Energy Technical Standards Program",
+        "version": "May 2015",
+        "source_sha256": "3bbbd7c89f3cf0b67355f04385d6eac1d7d8f4f837f963f16f22e89ead007d0f",
+        "locator": {
+          "normalized_path": "reference/intake/2026-08-21-official-government-style-manuals/documents/doe-technical-standards-style-guidance-2015-pdf.md",
+          "line_start": 223,
+          "line_end": 243,
+          "anchor": "document format and required front matter"
+        }
+      },
+      "semantic_provenance": {
+        "engine": "local Qwen3.8",
+        "model": "qwen3.8-27b-huihui-abliterated-q4_k_m",
+        "run_id": "2026-08-21-official-government-style-manuals",
+        "provenance_file": "reference/intake/2026-08-21-official-government-style-manuals/qwen/source-routing.provenance.json",
+        "prompt_sha256": "e319c4d27055b8335966af7cf79e2a749334021d15a2619d7d58e95926a0370c",
+        "output_sha256": "33ee16196be5b47913b756fde3dc8d58c2532da99199512448d2b58f9b6bca83"
+      },
+      "authority_boundary": "typed_style_proposal_only; no workflow authority, approval, or external-action authorization"
+    },
+    {
+      "rule_id": "SPR-003",
+      "category": "typography",
+      "rule_text": "DOE technical standards prescribe a defined font, line spacing, and page-number placement; Seventh Circuit papers have separate court typography requirements.",
+      "modality": "informational",
+      "scope": "DOE technical standards and Seventh Circuit papers",
+      "exceptions": [
+        "Apply only to the named document or court scope."
+      ],
+      "uncertainty": "The matrix records source-specific requirements without resolving cross-scope differences.",
+      "contradictions": [
+        "DOE settings and CA7 settings are not interchangeable."
+      ],
+      "supersession": {
+        "status": "currentness_review_required",
+        "details": "CA7 currentness requires review."
+      },
+      "review_status": "human_review_required",
+      "source": {
+        "source_id": "DOE-TECH-STYLE-2015",
+        "issuing_body": "Department of Energy Technical Standards Program",
+        "version": "May 2015",
+        "source_sha256": "3bbbd7c89f3cf0b67355f04385d6eac1d7d8f4f837f963f16f22e89ead007d0f",
+        "locator": {
+          "normalized_path": "reference/intake/2026-08-21-official-government-style-manuals/documents/doe-technical-standards-style-guidance-2015-pdf.md",
+          "line_start": 297,
+          "line_end": 326,
+          "anchor": "font, spacing, and page numbering"
+        }
+      },
+      "semantic_provenance": {
+        "engine": "local Qwen3.8",
+        "model": "qwen3.8-27b-huihui-abliterated-q4_k_m",
+        "run_id": "2026-08-21-official-government-style-manuals",
+        "provenance_file": "reference/intake/2026-08-21-official-government-style-manuals/qwen/source-routing.provenance.json",
+        "prompt_sha256": "e319c4d27055b8335966af7cf79e2a749334021d15a2619d7d58e95926a0370c",
+        "output_sha256": "33ee16196be5b47913b756fde3dc8d58c2532da99199512448d2b58f9b6bca83"
+      },
+      "authority_boundary": "typed_style_proposal_only; no workflow authority, approval, or external-action authorization"
+    },
+    {
+      "rule_id": "SPR-004",
+      "category": "capitalization",
+      "rule_text": "Use the capitalization conventions of the selected guide; DOE prohibits capitalization for emphasis and gives document titles a distinct treatment.",
+      "modality": "should",
+      "scope": "DOE technical standards",
+      "exceptions": [
+        "A source-specific heading or title rule may require capitals."
+      ],
+      "uncertainty": "Agency and court capitalization rules may differ.",
+      "contradictions": [
+        "USCG subject lines use capitals within USCG correspondence scope."
+      ],
+      "supersession": {
+        "status": "none_identified",
+        "details": "No supersession inferred."
+      },
+      "review_status": "human_review_required",
+      "source": {
+        "source_id": "DOE-TECH-STYLE-2015",
+        "issuing_body": "Department of Energy Technical Standards Program",
+        "version": "May 2015",
+        "source_sha256": "3bbbd7c89f3cf0b67355f04385d6eac1d7d8f4f837f963f16f22e89ead007d0f",
+        "locator": {
+          "normalized_path": "reference/intake/2026-08-21-official-government-style-manuals/documents/doe-technical-standards-style-guidance-2015-pdf.md",
+          "line_start": 579,
+          "line_end": 584,
+          "anchor": "emphasis and document-title capitalization"
+        }
+      },
+      "semantic_provenance": {
+        "engine": "local Qwen3.8",
+        "model": "qwen3.8-27b-huihui-abliterated-q4_k_m",
+        "run_id": "2026-08-21-official-government-style-manuals",
+        "provenance_file": "reference/intake/2026-08-21-official-government-style-manuals/qwen/source-routing.provenance.json",
+        "prompt_sha256": "e319c4d27055b8335966af7cf79e2a749334021d15a2619d7d58e95926a0370c",
+        "output_sha256": "33ee16196be5b47913b756fde3dc8d58c2532da99199512448d2b58f9b6bca83"
+      },
+      "authority_boundary": "typed_style_proposal_only; no workflow authority, approval, or external-action authorization"
+    },
+    {
+      "rule_id": "SPR-005",
+      "category": "abbreviations",
+      "rule_text": "Define abbreviations and acronyms for the intended audience and avoid them when they do not recur; retain source-specific exceptions for addresses, notes, and references.",
+      "modality": "should",
+      "scope": "NIJ publications",
+      "exceptions": [
+        "NIJ permits postal abbreviations in addresses, notes, and references, with a context exception."
+      ],
+      "uncertainty": "Editorial judgment and audience context are expressly relevant.",
+      "contradictions": [],
+      "supersession": {
+        "status": "currentness_review_required",
+        "details": "The source identifier and stated update date differ."
+      },
+      "review_status": "human_review_required",
+      "source": {
+        "source_id": "NIJ-STYLE-2022",
+        "issuing_body": "National Institute of Justice",
+        "version": "2022 identifier, evidence updated February 2025",
+        "source_sha256": "866c9200bb0edee1b2554c698ad691c251e6940c06ffac374425b72e39db08b1",
+        "locator": {
+          "normalized_path": "reference/intake/2026-08-21-official-government-style-manuals/documents/nij-style-guide-2022-pdf.md",
+          "line_start": 136,
+          "line_end": 192,
+          "anchor": "abbreviations and acronyms"
+        }
+      },
+      "semantic_provenance": {
+        "engine": "local Qwen3.8",
+        "model": "qwen3.8-27b-huihui-abliterated-q4_k_m",
+        "run_id": "2026-08-21-official-government-style-manuals",
+        "provenance_file": "reference/intake/2026-08-21-official-government-style-manuals/qwen/source-routing.provenance.json",
+        "prompt_sha256": "e319c4d27055b8335966af7cf79e2a749334021d15a2619d7d58e95926a0370c",
+        "output_sha256": "33ee16196be5b47913b756fde3dc8d58c2532da99199512448d2b58f9b6bca83"
+      },
+      "authority_boundary": "typed_style_proposal_only; no workflow authority, approval, or external-action authorization"
+    },
+    {
+      "rule_id": "SPR-006",
+      "category": "punctuation",
+      "rule_text": "Follow the selected authority's punctuation rules and record any agency-specific adoption of a general baseline instead of merging them.",
+      "modality": "should",
+      "scope": "DOI secretarial correspondence and general federal writing",
+      "exceptions": [
+        "DOI states that its preferences may differ from GPO and GSA."
+      ],
+      "uncertainty": "Full punctuation sections need human review.",
+      "contradictions": [
+        "DOI-specific punctuation may differ from GPO baseline."
+      ],
+      "supersession": {
+        "status": "currentness_review_required",
+        "details": "DOI currentness requires review."
+      },
+      "review_status": "human_review_required",
+      "source": {
+        "source_id": "DOI-CORR-2014",
+        "issuing_body": "Department of the Interior",
+        "version": "October 22, 2014",
+        "source_sha256": "b35625ceaf8517eb09d4c74e1dc66a01b94e359afbedcb1c52aa1eb8ba624f68",
+        "locator": {
+          "normalized_path": "reference/intake/2026-08-21-official-government-style-manuals/documents/doi-secretarial-correspondence-handbook-2014-pdf.md",
+          "line_start": 745,
+          "line_end": 745,
+          "anchor": "punctuation follows GPO with DOI-specific preferences"
+        }
+      },
+      "semantic_provenance": {
+        "engine": "local Qwen3.8",
+        "model": "qwen3.8-27b-huihui-abliterated-q4_k_m",
+        "run_id": "2026-08-21-official-government-style-manuals",
+        "provenance_file": "reference/intake/2026-08-21-official-government-style-manuals/qwen/source-routing.provenance.json",
+        "prompt_sha256": "e319c4d27055b8335966af7cf79e2a749334021d15a2619d7d58e95926a0370c",
+        "output_sha256": "33ee16196be5b47913b756fde3dc8d58c2532da99199512448d2b58f9b6bca83"
+      },
+      "authority_boundary": "typed_style_proposal_only; no workflow authority, approval, or external-action authorization"
+    },
+    {
+      "rule_id": "SPR-007",
+      "category": "numbers",
+      "rule_text": "Use the numeric conventions of the selected profile; DOE numbers technical standards, and DOI requires numerals in tables and spreadsheets.",
+      "modality": "must",
+      "scope": "DOE technical standards and DOI correspondence tables",
+      "exceptions": [
+        "The DOI table exception is narrower than prose-number rules."
+      ],
+      "uncertainty": "The matrix does not generalize this rule outside its scopes.",
+      "contradictions": [],
+      "supersession": {
+        "status": "none_identified",
+        "details": "No supersession inferred."
+      },
+      "review_status": "human_review_required",
+      "source": {
+        "source_id": "DOI-CORR-2014",
+        "issuing_body": "Department of the Interior",
+        "version": "October 22, 2014",
+        "source_sha256": "b35625ceaf8517eb09d4c74e1dc66a01b94e359afbedcb1c52aa1eb8ba624f68",
+        "locator": {
+          "normalized_path": "reference/intake/2026-08-21-official-government-style-manuals/documents/doi-secretarial-correspondence-handbook-2014-pdf.md",
+          "line_start": 3230,
+          "line_end": 3230,
+          "anchor": "numerals in tables and spreadsheets"
+        }
+      },
+      "semantic_provenance": {
+        "engine": "local Qwen3.8",
+        "model": "qwen3.8-27b-huihui-abliterated-q4_k_m",
+        "run_id": "2026-08-21-official-government-style-manuals",
+        "provenance_file": "reference/intake/2026-08-21-official-government-style-manuals/qwen/source-routing.provenance.json",
+        "prompt_sha256": "e319c4d27055b8335966af7cf79e2a749334021d15a2619d7d58e95926a0370c",
+        "output_sha256": "33ee16196be5b47913b756fde3dc8d58c2532da99199512448d2b58f9b6bca83"
+      },
+      "authority_boundary": "typed_style_proposal_only; no workflow authority, approval, or external-action authorization"
+    },
+    {
+      "rule_id": "SPR-008",
+      "category": "lists",
+      "rule_text": "Use a consistent list hierarchy and punctuation style; DOE uses lettered itemization with periods to distinguish items from section numbers.",
+      "modality": "should",
+      "scope": "DOE technical standards",
+      "exceptions": [
+        "A target format may prescribe a different list marker."
+      ],
+      "uncertainty": "Cross-manual list conventions are not harmonized.",
+      "contradictions": [],
+      "supersession": {
+        "status": "none_identified",
+        "details": "No supersession inferred."
+      },
+      "review_status": "human_review_required",
+      "source": {
+        "source_id": "DOE-TECH-STYLE-2015",
+        "issuing_body": "Department of Energy Technical Standards Program",
+        "version": "May 2015",
+        "source_sha256": "3bbbd7c89f3cf0b67355f04385d6eac1d7d8f4f837f963f16f22e89ead007d0f",
+        "locator": {
+          "normalized_path": "reference/intake/2026-08-21-official-government-style-manuals/documents/doe-technical-standards-style-guidance-2015-pdf.md",
+          "line_start": 537,
+          "line_end": 560,
+          "anchor": "section and paragraph itemization"
+        }
+      },
+      "semantic_provenance": {
+        "engine": "local Qwen3.8",
+        "model": "qwen3.8-27b-huihui-abliterated-q4_k_m",
+        "run_id": "2026-08-21-official-government-style-manuals",
+        "provenance_file": "reference/intake/2026-08-21-official-government-style-manuals/qwen/source-routing.provenance.json",
+        "prompt_sha256": "e319c4d27055b8335966af7cf79e2a749334021d15a2619d7d58e95926a0370c",
+        "output_sha256": "33ee16196be5b47913b756fde3dc8d58c2532da99199512448d2b58f9b6bca83"
+      },
+      "authority_boundary": "typed_style_proposal_only; no workflow authority, approval, or external-action authorization"
+    },
+    {
+      "rule_id": "SPR-009",
+      "category": "tables",
+      "rule_text": "Place a table near its first reference, number tables consecutively, and avoid repeating table information in surrounding text when the DOE scope applies.",
+      "modality": "should",
+      "scope": "DOE technical standards",
+      "exceptions": [
+        "Space may move a table to the following page."
+      ],
+      "uncertainty": "The source excerpt does not establish rules for every table type.",
+      "contradictions": [],
+      "supersession": {
+        "status": "none_identified",
+        "details": "No supersession inferred."
+      },
+      "review_status": "human_review_required",
+      "source": {
+        "source_id": "DOE-TECH-STYLE-2015",
+        "issuing_body": "Department of Energy Technical Standards Program",
+        "version": "May 2015",
+        "source_sha256": "3bbbd7c89f3cf0b67355f04385d6eac1d7d8f4f837f963f16f22e89ead007d0f",
+        "locator": {
+          "normalized_path": "reference/intake/2026-08-21-official-government-style-manuals/documents/doe-technical-standards-style-guidance-2015-pdf.md",
+          "line_start": 643,
+          "line_end": 651,
+          "anchor": "table placement and numbering"
+        }
+      },
+      "semantic_provenance": {
+        "engine": "local Qwen3.8",
+        "model": "qwen3.8-27b-huihui-abliterated-q4_k_m",
+        "run_id": "2026-08-21-official-government-style-manuals",
+        "provenance_file": "reference/intake/2026-08-21-official-government-style-manuals/qwen/source-routing.provenance.json",
+        "prompt_sha256": "e319c4d27055b8335966af7cf79e2a749334021d15a2619d7d58e95926a0370c",
+        "output_sha256": "33ee16196be5b47913b756fde3dc8d58c2532da99199512448d2b58f9b6bca83"
+      },
+      "authority_boundary": "typed_style_proposal_only; no workflow authority, approval, or external-action authorization"
+    },
+    {
+      "rule_id": "SPR-010",
+      "category": "citations",
+      "rule_text": "Citations must be sufficiently detailed for their audience and use the citation format prescribed by the selected authority; a citation is not an approval signal.",
+      "modality": "should",
+      "scope": "DOI awards and correspondence; legislative citations",
+      "exceptions": [
+        "HOLC citation rules control House legislative drafting."
+      ],
+      "uncertainty": "The exact citation template requires full-document review.",
+      "contradictions": [
+        "Agency correspondence citation formats are scope-specific."
+      ],
+      "supersession": {
+        "status": "currentness_review_required",
+        "details": "DOI currentness requires review."
+      },
+      "review_status": "human_review_required",
+      "source": {
+        "source_id": "DOI-CORR-2014",
+        "issuing_body": "Department of the Interior",
+        "version": "October 22, 2014",
+        "source_sha256": "b35625ceaf8517eb09d4c74e1dc66a01b94e359afbedcb1c52aa1eb8ba624f68",
+        "locator": {
+          "normalized_path": "reference/intake/2026-08-21-official-government-style-manuals/documents/doi-secretarial-correspondence-handbook-2014-pdf.md",
+          "line_start": 2353,
+          "line_end": 2366,
+          "anchor": "citation clarity and format"
+        }
+      },
+      "semantic_provenance": {
+        "engine": "local Qwen3.8",
+        "model": "qwen3.8-27b-huihui-abliterated-q4_k_m",
+        "run_id": "2026-08-21-official-government-style-manuals",
+        "provenance_file": "reference/intake/2026-08-21-official-government-style-manuals/qwen/source-routing.provenance.json",
+        "prompt_sha256": "e319c4d27055b8335966af7cf79e2a749334021d15a2619d7d58e95926a0370c",
+        "output_sha256": "33ee16196be5b47913b756fde3dc8d58c2532da99199512448d2b58f9b6bca83"
+      },
+      "authority_boundary": "typed_style_proposal_only; no workflow authority, approval, or external-action authorization"
+    },
+    {
+      "rule_id": "SPR-011",
+      "category": "correspondence",
+      "rule_text": "Use the correspondence workflow and form appropriate to the issuing body; USCG correspondence must be accurate, professional, and accessible, while DOI secretarial correspondence follows DOI-specific preferences.",
+      "modality": "should",
+      "scope": "USCG and DOI correspondence",
+      "exceptions": [
+        "Historical White House correspondence is available only for historical reference unless specifically requested."
+      ],
+      "uncertainty": "Template-level requirements need full manual review.",
+      "contradictions": [
+        "DOI and USCG formats are distinct agency profiles."
+      ],
+      "supersession": {
+        "status": "explicitly_cancels",
+        "details": "USCG-CORR-2024 cancels COMDTINST M5216.4D; historical White House material is never current."
+      },
+      "review_status": "human_review_required",
+      "source": {
+        "source_id": "USCG-CORR-2024",
+        "issuing_body": "U.S. Coast Guard",
+        "version": "February 2024",
+        "source_sha256": "2410e971aebf6de25071b71b6b76668a62bbacb8da6d304db5e5519b77ace7c0",
+        "locator": {
+          "normalized_path": "reference/intake/2026-08-21-official-government-style-manuals/documents/uscg-correspondence-manual-2024-pdf.md",
+          "line_start": 220,
+          "line_end": 243,
+          "anchor": "correspondence standards and accessibility"
+        }
+      },
+      "semantic_provenance": {
+        "engine": "local Qwen3.8",
+        "model": "qwen3.8-27b-huihui-abliterated-q4_k_m",
+        "run_id": "2026-08-21-official-government-style-manuals",
+        "provenance_file": "reference/intake/2026-08-21-official-government-style-manuals/qwen/source-routing.provenance.json",
+        "prompt_sha256": "e319c4d27055b8335966af7cf79e2a749334021d15a2619d7d58e95926a0370c",
+        "output_sha256": "33ee16196be5b47913b756fde3dc8d58c2532da99199512448d2b58f9b6bca83"
+      },
+      "authority_boundary": "typed_style_proposal_only; no workflow authority, approval, or external-action authorization"
+    },
+    {
+      "rule_id": "SPR-012",
+      "category": "plain_language",
+      "rule_text": "Write briefly, directly, and for the intended audience using plain language; this is guidance, not a grant of legal or workflow authority.",
+      "modality": "should",
+      "scope": "DOI and USCG correspondence; NIJ web writing",
+      "exceptions": [
+        "A technical or legal term may remain when needed for accuracy, with audience support."
+      ],
+      "uncertainty": "Plain-language guidance is source- and audience-dependent.",
+      "contradictions": [],
+      "supersession": {
+        "status": "none_identified",
+        "details": "No supersession inferred."
+      },
+      "review_status": "human_review_required",
+      "source": {
+        "source_id": "DOI-CORR-2014",
+        "issuing_body": "Department of the Interior",
+        "version": "October 22, 2014",
+        "source_sha256": "b35625ceaf8517eb09d4c74e1dc66a01b94e359afbedcb1c52aa1eb8ba624f68",
+        "locator": {
+          "normalized_path": "reference/intake/2026-08-21-official-government-style-manuals/documents/doi-secretarial-correspondence-handbook-2014-pdf.md",
+          "line_start": 830,
+          "line_end": 830,
+          "anchor": "plain language and intended audience"
+        }
+      },
+      "semantic_provenance": {
+        "engine": "local Qwen3.8",
+        "model": "qwen3.8-27b-huihui-abliterated-q4_k_m",
+        "run_id": "2026-08-21-official-government-style-manuals",
+        "provenance_file": "reference/intake/2026-08-21-official-government-style-manuals/qwen/source-routing.provenance.json",
+        "prompt_sha256": "e319c4d27055b8335966af7cf79e2a749334021d15a2619d7d58e95926a0370c",
+        "output_sha256": "33ee16196be5b47913b756fde3dc8d58c2532da99199512448d2b58f9b6bca83"
+      },
+      "authority_boundary": "typed_style_proposal_only; no workflow authority, approval, or external-action authorization"
+    },
+    {
+      "rule_id": "SPR-013",
+      "category": "accessibility",
+      "rule_text": "Technology-based correspondence should be accessible to people with disabilities and should conform to the applicable accessibility standards of its scope.",
+      "modality": "should",
+      "scope": "USCG correspondence",
+      "exceptions": [
+        "Required modifications follow the responsible accessibility program and human review."
+      ],
+      "uncertainty": "The matrix does not replace Section 508 or agency accessibility qualification.",
+      "contradictions": [],
+      "supersession": {
+        "status": "none_identified",
+        "details": "No supersession inferred."
+      },
+      "review_status": "human_review_required",
+      "source": {
+        "source_id": "USCG-CORR-2024",
+        "issuing_body": "U.S. Coast Guard",
+        "version": "February 2024",
+        "source_sha256": "2410e971aebf6de25071b71b6b76668a62bbacb8da6d304db5e5519b77ace7c0",
+        "locator": {
+          "normalized_path": "reference/intake/2026-08-21-official-government-style-manuals/documents/uscg-correspondence-manual-2024-pdf.md",
+          "line_start": 128,
+          "line_end": 135,
+          "anchor": "Section 508 accessibility policy"
+        }
+      },
+      "semantic_provenance": {
+        "engine": "local Qwen3.8",
+        "model": "qwen3.8-27b-huihui-abliterated-q4_k_m",
+        "run_id": "2026-08-21-official-government-style-manuals",
+        "provenance_file": "reference/intake/2026-08-21-official-government-style-manuals/qwen/source-routing.provenance.json",
+        "prompt_sha256": "e319c4d27055b8335966af7cf79e2a749334021d15a2619d7d58e95926a0370c",
+        "output_sha256": "33ee16196be5b47913b756fde3dc8d58c2532da99199512448d2b58f9b6bca83"
+      },
+      "authority_boundary": "typed_style_proposal_only; no workflow authority, approval, or external-action authorization"
+    },
+    {
+      "rule_id": "SPR-014",
+      "category": "web_content",
+      "rule_text": "For web content, favor clear headings, plain language, and audience-oriented presentation; keep NIJ web guidance within NIJ publication scope.",
+      "modality": "should",
+      "scope": "NIJ web writing",
+      "exceptions": [
+        "Web content may require additional accessibility or platform controls outside this profile."
+      ],
+      "uncertainty": "The normalized evidence identifies the web-writing section but full examples require review.",
+      "contradictions": [],
+      "supersession": {
+        "status": "currentness_review_required",
+        "details": "NIJ identifier and update date require review."
+      },
+      "review_status": "human_review_required",
+      "source": {
+        "source_id": "NIJ-STYLE-2022",
+        "issuing_body": "National Institute of Justice",
+        "version": "2022 identifier, evidence updated February 2025",
+        "source_sha256": "866c9200bb0edee1b2554c698ad691c251e6940c06ffac374425b72e39db08b1",
+        "locator": {
+          "normalized_path": "reference/intake/2026-08-21-official-government-style-manuals/documents/nij-style-guide-2022-pdf.md",
+          "line_start": 103,
+          "line_end": 108,
+          "anchor": "web writing and plain language contents"
+        }
+      },
+      "semantic_provenance": {
+        "engine": "local Qwen3.8",
+        "model": "qwen3.8-27b-huihui-abliterated-q4_k_m",
+        "run_id": "2026-08-21-official-government-style-manuals",
+        "provenance_file": "reference/intake/2026-08-21-official-government-style-manuals/qwen/source-routing.provenance.json",
+        "prompt_sha256": "e319c4d27055b8335966af7cf79e2a749334021d15a2619d7d58e95926a0370c",
+        "output_sha256": "33ee16196be5b47913b756fde3dc8d58c2532da99199512448d2b58f9b6bca83"
+      },
+      "authority_boundary": "typed_style_proposal_only; no workflow authority, approval, or external-action authorization"
+    },
+    {
+      "rule_id": "SPR-015",
+      "category": "legislative_drafting",
+      "rule_text": "Legislative provisions should be drafted in the singular where that reduces ambiguity; in HOLC drafting, shall means required and may means permitted.",
+      "modality": "should",
+      "scope": "House legislative drafting",
+      "exceptions": [
+        "Specific statutory context may require another construction and human legal review."
+      ],
+      "uncertainty": "This is a drafting convention, not a substantive legal conclusion.",
+      "contradictions": [],
+      "supersession": {
+        "status": "none_identified",
+        "details": "HOLC-INTRO-2025 is newer overview material and remains separately linked."
+      },
+      "review_status": "human_review_required",
+      "source": {
+        "source_id": "HOLC-INTRO-2025",
+        "issuing_body": "House Office of Legislative Counsel",
+        "version": "revised January 13, 2025",
+        "source_sha256": "6bea8ff0940b0c0f76810fe8dfc62e0e17a985f608866fb409e8b451f6155841",
+        "locator": {
+          "normalized_path": "reference/intake/2026-08-21-official-government-style-manuals/documents/house-introduction-to-legislative-drafting-2025-pdf.md",
+          "line_start": 471,
+          "line_end": 489,
+          "anchor": "shall, may, and singular drafting"
+        }
+      },
+      "semantic_provenance": {
+        "engine": "local Qwen3.8",
+        "model": "qwen3.8-27b-huihui-abliterated-q4_k_m",
+        "run_id": "2026-08-21-official-government-style-manuals",
+        "provenance_file": "reference/intake/2026-08-21-official-government-style-manuals/qwen/source-routing.provenance.json",
+        "prompt_sha256": "e319c4d27055b8335966af7cf79e2a749334021d15a2619d7d58e95926a0370c",
+        "output_sha256": "33ee16196be5b47913b756fde3dc8d58c2532da99199512448d2b58f9b6bca83"
+      },
+      "authority_boundary": "typed_style_proposal_only; no workflow authority, approval, or external-action authorization"
+    },
+    {
+      "rule_id": "SPR-016",
+      "category": "regulatory_drafting",
+      "rule_text": "Use OFR-DDH for general Federal Register document drafting and OFR-IBR for incorporation-by-reference issues; the more specific OFR profile controls its issue.",
+      "modality": "should",
+      "scope": "Federal Register rules, proposed rules, notices, and IBR",
+      "exceptions": [
+        "OFR-IBR does not replace general OFR document-format rules outside IBR."
+      ],
+      "uncertainty": "The routing is based on excerpts and requires full-document validation before release.",
+      "contradictions": [
+        "General OFR and IBR-specific guidance are complementary and scope-partitioned."
+      ],
+      "supersession": {
+        "status": "none_identified",
+        "details": "Both versions are current in the supplied routing."
+      },
+      "review_status": "human_review_required",
+      "source": {
+        "source_id": "OFR-DDH-2018-R2.2",
+        "issuing_body": "Office of the Federal Register",
+        "version": "August 2018, revision 2.2 June 2025",
+        "source_sha256": "23228934343294b0cd9785703bf287a86258ec716ecd62d9332ee09cb695ebc6",
+        "locator": {
+          "normalized_path": "reference/intake/2026-08-21-official-government-style-manuals/qwen/source-routing.md",
+          "line_start": 30,
+          "line_end": 38,
+          "anchor": "OFR routing and specificity"
+        }
+      },
+      "semantic_provenance": {
+        "engine": "local Qwen3.8",
+        "model": "qwen3.8-27b-huihui-abliterated-q4_k_m",
+        "run_id": "2026-08-21-official-government-style-manuals",
+        "provenance_file": "reference/intake/2026-08-21-official-government-style-manuals/qwen/source-routing.provenance.json",
+        "prompt_sha256": "e319c4d27055b8335966af7cf79e2a749334021d15a2619d7d58e95926a0370c",
+        "output_sha256": "33ee16196be5b47913b756fde3dc8d58c2532da99199512448d2b58f9b6bca83"
+      },
+      "authority_boundary": "typed_style_proposal_only; no workflow authority, approval, or external-action authorization"
+    },
+    {
+      "rule_id": "SPR-017",
+      "category": "court_specific_rules",
+      "rule_text": "Seventh Circuit typography and filing guidance applies to Seventh Circuit briefs and other papers; it must not be generalized to courts outside that scope.",
+      "modality": "informational",
+      "scope": "U.S. Court of Appeals for the Seventh Circuit",
+      "exceptions": [
+        "Court rules and later official versions require separate review."
+      ],
+      "uncertainty": "Currentness review is required for the supplied 2020 edition.",
+      "contradictions": [
+        "Court-specific rules are separate from federal agency style baselines."
+      ],
+      "supersession": {
+        "status": "currentness_review_required",
+        "details": "The routing flags currentness review."
+      },
+      "review_status": "human_review_required",
+      "source": {
+        "source_id": "CA7-TYPOGRAPHY",
+        "issuing_body": "U.S. Court of Appeals for the Seventh Circuit",
+        "version": "2020 edition",
+        "source_sha256": "495bc24c2cc417b98355f42543a6d20549476cdf322b3e8e621d9bce901024ce",
+        "locator": {
+          "normalized_path": "reference/intake/2026-08-21-official-government-style-manuals/documents/seventh-circuit-practitioners-handbook-pdf.md",
+          "line_start": 625,
+          "line_end": 643,
+          "anchor": "court website and electronic filing scope"
+        }
+      },
+      "semantic_provenance": {
+        "engine": "local Qwen3.8",
+        "model": "qwen3.8-27b-huihui-abliterated-q4_k_m",
+        "run_id": "2026-08-21-official-government-style-manuals",
+        "provenance_file": "reference/intake/2026-08-21-official-government-style-manuals/qwen/source-routing.provenance.json",
+        "prompt_sha256": "e319c4d27055b8335966af7cf79e2a749334021d15a2619d7d58e95926a0370c",
+        "output_sha256": "33ee16196be5b47913b756fde3dc8d58c2532da99199512448d2b58f9b6bca83"
+      },
+      "authority_boundary": "typed_style_proposal_only; no workflow authority, approval, or external-action authorization"
+    }
+  ]
+}
