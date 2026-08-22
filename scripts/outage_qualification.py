@@ -1081,6 +1081,10 @@ async def _live_temporal_restart(
     client = await connect_worker_client(args.address)
     ledger_path = outdir / "om2-dispatch-ledger.json"
     marker_path = outdir / "om2-activity-marker.jsonl"
+    if ledger_path.exists():
+        ledger_path.unlink()
+    if marker_path.exists():
+        marker_path.unlink()
     approval_id = uuid4()
     run_key = f"s504c-om2-{uuid4().hex[:8]}"
     workflow_id = f"skl-s5-04c-om2-{run_key}"
@@ -1157,17 +1161,33 @@ async def _live_temporal_restart(
 
         restart_started = time.monotonic()
         subprocess.run(
-            ["docker", "restart", args.temporal_container],
+            ["docker", "stop", args.temporal_container],
             check=True,
             capture_output=True,
             text=True,
             timeout=120,
         )
+        # While the container is fully stopped the frontend refuses
+        # connections and every query must fail. A plain `docker restart`
+        # returns after the frontend is already accepting again, and the
+        # client's transparent RPC retry bridges the gap, so the degraded
+        # state is only observable inside a real stop window.
         query_error_during_restart: Exception | None = None
-        try:
-            await asyncio.wait_for(handle.query(MatterTaskWorkflow.phase), 3.0)
-        except Exception as exc:
-            query_error_during_restart = exc
+        degraded_deadline = time.monotonic() + 8.0
+        while time.monotonic() < degraded_deadline:
+            try:
+                await asyncio.wait_for(handle.query(MatterTaskWorkflow.phase), 2.0)
+            except Exception as exc:
+                query_error_during_restart = exc
+                break
+            await asyncio.sleep(0.5)
+        subprocess.run(
+            ["docker", "start", args.temporal_container],
+            check=True,
+            capture_output=True,
+            text=True,
+            timeout=120,
+        )
         healthy_deadline = time.monotonic() + 300.0
         restarted = False
         while time.monotonic() < healthy_deadline:
@@ -1333,14 +1353,18 @@ async def _run_live(args: argparse.Namespace) -> int:
     outdir = Path(args.workdir)
     outdir.mkdir(parents=True, exist_ok=True)
     results: dict[str, dict[str, Any]] = {}
-    om1 = await _live_scenarios(args, outdir)
-    results.update(om1)
-    om2 = await _live_temporal_restart(args, outdir)
-    results["OM-2"] = om2
-    model_results = run_model_scenarios(
-        outdir, include=("OM-7",)
-    )
-    results.update(model_results)
+    only = set(args.only.split(",")) if args.only else None
+    if only is None or "OM-1" in only:
+        om1 = await _live_scenarios(args, outdir)
+        results.update(om1)
+    if only is None or "OM-2" in only:
+        om2 = await _live_temporal_restart(args, outdir)
+        results["OM-2"] = om2
+    if only is None or "OM-7" in only:
+        model_results = run_model_scenarios(
+            outdir, include=("OM-7",)
+        )
+        results.update(model_results)
     matrix = {
         "generated_at": utcnow().isoformat(),
         "operator": OPERATOR,
@@ -1375,6 +1399,11 @@ def main() -> int:
     live.add_argument("--workdir", default="/tmp/skl-s5-04c-outage")
     live.add_argument("--temporal-container", default="sklegal-outage-temporal-1")
     live.add_argument("--step-delay", type=float, default=120.0)
+    live.add_argument(
+        "--only",
+        default=None,
+        help="comma-separated scenario subset (OM-1,OM-2,OM-7)",
+    )
 
     worker = subparsers.add_parser("worker", help=argparse.SUPPRESS)
     worker.add_argument("--address", required=True)
