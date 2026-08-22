@@ -70,10 +70,10 @@ the `StartToClose` timeout, because `run_task_step` now heartbeats.
 
 | Scenario | Result | Evidence |
 | --- | --- | --- |
-| OM-1 worker kill mid-activity | see evidence file | `docs/evidence/platform/SKL-S5-04C-OUTAGE-MATRIX-2026-08-22.md` |
-| OM-2 Temporal restart | see evidence file | same |
-| OM-3 Qwen route outage | see evidence file | same |
-| OM-4 OpenAI egress outage | see evidence file | same |
-| OM-5 reconciler restart | see evidence file | same |
-| OM-6 outbox backend outage | see evidence file | same |
-| OM-7 dispatch replay suppression | see evidence file | same |
+| OM-1 worker kill mid-activity | PASS (2026-08-22) | `docs/evidence/platform/SKL-S5-04C-OUTAGE-MATRIX-2026-08-22.md` |
+| OM-2 Temporal restart | PASS (2026-08-22) | same |
+| OM-3 Qwen route outage | PASS (2026-08-22, synthetic transport) | same |
+| OM-4 OpenAI egress outage | PASS (2026-08-22, synthetic transport and fake resolver) | same |
+| OM-5 reconciler restart | PASS (2026-08-22) | same |
+| OM-6 outbox backend outage | PASS (2026-08-22) | same |
+| OM-7 dispatch replay suppression | PASS (2026-08-22) | same |
