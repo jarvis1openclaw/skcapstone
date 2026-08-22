@@ -382,3 +382,60 @@ Every task begins by loading SK context, reading `AGENTS.md`, checking the SKCap
 - **Tests:** Independent replay by a second operator and document-hash verification.
 - **Acceptance:** Human approves, rejects, or conditionally approves the pattern with exact conditions.
 - **Prohibited:** Do not bulk-migrate remaining matters as part of this task.
+
+## Sprint 6
+
+### SKL-S6-01: Inventory official government writing and style manuals
+
+- **Agent:** Official-source research and source governance
+- **Size:** M
+- **Dependencies:** `SKL-S0-01`, `SKL-S0-03`
+- **Objective:** Identify the current official manuals that govern United States government publications, legislation, regulations, correspondence, court documents, plain language, accessibility, technical reports, and digital content.
+- **Implementation:** Start with the GPO Style Manual collection supplied by the human owner. Search primary government sources across the federal legislative, executive, and judicial branches and a bounded set of official state exemplars. Record issuing body, scope, version, official landing and download URLs, source format, supersession, rights, update status, conflicts, and an include, defer, or exclude decision.
+- **Tests:** Official-domain validation, duplicate and supersession review, missing-rights quarantine, link reachability, and ASCII-dash validation.
+- **Acceptance:** The inventory defines an exact, rights-cleared first-wave source set and preserves branch, agency, court, and jurisdiction-specific differences.
+- **Prohibited:** Do not treat public access as permission, use unofficial mirrors as canonical sources, or insert external research conclusions into HammerTime artifacts.
+
+### SKL-S6-02: Acquire and seal the cleared official manual source batch
+
+- **Agent:** Source acquisition and HammerTime intake custody
+- **Size:** M
+- **Dependencies:** `SKL-S6-01`
+- **Objective:** Acquire the exact cleared manuals from canonical government endpoints and place one owned batch in HammerTime intake.
+- **Implementation:** Download into `Inbox/_imports/<batch>/source-root`, preserving landing-page metadata, redirects, filenames, MIME types, byte counts, SHA256 hashes, issuing bodies, version dates, access times, source rights, and acquisition status. Produce a deterministic manifest and explicit duplicate, changed-source, inaccessible-source, and quarantine records.
+- **Tests:** Repeat acquisition, wrong MIME type, redirect change, changed hash, duplicate bytes, partial download, and non-official endpoint rejection.
+- **Acceptance:** The batch is complete, idempotent, source-sealed, isolated from unrelated Inbox material, and ready for normalization.
+- **Prohibited:** Do not acquire deferred sources, credentials, third-party mirrors, or unrelated HammerTime Inbox content.
+
+### SKL-S6-03: Normalize and ingest the official manuals through HammerTime
+
+- **Agent:** HammerTime corpus operations
+- **Size:** L
+- **Dependencies:** `SKL-S6-02`, HammerTime governed ingestion acceptance
+- **Objective:** Move the exact cleared batch through HammerTime normalization, semantic processing, scoped retrieval registration, and completion-gated Inbox finalization.
+- **Implementation:** Use direct extraction for dense text, routed OCR and OCR QC when required, lossless normalized files, structured source records, Qwen3.8-controlled semantic routing and summaries, scoped decomposition, runtime-alias-driven vector and graph registration, non-empty completion evidence, exact-source finalization, and archive provenance relocation.
+- **Tests:** Duplicate source, extraction failure, OCR reject, Qwen3.8 outage, vector outage, graph outage, missing completion evidence, archive collision, and rerun idempotency.
+- **Acceptance:** Every included source reconciles from exact source hash to normalized artifact, source record, decomposition, retrieval projection, finalization manifest, and archive path.
+- **Prohibited:** Do not run an implicit repository-wide scan, archive incomplete material, process unrelated Inbox content, hardcode runtime collection names, or use a non-Qwen model for corpus meaning.
+
+### SKL-S6-04: Build source-linked official drafting style profiles
+
+- **Agent:** Qwen3.8 corpus analysis and legal document engineering
+- **Size:** L
+- **Dependencies:** `SKL-S6-03`
+- **Objective:** Produce reusable, source-linked style profiles without turning model output into workflow authority.
+- **Implementation:** Extract core principles, document settings, typography, capitalization, abbreviations, punctuation, numbers, lists, tables, citations, correspondence formats, plain-language practices, accessibility, web content, legislative drafting, regulatory drafting, and court-specific rules. Preserve exact locators, scope, modality, exceptions, uncertainty, contradictions, supersession, and review status.
+- **Tests:** Source locator verification, schema validation, conflict preservation, obsolete-rule labeling, wrong-scope rejection, missing source hash, and Qwen3.8 outage.
+- **Acceptance:** A machine-readable comparison matrix and human-readable principles guide trace every rule to the exact issuing body, source version, hash, and locator.
+- **Prohibited:** Do not silently harmonize conflicts, call recommendations mandatory, authorize an external action, or let a model own approval or workflow state.
+
+### SKL-S6-05: Validate and publish the official drafting standards release
+
+- **Agent:** Corpus release, retrieval assurance, and SKLegal integration
+- **Size:** M
+- **Dependencies:** `SKL-S6-04`, `SKL-S2-01`
+- **Objective:** Validate a bounded HammerTime release and expose immutable references through the read-only SKLegal adapter.
+- **Implementation:** Reconcile source, normalized, structured, decomposed, vector, graph, profile, and release artifacts. Run scoped retrieval tests, source-rights checks, secondary Qwen3.8 review, deep corpus health, release manifest validation, alias-safe promotion, rollback verification, and read-only adapter checks.
+- **Tests:** Missing artifact, wrong source version, stale projection, scope collapse, retrieval of a superseded rule as current, alias drift, promotion failure, and rollback.
+- **Acceptance:** The candidate release is healthy, reversible, source-complete, conflict-preserving, and addressable by immutable HammerTime release and artifact references.
+- **Prohibited:** Do not promote to UAT or production without the existing release gates, mutate HammerTime through the SKLegal read-only adapter, or use a release reference as external-action authorization.

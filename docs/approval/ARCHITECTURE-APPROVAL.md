@@ -136,6 +136,13 @@ revisions are recorded separately below.
   per-Matter chain heads are the design direction if the numeric trigger
   gate fires, and batch append is rejected as the primary mitigation. No
   migration, code, or deployment change is authorized by this amendment.
+- 2026-08-21, card `6775be53` (`SKL-UI-01`): The owner directed a UI-first
+  execution rebaseline. `docs/planning/UI-FIRST-EXECUTION-PLAN.md` pulls a
+  loopback-only public progress surface and the first useful Client and Matter
+  vertical slice ahead of remaining agent and connector depth. The decision is
+  recorded in `docs/approval/AMENDMENT-SKL-UI-01.md`. Stable task keys,
+  dependencies, protected-data gates, the five hash-pinned approved documents,
+  and the separate production activation gate remain unchanged.
 
 ## Current approved document hashes
 
