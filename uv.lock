@@ -1381,12 +1381,14 @@ source = { editable = "packages/model_gateway" }
 dependencies = [
     { name = "pydantic" },
     { name = "pydantic-ai-slim" },
+    { name = "sklegal-domain" },
 ]
 
 [package.metadata]
 requires-dist = [
     { name = "pydantic", specifier = "==2.13.4" },
     { name = "pydantic-ai-slim", specifier = "==2.32.1" },
+    { name = "sklegal-domain", editable = "packages/domain" },
 ]
 
 [[package]]

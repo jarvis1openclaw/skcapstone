@@ -1,0 +1,46 @@
+{
+  "schema": "sklegal-openai-onboarding-checklist/v1",
+  "purpose": "Human-driven checkpoint before any OpenAI route may be enabled for protected matter content. Every item requires a named human owner and recorded evidence.",
+  "credential_boundary": {
+    "consumer_chatgpt_session_is_application_credential": false,
+    "consumer_chatgpt_subscription_is_application_credential": false,
+    "statement": "A consumer ChatGPT subscription or browser session is never an application credential. The application uses only an OpenAI Platform API key held in the approved secret store."
+  },
+  "required_items": [
+    {
+      "item_id": "organization_project_selection",
+      "owner": "human",
+      "description": "Select or create the OpenAI Platform organization and the exact project for SKLegal. Record the organization id and project id in the tenant configuration evidence."
+    },
+    {
+      "item_id": "api_billing",
+      "owner": "human",
+      "description": "Confirm Platform API billing is active on the selected organization. API billing is separate from any consumer ChatGPT subscription."
+    },
+    {
+      "item_id": "api_key_creation",
+      "owner": "human",
+      "description": "Create a project-scoped API key restricted to the minimum required models and the Responses API. Record the key id, never the raw key, in the onboarding evidence."
+    },
+    {
+      "item_id": "retention_settings",
+      "owner": "human",
+      "description": "Confirm data retention settings for the project, request zero data retention where eligible, and confirm the application sends store=false on every Responses API call."
+    },
+    {
+      "item_id": "spend_limits",
+      "owner": "human",
+      "description": "Set a project monthly budget and hard spend limit before the first application call. Record the limit values in the onboarding evidence."
+    },
+    {
+      "item_id": "secret_storage",
+      "owner": "human",
+      "description": "Store the API key only in the approved secret store and record the secret reference used by the route registry. Raw keys never appear in config, prompts, logs, workflow history, or committed files."
+    },
+    {
+      "item_id": "key_rotation",
+      "owner": "human",
+      "description": "Document the rotation procedure: create a replacement key, update the secret store reference, verify a simulation submission, then revoke the prior key. Rotation evidence names both key ids."
+    }
+  ]
+}
