@@ -1243,6 +1243,7 @@ dependencies = [
     { name = "pydantic" },
     { name = "sklegal-audit" },
     { name = "sklegal-capauth" },
+    { name = "sklegal-migration" },
     { name = "sklegal-policies" },
     { name = "uvicorn" },
 ]
@@ -1253,6 +1254,7 @@ requires-dist = [
     { name = "pydantic", specifier = "==2.13.4" },
     { name = "sklegal-audit", editable = "packages/audit" },
     { name = "sklegal-capauth", editable = "packages/capauth" },
+    { name = "sklegal-migration", editable = "packages/migration" },
     { name = "sklegal-policies", editable = "packages/policies" },
     { name = "uvicorn", specifier = "==0.52.4" },
 ]

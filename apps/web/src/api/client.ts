@@ -15,6 +15,7 @@ import type {
   ClientSummary,
   MatterDetail,
   MatterSummary,
+  MatterWorkspace,
 } from "./types";
 
 export interface ApiClientOptions {
@@ -84,6 +85,12 @@ export class ApiClient {
 
   getMatter(matterId: string): Promise<ApiResult<MatterDetail>> {
     return this.request(`/v1/matters/${encodeURIComponent(matterId)}`);
+  }
+
+  getMatterWorkspace(matterId: string): Promise<ApiResult<MatterWorkspace>> {
+    return this.request(
+      `/v1/matters/${encodeURIComponent(matterId)}/workspace`,
+    );
   }
 }
 
