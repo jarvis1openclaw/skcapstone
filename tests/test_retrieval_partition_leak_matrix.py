@@ -24,7 +24,6 @@ from pydantic import ValidationError
 from sklegal_retrieval.errors import (
     RetrievalAuthorizationError,
     RetrievalIntegrityError,
-    RetrievalRequestError,
     RetrievalUnavailableError,
 )
 from sklegal_retrieval.fake import (
@@ -883,26 +882,32 @@ class RetrievalPartitionLeakMatrixTests(unittest.TestCase):
 
     def test_invalid_registry_partition_identifier_rejected(self) -> None:
         scope = _scope()
-        for bad in (
-            "rp_zzzz",
-            "rp_" + "1" * 31,
-            "rp_" + "1" * 33,
-            "lexical_" + "1" * 32,
-            "1" * 34,
+        for bad_suffix in (
+            "zzzz",
+            "1" * 31,
+            "1" * 33,
+            "g" * 32,
+            "ical_" + "1" * 28,
         ):
-            with self.subTest(partition=bad):
+            with self.subTest(suffix=bad_suffix):
                 with self.assertRaises(ValidationError):
                     _projection(
-                        RetrievalComponent.LEXICAL, scope, partition_suffix=bad[3:]
-                    ) if bad.startswith("rp_") else (_ for _ in ()).throw(
-                        ValidationError.from_exception_data("ProjectionPins", [])
+                        RetrievalComponent.LEXICAL, scope, partition_suffix=bad_suffix
                     )
-        with self.assertRaises(ValidationError):
-            _projection(RetrievalComponent.GRAPH, scope, partition_suffix="1" * 32)
-        with self.assertRaises(ValidationError):
-            _projection(
-                RetrievalComponent.LEXICAL, scope, partition_suffix="g" * 32
-            )
+        lexical = _projection(RetrievalComponent.LEXICAL, scope)
+        graph = _projection(RetrievalComponent.GRAPH, scope)
+        for component, pins, wrong_kind_id in (
+            (RetrievalComponent.LEXICAL, lexical, "rg_" + "1" * 32),
+            (RetrievalComponent.GRAPH, graph, "rp_" + "1" * 32),
+        ):
+            with self.subTest(component=component, partition=wrong_kind_id):
+                with self.assertRaises(ValidationError):
+                    ProjectionPins.model_validate(
+                        {
+                            **pins.model_dump(mode="python"),
+                            "physical_partition_id": wrong_kind_id,
+                        }
+                    )
 
     def test_policy_revision_change_denies_cached_or_inflight_result(self) -> None:
         request = _lexical_request()
@@ -1081,13 +1086,14 @@ class RetrievalPartitionLeakMatrixTests(unittest.TestCase):
         bound = bind_query_template(
             "lexical.search.v1", {"query_text": "alpha", "max_results": 10}
         )
-        with self.assertRaises(RetrievalRequestError):
+        with self.assertRaises(RetrievalIntegrityError):
             adapter.execute(bound, ())
         with self.assertRaises(RetrievalIntegrityError):
             adapter.execute(bound, (lexical, lexical))
 
     def test_denial_shape_does_not_reveal_partition_existence(self) -> None:
         messages: list[str] = []
+        envelopes = []
         for suffix in ("4" * 32, "9" * 32):
             request = _lexical_request()
             foreign = _projection(
@@ -1103,12 +1109,14 @@ class RetrievalPartitionLeakMatrixTests(unittest.TestCase):
                 _orchestrator(request, executor).retrieve(request)
             except RetrievalIntegrityError as exc:
                 self.assertIsNone(exc.__cause__)
-                self.assertTrue(exc.__suppress_context__)
                 messages.append(str(exc))
+                envelopes.append(exc.public_error().model_dump_json())
         self.assertEqual(2, len(messages))
         self.assertEqual(messages[0], messages[1])
-        self.assertNotIn(OTHER_TENANT_ID.hex, messages[0])
-        self.assertNotIn("rp_", messages[0])
+        self.assertEqual(envelopes[0], envelopes[1])
+        for shape in (*messages, *envelopes):
+            self.assertNotIn(OTHER_TENANT_ID.hex, shape)
+            self.assertNotIn("rp_", shape)
 
 
 class RetrievalPartitionLeakMatrixAccountingTests(unittest.TestCase):
