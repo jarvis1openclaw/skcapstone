@@ -70,13 +70,14 @@ BOUND_ROLE_EXECUTE_ALLOWLIST = {
     "sklegal_legal.typed_json_value_is_valid(text, jsonb)",
 }
 
-# Pinned against migrations 0008 through 0013 GRANT EXECUTE statements.
+# Pinned against migrations 0008 through 0017 GRANT EXECUTE statements.
 SHARED_RUNTIME_EXECUTE_ALLOWLIST = {
     "sklegal_identity.capability_principal_snapshot(uuid, uuid)",
     "sklegal_identity.capability_revocation_snapshot(uuid, sklegal_legal.sha256_digest[])",
     "sklegal_identity.prune_expired_capability_replay_reservations(uuid)",
     "sklegal_identity.reserve_capability(uuid, sklegal_legal.sha256_digest, uuid, timestamp with time zone)",
     "sklegal_identity.revoke_capability(uuid, sklegal_legal.sha256_digest, uuid, text)",
+    "sklegal_legal.skgateway_authorization_snapshot(text, text, jsonb, jsonb)",
 }
 
 _RELATIONS = """

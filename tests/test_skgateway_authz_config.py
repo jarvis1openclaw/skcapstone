@@ -17,6 +17,7 @@ def test_skgateway_authz_adapter_is_disabled_and_fail_closed() -> None:
     assert payload.fail_closed is True
     assert payload.bind == "loopback-only"
     assert payload.capability == "skgateway.infer"
+    assert payload.service_header == "X-SKLegal-Service-Authorization"
     assert payload.service_secret_reference.startswith("vault:")
     assert payload.protected_traffic == "denied-until-live-path-report-and-human-approval"
 

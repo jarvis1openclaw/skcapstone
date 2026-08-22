@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import pytest
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException
 from fastapi.testclient import TestClient
 from pydantic import ValidationError
 from sklegal_api.skgateway_authz import (
@@ -18,6 +18,18 @@ from sklegal_api.skgateway_authz import (
     SkGatewayTrustedSnapshot,
     build_skgateway_authz_router,
 )
+
+
+class _ProtectedRoute:
+    def __init__(self, error: HTTPException | None = None) -> None:
+        self.calls: list[object] = []
+        self.error = error
+
+    async def __call__(self, request: object) -> object:
+        self.calls.append(request)
+        if self.error is not None:
+            raise self.error
+        return object()
 
 
 class _Evaluator:
@@ -90,6 +102,7 @@ def _client(evaluator: _Evaluator, resolver: _Resolver | None = None) -> TestCli
                 service_identity=service_identity,
                 service_token="test-secret",
             ),
+            protected_route=_ProtectedRoute(),  # type: ignore[arg-type]
             service_identity=service_identity,
         )
     )
@@ -101,7 +114,7 @@ def test_valid_service_decision_is_sanitized_and_forwarded() -> None:
     with _client(evaluator) as client:
         response = client.post(
             "/v1/authz/decide",
-            headers={"Authorization": "Bearer test-secret"},
+            headers={"X-SKLegal-Service-Authorization": "Bearer test-secret"},
             json={
                 "subject": "sklegal-model-gateway",
                 "capability": "skgateway.infer",
@@ -124,10 +137,72 @@ def test_wrong_service_credential_denies_without_evaluator_call() -> None:
     with _client(evaluator) as client:
         response = client.post(
             "/v1/authz/decide",
-            headers={"Authorization": "Bearer wrong"},
+            headers={"X-SKLegal-Service-Authorization": "Bearer wrong"},
             json={"subject": "s", "capability": "skgateway.infer"},
         )
     assert response.status_code == 403
+    assert evaluator.calls == []
+
+
+def test_service_authentication_precedes_capauth_reservation() -> None:
+    evaluator = _Evaluator()
+    protected = _ProtectedRoute()
+    app = FastAPI()
+    service_identity = "capauth:sklegal-model-gateway@chiap01.skworld"
+    app.include_router(
+        build_skgateway_authz_router(
+            evaluator=evaluator,
+            facts_resolver=_Resolver(),
+            service_authenticator=ConstantTimeBearerServiceAuthenticator(
+                service_identity=service_identity,
+                service_token="test-secret",
+            ),
+            protected_route=protected,  # type: ignore[arg-type]
+            service_identity=service_identity,
+        )
+    )
+    with TestClient(app) as client:
+        response = client.post(
+            "/v1/authz/decide",
+            headers={"X-SKLegal-Service-Authorization": "Bearer wrong"},
+            json={"subject": "s", "capability": "skgateway.infer"},
+        )
+    assert response.status_code == 403
+    assert protected.calls == []
+    assert evaluator.calls == []
+
+
+def test_capauth_denial_is_preserved_and_stops_policy_evaluation() -> None:
+    evaluator = _Evaluator()
+    protected = _ProtectedRoute(
+        HTTPException(status_code=403, detail={"code": "capability_denied"})
+    )
+    app = FastAPI()
+    service_identity = "capauth:sklegal-model-gateway@chiap01.skworld"
+    app.include_router(
+        build_skgateway_authz_router(
+            evaluator=evaluator,
+            facts_resolver=_Resolver(),
+            service_authenticator=ConstantTimeBearerServiceAuthenticator(
+                service_identity=service_identity,
+                service_token="test-secret",
+            ),
+            protected_route=protected,  # type: ignore[arg-type]
+            service_identity=service_identity,
+        )
+    )
+    with TestClient(app) as client:
+        response = client.post(
+            "/v1/authz/decide",
+            headers={
+                "Authorization": "Bearer opaque-capauth-credential",
+                "X-SKLegal-Service-Authorization": "Bearer test-secret",
+            },
+            json={"subject": "s", "capability": "skgateway.infer"},
+        )
+    assert response.status_code == 403
+    assert response.json() == {"detail": {"code": "capability_denied"}}
+    assert len(protected.calls) == 1
     assert evaluator.calls == []
 
 
@@ -161,6 +236,7 @@ def _client_with_authenticator(authenticator: _ServiceAuthenticator) -> TestClie
             evaluator=_Evaluator(),
             facts_resolver=_Resolver(),
             service_authenticator=authenticator,
+            protected_route=_ProtectedRoute(),  # type: ignore[arg-type]
             service_identity="capauth:sklegal-model-gateway@chiap01.skworld",
         )
     )
@@ -187,7 +263,7 @@ def test_service_authentication_failures_are_sanitized(
     with _client_with_authenticator(_ServiceAuthenticator(error)) as client:
         response = client.post(
             "/v1/authz/decide",
-            headers={"Authorization": "Bearer opaque"},
+            headers={"X-SKLegal-Service-Authorization": "Bearer opaque"},
             json={"subject": "s", "capability": "skgateway.infer"},
         )
     assert response.status_code == status_code
@@ -198,7 +274,7 @@ def test_authenticated_service_identity_must_match_deployment_pin() -> None:
     with _client_with_authenticator(_ServiceAuthenticator("wrong-service")) as client:
         response = client.post(
             "/v1/authz/decide",
-            headers={"Authorization": "Bearer opaque"},
+            headers={"X-SKLegal-Service-Authorization": "Bearer opaque"},
             json={"subject": "s", "capability": "skgateway.infer"},
         )
     assert response.status_code == 403
@@ -210,7 +286,7 @@ def test_non_gateway_capability_denies_without_evaluator_call() -> None:
     with _client(evaluator) as client:
         response = client.post(
             "/v1/authz/decide",
-            headers={"Authorization": "Bearer test-secret"},
+            headers={"X-SKLegal-Service-Authorization": "Bearer test-secret"},
             json={"subject": "s", "capability": "matter.manage"},
         )
     assert response.status_code == 403
@@ -221,7 +297,7 @@ def test_evaluator_outage_fails_closed() -> None:
     with _client(_Evaluator(fail=True)) as client:
         response = client.post(
             "/v1/authz/decide",
-            headers={"Authorization": "Bearer test-secret"},
+            headers={"X-SKLegal-Service-Authorization": "Bearer test-secret"},
             json={"subject": "s", "capability": "skgateway.infer"},
         )
     assert response.status_code == 503
@@ -233,7 +309,7 @@ def test_trusted_state_outage_fails_closed_before_evaluator() -> None:
     with _client(evaluator, _Resolver(fail=True)) as client:
         response = client.post(
             "/v1/authz/decide",
-            headers={"Authorization": "Bearer test-secret"},
+            headers={"X-SKLegal-Service-Authorization": "Bearer test-secret"},
             json={"subject": "attacker", "capability": "skgateway.infer"},
         )
     assert response.status_code == 503
@@ -244,7 +320,7 @@ def test_unknown_request_fields_are_rejected() -> None:
     with _client(_Evaluator()) as client:
         response = client.post(
             "/v1/authz/decide",
-            headers={"Authorization": "Bearer test-secret"},
+            headers={"X-SKLegal-Service-Authorization": "Bearer test-secret"},
             json={"subject": "s", "capability": "skgateway.infer", "prompt": "secret"},
         )
     assert response.status_code == 422
@@ -255,7 +331,7 @@ def test_oversized_selector_map_is_rejected_before_authorization() -> None:
     with _client(evaluator) as client:
         response = client.post(
             "/v1/authz/decide",
-            headers={"Authorization": "Bearer test-secret"},
+            headers={"X-SKLegal-Service-Authorization": "Bearer test-secret"},
             json={
                 "subject": "s",
                 "capability": "skgateway.infer",

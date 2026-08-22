@@ -10,11 +10,24 @@ from __future__ import annotations
 import hmac
 import json
 from collections.abc import Callable, Mapping
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Annotated, Literal, Protocol, Self
+from uuid import UUID
 
-from fastapi import APIRouter, Header, HTTPException, status
+from fastapi import APIRouter, Header, HTTPException, Request, status
 from pydantic import BaseModel, ConfigDict, Field, StringConstraints, model_validator
+from sklegal_capauth import Audience, AuthorizedContext
+from sklegal_policies import (
+    DataFlowBoundary,
+    PolicyAccessRequest,
+    PolicyBoundaryRequirement,
+    PolicyDenied,
+    PolicyGateway,
+    PolicyReason,
+)
+
+from .capauth import ProtectedRouteDependency
 
 ShortText = Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=256)]
 DecisionReason = Literal[
@@ -61,6 +74,7 @@ class SkGatewayAuthzDeployment(BaseModel):
     bind: Literal["loopback-only"]
     service_identity: Literal["capauth:sklegal-model-gateway@chiap01.skworld"]
     service_secret_reference: str
+    service_header: Literal["X-SKLegal-Service-Authorization"]
     capability: Literal["skgateway.infer"]
     transport: Literal["authenticated-local-http"]
     fail_closed: Literal[True]
@@ -266,7 +280,140 @@ class SkGatewayAuthzEvaluator(Protocol):
         capability: str,
         resource: Mapping[str, str],
         context: Mapping[str, str],
+        authorized: AuthorizedContext,
     ) -> SkGatewayAuthzResponse: ...
+
+
+class CanonicalSkGatewayPolicyEvaluator:
+    """Evaluate model context through the canonical policy gateway.
+
+    The external ``skgateway.infer`` scope selects this narrow endpoint. The
+    actual material authority remains the exact request-local CapAuth grant.
+    PolicyGateway performs current-state reservation, scope matching,
+    information-barrier evaluation, and durable decision audit.
+    """
+
+    _CAPAUTH_REASONS = frozenset(
+        {
+            PolicyReason.CAPAUTH_SCOPE_MISMATCH,
+            PolicyReason.CAPAUTH_EXPIRED,
+            PolicyReason.CAPAUTH_REPLAYED,
+            PolicyReason.CAPAUTH_STALE,
+            PolicyReason.CAPAUTH_CURRENT_STATE_UNAVAILABLE,
+        }
+    )
+
+    def __init__(self, gateway: PolicyGateway) -> None:
+        if not isinstance(gateway, PolicyGateway):
+            raise TypeError("gateway must be the canonical PolicyGateway")
+        self._gateway = gateway
+
+    @staticmethod
+    def _require_exact_wire_scope(
+        *,
+        subject: str,
+        capability: str,
+        resource: Mapping[str, str],
+        context: Mapping[str, str],
+        authorized: AuthorizedContext,
+    ) -> None:
+        grant = authorized.grant
+        expected_resource = {
+            "tenant_id": str(grant.tenant_id),
+            "matter_id": str(grant.matter_id),
+            "material_id": str(grant.resource_id),
+            "material_version": str(grant.resource_version),
+        }
+        if capability != "skgateway.infer":
+            raise ValueError("SKGateway capability is not exact")
+        if subject != authorized.principal.subject:
+            raise ValueError("SKGateway subject does not match CapAuth")
+        if grant.audience != Audience.MODEL:
+            raise ValueError("CapAuth grant is not model-scoped")
+        if grant.matter_id is None or grant.resource_id is None:
+            raise ValueError("CapAuth grant lacks exact material scope")
+        if grant.resource_version is None or grant.resource_sha256 is None:
+            raise ValueError("CapAuth grant lacks an exact material version")
+        if grant.model_route is None or grant.workflow_run_id is None:
+            raise ValueError("CapAuth grant lacks model execution scope")
+        for key, expected in expected_resource.items():
+            if resource.get(key) != expected:
+                raise ValueError(f"SKGateway {key} does not match CapAuth")
+        if not resource.get("route_id"):
+            raise ValueError("SKGateway route_id is required")
+        if context.get("purpose") != grant.purpose.value:
+            raise ValueError("SKGateway purpose does not match CapAuth")
+
+    def decide(
+        self,
+        *,
+        subject: str,
+        capability: str,
+        resource: Mapping[str, str],
+        context: Mapping[str, str],
+        authorized: AuthorizedContext,
+    ) -> SkGatewayAuthzResponse:
+        self._require_exact_wire_scope(
+            subject=subject,
+            capability=capability,
+            resource=resource,
+            context=context,
+            authorized=authorized,
+        )
+        grant = authorized.grant
+        assert grant.matter_id is not None
+        assert grant.resource_id is not None
+        assert grant.resource_version is not None
+        assert grant.resource_sha256 is not None
+        assert grant.model_route is not None
+        assert grant.workflow_run_id is not None
+        request = PolicyAccessRequest(
+            boundary=DataFlowBoundary.MODEL_CONTEXT,
+            principal_id=authorized.principal.principal_id,
+            tenant_id=grant.tenant_id,
+            matter_id=grant.matter_id,
+            material_id=UUID(grant.resource_id),
+            material_version=grant.resource_version,
+            material_sha256=grant.resource_sha256,
+            purpose=grant.purpose,
+            model_route=grant.model_route,
+            workflow_run_id=grant.workflow_run_id,
+            evaluated_at=datetime.now(UTC),
+        )
+        requirement = PolicyBoundaryRequirement(
+            boundary=DataFlowBoundary.MODEL_CONTEXT,
+            audience=grant.audience,
+            target=grant.target,
+            capability=grant.capability,
+            purpose=grant.purpose,
+            model_route=grant.model_route,
+            workflow_run_id=grant.workflow_run_id,
+        )
+        try:
+            result = self._gateway.authorize(authorized, requirement, request)
+        except PolicyDenied as exc:
+            decision = exc.decision
+            if decision.reason == PolicyReason.AUDIT_UNAVAILABLE:
+                reason = "audit_unavailable"
+            elif decision.reason in self._CAPAUTH_REASONS:
+                reason = "capability_denied"
+            else:
+                reason = "policy_denied"
+            return SkGatewayAuthzResponse(
+                allow=False,
+                reason=reason,
+                decision_id=str(decision.decision_id),
+                policy_revision=decision.policy_revision,
+                correlation_id=str(decision.correlation_id),
+            )
+        decision = result.decision
+        return SkGatewayAuthzResponse(
+            allow=True,
+            reason="allow",
+            decision_id=str(decision.decision_id),
+            policy_revision=decision.policy_revision,
+            correlation_id=str(decision.correlation_id),
+        )
 
 
 class ServiceAuthenticationRequired(PermissionError):
@@ -311,6 +458,7 @@ def build_skgateway_authz_router(
     facts_resolver: SkGatewayFactsResolver,
     evaluator: SkGatewayAuthzEvaluator,
     service_authenticator: SkGatewayServiceAuthenticator,
+    protected_route: ProtectedRouteDependency,
     service_identity: str,
 ) -> APIRouter:
     """Build the internal decision router around a canonical evaluator.
@@ -329,12 +477,18 @@ def build_skgateway_authz_router(
         response_model=SkGatewayAuthzResponse,
         response_model_exclude_none=True,
     )
-    def decide(
+    async def decide(
+        request: Request,
         payload: SkGatewayAuthzRequest,
-        authorization: str | None = Header(default=None),
+        service_authorization: str | None = Header(
+            default=None,
+            alias="X-SKLegal-Service-Authorization",
+        ),
     ) -> SkGatewayAuthzResponse:
         try:
-            authenticated_identity = service_authenticator.authenticate(authorization)
+            authenticated_identity = service_authenticator.authenticate(
+                service_authorization
+            )
         except ServiceAuthenticationRequired:
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
@@ -361,6 +515,7 @@ def build_skgateway_authz_router(
                 detail={"code": "capability_denied"},
             )
         try:
+            authorized = await protected_route(request)
             trusted = facts_resolver.resolve(payload)
             if trusted.capability != "skgateway.infer":
                 raise ValueError("trusted capability mismatch")
@@ -369,7 +524,10 @@ def build_skgateway_authz_router(
                 capability=trusted.capability,
                 resource=trusted.resource,
                 context=trusted.context,
+                authorized=authorized,
             )
+        except HTTPException:
+            raise
         except Exception as exc:
             del exc
             raise HTTPException(

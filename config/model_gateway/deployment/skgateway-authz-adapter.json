@@ -6,6 +6,7 @@
   "bind": "loopback-only",
   "service_identity": "capauth:sklegal-model-gateway@chiap01.skworld",
   "service_secret_reference": "vault:sklegal/skgateway/authz-service-token",
+  "service_header": "X-SKLegal-Service-Authorization",
   "capability": "skgateway.infer",
   "transport": "authenticated-local-http",
   "fail_closed": true,
