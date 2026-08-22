@@ -5,7 +5,12 @@ from __future__ import annotations
 import hashlib
 from dataclasses import dataclass
 
-from sklegal_connectors import Action, ApprovalBinding, CapabilityVerifier, SimulationRegistry
+from sklegal_connectors import (
+    Action,
+    ApprovalBinding,
+    CapabilityVerifier,
+    SimulationRegistry,
+)
 
 
 def _sha(value: str) -> str:
@@ -60,13 +65,20 @@ class ClientCommunicationConnector:
             artifact_sha256=artifact_sha256,
             destination_sha256=destination_sha256,
         )
-        action = action.validate(artifact_sha256=artifact_sha256).approve(
-            ApprovalBinding(action_id, artifact_id, artifact_version, artifact_sha256)
-        ).queue(
-            destination_sha256=destination_sha256,
-            capability_ref=capability_ref,
-            capability_verifier=capability_verifier,
-        ).dispatch()
+        action = (
+            action.validate(artifact_sha256=artifact_sha256)
+            .approve(
+                ApprovalBinding(
+                    action_id, artifact_id, artifact_version, artifact_sha256
+                )
+            )
+            .queue(
+                destination_sha256=destination_sha256,
+                capability_ref=capability_ref,
+                capability_verifier=capability_verifier,
+            )
+            .dispatch()
+        )
         simulation_receipt = self._registry.dispatch(action)
         action = action.verify_receipt(simulation_receipt)
         return action, CommunicationReceipt(

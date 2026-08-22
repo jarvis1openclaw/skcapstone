@@ -13,10 +13,15 @@ class Verifier:
 class ClientCommunicationTests(unittest.TestCase):
     def _kwargs(self):
         return dict(
-            tenant_id="tenant-1", matter_id="matter-1", action_id="message-1",
-            artifact_id="message-draft", artifact_version=3,
-            message="Approved status update", recipient="client@example.test",
-            privilege_label="attorney-client", capability_ref="cap:client-communication",
+            tenant_id="tenant-1",
+            matter_id="matter-1",
+            action_id="message-1",
+            artifact_id="message-draft",
+            artifact_version=3,
+            message="Approved status update",
+            recipient="client@example.test",
+            privilege_label="attorney-client",
+            capability_ref="cap:client-communication",
             capability_verifier=Verifier(),
         )
 

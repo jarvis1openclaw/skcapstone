@@ -25,12 +25,14 @@ class PinnedRecord(Protocol):
     frontmatter: Mapping[str, Any]
     body: str
     pin: Any
+    registry_pin: Any
 
 
 class PinnedPacket(Protocol):
     packet_version: int
     facts_pin: Any
     facts: Mapping[str, Any]
+    review_pin: Any | None
 
 
 def _sha256(value: bytes) -> str:
@@ -245,8 +247,8 @@ class PilotImporter:
                     current_review_baseline=False,
                 )
             )
-            if getattr(packet, "review_pin", None) is not None:
-                review_pin = packet.review_pin
+            review_pin = packet.review_pin
+            if review_pin is not None:
                 source_files[_pin_path(review_pin)] = LegacySourceFile(
                     relative_path=_pin_path(review_pin),
                     content_sha256=_pin_hash(review_pin),

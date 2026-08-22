@@ -3,9 +3,9 @@
 from __future__ import annotations
 
 import hashlib
+from collections.abc import Iterable
 from dataclasses import dataclass
 from datetime import datetime
-from typing import Iterable
 
 from sklegal_connectors.base import (
     Action,
@@ -39,18 +39,29 @@ class CalendarEvent:
         if self.version < 1 or self.ends_at <= self.starts_at:
             raise ConnectorInvariantError("calendar event interval is invalid")
         if self.starts_at.tzinfo is None or self.ends_at.tzinfo is None:
-            raise ConnectorInvariantError("calendar event timestamps must be timezone-aware")
+            raise ConnectorInvariantError(
+                "calendar event timestamps must be timezone-aware"
+            )
 
     @property
     def digest(self) -> str:
         return _digest(
-            "sklegal-calendar-event-v1", self.event_id, self.calendar_id,
-            self.summary, self.starts_at.isoformat(), self.ends_at.isoformat(),
-            self.timezone, str(self.version),
+            "sklegal-calendar-event-v1",
+            self.event_id,
+            self.calendar_id,
+            self.summary,
+            self.starts_at.isoformat(),
+            self.ends_at.isoformat(),
+            self.timezone,
+            str(self.version),
         )
 
     def overlaps(self, other: CalendarEvent) -> bool:
-        return self.calendar_id == other.calendar_id and self.starts_at < other.ends_at and other.starts_at < self.ends_at
+        return (
+            self.calendar_id == other.calendar_id
+            and self.starts_at < other.ends_at
+            and other.starts_at < self.ends_at
+        )
 
 
 @dataclass(frozen=True, slots=True)
@@ -79,15 +90,23 @@ class CalendarConnector:
         self._existing_events = tuple(existing_events)
 
     def conflicts(self, event: CalendarEvent) -> tuple[CalendarEvent, ...]:
-        return tuple(existing for existing in self._existing_events if existing.event_id != event.event_id and event.overlaps(existing))
+        return tuple(
+            existing
+            for existing in self._existing_events
+            if existing.event_id != event.event_id and event.overlaps(existing)
+        )
 
     def validate(self, action: Action, event: CalendarEvent) -> Action:
         if action.connector != self.connector_name:
             raise ConnectorInvariantError("action is not a calendar action")
         if action.artifact_sha256 != event.digest:
-            raise ConnectorInvariantError("calendar action is bound to another event version")
+            raise ConnectorInvariantError(
+                "calendar action is bound to another event version"
+            )
         if self.conflicts(event):
-            raise ConnectorInvariantError("calendar event conflicts with an existing event")
+            raise ConnectorInvariantError(
+                "calendar event conflicts with an existing event"
+            )
         if action.status is ActionStatus.APPROVED:
             return action
         if action.status is not ActionStatus.DRAFT:
@@ -106,7 +125,9 @@ class CalendarConnector:
 
         validated = self.validate(action, event)
         if validated.approval is None:
-            raise ConnectorInvariantError("calendar action requires exact-version approval")
+            raise ConnectorInvariantError(
+                "calendar action requires exact-version approval"
+            )
         queued = validated.queue(
             destination_sha256=validated.destination_sha256,
             capability_ref=capability_ref,

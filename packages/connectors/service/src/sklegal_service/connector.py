@@ -5,7 +5,12 @@ from __future__ import annotations
 import hashlib
 from dataclasses import dataclass
 
-from sklegal_connectors import Action, ApprovalBinding, CapabilityVerifier, SimulationRegistry
+from sklegal_connectors import (
+    Action,
+    ApprovalBinding,
+    CapabilityVerifier,
+    SimulationRegistry,
+)
 
 
 def _sha(value: str) -> str:
@@ -55,7 +60,9 @@ class ServiceMailingConnector:
     ) -> tuple[Action, ServiceReceipt]:
         normalized = " ".join(address.split())
         if not normalized or normalized.count(",") < 2:
-            raise ValueError("service destination requires street, locality, and region")
+            raise ValueError(
+                "service destination requires street, locality, and region"
+            )
         artifact_sha256 = _sha(artifact)
         destination_sha256 = _sha(normalized)
         action = Action(
@@ -68,16 +75,25 @@ class ServiceMailingConnector:
             artifact_sha256=artifact_sha256,
             destination_sha256=destination_sha256,
         )
-        action = action.validate(artifact_sha256=artifact_sha256).approve(
-            ApprovalBinding(action_id, artifact_id, artifact_version, artifact_sha256)
-        ).queue(
-            destination_sha256=destination_sha256,
-            capability_ref=capability_ref,
-            capability_verifier=capability_verifier,
-        ).dispatch()
+        action = (
+            action.validate(artifact_sha256=artifact_sha256)
+            .approve(
+                ApprovalBinding(
+                    action_id, artifact_id, artifact_version, artifact_sha256
+                )
+            )
+            .queue(
+                destination_sha256=destination_sha256,
+                capability_ref=capability_ref,
+                capability_verifier=capability_verifier,
+            )
+            .dispatch()
+        )
         simulation_receipt = self._registry.dispatch(action)
         action = action.verify_receipt(simulation_receipt)
-        verification = AddressVerification(normalized, True, _sha("address:" + normalized))
+        verification = AddressVerification(
+            normalized, True, _sha("address:" + normalized)
+        )
         affidavit_sha256 = _sha("affidavit:" + action.action_id + ":" + normalized)
         receipt = ServiceReceipt(
             simulation_receipt.receipt_id,

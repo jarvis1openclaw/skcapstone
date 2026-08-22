@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from datetime import UTC, date, datetime, time, timedelta
+from datetime import UTC, datetime, timedelta
 from enum import StrEnum
 from hashlib import sha256
 from typing import Self
@@ -62,7 +62,9 @@ class DeadlineCandidate(StrictModel):
     governing_rule_reference: str
     governing_rule_version: str
     source_reference: str
-    status: str = Field(default="candidate", pattern="^(candidate|operative|superseded)$")
+    status: str = Field(
+        default="candidate", pattern="^(candidate|operative|superseded)$"
+    )
     reviewer: str | None = None
     reviewed_at: datetime | None = None
 
@@ -74,7 +76,11 @@ class DeadlineCandidate(StrictModel):
         if reviewed_at.tzinfo is None or reviewed_at.utcoffset() is None:
             raise WorkflowError("reviewed_at must be timezone-aware")
         return self.model_copy(
-            update={"status": "operative", "reviewer": reviewer, "reviewed_at": reviewed_at}
+            update={
+                "status": "operative",
+                "reviewer": reviewer,
+                "reviewed_at": reviewed_at,
+            }
         )
 
 
@@ -116,17 +122,31 @@ class CalendarEvent(StrictModel):
         return self.model_copy(update={"state": CalendarState.APPROVED})
 
     def to_ics(self) -> str:
-        if self.state not in {CalendarState.APPROVED, CalendarState.QUEUED, CalendarState.DISPATCHED, CalendarState.RECEIPT_VERIFIED}:
+        if self.state not in {
+            CalendarState.APPROVED,
+            CalendarState.QUEUED,
+            CalendarState.DISPATCHED,
+            CalendarState.RECEIPT_VERIFIED,
+        }:
             raise WorkflowError("only an approved event can be exported")
         zone = ZoneInfo(self.timezone)
         start = self.starts_at.astimezone(zone).strftime("%Y%m%dT%H%M%S")
         end = self.ends_at.astimezone(zone).strftime("%Y%m%dT%H%M%S")
-        return "\r\n".join((
-            "BEGIN:VCALENDAR", "VERSION:2.0", "PRODID:-//SKLegal//Calendar//EN",
-            "BEGIN:VEVENT", f"UID:{self.event_id}", f"DTSTART;TZID={self.timezone}:{start}",
-            f"DTEND;TZID={self.timezone}:{end}", f"SUMMARY:{self.summary}",
-            "END:VEVENT", "END:VCALENDAR", "",
-        ))
+        return "\r\n".join(
+            (
+                "BEGIN:VCALENDAR",
+                "VERSION:2.0",
+                "PRODID:-//SKLegal//Calendar//EN",
+                "BEGIN:VEVENT",
+                f"UID:{self.event_id}",
+                f"DTSTART;TZID={self.timezone}:{start}",
+                f"DTEND;TZID={self.timezone}:{end}",
+                f"SUMMARY:{self.summary}",
+                "END:VEVENT",
+                "END:VCALENDAR",
+                "",
+            )
+        )
 
 
 class CalendarReceipt(StrictModel):
@@ -163,7 +183,8 @@ class CalendarSimulation:
         return (
             receipt.event_id == event.event_id
             and receipt.idempotency_key == event.idempotency_key
-            and receipt.receipt_sha256 == sha256(event.to_ics().encode("utf-8")).hexdigest()
+            and receipt.receipt_sha256
+            == sha256(event.to_ics().encode("utf-8")).hexdigest()
         )
 
 
@@ -180,7 +201,9 @@ class DeterministicDeadlineCalculator:
             current += timedelta(days=1)
             if trigger.day_type == "calendar" or current.weekday() < 5:
                 remaining -= 1
-        due = datetime.combine(current, local.timetz().replace(tzinfo=None), tzinfo=local_zone).astimezone(UTC)
+        due = datetime.combine(
+            current, local.timetz().replace(tzinfo=None), tzinfo=local_zone
+        ).astimezone(UTC)
         return DeadlineCandidate(
             trigger_id=trigger.trigger_id,
             candidate_due_at=due,
