@@ -46,13 +46,22 @@ import {
   SYNTHETIC_CLAIM_ID,
   SYNTHETIC_MISMATCH_DEFECT_TEXT,
   SYNTHETIC_REVIEWER_ID,
+  syntheticChallengedClaim,
   syntheticClaimLedger,
 } from "../testing/claims";
 import type { CorpusSpan } from "../api/types";
 import {
+  contrastRatio,
+  WCAG_AA_LARGE_TEXT,
+  WCAG_AA_NORMAL_TEXT,
+} from "../design/contrast";
+import { color } from "../design/tokens";
+import {
+  claimRecordGaps,
   ClaimLedgerView,
   CorpusResearchView,
   CorpusSpanView,
+  reviewStepIndexForKey,
 } from "./CorpusPage";
 
 function render(
@@ -220,7 +229,7 @@ describe("claim ledger", () => {
     expect(html).toContain("Support");
     expect(html).toContain("Counter-support");
     expect(html).toContain("Authority applicability factors");
-    expect(html).toContain("Blind challenge history");
+    expect(html).toContain("Blind challenge workflow");
     expect(html).toContain("Reviewer history");
     expect(html).toContain("Claim state transitions");
     expect(html).toContain("Support failed verification");
@@ -275,5 +284,134 @@ describe("claim ledger", () => {
     expect(html).toContain('role="status"');
     expect(html).toContain("There is no claim answer to review.");
     expect(html).not.toContain(`id="claim-${SYNTHETIC_CLAIM_ID}"`);
+  });
+});
+
+describe("blind challenge review workflow", () => {
+  it("renders each challenge as a keyboard-operable disclosure with blindness checks", () => {
+    const html = renderStatic(
+      <ClaimLedgerView ledger={syntheticClaimLedger()} />,
+    );
+    expect(html).toContain('<details open=""');
+    expect(html).toContain("<summary>Challenge 1: defect_found</summary>");
+    expect(html).toContain("Independence check");
+    expect(html).toContain("Conclusion exposure");
+    expect(html).toContain("Challenger did not see the challenged conclusion");
+    expect(html).toContain("Challenge records are read-only");
+  });
+
+  it("preserves a compromised challenge as an explicit alert", () => {
+    const compromised = {
+      ...syntheticChallengedClaim,
+      challenges: [
+        {
+          ...syntheticChallengedClaim.challenges[0]!,
+          independence: "not_blind" as const,
+          sawChallengedConclusion: true,
+        },
+      ],
+    };
+    const html = renderStatic(
+      <ClaimLedgerView
+        ledger={syntheticClaimLedger({ claims: [compromised] })}
+      />,
+    );
+    expect(html).toContain("Challenger saw the challenged conclusion");
+    expect(html).toContain(
+      "This record does not satisfy a blind, independent challenge.",
+    );
+    expect(html).toContain('role="alert"');
+  });
+});
+
+describe("record gaps and traceability", () => {
+  const incompleteClaim = {
+    ...syntheticChallengedClaim,
+    support: [],
+    counterSupport: [],
+    applicability: [],
+    challenges: [],
+    reviewHistory: [],
+    gate: null,
+    stateTransitions: [],
+  };
+
+  it("derives every missing review record without changing the claim", () => {
+    expect(claimRecordGaps(incompleteClaim).map((gap) => gap.key)).toEqual([
+      "support_missing",
+      "applicability_missing",
+      "blind_challenge_missing",
+      "human_review_missing",
+      "claim_gate_missing",
+      "state_history_missing",
+    ]);
+  });
+
+  it("surfaces record gaps and withholds an untraceable summary-only answer", () => {
+    const html = renderStatic(
+      <ClaimLedgerView
+        ledger={syntheticClaimLedger({ claims: [incompleteClaim] })}
+      />,
+    );
+    expect(html).toContain("Untraceable claim statement withheld");
+    expect(html).toContain(
+      "this interface will not render a summary-only claim answer",
+    );
+    expect(html).not.toContain(syntheticChallengedClaim.statement);
+    expect(html).toContain("support_missing");
+    expect(html).toContain("blind_challenge_missing");
+    expect(html).toContain("6 record gaps");
+  });
+});
+
+describe("full keyboard review path", () => {
+  it("links all ordered review steps to labelled focus targets", () => {
+    const html = renderStatic(
+      <ClaimLedgerView ledger={syntheticClaimLedger()} />,
+    );
+    const steps = [
+      "summary",
+      "support",
+      "counter-support",
+      "applicability",
+      "challenges",
+      "record-gaps",
+      "reviewer-history",
+      "state-transitions",
+    ];
+    expect(html).toContain('aria-label="Claim keyboard review path"');
+    expect(html).toContain("Use Tab or the arrow keys");
+    for (const step of steps) {
+      const id = `claim-${SYNTHETIC_CLAIM_ID}-${step}`;
+      expect(html).toContain(`href="#${id}"`);
+      expect(html).toContain(`id="${id}"`);
+    }
+    expect(html.match(/data-claim-review-step="true"/g)).toHaveLength(16);
+    expect(html.match(/tabindex="-1"/g)?.length).toBeGreaterThanOrEqual(16);
+  });
+
+  it("supports arrows, Home, End, wrapping, and ignores unrelated keys", () => {
+    expect(reviewStepIndexForKey("ArrowRight", 2, 8)).toBe(3);
+    expect(reviewStepIndexForKey("ArrowDown", 7, 8)).toBe(0);
+    expect(reviewStepIndexForKey("ArrowLeft", 0, 8)).toBe(7);
+    expect(reviewStepIndexForKey("ArrowUp", 3, 8)).toBe(2);
+    expect(reviewStepIndexForKey("Home", 5, 8)).toBe(0);
+    expect(reviewStepIndexForKey("End", 1, 8)).toBe(7);
+    expect(reviewStepIndexForKey("Enter", 1, 8)).toBeNull();
+    expect(reviewStepIndexForKey("ArrowRight", 0, 0)).toBeNull();
+  });
+});
+
+describe("research review WCAG AA checks", () => {
+  it("keeps review text, links, and focus indication above WCAG thresholds", () => {
+    expect(contrastRatio(color.ink, color.surface)).toBeGreaterThanOrEqual(
+      WCAG_AA_NORMAL_TEXT,
+    );
+    expect(contrastRatio(color.copper, color.parchment)).toBeGreaterThanOrEqual(
+      WCAG_AA_NORMAL_TEXT,
+    );
+    expect(
+      contrastRatio(color.focusRing, color.parchment),
+    ).toBeGreaterThanOrEqual(WCAG_AA_LARGE_TEXT);
   });
 });
