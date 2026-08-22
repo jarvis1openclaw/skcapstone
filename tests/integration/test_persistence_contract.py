@@ -11,8 +11,10 @@ import time
 import unittest
 import uuid
 from collections.abc import Mapping, Sequence
-from datetime import UTC, datetime
+from concurrent.futures import ThreadPoolExecutor
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
+from threading import Barrier
 from typing import Any
 from uuid import UUID
 
@@ -26,6 +28,13 @@ from sklegal_audit import (
     verify_event_chain,
 )
 from sklegal_audit.ledger import _canonical_timestamp
+from sklegal_capauth import (
+    PostgresPrincipalPolicyBackend,
+    PostgresReplayBackend,
+    PostgresRevocationBackend,
+    PrincipalContext,
+    PrincipalType,
+)
 from sklegal_domain import EffectiveInterval, Forum
 from sklegal_domain.base import DomainEntity
 from sklegal_persistence import (
@@ -61,6 +70,16 @@ MIGRATION_TOTAL = len(MIGRATION_FILES)
 AUDIT_MIGRATION_STEPS = MIGRATION_TOTAL - MIGRATION_FILES.index(
     "0007_append_only_audit_outbox.sql"
 )
+CAPAUTH_MIGRATION_FILES = (
+    "0008_capauth_state.sql",
+    "0009_capauth_principal_snapshot.sql",
+    "0010_principal_authentication_subject.sql",
+    "0011_capauth_runtime_schema_usage.sql",
+    "0012_capauth_runtime_type_usage.sql",
+)
+CAPAUTH_RUNTIME_ROLE = "sklegal_runtime"
+CAPAUTH_RUNTIME_PRINCIPAL = "10000000-0000-4000-8000-000000000013"
+CAPAUTH_RUNTIME_SUBJECT = "synthetic:service:capauth-runtime"
 FIXTURE = REPO_ROOT / "tests" / "fixtures" / "persistence" / "synthetic-tenants.json"
 PARITY = REPO_ROOT / "tests" / "fixtures" / "persistence" / "domain-table-parity.json"
 POSTGRES_IMAGE = (
@@ -101,6 +120,8 @@ class PersistenceContractTests(unittest.TestCase):
                 cls.container,
                 "--label",
                 "com.sklegal.test-card=SKL-S1-02",
+                "--label",
+                "com.sklegal.test-card-capauth=SKL-S1-08",
                 "--network",
                 "none",
                 "--tmpfs",
@@ -177,7 +198,7 @@ class PersistenceContractTests(unittest.TestCase):
         second_up = cls._migrate("up").stdout.strip()
         cls.migration_evidence = (first_up, down, second_up)
         step_evidence: list[tuple[int, str, str]] = []
-        for steps in range(1, 8):
+        for steps in range(1, AUDIT_MIGRATION_STEPS + 1):
             reverted = cls._migrate("down", "--steps", str(steps)).stdout.strip()
             reapplied = cls._migrate("up").stdout.strip()
             step_evidence.append((steps, reverted, reapplied))
@@ -243,6 +264,34 @@ class PersistenceContractTests(unittest.TestCase):
                 f"psql failed for role {user}: {result.stderr.strip()}"
             )
         return result
+
+    @classmethod
+    def _capauth_execute(cls, sql: str, params: tuple[object, ...]) -> object:
+        """Execute the driver-neutral adapter contract against disposable Postgres."""
+
+        def literal(value: object) -> str:
+            if isinstance(value, UUID):
+                return f"'{value}'::uuid"
+            if isinstance(value, datetime):
+                return f"'{value.isoformat()}'::timestamptz"
+            if isinstance(value, str):
+                return "'" + value.replace("'", "''") + "'"
+            if isinstance(value, list) and all(isinstance(item, str) for item in value):
+                items = ",".join(literal(item) for item in value)
+                return f"ARRAY[{items}]::sklegal_legal.sha256_digest[]"
+            raise TypeError(f"unsupported CapAuth SQL parameter: {type(value)!r}")
+
+        rendered = sql
+        for param in params:
+            rendered = rendered.replace("%s", literal(param), 1)
+        if "%s" in rendered:
+            raise ValueError("CapAuth SQL parameter count is incomplete")
+        output = cls._psql(CAPAUTH_RUNTIME_ROLE, rendered).stdout.strip()
+        if "prune_expired_capability_replay_reservations" in sql:
+            return (int(output),)
+        if "reserve_capability" in sql:
+            return (output == "t",)
+        return (output,)
 
     @classmethod
     def _psql_in_database(
@@ -809,12 +858,29 @@ class PersistenceContractTests(unittest.TestCase):
                  'human', 'Synthetic Alpha Two'),
                 ('{value["principal_beta_one"]}', '{value["tenant_beta"]}',
                  'human', 'Synthetic Beta One');
+            INSERT INTO sklegal_identity.principals
+                (id, tenant_id, principal_kind, display_name,
+                 authentication_subject)
+            VALUES
+                ('{CAPAUTH_RUNTIME_PRINCIPAL}', '{value["tenant_alpha"]}',
+                 'service', 'Synthetic CapAuth Runtime',
+                 '{CAPAUTH_RUNTIME_SUBJECT}');
             INSERT INTO sklegal_identity.tenant_memberships
                 (tenant_id, principal_id, membership_role)
             VALUES
                 ('{value["tenant_alpha"]}', '{value["principal_alpha_one"]}', 'member'),
                 ('{value["tenant_alpha"]}', '{value["principal_alpha_two"]}', 'member'),
                 ('{value["tenant_beta"]}', '{value["principal_beta_one"]}', 'member');
+            INSERT INTO sklegal_identity.tenant_memberships
+                (tenant_id, principal_id, membership_role)
+            VALUES
+                ('{value["tenant_alpha"]}', '{CAPAUTH_RUNTIME_PRINCIPAL}',
+                 'member');
+            INSERT INTO sklegal_identity.database_role_bindings
+                (database_role, tenant_id, principal_id)
+            VALUES
+                ('{CAPAUTH_RUNTIME_ROLE}', '{value["tenant_alpha"]}',
+                 '{CAPAUTH_RUNTIME_PRINCIPAL}');
             INSERT INTO sklegal_legal.clients
                 (id, tenant_id, display_name, client_kind, status)
             VALUES
@@ -897,7 +963,7 @@ class PersistenceContractTests(unittest.TestCase):
                     f"reverted {steps} migration(s)",
                     f"applied {steps} migration(s)",
                 )
-                for steps in range(1, 8)
+                for steps in range(1, AUDIT_MIGRATION_STEPS + 1)
             ),
             self.migration_step_evidence,
         )
@@ -953,6 +1019,153 @@ class PersistenceContractTests(unittest.TestCase):
             """,
         )
         self.assertEqual("0", owners.stdout.strip())
+
+    def test_00_capauth_migrations_and_security_definer_grants_are_live(self) -> None:
+        applied = self._psql(
+            "postgres",
+            """
+            SELECT string_agg(file, ',' ORDER BY file)
+            FROM sklegal_migrations.schema_migrations
+            WHERE file >= '0008_' AND file <= '0012_zzzz';
+            """,
+        ).stdout.strip()
+        self.assertEqual(",".join(CAPAUTH_MIGRATION_FILES), applied)
+        functions = self._psql(
+            "postgres",
+            f"""
+            SELECT string_agg(
+                procedure.proname || ':' || procedure.prosecdef || ':' ||
+                has_function_privilege(
+                    '{CAPAUTH_RUNTIME_ROLE}', procedure.oid, 'EXECUTE'
+                ), ',' ORDER BY procedure.proname
+            )
+            FROM pg_proc AS procedure
+            JOIN pg_namespace AS namespace
+              ON namespace.oid = procedure.pronamespace
+            WHERE namespace.nspname = 'sklegal_identity'
+              AND procedure.proname IN (
+                  'capability_principal_snapshot',
+                  'capability_revocation_snapshot',
+                  'reserve_capability',
+                  'revoke_capability'
+              );
+            """,
+        ).stdout.strip()
+        self.assertEqual(
+            "capability_principal_snapshot:true:true,"
+            "capability_revocation_snapshot:true:true,"
+            "reserve_capability:true:true,revoke_capability:true:true",
+            functions,
+        )
+        schema_usage = self._psql(
+            "postgres",
+            f"""
+            SELECT has_schema_privilege(
+                       '{CAPAUTH_RUNTIME_ROLE}', 'sklegal_identity', 'USAGE'
+                   ),
+                   has_schema_privilege(
+                       '{CAPAUTH_RUNTIME_ROLE}', 'sklegal_legal', 'USAGE'
+                   );
+            """,
+        ).stdout.strip()
+        self.assertEqual("t|t", schema_usage)
+
+    def test_00_capauth_principal_snapshot_tracks_subject_rebinding(self) -> None:
+        tenant_id = UUID(self.fixture["tenant_alpha"])
+        principal_id = UUID(CAPAUTH_RUNTIME_PRINCIPAL)
+        initial = PrincipalContext(
+            principal_id=principal_id,
+            principal_type=PrincipalType.SERVICE,
+            subject=CAPAUTH_RUNTIME_SUBJECT,
+            tenant_id=tenant_id,
+        )
+        backend = PostgresPrincipalPolicyBackend(self._capauth_execute)
+        before = backend.snapshot(initial)
+        self.assertTrue(before.active)
+        self.assertEqual(initial, before.principal)
+
+        rebound_subject = "synthetic:service:capauth-runtime-rebound"
+        self._psql(
+            "postgres",
+            f"""
+            UPDATE sklegal_identity.principals
+            SET authentication_subject = '{rebound_subject}',
+                version = version + 1
+            WHERE tenant_id = '{tenant_id}' AND id = '{principal_id}';
+            """,
+        )
+        after = backend.snapshot(initial)
+        self.assertNotEqual(before.revision, after.revision)
+        self.assertNotEqual(initial, after.principal)
+        self.assertEqual(rebound_subject, after.principal.subject)
+
+    def test_00_capauth_revocation_persists_across_runtime_sessions(self) -> None:
+        tenant_id = UUID(self.fixture["tenant_alpha"])
+        digest = "a8" * 32
+        empty = PostgresRevocationBackend(
+            self._capauth_execute, tenant_id=tenant_id
+        ).snapshot((digest,))
+        self.assertEqual(frozenset(), empty.revoked_credential_digests)
+        self._psql(
+            CAPAUTH_RUNTIME_ROLE,
+            f"""
+            SELECT sklegal_identity.revoke_capability(
+                '{tenant_id}', '{digest}', '{CAPAUTH_RUNTIME_PRINCIPAL}',
+                'Synthetic S1-08 integration revocation'
+            );
+            """,
+        )
+        persisted = PostgresRevocationBackend(
+            self._capauth_execute, tenant_id=tenant_id
+        ).snapshot((digest,))
+        self.assertEqual(frozenset({digest}), persisted.revoked_credential_digests)
+        self.assertNotEqual(empty.revision, persisted.revision)
+        self.assertEqual(
+            "1",
+            self._psql(
+                "postgres",
+                f"""
+                SELECT count(*)
+                FROM sklegal_identity.capability_revocations
+                WHERE tenant_id = '{tenant_id}'
+                  AND credential_digest = '{digest}';
+                """,
+            ).stdout.strip(),
+        )
+
+    def test_00_capauth_concurrent_replay_reservation_is_atomic(self) -> None:
+        tenant_id = UUID(self.fixture["tenant_alpha"])
+        digest = "b9" * 32
+        decision_ids = tuple(uuid.uuid4() for _ in range(8))
+        expires_at = datetime.now(UTC) + timedelta(minutes=5)
+        barrier = Barrier(len(decision_ids))
+
+        def reserve(decision_id: UUID) -> bool:
+            barrier.wait(timeout=10)
+            return PostgresReplayBackend(
+                self._capauth_execute, tenant_id=tenant_id
+            ).reserve(
+                credential_digest=digest,
+                decision_id=str(decision_id),
+                expires_at=expires_at,
+            )
+
+        with ThreadPoolExecutor(max_workers=len(decision_ids)) as executor:
+            outcomes = tuple(executor.map(reserve, decision_ids))
+        self.assertEqual(1, outcomes.count(True))
+        self.assertEqual(len(decision_ids) - 1, outcomes.count(False))
+        stored = self._psql(
+            "postgres",
+            f"""
+            SELECT count(*) || ':' || min(decision_id::text)
+            FROM sklegal_identity.capability_replay_reservations
+            WHERE tenant_id = '{tenant_id}'
+              AND credential_digest = '{digest}';
+            """,
+        ).stdout.strip()
+        count, stored_decision_id = stored.split(":", maxsplit=1)
+        self.assertEqual("1", count)
+        self.assertIn(UUID(stored_decision_id), decision_ids)
 
     def test_00_migrator_exact_profile_rejects_every_drift_before_bootstrap(
         self,
