@@ -1,0 +1,33 @@
+{
+  "schema": "sklegal-transport-profile-store/v1",
+  "purpose": "Deployment-only transport bindings behind logical SKLegal route IDs. Switching direct Qwen to SKGateway changes this file only, never agent specs, proposal schemas, Matter logic, or legal gates. Endpoint base addresses are environment variable names; literals never appear here. Provider API keys live only in SKGateway configuration as environment variable names and are never stored in SKLegal.",
+  "profiles": [
+    {
+      "profile_id": "chiap08.direct-qwen.v1",
+      "kind": "direct_qwen",
+      "enabled": true,
+      "config_sha256": "21b4b2bf38b7cf1b002b207b6252052de45c87374c30169723caaa6adf2face6",
+      "endpoint_reference": "SKLEGAL_QWEN_DIRECT_ENDPOINT",
+      "notes": "Approved direct chiap08 Qwen OpenAI-compatible service. Secret-free local transport. Initial deployment and tested rollback binding."
+    },
+    {
+      "profile_id": "chiap08.skgateway-chat.v1",
+      "kind": "skgateway_chat",
+      "enabled": false,
+      "config_sha256": "012cb639fc9cb3c3c7e39e5e3cad19bc780c11aac133a07f4315f1ce33249408",
+      "endpoint_reference": "SKLEGAL_SKGATEWAY_ENDPOINT",
+      "service_identity": "capauth:sklegal-model-gateway@chiap08.skworld",
+      "capability_scope": "skgateway.infer",
+      "notes": "SKGateway /v1/chat/completions behind CapAuth. Disabled until the live-path control gate passes on the exact deployed commit and a human approves activation."
+    },
+    {
+      "profile_id": "chiap01.openai-responses.v1",
+      "kind": "openai_responses",
+      "enabled": true,
+      "config_sha256": "b0c562c20f51599dfc640a7016a1670dc4602201a10590f49c59a5be4bc231b5",
+      "endpoint_reference": "SKLEGAL_OPENAI_ENDPOINT",
+      "secret_reference": "vault:sklegal/openai/platform-api-key",
+      "notes": "Direct OpenAI Platform Responses API adapter retained for routes that require that API until explicit SKGateway Responses compatibility exists."
+    }
+  ]
+}

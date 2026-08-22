@@ -9,7 +9,7 @@ reference through a SecretResolver at call time and never logs the value.
 from __future__ import annotations
 
 from collections.abc import Mapping
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Any, Protocol
 
 from .errors import (
@@ -23,7 +23,11 @@ from .models import (
     ModelPin,
     ModelRouteRecord,
     Provider,
+    ProviderExecutionContext,
     TokenUsage,
+    TransportEvidence,
+    TransportKind,
+    TransportProfile,
 )
 
 
@@ -35,6 +39,10 @@ class ProviderCall:
     prompt: str
     output_schema: Mapping[str, Any]
     cancel_token: CancellationToken
+    context: ProviderExecutionContext | None = None
+    capability_ref: str | None = None
+    transport_profile: TransportProfile | None = None
+    transport_evidence: TransportEvidence | None = field(default=None, repr=False)
 
 
 @dataclass(frozen=True, slots=True)
@@ -45,12 +53,14 @@ class ProviderResult:
     model_revision: str
     provider_request_id: str | None
     usage: TokenUsage
+    transport: TransportEvidence | None = None
 
 
 class ModelProvider(Protocol):
     """Provider-neutral completion adapter."""
 
     provider: Provider
+    transport_kind: TransportKind
 
     def complete(self, call: ProviderCall) -> ProviderResult: ...
 
@@ -77,6 +87,7 @@ class QwenLocalProvider:
     """Adapter for the pinned local Qwen endpoint."""
 
     provider = Provider.QWEN_LOCAL
+    transport_kind = TransportKind.DIRECT_QWEN
 
     def __init__(self, transport: QwenTransport) -> None:
         self._transport = transport
@@ -152,6 +163,7 @@ class OpenAiResponsesProvider:
     """
 
     provider = Provider.OPENAI
+    transport_kind = TransportKind.OPENAI_RESPONSES
 
     def __init__(
         self,

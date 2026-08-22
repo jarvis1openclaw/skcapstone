@@ -11,6 +11,11 @@
     "qwen_local": "Local Qwen endpoint. Corpus content never leaves the local stack on this route.",
     "openai": "OpenAI Platform API with a secret-store API key and the Responses API with structured outputs. A consumer ChatGPT session or subscription is not an application credential."
   },
+  "transport_seam": {
+    "purpose": "Deployment-only transport bindings. A route may name a transport profile from config/model_gateway/deployment/transport-profiles.json; switching direct Qwen to SKGateway changes that binding only, never this logical contract.",
+    "capacity_domains": "config/model_gateway/deployment/capacity-policy.json",
+    "model_catalog": "config/model_gateway/deployment/model-catalog.json"
+  },
   "routes": [
     {
       "route_id": "qwen.corpus-summary.v1",
@@ -30,6 +35,73 @@
       "retry_class": "model",
       "egress_classification_ceiling": "highly_restricted",
       "max_concurrent": 4
+    },
+    {
+      "route_id": "qwen.corpus-summary.skgateway.v1",
+      "provider": "qwen_local",
+      "enabled": true,
+      "model": {
+        "name": "qwen3-32b",
+        "revision": "2025-04-28"
+      },
+      "prompt_template_id": "corpus-summary.v1",
+      "prompt_template_sha256": "61d4b53cd8121b3f4b76a90e459022f68e2b33eeb2093cf1b9db17d75ffc4cc4",
+      "output_schema_id": "sklegal.corpus-summary/v1",
+      "output_schema_sha256": "2743099233b9845f8b96e5dd6baab31a83daebaafb94c5721cd68c2afa34575d",
+      "context_token_budget": 24000,
+      "max_output_tokens": 2048,
+      "timeout_seconds": 120,
+      "retry_class": "model",
+      "egress_classification_ceiling": "highly_restricted",
+      "max_concurrent": 4,
+      "transport_profile_id": "chiap08.skgateway-chat.v1",
+      "capacity_domain_id": "qwen.chiap08.shared.v1",
+      "allowed_served_model_alias": "qwen3-32b"
+    },
+    {
+      "route_id": "qwen.corpus-summary.direct.v1",
+      "provider": "qwen_local",
+      "enabled": true,
+      "model": {
+        "name": "qwen3-32b",
+        "revision": "2025-04-28"
+      },
+      "prompt_template_id": "corpus-summary.v1",
+      "prompt_template_sha256": "61d4b53cd8121b3f4b76a90e459022f68e2b33eeb2093cf1b9db17d75ffc4cc4",
+      "output_schema_id": "sklegal.corpus-summary/v1",
+      "output_schema_sha256": "2743099233b9845f8b96e5dd6baab31a83daebaafb94c5721cd68c2afa34575d",
+      "context_token_budget": 24000,
+      "max_output_tokens": 2048,
+      "timeout_seconds": 120,
+      "retry_class": "model",
+      "egress_classification_ceiling": "highly_restricted",
+      "max_concurrent": 4,
+      "transport_profile_id": "chiap08.direct-qwen.v1",
+      "capacity_domain_id": "qwen.chiap08.shared.v1",
+      "allowed_served_model_alias": "qwen3-32b"
+    },
+    {
+      "route_id": "qwen.corpus-summary.bucket-xl.v1",
+      "provider": "qwen_local",
+      "enabled": false,
+      "model": {
+        "name": "qwen3-32b",
+        "revision": "2025-04-28"
+      },
+      "prompt_template_id": "corpus-summary.v1",
+      "prompt_template_sha256": "61d4b53cd8121b3f4b76a90e459022f68e2b33eeb2093cf1b9db17d75ffc4cc4",
+      "output_schema_id": "sklegal.corpus-summary/v1",
+      "output_schema_sha256": "2743099233b9845f8b96e5dd6baab31a83daebaafb94c5721cd68c2afa34575d",
+      "context_token_budget": 24000,
+      "max_output_tokens": 2048,
+      "timeout_seconds": 120,
+      "retry_class": "model",
+      "egress_classification_ceiling": "internal",
+      "max_concurrent": 4,
+      "transport_profile_id": "chiap08.skgateway-chat.v1",
+      "capacity_domain_id": "qwen.chiap08.shared.v1",
+      "workload_class": "XL",
+      "allowed_bucket_id": "bucket.xlarge.v1"
     },
     {
       "route_id": "openai.corpus-summary.v1",

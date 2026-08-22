@@ -1,0 +1,95 @@
+{
+  "schema": "sklegal-model-catalog/v1",
+  "purpose": "Exact Qwen request alias, shared four-slot capacity domain, workload buckets, served-model truth, and policy-approved free routes. Workload class expresses required task capability and risk; parameter size is separate metadata and never satisfies a workload class by itself.",
+  "generation": "2026-08-22.1",
+  "qwen_request_alias": "qwen3-32b",
+  "qwen_served_model": "Qwen3-32B-Q6-K-xlw-20250428",
+  "models": [
+    {
+      "model_id": "qwen3-32b.chiap08",
+      "served_model": "Qwen3-32B-Q6-K-xlw-20250428",
+      "revision": "2025-04-28",
+      "trust_zone": "sovereign_local",
+      "workload_classes": ["M", "L"],
+      "parameter_size": "32B",
+      "qualified": true,
+      "notes": "Local chiap08 operator model. Initial corpus analyst and default Matter strategist. Cost-free while retaining the local protected classification ceiling."
+    },
+    {
+      "model_id": "qwen3-14b.chiap08",
+      "served_model": "Qwen3-14B-Q6-K-20250428",
+      "revision": "2025-04-28",
+      "trust_zone": "sovereign_local",
+      "workload_classes": ["S"],
+      "parameter_size": "14B",
+      "qualified": true,
+      "notes": "Local sovereign member for small workload substitution."
+    },
+    {
+      "model_id": "qwen3-235b-gateway",
+      "served_model": "Qwen3-235B-A22B-20250729",
+      "revision": "2025-07-29",
+      "trust_zone": "internal",
+      "workload_classes": ["L", "XL"],
+      "parameter_size": "235B-A22B",
+      "qualified": true,
+      "notes": "Internal trust-zone member reachable only through SKGateway. Never eligible for confidential or stricter classifications."
+    },
+    {
+      "model_id": "gpt-4o-free-eval",
+      "served_model": "gpt-4o-2024-08-06",
+      "revision": "2024-08-06",
+      "trust_zone": "public",
+      "workload_classes": ["M"],
+      "parameter_size": "unknown",
+      "qualified": false,
+      "notes": "Free-provider optimization candidate. Public synthetic prompts only, pending per-model qualification."
+    }
+  ],
+  "buckets": [
+    {
+      "bucket_id": "bucket.small.v1",
+      "workload_class": "S",
+      "members": ["qwen3-14b.chiap08"],
+      "enabled": true
+    },
+    {
+      "bucket_id": "bucket.medium.v1",
+      "workload_class": "M",
+      "members": ["qwen3-32b.chiap08"],
+      "enabled": true
+    },
+    {
+      "bucket_id": "bucket.large.v1",
+      "workload_class": "L",
+      "members": ["qwen3-32b.chiap08", "qwen3-235b-gateway"],
+      "enabled": true
+    },
+    {
+      "bucket_id": "bucket.xlarge.v1",
+      "workload_class": "XL",
+      "members": ["qwen3-235b-gateway"],
+      "enabled": true
+    }
+  ],
+  "free_routes": [
+    {
+      "route_id": "free.local-qwen.v1",
+      "model_id": "qwen3-32b.chiap08",
+      "provider": "local",
+      "approved": true,
+      "max_classification": "highly_restricted",
+      "evaluation_ref": "docs/evidence/SKL-S3-10-SKGATEWAY-QUALIFICATION-2026-08-22.md",
+      "notes": "Local Qwen may be cost-free while retaining the local protected classification ceiling."
+    },
+    {
+      "route_id": "free.gpt-4o-eval.v1",
+      "model_id": "gpt-4o-free-eval",
+      "provider": "skgateway",
+      "approved": false,
+      "max_classification": "public",
+      "evaluation_ref": null,
+      "notes": "Remote free routes start at public content only and require per-model qualification before approval."
+    }
+  ]
+}

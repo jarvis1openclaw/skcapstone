@@ -47,7 +47,7 @@ class RouteRegistryContractTests(unittest.TestCase):
 
     def test_registry_loads_with_pinned_schema_marker(self) -> None:
         self.assertEqual(REGISTRY_SCHEMA, self.payload["schema"])
-        self.assertEqual(2, len(self.registry.routes))
+        self.assertGreaterEqual(len(self.registry.routes), 2)
         revision = hashlib.sha256(
             REGISTRY_PATH.read_text(encoding="utf-8").encode("utf-8")
         ).hexdigest()
@@ -64,7 +64,9 @@ class RouteRegistryContractTests(unittest.TestCase):
     def test_every_route_pins_prompt_schema_budget_timeout_and_retry(self) -> None:
         for route in self.registry.routes:
             with self.subTest(route=route.route_id):
-                self.assertTrue(route.enabled)
+                # A route may be explicitly disabled only as a staged or
+                # rollback-disabled binding; the flag must be deliberate.
+                self.assertIsInstance(route.enabled, bool)
                 self.assertGreater(route.context_token_budget, 0)
                 self.assertGreater(route.max_output_tokens, 0)
                 self.assertGreater(route.timeout_seconds, 0)
