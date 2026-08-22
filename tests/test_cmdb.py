@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import json
+
 import pytest
 
 from skcapstone import dashboard_cmdb as dc
@@ -11,6 +13,36 @@ from skcapstone.cmdb import CMDBManager, make_ci_id
 @pytest.fixture
 def home(tmp_path):
     return tmp_path
+
+
+def _declare_inventory(home):
+    """Write declared fleet/registry/agent sources for the discovery reconciler.
+
+    The reconciler only imports declared sources (fleet objects, service
+    registry, agent homes); it never invents hosts and never derives asset
+    health from ITIL incidents.
+    """
+    node_dir = home / "fleet" / "objects" / "node"
+    node_dir.mkdir(parents=True)
+    (node_dir / "noroc2027.json").write_text(
+        json.dumps(
+            {
+                "name": "noroc2027",
+                "spec": {"role": "worker", "address": {"hostname": "noroc2027", "ip": "10.0.0.27"}},
+            }
+        )
+    )
+    svc_dir = home / "fleet" / "objects" / "service"
+    svc_dir.mkdir(parents=True)
+    (svc_dir / "skmem-pg.json").write_text(
+        json.dumps({"name": "skmem-pg", "spec": {"runtime": "systemd"}})
+    )
+    registry = home / "registry"
+    registry.mkdir()
+    (registry / "skchat.json").write_text(
+        json.dumps({"name": "skchat", "registered_at": "2026-08-21T00:00:00Z"})
+    )
+    (home / "agents" / "lumina").mkdir(parents=True)
 
 
 def test_create_and_get_ci(home):
@@ -71,17 +103,25 @@ def test_seed_from_inventory(home):
     ITILManager(home).create_incident(
         title="skmem-pg down", severity="sev1", created_by="lumina", affected_services=["skmem-pg"]
     )
+    _declare_inventory(home)
     mgr = CMDBManager(home)
     res = mgr.seed_from_inventory()
-    assert res["cis"] >= 4  # hosts + agents + the service
-    # the incident-affected service became a CI marked down (sev1)
+    assert res["cis"] >= 4  # host + fleet service + registry service + agent
+    assert res["deprecated"] is True
+    # the declared service is imported, but incident state never derives CI health
     svc = mgr.find_for_service("skmem-pg")
-    assert svc and svc.status == "down"
-    # and it runs_on a host
-    assert any(r.rel_type == "runs_on" for r in svc.relationships)
+    assert svc and svc.status == "operational"
+
+
+def test_seed_never_invents_assets(home):
+    # An empty home has no declared sources: the reconciler must not fabricate any.
+    mgr = CMDBManager(home)
+    res = mgr.seed_from_inventory()
+    assert res["cis"] == 0 and res["touched"] == 0
 
 
 def test_dashboard_cmdb_overview_and_detail(home):
+    _declare_inventory(home)
     dc.seed(home)
     ov = dc.get_overview(home)
     assert ov["total"] >= 4 and ov["types"]
@@ -97,6 +137,7 @@ def test_dashboard_cmdb_routes(home):
 
     from skcapstone.dashboard import create_app
 
+    _declare_inventory(home)
     client = TestClient(create_app(home))
     assert client.post("/api/cmdb/seed").json()["cis"] >= 4
     assert "types" in client.get("/api/cmdb/overview").json()
