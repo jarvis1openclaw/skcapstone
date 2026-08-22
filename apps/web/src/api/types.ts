@@ -275,3 +275,118 @@ export interface CorpusSpanDenied {
 }
 
 export type CorpusSpan = CorpusSpanAvailable | CorpusSpanDenied;
+
+/**
+ * Claim ledger shapes (SKL-S4-03B). Every material claim exposes its
+ * support and counter-support spans, the deterministic applicability
+ * factors behind its authority support verification, the typed blind
+ * challenges with preserved defects, the claim-state transition history,
+ * and the current claim gate evaluation. Failed gates carry their failed
+ * checks and closed reason vocabulary so nothing is silently reduced.
+ */
+
+/** One append-only support or counter-support link to an exact source span. */
+export interface ClaimSupportRecord {
+  supportId: string;
+  kind: "support" | "counter_support";
+  recordedAt: string;
+  sourceSystem: string;
+  sourceVersion: string;
+  sourceLocator: string;
+  contentSha256: string;
+  spanStart: number;
+  spanEnd: number;
+  excerptSha256: string;
+  note: string | null;
+  recordedByPrincipalId: string;
+  policyRevision: string;
+}
+
+/** One deterministic applicability, status, or quotation factor. */
+export interface ApplicabilityCheck {
+  checkId: string;
+  subjectId: string | null;
+  outcome: "passed" | "failed";
+  reasons: readonly string[];
+}
+
+/** One challenge finding preserved verbatim for human review. */
+export interface ChallengeDefect {
+  defectKind: string;
+  description: string;
+}
+
+/** One typed blind-challenge record with its independence label. */
+export interface Challenge {
+  challengeId: string;
+  issuedAt: string;
+  independence: "independent" | "same_model" | "not_blind";
+  outcome: "no_defect" | "defect_found";
+  sawChallengedConclusion: boolean;
+  challengerProvider: string;
+  challengerModelName: string;
+  challengerModelRevision: string;
+  defects: readonly ChallengeDefect[];
+}
+
+/** One failed gate check with the subject it names and its reasons. */
+export interface GateCheck {
+  checkId: string;
+  subjectId: string | null;
+  reasons: readonly string[];
+}
+
+/** The recorded claim gate evaluation for one ledger claim. */
+export interface GateEvaluation {
+  gate: string;
+  evaluatedAt: string;
+  outcome: "passed" | "failed";
+  failedChecks: readonly GateCheck[];
+}
+
+/** One recorded claim-state transition; fromStatus is null initially. */
+export interface ClaimStateTransition {
+  fromStatus: string | null;
+  toStatus: string;
+  at: string;
+  version: number;
+}
+
+/** One append-only human review decision for an exact claim version. */
+export interface ClaimReviewRecord {
+  reviewId: string;
+  reviewedAt: string;
+  reviewerPrincipalId: string;
+  claimVersion: number;
+  decision:
+    | "accepted"
+    | "changes_requested"
+    | "challenge_recorded"
+    | "withdrawal_confirmed";
+  note: string;
+  policyRevision: string;
+}
+
+/** One material claim with support, qualification, challenges, and history. */
+export interface ClaimLedgerEntry {
+  claimId: string;
+  statement: string;
+  status: string;
+  version: number;
+  policyRevision: string;
+  updatedAt: string;
+  support: readonly ClaimSupportRecord[];
+  counterSupport: readonly ClaimSupportRecord[];
+  supportVerificationState: "passed" | "failed" | "missing";
+  applicability: readonly ApplicabilityCheck[];
+  challenges: readonly Challenge[];
+  reviewHistory: readonly ClaimReviewRecord[];
+  gate: GateEvaluation | null;
+  stateTransitions: readonly ClaimStateTransition[];
+}
+
+/** The claim ledger for one matter; zero claims is the no-answer state. */
+export interface ClaimLedger {
+  matterId: string;
+  claims: readonly ClaimLedgerEntry[];
+}

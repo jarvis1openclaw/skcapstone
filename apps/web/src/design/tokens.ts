@@ -185,6 +185,80 @@ export const spanAccessibility = {
   denied: { label: "Source not accessible", glyph: "\u2715", tone: "critical" },
 } as const satisfies Record<string, StatusPresentation>;
 
+/**
+ * Claim ledger state semantics (domain LedgerClaimStatus values). A
+ * withdrawn claim stays visible with its full history; it never vanishes.
+ */
+export const claimStatus = {
+  proposed: { label: "Proposed", glyph: "\u25CB", tone: "info" },
+  under_review: { label: "Under review", glyph: "\u2022", tone: "caution" },
+  supported: { label: "Supported", glyph: "\u2713", tone: "positive" },
+  challenged: { label: "Challenged", glyph: "!", tone: "critical" },
+  withdrawn: { label: "Withdrawn", glyph: "-", tone: "neutral" },
+} as const satisfies Record<string, StatusPresentation>;
+
+/** Authority support verification semantics for a ledger claim. */
+export const supportVerificationState = {
+  passed: { label: "Support verified", glyph: "\u2713", tone: "positive" },
+  failed: {
+    label: "Support failed verification",
+    glyph: "\u2715",
+    tone: "critical",
+  },
+  missing: {
+    label: "No verification recorded",
+    glyph: "\u2022",
+    tone: "caution",
+  },
+} as const satisfies Record<string, StatusPresentation>;
+
+/** Claim gate semantics: a failed gate is blocked, never waivable. */
+export const claimGateOutcome = {
+  passed: { label: "CLAIM_READY", glyph: "\u2713", tone: "positive" },
+  failed: { label: "Blocked", glyph: "\u2715", tone: "critical" },
+} as const satisfies Record<string, StatusPresentation>;
+
+/** Blind challenge independence semantics. */
+export const challengeIndependence = {
+  independent: { label: "Independent", glyph: "\u2713", tone: "positive" },
+  same_model: {
+    label: "Same-model challenge",
+    glyph: "\u2190",
+    tone: "caution",
+  },
+  not_blind: { label: "Not blind", glyph: "\u2190", tone: "caution" },
+} as const satisfies Record<string, StatusPresentation>;
+
+/** Blind challenge outcome semantics, defects preserved either way. */
+export const challengeOutcome = {
+  no_defect: { label: "No defect found", glyph: "\u2713", tone: "positive" },
+  defect_found: { label: "Unresolved defect", glyph: "!", tone: "caution" },
+} as const satisfies Record<string, StatusPresentation>;
+
+/** Human claim-review decisions remain distinct from model challenges. */
+export const claimReviewDecision = {
+  accepted: {
+    label: "Accepted by reviewer",
+    glyph: "\u2713",
+    tone: "positive",
+  },
+  changes_requested: {
+    label: "Changes requested",
+    glyph: "!",
+    tone: "caution",
+  },
+  challenge_recorded: {
+    label: "Challenge recorded",
+    glyph: "!",
+    tone: "critical",
+  },
+  withdrawal_confirmed: {
+    label: "Withdrawal confirmed",
+    glyph: "-",
+    tone: "neutral",
+  },
+} as const satisfies Record<string, StatusPresentation>;
+
 export const typography = {
   fontFamilyBase:
     'ui-sans-serif, system-ui, "Segoe UI", Roboto, Helvetica, Arial, sans-serif',

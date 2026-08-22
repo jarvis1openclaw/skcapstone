@@ -42,8 +42,18 @@ import {
   syntheticSearchResponse,
   syntheticTrace,
 } from "../testing/corpus";
+import {
+  SYNTHETIC_CLAIM_ID,
+  SYNTHETIC_MISMATCH_DEFECT_TEXT,
+  SYNTHETIC_REVIEWER_ID,
+  syntheticClaimLedger,
+} from "../testing/claims";
 import type { CorpusSpan } from "../api/types";
-import { CorpusResearchView, CorpusSpanView } from "./CorpusPage";
+import {
+  ClaimLedgerView,
+  CorpusResearchView,
+  CorpusSpanView,
+} from "./CorpusPage";
 
 function render(
   span: CorpusSpan | null = syntheticAvailableSpan,
@@ -198,5 +208,72 @@ describe("stale projection generation display", () => {
     expect(html).toContain("Stale projection generation");
     expect(html).toContain("Results were read from projection generation 3");
     expect(html).toContain("the current generation is 4");
+  });
+});
+
+describe("claim ledger", () => {
+  it("exposes support, qualification, challenge, review, and state history", () => {
+    const html = renderStatic(
+      <ClaimLedgerView ledger={syntheticClaimLedger()} />,
+    );
+    expect(html).toContain(`id="claim-${SYNTHETIC_CLAIM_ID}"`);
+    expect(html).toContain("Support");
+    expect(html).toContain("Counter-support");
+    expect(html).toContain("Authority applicability factors");
+    expect(html).toContain("Blind challenge history");
+    expect(html).toContain("Reviewer history");
+    expect(html).toContain("Claim state transitions");
+    expect(html).toContain("Support failed verification");
+    expect(html).toContain("Blocked");
+  });
+
+  it("preserves contrary support beside support", () => {
+    const html = renderStatic(
+      <ClaimLedgerView ledger={syntheticClaimLedger()} />,
+    );
+    expect(html).toContain("fixture/synthetic-source-1");
+    expect(html).toContain("fixture/synthetic-source-2");
+    expect(html).toContain("contrary_leads_require_review");
+  });
+
+  it("shows the mismatch defect and failed gate reason without reduction", () => {
+    const html = renderStatic(
+      <ClaimLedgerView ledger={syntheticClaimLedger()} />,
+    );
+    expect(html).toContain(SYNTHETIC_MISMATCH_DEFECT_TEXT);
+    expect(html).toContain("quotation_error");
+    expect(html).toContain("quotation_mismatch");
+    expect(html).toContain("challenge_defect_unresolved");
+  });
+
+  it("keeps human reviewer decisions separate from model challenges", () => {
+    const html = renderStatic(
+      <ClaimLedgerView ledger={syntheticClaimLedger()} />,
+    );
+    expect(html).toContain("Accepted by reviewer");
+    expect(html).toContain("Challenge recorded");
+    expect(html).toContain(`Reviewer principal ${SYNTHETIC_REVIEWER_ID}`);
+    expect(html).toContain("Quotation mismatch requires correction");
+  });
+
+  it("renders every state transition in order", () => {
+    const html = renderStatic(
+      <ClaimLedgerView ledger={syntheticClaimLedger()} />,
+    );
+    const proposed = html.indexOf("Initially proposed");
+    const underReview = html.indexOf("proposed to under_review");
+    const challenged = html.indexOf("under_review to challenged");
+    expect(proposed).toBeGreaterThan(-1);
+    expect(underReview).toBeGreaterThan(proposed);
+    expect(challenged).toBeGreaterThan(underReview);
+  });
+
+  it("renders the recorded no-answer state explicitly", () => {
+    const html = renderStatic(
+      <ClaimLedgerView ledger={syntheticClaimLedger({ claims: [] })} />,
+    );
+    expect(html).toContain('role="status"');
+    expect(html).toContain("There is no claim answer to review.");
+    expect(html).not.toContain(`id="claim-${SYNTHETIC_CLAIM_ID}"`);
   });
 });

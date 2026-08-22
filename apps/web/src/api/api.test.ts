@@ -134,4 +134,18 @@ describe("ApiClient", () => {
       .calls[0] as [string];
     expect(url).toBe("https://api.test/v1/matters/matter%2F1%3Fx");
   });
+
+  it("loads the matter-scoped claim ledger through an encoded path", async () => {
+    const fetchImpl = vi.fn(
+      async () =>
+        new Response(JSON.stringify({ matterId: "matter/1", claims: [] }), {
+          status: 200,
+        }),
+    ) as unknown as typeof fetch;
+    const client = buildClient(fetchImpl);
+    await client.getClaimLedger("matter/1?x");
+    const [url] = (fetchImpl as unknown as ReturnType<typeof vi.fn>).mock
+      .calls[0] as [string];
+    expect(url).toBe("https://api.test/v1/matters/matter%2F1%3Fx/claims");
+  });
 });
