@@ -1,0 +1,13 @@
+{
+  "schema_version": "capauth-fleet-signer-migration/v1",
+  "mode": "simulation_only",
+  "forbidden": ["private_key_sync", "shared_agent_key", "passphrase_argument", "automatic_cutover"],
+  "identity_requirements": {
+    "one_identity_per_node_or_service": true,
+    "secret_reference_only": true,
+    "required_scope": ["purpose", "audience", "revocation", "attribution"]
+  },
+  "stages": ["inventory", "enroll", "shadow_verify", "human_approved_cutover", "revoke_legacy"],
+  "failover": "explicit_human_approved_secondary_identity",
+  "rollback": "disable_new_identity_and_select_last_active_issuer_revision"
+}
