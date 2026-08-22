@@ -16,13 +16,18 @@ from sklegal_capauth import (
     BoundaryScope,
     CapabilityAuthorizer,
     CredentialFormatError,
+    InMemoryAuditSink,
     PostgresPrincipalPolicyBackend,
     PostgresReplayBackend,
     PostgresRevocationBackend,
     PresentedCapability,
     PrincipalContext,
     SignatureVerificationCache,
+    StaticTrustedIssuerBackend,
     TrustedIssuerBackend,
+    TrustedIssuerSnapshot,
+    UnavailableAuditSink,
+    UnavailableTrustedIssuerBackend,
     parse_authorization_bearer,
 )
 
@@ -31,6 +36,9 @@ type ScopeResolution = BoundaryScope | Awaitable[BoundaryScope]
 type PrincipalResolver = Callable[[Request], PrincipalResolution]
 type ScopeResolver = Callable[[Request], ScopeResolution]
 type SqlExecutor = Callable[[str, tuple[object, ...]], object]
+
+_SYNTHETIC_ISSUER_BACKENDS = (StaticTrustedIssuerBackend, UnavailableTrustedIssuerBackend)
+_SYNTHETIC_AUDIT_SINKS = (InMemoryAuditSink, UnavailableAuditSink)
 
 
 def build_postgres_capability_authorizer(
@@ -41,7 +49,28 @@ def build_postgres_capability_authorizer(
     tenant_id: UUID,
     clock: Callable[[], datetime],
 ) -> CapabilityAuthorizer:
-    """Build the fail-closed CapAuth authorizer over durable PostgreSQL state."""
+    """Build the fail-closed CapAuth authorizer over durable PostgreSQL state.
+
+    Composition is production-readiness validation: every dependency is
+    checked before the authorizer exists, synthetic or unavailable adapters
+    are refused, and the trusted issuer backend must answer a readiness
+    probe. Any misconfiguration fails closed here instead of at the first
+    protected request.
+    """
+
+    if not callable(executor):
+        raise TypeError("executor must be a callable SQL executor")
+    if isinstance(trusted_issuers, _SYNTHETIC_ISSUER_BACKENDS):
+        raise TypeError("trusted issuer backend must be durable and reloadable")
+    if isinstance(audit, _SYNTHETIC_AUDIT_SINKS):
+        raise TypeError("audit sink must be durable")
+    if not isinstance(tenant_id, UUID):
+        raise TypeError("tenant_id must be a UUID")
+    if not callable(clock):
+        raise TypeError("clock must be callable")
+    issuer_snapshot = trusted_issuers.snapshot()
+    if not isinstance(issuer_snapshot, TrustedIssuerSnapshot):
+        raise TypeError("trusted issuer backend returned the wrong type")
 
     return CapabilityAuthorizer(
         trusted_issuers=trusted_issuers,
