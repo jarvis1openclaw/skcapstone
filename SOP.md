@@ -379,7 +379,7 @@ unit and the apply unit are deliberately distinct. The packaged apply unit is
 only exact fleet targets and `skvault://` references, and ends in:
 
 ```bash
-exec "$HOME/.skenv/bin/skcapstone" cmdb reconcile --network --apply --record-run \
+exec "$HOME/.skenv/bin/skcapstone" cmdb apply --network \
   --credential HOST=skvault://REFERENCE  # repeated for every exact target
 ```
 
@@ -394,6 +394,14 @@ tagged GitHub checkout, run `systemd-analyze verify`, copy it to the user-unit
 directory, reload, and compare `systemctl --user cat` with the tagged source.
 Do not disable the legacy timer until the governed network oneshot succeeds and
 its artifact/audit readback is accepted.
+
+For interactive work, use `skcapstone cmdb plan` first and retain the JSON
+output or checksummed network shadow artifact. The plan reports creates,
+updates, relationship changes, stale candidates, retirements, validation
+failures, and secret-redaction findings. `skcapstone cmdb apply` is the explicit
+write verb; `cmdb reconcile [--apply]` remains supported only for existing
+timers. `skcapstone cmdb status` reads checksum-verified artifacts, inventory
+counts, and relationship-audit state without writing.
 
 **Two-node CMDB package rollout.** Source is promoted through GitHub; never copy
 individual CMDB modules between `.158` and `.41`. On each node, fast-forward the
@@ -410,6 +418,8 @@ done
 systemctl --user restart skcapstone-dashboard.service
 curl -fsS http://127.0.0.1:7778/api/cmdb/overview
 curl -fsS 'http://127.0.0.1:7778/api/cmdb/search?q=service&limit=1'
+curl -fsS http://127.0.0.1:7778/api/cmdb/status
+curl -fsS http://127.0.0.1:7778/api/cmdb/plan
 ```
 
 If a node does not run `skcapstone-dashboard.service`, reinstall the packages but do
