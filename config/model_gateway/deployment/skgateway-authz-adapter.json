@@ -1,0 +1,30 @@
+{
+  "schema": "sklegal-skgateway-authz-adapter/v1",
+  "card": "a060fa3d",
+  "enabled": false,
+  "endpoint_reference": "SKLEGAL_CAPAUTH_AUTHZ_ENDPOINT",
+  "bind": "loopback-only",
+  "service_identity": "capauth:sklegal-model-gateway@chiap01.skworld",
+  "service_secret_reference": "vault:sklegal/skgateway/authz-service-token",
+  "capability": "skgateway.infer",
+  "transport": "authenticated-local-http",
+  "fail_closed": true,
+  "allow_cache": false,
+  "protected_traffic": "denied-until-live-path-report-and-human-approval",
+  "response_fields": [
+    "allow",
+    "reason",
+    "decision_id",
+    "policy_revision",
+    "correlation_id",
+    "obligations"
+  ],
+  "prohibited_fields": [
+    "prompt",
+    "matter_content",
+    "source_span",
+    "bearer_token",
+    "private_key",
+    "raw_capability"
+  ]
+}
