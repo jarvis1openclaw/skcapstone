@@ -13,8 +13,8 @@ from pathlib import Path
 
 import click
 
-from ._common import AGENT_HOME, console
 from ..coord_amendments import VALID_PRIORITIES
+from ._common import AGENT_HOME, console
 
 
 def register_coord_amend_commands(coord: click.Group) -> None:
