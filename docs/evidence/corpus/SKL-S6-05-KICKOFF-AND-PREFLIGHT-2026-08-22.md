@@ -21,8 +21,10 @@ proof remain required. Runtime aliases were not changed.
 ## Files changed
 
 - `packages/connectors/hammertime/src/sklegal_hammertime/release_qualification.py`
+- `packages/connectors/hammertime/src/sklegal_hammertime/candidate_inspection.py`
 - `packages/connectors/hammertime/src/sklegal_hammertime/__init__.py`
 - `tests/support/hammertime_fixture.py`
+- `tests/test_official_drafting_candidate_inspection.py`
 - `tests/test_official_drafting_release_qualification.py`
 - `docs/evidence/corpus/SKL-S6-05-KICKOFF-AND-PREFLIGHT-2026-08-22.md`
 
@@ -131,6 +133,47 @@ Success: no issues found in 22 source files
    `HAMMERTIME_REVIEW_API_URL` is configured. The primary Qwen3.8 route passed
    its runtime probe, but the corpus SOP prohibits silently using that route as
    the formal secondary reviewer. No review report was represented as passing.
+10. The bounded SKLegal candidate inspector followed only the immutable
+    manifest paths and completed against the live HammerTime root in 0.25
+    seconds. It reconciled 14 unique sources, 14 unique decompositions, and 28
+    exact artifact hashes with no findings. It did not list the repository,
+    inspect Inbox, read runtime aliases, or claim vector or graph health.
+
+## Bounded candidate inspection verification
+
+Command scope:
+
+```text
+tests/test_official_drafting_candidate_inspection.py
+tests/test_official_drafting_release_qualification.py
+tests/test_hammertime_adapter.py
+```
+
+Results:
+
+```text
+82 passed, 7 subtests passed in 0.71s
+All Ruff checks passed
+3 files already formatted
+Success: no issues found in 25 source files
+```
+
+The expanded adapter, qualification, reconciliation, and health selection
+passed `121 passed, 7 subtests passed in 0.96s`. The style-profile validator
+also passed with its HammerTime root explicitly bound to the live sibling
+repository because the temporary task worktree has no sibling corpus checkout.
+
+Live content-free result:
+
+```text
+decomposition_count: 14
+finding_codes: none
+release_id: dev-20260822-official-drafting-standards-candidate-1
+release_manifest_sha256: 2ee914c26cf93e61138416c84b25d8e18dd5ee9ab7e1921b204d9b9176bbf752
+source_count: 14
+status: qualified
+verified_artifact_count: 28
+```
 
 ## Known limitations and next required evidence
 
