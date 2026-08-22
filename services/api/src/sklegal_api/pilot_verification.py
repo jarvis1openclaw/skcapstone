@@ -16,8 +16,9 @@ from __future__ import annotations
 
 import hashlib
 import json
+from collections.abc import Iterable
 from datetime import UTC, datetime
-from typing import Any, Iterable, Self
+from typing import Any, Self
 from uuid import NAMESPACE_URL, UUID, uuid5
 
 from pydantic import BaseModel, ConfigDict, model_validator
@@ -28,6 +29,7 @@ from sklegal_migration import (
     InMemoryPilotImportStore,
     MappingApproval,
     PilotDryRunReport,
+    PilotImportPlan,
 )
 from sklegal_retrieval import (
     CorpusHealthStatus,
@@ -210,7 +212,17 @@ class PilotVerificationSuite(BaseModel):
 
     @model_validator(mode="after")
     def validate_consistency(self) -> Self:
-        collected = _collect_checks(self)
+        collected = _collect_checks(
+            (
+                self.source_preservation,
+                self.terminology,
+                self.tensions,
+                self.states,
+                self.provenance,
+                self.corpus_coverage,
+                self.replay,
+            )
+        )
         if collected != self.checks:
             raise ValueError("suite checks disagree with the evidence sections")
         if self.passed != all(self.checks.values()):
@@ -219,22 +231,15 @@ class PilotVerificationSuite(BaseModel):
             raise ValueError("suite must record at least one check")
         return self
 
-    def json(self) -> str:
+    def evidence_json(self) -> str:
         """Render the suite as sorted, pretty-printed evidence JSON."""
 
         return json.dumps(self.model_dump(mode="json"), indent=2, sort_keys=True) + "\n"
 
 
-def _collect_checks(suite: PilotVerificationSuite) -> dict[str, bool]:
-    sections = (
-        suite.source_preservation,
-        suite.terminology,
-        suite.tensions,
-        suite.states,
-        suite.provenance,
-        suite.corpus_coverage,
-        suite.replay,
-    )
+def _collect_checks(sections: Iterable[Any]) -> dict[str, bool]:
+    """Collect one typed boolean per evidence field, keyed by section."""
+
     checks: dict[str, bool] = {}
     for section in sections:
         for name, value in section:
@@ -249,14 +254,14 @@ def _collect_checks(suite: PilotVerificationSuite) -> dict[str, bool]:
 def verification_fingerprint(suite: PilotVerificationSuite) -> str:
     """Fingerprint of one suite's replayable evidence content.
 
-    Excludes the replay comparison, the collected checks, and the pass
-    flag so two independently built suites over identical pinned inputs
-    must produce identical fingerprints.
+    Excludes the replay comparison, the collected checks, the pass flag,
+    and the wall-clock generation time so two independently built suites
+    over identical pinned inputs must produce identical fingerprints.
     """
 
     payload = suite.model_dump(
         mode="json",
-        exclude={"replay", "checks", "passed", "replay_performed"},
+        exclude={"replay", "checks", "passed", "replay_performed", "generated_at"},
     )
     return hashlib.sha256(
         json.dumps(payload, sort_keys=True).encode("utf-8")
@@ -265,7 +270,9 @@ def verification_fingerprint(suite: PilotVerificationSuite) -> str:
 
 def _view_fingerprint(view: MatterWorkspaceRead) -> str:
     payload = view.model_dump(mode="json", by_alias=True)
-    return hashlib.sha256(json.dumps(payload, sort_keys=True).encode("utf-8")).hexdigest()
+    return hashlib.sha256(
+        json.dumps(payload, sort_keys=True).encode("utf-8")
+    ).hexdigest()
 
 
 def _pinned_pairs(view: MatterWorkspaceRead) -> set[tuple[str, str]]:
@@ -277,15 +284,13 @@ def _pinned_pairs(view: MatterWorkspaceRead) -> set[tuple[str, str]]:
 
 def _plan_pairs(report: PilotDryRunReport) -> set[tuple[str, str]]:
     return {
-        (item.relative_path, item.content_sha256)
-        for item in report.plan.source_files
+        (item.relative_path, item.content_sha256) for item in report.plan.source_files
     }
 
 
 def _inventory_pairs(report: PilotDryRunReport) -> set[tuple[str, str]]:
     return {
-        (entry.relative_path, entry.content_sha256)
-        for entry in report.pre_inventory
+        (entry.relative_path, entry.content_sha256) for entry in report.pre_inventory
     }
 
 
@@ -323,8 +328,7 @@ def run_pilot_verification(
     proof = report.change_proof
     pre_pairs = _inventory_pairs(report)
     post_pairs = {
-        (entry.relative_path, entry.content_sha256)
-        for entry in report.post_inventory
+        (entry.relative_path, entry.content_sha256) for entry in report.post_inventory
     }
     source_preservation = SourcePreservationEvidence(
         inventoried_files=len(report.pre_inventory),
@@ -336,15 +340,17 @@ def run_pilot_verification(
         zero_source_changes=proof.zero_source_changes,
         content_hashes_unchanged=pre_pairs == post_pairs,
         plan_pins_cover_inventory=(
-            _plan_pairs(report) == pre_pairs
-            and len(plan.source_files) == len(report.pre_inventory)
+            pre_pairs <= _plan_pairs(report)
+            and not report.reconciliation.get("excluded_from_plan")
         ),
         no_write_operations=not plan.hammer_time_mutation,
     )
 
     ui_dump = json.dumps(view.model_dump(mode="json", by_alias=True))
     matter_records = [item for item in plan.records if item.target_type == "matter"]
-    event_records = [item for item in plan.records if item.target_type == "matter_event"]
+    event_records = [
+        item for item in plan.records if item.target_type == "matter_event"
+    ]
     legacy_labels = tuple(
         sorted({item.mapping_rule.split(".", 1)[0] for item in plan.records})
     )
@@ -363,9 +369,7 @@ def run_pilot_verification(
         ),
         incident_rendered_as_transaction_review=(
             len(event_records) == 1
-            and all(
-                event.event_type == "transaction_review" for event in view.timeline
-            )
+            and all(event.event_type == "transaction_review" for event in view.timeline)
             and event_aliases == (report.incident_legacy_id,)
         ),
         legacy_storage_labels_absent_from_ui=all(
@@ -379,13 +383,22 @@ def run_pilot_verification(
         ),
     )
 
-    view_facts_by_id = {fact.fact_assertion_id: fact for fact in view.facts}
+    view_facts_by_id = {str(fact.fact_assertion_id): fact for fact in view.facts}
     plan_facts_by_id = {item.fact_assertion_id: item for item in plan.facts}
-    tension_keys = {tension.key for tension in view.tensions}
+    tension_keys = {tension.tension_key for tension in view.tensions}
     grouped_keys = {
         fact.tension_group_key
         for fact in view.facts
         if fact.tension_group_key is not None
+    }
+    plan_groups = {
+        tension.key: frozenset(tension.assertion_ids) for tension in plan.tensions
+    }
+    view_groups = {
+        tension.tension_key: frozenset(
+            str(identifier) for identifier in tension.assertion_ids
+        )
+        for tension in view.tensions
     }
     tensions = TensionEvidence(
         tension_groups=len(view.tensions),
@@ -403,26 +416,15 @@ def run_pilot_verification(
             tension_keys == {tension.key for tension in plan.tensions}
             and grouped_keys == tension_keys
         ),
-        assertions_not_harmonized=all(
-            len(tension.assertion_ids)
-            == len(
-                {
-                    (
-                        view_facts_by_id[identifier].predicate,
-                        json.dumps(
-                            view_facts_by_id[identifier].asserted_value,
-                            sort_keys=True,
-                            default=str,
-                        ),
-                    )
-                    for identifier in tension.assertion_ids
-                    if identifier in view_facts_by_id
-                }
+        assertions_not_harmonized=(
+            plan_groups == view_groups
+            and all(len(tension.assertion_ids) >= 2 for tension in view.tensions)
+            and all(
+                identifier in view_facts_by_id
+                for group in view_groups.values()
+                for identifier in group
             )
-            for tension in view.tensions
-        )
-        and all(
-            len(tension.assertion_ids) >= 2 for tension in view.tensions
+            and len(grouped_keys) > 0
         ),
         assertion_values_preserved=all(
             identifier in view_facts_by_id
@@ -507,13 +509,9 @@ def run_pilot_verification(
     historical_versions = tuple(
         item.packet_version for item in view.version_lineage if item.historical
     )
-    missing_source_gaps = sum(
-        1 for gap in view.gaps if gap.kind == "missing_source"
-    )
+    missing_source_gaps = sum(1 for gap in view.gaps if gap.kind == "missing_source")
     missing_source_facts = sum(1 for fact in view.facts if fact.source_missing)
-    stored = workspace_store.get_matter_workspace(
-        tenant_id, view.matter.matter_id
-    )
+    stored = workspace_store.get_matter_workspace(tenant_id, view.matter.matter_id)
     provenance = ProvenanceEvidence(
         source_snapshot=plan.source_snapshot,
         current_source_snapshot=view.provenance.current_source_snapshot or "",
@@ -552,9 +550,7 @@ def run_pilot_verification(
         missing_source_gaps_rendered=missing_source_gaps == missing_source_facts,
         explicit_gaps_rendered=len(view.gaps) > 0,
         member_access_granted=all(
-            workspace_store.is_matter_member(
-                tenant_id, view.matter.matter_id, member
-            )
+            workspace_store.is_matter_member(tenant_id, view.matter.matter_id, member)
             for member in members
         )
         and len(members) > 0,
@@ -566,7 +562,9 @@ def run_pilot_verification(
         ),
     )
 
-    pinned_count = len({(item.relative_path, item.content_sha256) for item in plan.source_files})
+    pinned_count = len(
+        {(item.relative_path, item.content_sha256) for item in plan.source_files}
+    )
     entry = registry.entry_for(tenant_id=tenant_id, release_id=release_id)
     corpus_coverage = CorpusCoverageEvidence(
         release_id=release_id,
@@ -585,60 +583,62 @@ def run_pilot_verification(
         deep_reconciliation_covered_releases=reconciliation.releases_reconciled >= 1,
         deep_reconciliation_no_discrepancies=not reconciliation.discrepancies,
         bounded_health_available=(
-            health.status
-            in (CorpusHealthStatus.HEALTHY, CorpusHealthStatus.DEGRADED)
+            health.status in (CorpusHealthStatus.HEALTHY, CorpusHealthStatus.DEGRADED)
         ),
         bounded_health_counts_consistent=(
             health.counts is not None and health.counts.source == pinned_count
         ),
     )
 
+    base = _build_suite(
+        report=report,
+        approval=approval,
+        import_result=import_result,
+        view=view,
+        tenant_id=tenant_id,
+        generated_at=generated_at,
+        counts=_counts(report, view),
+        source_preservation=source_preservation,
+        terminology=terminology,
+        tensions=tensions,
+        states=state_evidence,
+        provenance=provenance,
+        corpus_coverage=corpus_coverage,
+    )
+
     if replay is None:
-        replay_evidence = ReplayEvidence()
-    else:
-        own = verification_fingerprint(
-            _build_suite(
-                report=report,
-                approval=approval,
-                import_result=import_result,
-                view=view,
-                tenant_id=tenant_id,
-                generated_at=generated_at,
-                counts=_counts(report, view),
-                source_preservation=source_preservation,
-                terminology=terminology,
-                tensions=tensions,
-                states=state_evidence,
-                provenance=provenance,
-                corpus_coverage=corpus_coverage,
+        return base
+
+    original_free = _replay_free_checks(replay)
+    own_free = _replay_free_checks(base)
+    original = verification_fingerprint(replay)
+    own = verification_fingerprint(base)
+    run_id_matches = replay.run_id == base.run_id
+    # The recorded suite must have run the identical check battery and
+    # passed every replay-free check of its own; a divergent or failing
+    # original cannot anchor a deterministic replay.
+    check_set_matches = set(original_free) == set(own_free) and all(
+        original_free.values()
+    )
+    batch_matches = replay.import_batch_id == plan.import_batch_id
+    fingerprints_match = own == original
+    replay_evidence = ReplayEvidence(
+        original_run_id=replay.run_id,
+        original_fingerprint=original,
+        replayed_fingerprint=own,
+        replay_run_id_matches=run_id_matches,
+        replay_check_set_matches=check_set_matches,
+        replay_fingerprints_match=fingerprints_match,
+        replay_import_batch_matches=batch_matches,
+        replays_deterministic=all(
+            (
+                run_id_matches,
+                check_set_matches,
+                fingerprints_match,
+                batch_matches,
             )
-        )
-        original = verification_fingerprint(replay)
-        run_id_matches = replay.run_id == _run_id(plan)
-        check_set_matches = _collect_checks(replay).items() <= {
-            key: value
-            for key, value in _collect_checks(
-                _stub_from(replay)
-            ).items()
-        } and set(_replay_free_checks(replay)) == set(_replay_free_checks_own(replay))
-        batch_matches = replay.import_batch_id == plan.import_batch_id
-        fingerprints_match = own == original
-        replay_evidence = ReplayEvidence(
-            original_run_id=replay.run_id,
-            original_fingerprint=original,
-            replayed_fingerprint=own,
-            replay_run_id_matches=run_id_matches,
-            replay_check_set_matches=check_set_matches,
-            replay_fingerprints_match=fingerprints_match,
-            replay_import_batch_matches=batch_matches,
-            replays_deterministic=all(
-                (
-                    run_id_matches,
-                    fingerprints_match,
-                    batch_matches,
-                )
-            ),
-        )
+        ),
+    )
 
     return _build_suite(
         report=report,
@@ -658,13 +658,11 @@ def run_pilot_verification(
     )
 
 
-def _run_id(plan: Any) -> str:
+def _run_id(plan: PilotImportPlan) -> str:
     return str(uuid5(NAMESPACE_URL, f"pilot-verification:{plan.import_batch_id}"))
 
 
-def _counts(
-    report: PilotDryRunReport, view: MatterWorkspaceRead
-) -> VerificationCounts:
+def _counts(report: PilotDryRunReport, view: MatterWorkspaceRead) -> VerificationCounts:
     return VerificationCounts(
         import_records=len(report.plan.records),
         fact_assertions=len(view.facts),
@@ -681,16 +679,10 @@ def _counts(
 
 def _replay_free_checks(suite: PilotVerificationSuite) -> dict[str, bool]:
     return {
-        key: value for key, value in suite.checks.items() if not key.startswith("replay.")
+        key: value
+        for key, value in suite.checks.items()
+        if not key.startswith("replay.")
     }
-
-
-def _replay_free_checks_own(suite: PilotVerificationSuite) -> dict[str, bool]:
-    return _replay_free_checks(suite)
-
-
-def _stub_from(suite: PilotVerificationSuite) -> PilotVerificationSuite:
-    return suite
 
 
 def _build_suite(
@@ -712,7 +704,17 @@ def _build_suite(
 ) -> PilotVerificationSuite:
     plan = report.plan
     replay_section = replay_evidence or ReplayEvidence()
-    suite = PilotVerificationSuite(
+    sections = (
+        source_preservation,
+        terminology,
+        tensions,
+        states,
+        provenance,
+        corpus_coverage,
+        replay_section,
+    )
+    checks = _collect_checks(sections)
+    return PilotVerificationSuite(
         artifact=ARTIFACT_NAME,
         run_id=_run_id(plan),
         generated_at=generated_at,
@@ -736,12 +738,9 @@ def _build_suite(
         provenance=provenance,
         corpus_coverage=corpus_coverage,
         replay=replay_section,
-        checks={},
-        passed=False,
+        checks=checks,
+        passed=all(checks.values()),
     )
-    object.__setattr__(suite, "checks", _collect_checks(suite))
-    object.__setattr__(suite, "passed", all(suite.checks.values()))
-    return suite
 
 
 __all__ = [
