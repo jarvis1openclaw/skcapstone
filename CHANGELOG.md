@@ -27,6 +27,9 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 - Updated the legacy CMDB seed tests to the schema-driven discovery contract
   shipped by current `skcoord`, preventing dependency upgrades from breaking
   the otherwise clean unit-test gate.
+- Warm the Ollama model selected by the validated consciousness configuration
+  instead of a hard-coded default, and query canonical PyPI distribution names
+  (`skcomms`, `skchat-sovereign`, and `cloud9-protocol`) during version checks.
 - Added a fail-closed systemd credential-file path for protected CapAuth
   signing keys. ATLAS can now sign noninteractively without exposing its
   passphrase in a unit environment or command line; symlinked, foreign-owned,
