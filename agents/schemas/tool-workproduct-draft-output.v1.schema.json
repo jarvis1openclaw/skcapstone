@@ -1,0 +1,57 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "sklegal.tool.workproduct-draft-output/v1",
+  "title": "Work product draft output",
+  "description": "Typed work-product draft proposal. Only a deterministic reducer with human approval may accept it.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["proposal_kind", "title", "body", "citations", "open_questions", "confidence"],
+  "properties": {
+    "proposal_kind": {
+      "type": "string",
+      "const": "work_product_draft"
+    },
+    "title": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 500
+    },
+    "body": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 100000
+    },
+    "citations": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["authority_ref", "quotation"],
+        "properties": {
+          "authority_ref": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 160
+          },
+          "quotation": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 4000
+          }
+        }
+      }
+    },
+    "open_questions": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1,
+        "maxLength": 1000
+      }
+    },
+    "confidence": {
+      "type": "string",
+      "enum": ["low", "medium", "high"]
+    }
+  }
+}
