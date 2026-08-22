@@ -27,7 +27,13 @@ from .structure import (
     Transaction,
 )
 from .work import Communication, Deadline, DeadlineCalculation, Task
-from .work_product import WorkProduct, WorkProductVersion
+from .work_product import (
+    WorkProduct,
+    WorkProductTemplate,
+    WorkProductTemplateVersion,
+    WorkProductUnknown,
+    WorkProductVersion,
+)
 
 __all__ = [
     "Approval",
@@ -60,6 +66,9 @@ __all__ = [
     "Transaction",
     "ValidationResult",
     "WorkProduct",
+    "WorkProductTemplate",
+    "WorkProductTemplateVersion",
+    "WorkProductUnknown",
     "WorkProductVersion",
     "effective_at",
 ]

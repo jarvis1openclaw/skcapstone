@@ -82,7 +82,7 @@ class PersistenceContract08CanonicalParityTests(PersistenceContractBase):
             )
         )
         self.assertEqual(set(MAPPINGS) - {"ExecutionReceipt"}, set(payloads))
-        self.assertEqual(30, len(payloads))
+        self.assertEqual(33, len(payloads))
 
         tenant = str(contract.tenant_id)
         principal = str(contract.principal_id)
@@ -138,6 +138,9 @@ class PersistenceContract08CanonicalParityTests(PersistenceContractBase):
             "Communication",
             "WorkProduct",
             "WorkProductVersion",
+            "WorkProductTemplate",
+            "WorkProductTemplateVersion",
+            "WorkProductUnknown",
         )
         base_payloads = [payloads[name] for name in runtime_base_order]
         base_payloads.extend(auxiliary)
@@ -166,7 +169,15 @@ class PersistenceContract08CanonicalParityTests(PersistenceContractBase):
             if name == "Communication":
                 base_sql.append(create_communication_statement(payload))
                 continue
-            overrides = {"status": "draft"} if name == "WorkProductVersion" else None
+            overrides: dict[str, Any] | None = (
+                {"status": "draft"} if name == "WorkProductVersion" else None
+            )
+            if name == "WorkProductUnknown":
+                overrides = {
+                    "status": "open",
+                    "resolved_by_principal_id": None,
+                    "resolved_at": None,
+                }
             base_sql.append(
                 insert_statement(payload.table, payload.row, overrides=overrides)
             )
@@ -180,9 +191,15 @@ class PersistenceContract08CanonicalParityTests(PersistenceContractBase):
         )
 
         artifact = payloads["WorkProductVersion"]
+        unknown = payloads["WorkProductUnknown"]
+        resolved_at = expected_entities["WorkProductUnknown"].resolved_at
+        assert resolved_at is not None
         self._psql(
             role,
             f"""
+            SELECT status FROM sklegal_legal.resolve_work_product_unknown(
+                '{tenant}', '{matter}', '{unknown.row["id"]}', 1,
+                '{resolved_at.isoformat()}');
             SELECT status FROM sklegal_legal.transition_work_product_version(
                 '{tenant}', '{matter}', '{artifact.row["id"]}', 1, 'frozen');
             """,
@@ -323,12 +340,12 @@ class PersistenceContract08CanonicalParityTests(PersistenceContractBase):
             """,
         )
         self.assertEqual(set(MAPPINGS), set(payloads))
-        self.assertEqual(31, len(payloads))
+        self.assertEqual(34, len(payloads))
 
         write_authority = {
             name: payload.write_contract.authority for name, payload in payloads.items()
         }
-        self.assertEqual(31, len(write_authority))
+        self.assertEqual(34, len(write_authority))
         self.assertEqual("administrative_bootstrap", write_authority["Tenant"])
         self.assertEqual("controlled_writer", write_authority["ExecutionEvent"])
         self.assertEqual("controlled_writer", write_authority["ExecutionReceipt"])
@@ -408,7 +425,7 @@ class PersistenceContract08CanonicalParityTests(PersistenceContractBase):
             restored[entity_name] = reconstruction.entity
             retained[entity_name] = reconstruction.metadata
         self.assertEqual(set(MAPPINGS), set(restored))
-        self.assertEqual(31, len(retained))
+        self.assertEqual(34, len(retained))
         restored_execution = restored["Execution"]
         self.assertEqual(
             tuple(range(1, 6)),
@@ -455,7 +472,7 @@ class PersistenceContract08CanonicalParityTests(PersistenceContractBase):
             restored[entity_name] = entity
             retained_metadata[entity_name] = reconstruction.metadata
         self.assertEqual(set(MAPPINGS), set(restored))
-        self.assertEqual(31, decomposed_count)
+        self.assertEqual(34, decomposed_count)
 
         self.assertIn(
             "import_batch_id", retained_metadata["Matter"].relations["aliases"][0]

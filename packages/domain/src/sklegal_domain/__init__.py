@@ -1,5 +1,16 @@
 """Strict, immutable SKLegal legal-domain package."""
 
+from .drafting import (
+    UNKNOWN_PLACEHOLDER_PATTERN,
+    UnknownOccurrence,
+    assert_approval_matches_version,
+    assert_freeze_ready,
+    build_successor_version,
+    extract_unknown_occurrences,
+    register_unknown_keys,
+    supersede_version,
+    unresolved_blockers,
+)
 from .entities import (
     Approval,
     Authority,
@@ -31,6 +42,9 @@ from .entities import (
     Transaction,
     ValidationResult,
     WorkProduct,
+    WorkProductTemplate,
+    WorkProductTemplateVersion,
+    WorkProductUnknown,
     WorkProductVersion,
     effective_at,
 )
@@ -64,6 +78,9 @@ from .states import (
     ValidationOutcome,
     VerificationStatus,
     WorkProductStatus,
+    WorkProductTemplateStatus,
+    WorkProductTemplateVersionStatus,
+    WorkProductUnknownStatus,
     WorkProductVersionStatus,
 )
 from .value_objects import (
@@ -72,6 +89,7 @@ from .value_objects import (
     DomainId,
     EffectiveInterval,
     LegacyAlias,
+    PlaceholderKey,
     SourceReference,
     TypedValue,
     UtcDateTime,
@@ -130,6 +148,7 @@ __all__ = [
     "Party",
     "PartyRole",
     "PartyRoleStatus",
+    "PlaceholderKey",
     "Proceeding",
     "ProceedingStatus",
     "RecordCompleteness",
@@ -145,6 +164,8 @@ __all__ = [
     "Transaction",
     "TransactionStatus",
     "TypedValue",
+    "UNKNOWN_PLACEHOLDER_PATTERN",
+    "UnknownOccurrence",
     "UtcDateTime",
     "ValidationOutcome",
     "ValidationResult",
@@ -152,7 +173,20 @@ __all__ = [
     "VerificationStatus",
     "WorkProduct",
     "WorkProductStatus",
+    "WorkProductTemplate",
+    "WorkProductTemplateStatus",
+    "WorkProductTemplateVersion",
+    "WorkProductTemplateVersionStatus",
+    "WorkProductUnknown",
+    "WorkProductUnknownStatus",
     "WorkProductVersion",
     "WorkProductVersionStatus",
+    "assert_approval_matches_version",
+    "assert_freeze_ready",
+    "build_successor_version",
     "effective_at",
+    "extract_unknown_occurrences",
+    "register_unknown_keys",
+    "supersede_version",
+    "unresolved_blockers",
 ]

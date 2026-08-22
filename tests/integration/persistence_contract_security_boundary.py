@@ -88,7 +88,7 @@ class PersistenceContract01SecurityBoundaryTests(PersistenceContractBase):
             and issubclass(entity_type, DomainEntity)
             and entity_type is not DomainEntity
         }
-        self.assertEqual(31, len(exported_entities))
+        self.assertEqual(34, len(exported_entities))
         self.assertEqual(exported_entities, set(entities))
         for contract in entities.values():
             schema, table = contract["table"].split(".")

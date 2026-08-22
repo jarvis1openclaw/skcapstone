@@ -47,6 +47,10 @@ ShortText = Annotated[
     StringConstraints(strip_whitespace=True, min_length=1, max_length=512),
 ]
 Sha256 = Annotated[str, StringConstraints(pattern=r"^[0-9a-f]{64}$")]
+PlaceholderKey = Annotated[
+    str,
+    StringConstraints(pattern=r"^[a-z][a-z0-9_]{0,63}$"),
+]
 LegacySlug = Annotated[
     str,
     StringConstraints(

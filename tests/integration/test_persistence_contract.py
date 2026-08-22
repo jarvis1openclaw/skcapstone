@@ -36,6 +36,9 @@ from tests.integration.persistence_contract_communication_work_product import (
 from tests.integration.persistence_contract_work_product_gates import (
     PersistenceContract07WorkProductGateTests,
 )
+from tests.integration.persistence_contract_work_product_drafting import (
+    PersistenceContract07BWorkProductDraftingTests,
+)
 from tests.integration.persistence_contract_canonical_parity import (
     PersistenceContract08CanonicalParityTests,
 )
@@ -58,6 +61,7 @@ __all__ = [
     "PersistenceContract05ArtifactConsumerTests",
     "PersistenceContract06CommunicationWorkProductTests",
     "PersistenceContract07WorkProductGateTests",
+    "PersistenceContract07BWorkProductDraftingTests",
     "PersistenceContract08CanonicalParityTests",
     "PersistenceContract09AuditChainTests",
     "PersistenceContract10OutboxWatermarkTests",

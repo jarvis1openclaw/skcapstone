@@ -512,6 +512,59 @@
                 "updated_at"
             ]
         },
+        "WorkProductTemplate": {
+            "table": "sklegal_legal.work_product_templates",
+            "columns": [
+                "id",
+                "tenant_id",
+                "classification",
+                "status",
+                "name",
+                "work_product_kind",
+                "current_version_id",
+                "current_version_number",
+                "current_content_sha256",
+                "version",
+                "created_at",
+                "updated_at"
+            ]
+        },
+        "WorkProductTemplateVersion": {
+            "table": "sklegal_legal.work_product_template_versions",
+            "columns": [
+                "id",
+                "tenant_id",
+                "classification",
+                "status",
+                "template_id",
+                "version_number",
+                "content_sha256",
+                "version",
+                "created_at",
+                "updated_at"
+            ]
+        },
+        "WorkProductUnknown": {
+            "table": "sklegal_legal.work_product_unknowns",
+            "columns": [
+                "id",
+                "tenant_id",
+                "matter_id",
+                "classification",
+                "completeness",
+                "status",
+                "work_product_version_id",
+                "work_product_version_number",
+                "work_product_content_sha256",
+                "placeholder_key",
+                "hint",
+                "resolved_by_principal_id",
+                "resolved_at",
+                "version",
+                "created_at",
+                "updated_at"
+            ]
+        },
         "ValidationResult": {
             "table": "sklegal_legal.validations",
             "columns": [
