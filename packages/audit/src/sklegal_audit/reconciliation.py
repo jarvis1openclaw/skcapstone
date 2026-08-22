@@ -198,6 +198,10 @@ class PolicyRevisionOutbox(Protocol):
         new_event_sha256: str,
     ) -> ProjectionWatermark: ...
 
+    def read_watermark(
+        self, *, tenant_id: UUID, projection: str
+    ) -> ProjectionWatermark | None: ...
+
 
 class InMemoryDerivedStore:
     """Synthetic test and isolated-development store, never production."""
@@ -363,6 +367,80 @@ class PolicyRevisionReconciler:
 
         with self._lock:
             return self._views.get((tenant_id, matter_id))
+
+    def recover(self, *, tenant_id: UUID) -> int:
+        """Restore in-memory state after a reconciler process restart.
+
+        The compare-and-set expectation is process state, but the durable
+        projection watermark is not. A restarted reconciler that skipped this
+        step would advance every later watermark from (0, None) and fail
+        closed forever. Recovery reads the durable watermark, re-verifies the
+        audit chain up to that point, and replays the pinned policy events
+        needed to rebuild the read-gate views. Returns the restored
+        watermark sequence for the report.
+        """
+
+        with self._lock:
+            try:
+                watermark = self._outbox.read_watermark(
+                    tenant_id=tenant_id, projection=self._projection
+                )
+            except Exception:
+                raise ReconciliationUnavailable(
+                    "policy reconciliation watermark unavailable"
+                ) from None
+            if watermark is None:
+                self._expected[tenant_id] = (0, None)
+                return 0
+            sequence = watermark.event_sequence
+            observed: list[DurableAuditEvent] = []
+            for message in sorted(
+                self._outbox.pending_outbox(tenant_id=tenant_id),
+                key=lambda item: item.event_sequence,
+            ):
+                if message.event_sequence > sequence:
+                    break
+                try:
+                    observed.append(
+                        self._outbox.event(
+                            tenant_id=tenant_id, event_id=message.event_id
+                        )
+                    )
+                except Exception:
+                    raise ReconciliationUnavailable(
+                        "policy outbox event unavailable"
+                    ) from None
+            delivered: list[DurableAuditEvent] = []
+            for event in observed:
+                if event.event_sequence > sequence:
+                    break
+                delivered.append(event)
+            if delivered:
+                head = delivered[-1]
+                latest_revision: dict[UUID | None, str] = {}
+                for event in delivered:
+                    revision = event.attributes.policy_revision
+                    if revision is not None:
+                        latest_revision[event.matter_id] = revision
+                views = {
+                    key: value
+                    for key, value in self._views.items()
+                    if key[0] != tenant_id
+                }
+                for matter_id, revision in latest_revision.items():
+                    views[(tenant_id, matter_id)] = PolicyRevisionView(
+                        tenant_id=tenant_id,
+                        matter_id=matter_id,
+                        policy_revision=revision,
+                        core_event_sequence=head.event_sequence,
+                        core_event_sha256=head.event_sha256,
+                    )
+                self._views = views
+            self._expected[tenant_id] = (
+                watermark.event_sequence,
+                watermark.event_sha256,
+            )
+            return watermark.event_sequence
 
     def reconcile(self, *, tenant_id: UUID) -> ReconciliationReport:
         """Deliver pending policy evidence and deny stale derived records."""

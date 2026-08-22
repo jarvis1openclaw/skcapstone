@@ -266,6 +266,14 @@ class InMemoryAuditLedger:
             self._deliveries[key] = delivery
             return delivery
 
+    def read_watermark(
+        self, *, tenant_id: UUID, projection: str
+    ) -> ProjectionWatermark | None:
+        """Return the durable projection watermark, or None when unset."""
+
+        with self._lock:
+            return self._watermarks.get((tenant_id, projection))
+
     def advance_watermark(
         self,
         *,
