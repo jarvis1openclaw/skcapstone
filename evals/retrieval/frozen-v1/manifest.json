@@ -1,0 +1,18 @@
+{
+  "schema": "sklegal-retrieval-eval-frozen/v1",
+  "card": "e1bc4552",
+  "task": "SKL-S3-04A",
+  "parent_task": "SKL-S3-04",
+  "amendment": "AMENDMENT-SKL-S2-10",
+  "dataset_version": "1.0.0",
+  "frozen_at": "2026-08-22T20:48:34Z",
+  "paired_document": "docs/development/RETRIEVAL-EVAL-FROZEN-DATASET.md",
+  "documents_sha256": "86c206720cadfd6c7420b0c60695cc3e9b4de6e41d39aa8b6de355a0e6cf9880",
+  "queries_sha256": "dbcd47fbd4f4dc7b94d7a33af6794255dda7fe9b7688c86b13b4e56dba2a1dcb",
+  "judgments_sha256": "3eef5449e9dba9ce87663d8745f1f81b59b5c15f390a29f7ec212055c406fb47",
+  "freeze_sha256": "c4f829781badfc0139dda420c539ee30d4d43ac7c189aa55114af385ed02d189",
+  "synthetic_tenant_ids": [
+    "11111111-1111-4111-8111-111111111111",
+    "22222222-2222-4222-8222-222222222222"
+  ]
+}
