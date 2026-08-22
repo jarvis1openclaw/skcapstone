@@ -1,0 +1,36 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "sklegal.corpus-summary-input/v1",
+  "title": "Corpus summary input",
+  "description": "Typed input contract for the corpus-analyst agent role. Every field is scoped to one matter; the renderer substitutes fields into the pinned prompt template exactly.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["tenant_id", "matter_id", "release_id", "query_focus"],
+  "properties": {
+    "tenant_id": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 160,
+      "pattern": "^[a-z0-9][a-z0-9._:/-]*$"
+    },
+    "matter_id": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 160,
+      "pattern": "^[a-z0-9][a-z0-9._:/-]*$"
+    },
+    "release_id": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 160,
+      "pattern": "^[a-z0-9][a-z0-9._:/-]*$",
+      "description": "Pinned HammerTime release the summary is drawn from."
+    },
+    "query_focus": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 2000,
+      "description": "Human-stated focus for the summary, for example the issue or proceeding under review."
+    }
+  }
+}
