@@ -13,6 +13,7 @@ import { ApiError, apiErrorFromStatus, apiErrorFromCause } from "./errors";
 import type {
   ClientDetail,
   ClientSummary,
+  ClaimLedger,
   CorpusSearchResponse,
   CorpusSpan,
   MatterDetail,
@@ -148,6 +149,10 @@ export class ApiClient {
     return this.request(
       `/v1/matters/${encodeURIComponent(matterId)}/corpus/sources/${encodeURIComponent(sourceId)}/span`,
     );
+  }
+
+  getClaimLedger(matterId: string): Promise<ApiResult<ClaimLedger>> {
+    return this.request(`/v1/matters/${encodeURIComponent(matterId)}/claims`);
   }
 }
 
