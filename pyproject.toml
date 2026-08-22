@@ -36,6 +36,7 @@ members = [
   "packages/capauth",
   "packages/connectors/hammertime",
   "packages/connectors/base",
+  "packages/connectors/legal_sources",
   "packages/persistence",
   "packages/policies",
   "packages/audit",
