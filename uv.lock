@@ -10,6 +10,7 @@ members = [
     "sklegal-connectors-base",
     "sklegal-domain",
     "sklegal-hammertime",
+    "sklegal-legal-sources",
     "sklegal-migration",
     "sklegal-model-gateway",
     "sklegal-persistence",
@@ -1295,6 +1296,17 @@ requires-dist = [
     { name = "pyyaml", specifier = "==6.0.3" },
     { name = "sklegal-domain", editable = "packages/domain" },
 ]
+
+[[package]]
+name = "sklegal-legal-sources"
+version = "0.1.0"
+source = { editable = "packages/connectors/legal_sources" }
+dependencies = [
+    { name = "pydantic" },
+]
+
+[package.metadata]
+requires-dist = [{ name = "pydantic", specifier = "==2.13.4" }]
 
 [[package]]
 name = "sklegal-migration"
