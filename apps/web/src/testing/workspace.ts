@@ -107,6 +107,76 @@ export const syntheticWorkspace: MatterWorkspace = {
       sourceMissing: false,
     },
   ],
+  workProducts: [
+    {
+      workProductId: "a0000000-0000-4000-8000-0000000000a1",
+      title: "Synthetic demand letter",
+      workProductKind: "letter",
+      status: "in_review",
+      previousVersionNumber: 2,
+      approvalBinding: {
+        versionId: "a0000000-0000-4000-8000-0000000000b2",
+        versionNumber: 2,
+        contentSha256: "b".repeat(64),
+      },
+      currentVersion: {
+        versionId: "a0000000-0000-4000-8000-0000000000b3",
+        versionNumber: 3,
+        contentSha256: "d".repeat(64),
+        status: "draft",
+        content:
+          "Demand letter\nOn [?purchase_date: unresolved tension] the Synthetic Client purchased the vehicle. The vehicle stalled twice. Notice was timely.",
+        sentences: [
+          {
+            sentenceKey: "1".repeat(64),
+            text: "On [?purchase_date: unresolved tension] the Synthetic Client purchased the vehicle.",
+            groundingStatus: "deferred_unknown",
+            claimId: null,
+            claimStatement: null,
+            claimStatus: null,
+            warning:
+              "Grounding deferred until the bracketed unknown is resolved.",
+          },
+          {
+            sentenceKey: "2".repeat(64),
+            text: "The vehicle stalled twice.",
+            groundingStatus: "grounded",
+            claimId: "c0000000-0000-4000-8000-000000000001",
+            claimStatement: "The vehicle stalled during ordinary operation.",
+            claimStatus: "supported",
+            warning: null,
+          },
+          {
+            sentenceKey: "3".repeat(64),
+            text: "Notice was timely.",
+            groundingStatus: "ungrounded",
+            claimId: null,
+            claimStatement: null,
+            claimStatus: null,
+            warning:
+              "Factual sentence is not grounded in a claim ledger entry.",
+          },
+        ],
+        compareRows: [
+          {
+            change: "unchanged",
+            previousText: "The vehicle stalled twice.",
+            currentText: "The vehicle stalled twice.",
+          },
+          {
+            change: "removed",
+            previousText: "Notice was sent.",
+            currentText: null,
+          },
+          {
+            change: "added",
+            previousText: null,
+            currentText: "Notice was timely.",
+          },
+        ],
+      },
+    },
+  ],
   versionLineage: [
     {
       packetVersion: 1,

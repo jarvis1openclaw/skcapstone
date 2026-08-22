@@ -132,7 +132,7 @@ describe("stale snapshot handling", () => {
   it("shows current freshness when snapshots match", () => {
     const html = render();
     expect(html).toContain("Current snapshot");
-    expect(html).not.toContain('role="alert"');
+    expect(html).not.toContain("The recorded source snapshot is stale");
   });
 
   it("raises a visible alert when the snapshot is stale", () => {
@@ -194,11 +194,12 @@ describe("workspace sections", () => {
     expect(html).toContain("No communications are recorded for this matter.");
   });
 
-  it("keeps pending sections visible with their owning card", () => {
+  it("keeps pending sections visible and renders the Documents editor", () => {
     const html = render();
     expect(html).toContain('id="issues-and-claims"');
     expect(html).toContain("SKL-S4-03");
     expect(html).toContain('id="work-products"');
-    expect(html).toContain("SKL-S4-04");
+    expect(html).toContain("Claim-grounded editor");
+    expect(html).toContain("Version compare v2 to v3");
   });
 });

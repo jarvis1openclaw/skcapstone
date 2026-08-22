@@ -17,6 +17,7 @@ import type {
   WorkspaceTimelineEvent,
 } from "../api/types";
 import { StatusBadge } from "../components/StatusBadge";
+import { WorkProductDraftingSection } from "../components/WorkProductDrafting";
 import {
   communicationStatus,
   evidenceItemStatus,
@@ -592,7 +593,7 @@ export function MatterWorkspaceView(props: { workspace: MatterWorkspace }) {
         sectionId="deadlines-and-tasks"
         label="Deadlines and tasks"
       />
-      <PendingSection sectionId="work-products" label="Work products" />
+      <WorkProductDraftingSection workProducts={workspace.workProducts} />
       <PendingSection
         sectionId="actions-and-receipts"
         label="Actions and receipts"
