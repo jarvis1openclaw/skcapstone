@@ -26,7 +26,18 @@ Incremental updates arrive through the core transactional outbox as
 `CorpusRegistryEvent` values. Delivery is idempotent: the event idempotency
 key makes duplicate delivery a no-op, events must arrive in strict sequence,
 and each event carries the absolute observed count for one category rather
-than a delta, so replays converge to the same materialized state.
+than a delta, so replays converge to the same materialized state. The index
+that maps a core watermark to its gating LSN is backed by the same outbox,
+so every live watermark resolves; an index that cannot pin the LSN for an
+applied event fails the apply closed with an integrity error rather than
+materializing an entry the replica gate cannot evaluate.
+
+Producers and consumers agree on one storage contract, the
+`CorpusRegistryStore` port: a bounded single-snapshot read for the health
+path, an idempotent compare-and-set apply for incremental outbox events, and
+a compare-and-set reconcile for corrected deep-reconciliation state. The
+in-memory implementation in this task proves the contract; the PostgreSQL
+store is producer work on a later card.
 
 The registry holds only counts, opaque identifiers, digests, watermarks, and
 times. It never carries protected content or credentials.
