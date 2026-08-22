@@ -48,6 +48,9 @@ from tests.integration.persistence_contract_outbox_watermark import (
 from tests.integration.persistence_contract_migration_guards import (
     PersistenceContract11MigrationGuardTests,
 )
+from tests.integration.persistence_contract_claim_ledger import (
+    PersistenceContract12ClaimLedgerTests,
+)
 
 __all__ = [
     "PersistenceContract00MigrationPreflightTests",
@@ -62,6 +65,7 @@ __all__ = [
     "PersistenceContract09AuditChainTests",
     "PersistenceContract10OutboxWatermarkTests",
     "PersistenceContract11MigrationGuardTests",
+    "PersistenceContract12ClaimLedgerTests",
 ]
 
 

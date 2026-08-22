@@ -82,7 +82,7 @@ class PersistenceContract08CanonicalParityTests(PersistenceContractBase):
             )
         )
         self.assertEqual(set(MAPPINGS) - {"ExecutionReceipt"}, set(payloads))
-        self.assertEqual(30, len(payloads))
+        self.assertEqual(32, len(payloads))
 
         tenant = str(contract.tenant_id)
         principal = str(contract.principal_id)
@@ -132,6 +132,7 @@ class PersistenceContract08CanonicalParityTests(PersistenceContractBase):
             "Defense",
             "Element",
             "Remedy",
+            "LedgerClaim",
             "DeadlineCalculation",
             "Deadline",
             "Task",
@@ -174,6 +175,11 @@ class PersistenceContract08CanonicalParityTests(PersistenceContractBase):
                 base_sql.append(insert_statement(auxiliary[0].table, auxiliary[0].row))
             if name == "Element":
                 base_sql.append(insert_statement(auxiliary[1].table, auxiliary[1].row))
+            if name == "LedgerClaim":
+                for nested in payload.relations["support"]:
+                    base_sql.append(
+                        insert_statement(MAPPINGS["ClaimSupport"].table, nested["row"])
+                    )
         self._psql(
             role,
             "BEGIN;\n" + "\n".join(base_sql) + "\n" + "\n".join(link_sql) + "\nCOMMIT;",
@@ -323,12 +329,12 @@ class PersistenceContract08CanonicalParityTests(PersistenceContractBase):
             """,
         )
         self.assertEqual(set(MAPPINGS), set(payloads))
-        self.assertEqual(31, len(payloads))
+        self.assertEqual(33, len(payloads))
 
         write_authority = {
             name: payload.write_contract.authority for name, payload in payloads.items()
         }
-        self.assertEqual(31, len(write_authority))
+        self.assertEqual(33, len(write_authority))
         self.assertEqual("administrative_bootstrap", write_authority["Tenant"])
         self.assertEqual("controlled_writer", write_authority["ExecutionEvent"])
         self.assertEqual("controlled_writer", write_authority["ExecutionReceipt"])
@@ -408,7 +414,7 @@ class PersistenceContract08CanonicalParityTests(PersistenceContractBase):
             restored[entity_name] = reconstruction.entity
             retained[entity_name] = reconstruction.metadata
         self.assertEqual(set(MAPPINGS), set(restored))
-        self.assertEqual(31, len(retained))
+        self.assertEqual(33, len(retained))
         restored_execution = restored["Execution"]
         self.assertEqual(
             tuple(range(1, 6)),
@@ -455,7 +461,7 @@ class PersistenceContract08CanonicalParityTests(PersistenceContractBase):
             restored[entity_name] = entity
             retained_metadata[entity_name] = reconstruction.metadata
         self.assertEqual(set(MAPPINGS), set(restored))
-        self.assertEqual(31, decomposed_count)
+        self.assertEqual(33, decomposed_count)
 
         self.assertIn(
             "import_batch_id", retained_metadata["Matter"].relations["aliases"][0]

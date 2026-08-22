@@ -1,5 +1,6 @@
 """Aggregate entity mapping registry combined from every aggregate module."""
 
+from .claim_ledger import CLAIM_LEDGER_MAPPINGS
 from .claims import CLAIM_MAPPINGS
 from .contract import EntityMapping
 from .facts import FACT_MAPPINGS
@@ -16,6 +17,7 @@ MAPPINGS: dict[str, EntityMapping] = {
         *STRUCTURE_MAPPINGS,
         *FACT_MAPPINGS,
         *CLAIM_MAPPINGS,
+        *CLAIM_LEDGER_MAPPINGS,
         *WORK_MAPPINGS,
         *WORK_PRODUCT_MAPPINGS,
         *INTEGRATION_MAPPINGS,

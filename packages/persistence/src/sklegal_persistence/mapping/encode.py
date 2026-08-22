@@ -182,6 +182,18 @@ def _build_write_contract(
                 },
             ),
         )
+    if entity_name == "LedgerClaim":
+        auxiliary_writes = (
+            AuxiliaryWrite(
+                operation="ensure_ledger_claim_identity",
+                table="sklegal_legal.ledger_claim_identities",
+                row={
+                    "tenant_id": row["tenant_id"],
+                    "matter_id": row["matter_id"],
+                    "id": row["id"],
+                },
+            ),
+        )
     return DecompositionWriteContract(
         authority=_write_authority(entity_name),
         operation=_write_operation(entity_name),

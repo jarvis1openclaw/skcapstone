@@ -52,6 +52,10 @@
     {
       "file": "0013_capauth_replay_expiry.sql",
       "sha256": "5931a1f5420270ee850f632c52692cb11e2d03a380b55c4b614450b6a3d3f26c"
+    },
+    {
+      "file": "0014_claim_ledger.sql",
+      "sha256": "3a53e9150815daef22d1b76475deab1f96c5e72060bed811296ddbd9a5b3aa7f"
     }
   ]
 }

@@ -20,10 +20,12 @@ relations, functions, and types, must be owned by the exact non-superuser,
 | `sklegal_audit` | Append-only audit chain, transactional outbox, delivery receipts, and projection watermarks |
 
 The legal schema covers all 31 entities in the approved `SKL-S1-01` domain
-contract. `tests/fixtures/persistence/domain-table-parity.json` is the reviewed
+contract plus the `SKL-S3-05A` claim ledger entities (LedgerClaim and
+ClaimSupport). `tests/fixtures/persistence/domain-table-parity.json` is the
+reviewed
 entity-to-table and required-column matrix. The reusable, driver-neutral
 `sklegal_persistence.mapping` adapter declares scalar, value-object, and
-normalized-relation mappings for all 31 public `DomainEntity` types. It
+normalized-relation mappings for all 33 public `DomainEntity` types. It
 decomposes canonical instances into closed scalar and relation rows, restores
 those rows with strict Pydantic validation, and rejects missing joins, unknown
 columns, undeclared persistence metadata, over-cardinality, and ambiguous
@@ -197,10 +199,11 @@ contract and its production limitations.
 
 ## Migration, provisioning, and rollback
 
-Thirteen digest-pinned migrations create the foundation, identity, legal
+Fourteen digest-pinned migrations create the foundation, identity, legal
 records, integration and workflow references, audit target, RLS policies,
-legal information-barrier records, and the CapAuth state, snapshot, and grant
-surface. Each file contains explicit up and down sections.
+legal information-barrier records, the CapAuth state, snapshot, and grant
+surface, and the claim ledger. Each file contains explicit up and down
+sections.
 Migrations 0001 through 0004 create the six prefixed schemas, shared domains
 and helper functions (0001), tenants, principals, database-role bindings, and
 tenant membership (0002), the legal record tables (0003), and the
@@ -244,6 +247,15 @@ Migrations 0008 through 0013 install the durable CapAuth surface described in
   mirrors the existing controlled write posture: deletes are possible only
   inside migrator-owned SECURITY DEFINER functions invoked by a different
   session user, never by direct data access.
+
+Migration 0014 installs the claim ledger: versioned `ledger_claims` rows with
+an immutable policy revision, append-only `ledger_claim_support` records that
+link support and counter-support to exact source spans, and the
+`ledger_claim_identities` anchor. A deferred constraint trigger rejects any
+claim write that lacks at least one supporting source span, all three tables
+are forced-RLS with matter-boundary select and insert policies, and the
+`ledger_claim_history` and `ledger_claim_current` security-invoker views
+expose the revision history.
 
 The down sections run in reverse order, 0013 through 0008. The 0013 down
 drops the prune function and restores the 0008-era `reserve_capability`, the
