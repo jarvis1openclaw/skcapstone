@@ -10,6 +10,7 @@ from .adapter import (
     ROOT_ENV_VAR,
     HammerTimeReleaseAdapter,
 )
+from .bridge import HammerTimeSubmissionBridge, SourceEntry, SubmissionPlan, SubmissionResult
 from .errors import (
     AdapterUnavailableError,
     AmbiguousLegacyIdError,
@@ -23,6 +24,10 @@ from .errors import (
     RegistryMismatchError,
     SourceHashMismatchError,
     StaleReleaseError,
+    CompletionEvidenceMissingError,
+    PromotionRejectedError,
+    SubmissionError,
+    UnsupportedSubmissionError,
 )
 from .frontmatter import split_frontmatter
 from .models import (
@@ -76,6 +81,10 @@ __all__ = [
     "ForbiddenPathError",
     "HammerTimeAdapterError",
     "HammerTimeReleaseAdapter",
+    "HammerTimeSubmissionBridge",
+    "SourceEntry",
+    "SubmissionPlan",
+    "SubmissionResult",
     "LegacyMatterRecord",
     "LegacyPathResolution",
     "LegacyRecordId",
@@ -99,5 +108,9 @@ __all__ = [
     "SourceHashMismatchError",
     "SourceHashVerification",
     "StaleReleaseError",
+    "CompletionEvidenceMissingError",
+    "PromotionRejectedError",
+    "SubmissionError",
+    "UnsupportedSubmissionError",
     "split_frontmatter",
 ]
