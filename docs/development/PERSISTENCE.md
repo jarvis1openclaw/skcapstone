@@ -200,10 +200,11 @@ contract and its production limitations.
 
 ## Migration, provisioning, and rollback
 
-Fifteen digest-pinned migrations create the foundation, identity, legal
+Sixteen digest-pinned migrations create the foundation, identity, legal
 records, integration and workflow references, audit target, RLS policies,
 legal information-barrier records, the CapAuth state, snapshot, and grant
-surface, the work product drafting surface, and the claim ledger. Each file
+surface, the work product drafting surface, the claim ledger, and the
+isolated pilot import staging surface. Each file
 contains explicit up and down sections.
 Migrations 0001 through 0004 create the six prefixed schemas, shared domains
 and helper functions (0001), tenants, principals, database-role bindings, and
@@ -272,7 +273,27 @@ are forced-RLS with matter-boundary select and insert policies, and the
 `ledger_claim_history` and `ledger_claim_current` security-invoker views
 expose the revision history.
 
-The down sections run in reverse order. The 0015 down drops the claim ledger
+Migration 0016 installs the isolated pilot import staging surface in the
+`sklegal_migrations` schema for the Liberty Auto pilot (SKL-S5-01B).
+`pilot_import_batches` records one human-approved import batch per source
+snapshot with the reviewer, decision time, and review artifact reference, and
+carries an `imported` to `withdrawn` lifecycle. `pilot_import_records` keys
+every imported Matter or Matter Event proposal by its deterministic
+idempotency key with a monotonic revision per target, so reruns insert
+nothing and changed source content lands as a new revision.
+`pilot_import_source_files`, `pilot_import_facts`, and
+`pilot_import_tension_groups` pin the batch source hashes, atomic Fact
+Assertion proposals, and unresolved Tension Group records.
+`pilot_import_states` stores only negative states: a database CHECK allows
+solely `pending_review` approvals and `not_started` executions, so no import
+can advance approval or execution state. `pilot_import_withdrawn_targets`
+pins withdrawn target UUIDs so a later import can never reuse them. Physical
+deletion is possible only by direct data access against a withdrawn batch in
+a disposable development database, matching the pilot rollback contract.
+
+The down sections run in reverse order. The 0016 down drops the pilot import
+staging tables in reverse dependency order. The 0015 down drops the claim
+ledger
 views, tables, and functions in reverse dependency order. The 0014 down
 restores the 0003-era `transition_work_product_version` without the unknown
 blocker, then drops the drafting functions and tables. The 0013 down

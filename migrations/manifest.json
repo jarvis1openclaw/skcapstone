@@ -60,6 +60,10 @@
     {
       "file": "0015_claim_ledger.sql",
       "sha256": "3a53e9150815daef22d1b76475deab1f96c5e72060bed811296ddbd9a5b3aa7f"
+    },
+    {
+      "file": "0016_pilot_import.sql",
+      "sha256": "9a4e93cba889da71f65407b28a292805ccc40f717a919fbb6b24ba3360f2a6bd"
     }
   ]
 }
