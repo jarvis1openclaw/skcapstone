@@ -79,6 +79,103 @@ def test_two_active_identities_fail_closed(tmp_path) -> None:
     assert any(item["kind"] == "ambiguous_active_endpoint" for item in report["findings"])
 
 
+def test_declared_windows_and_wsl_runtime_routes_are_safe(tmp_path) -> None:
+    paths = FleetPaths(tmp_path)
+    store.write_spec(
+        paths,
+        "node",
+        "chiwk12",
+        {
+            "address": {"hostname": "chiwk12"},
+            "addresses": [
+                {"kind": "tailscale-wsl", "value": "100.120.22.21"},
+                {"kind": "tailscale-windows", "value": "100.87.143.116"},
+            ],
+            "aliases": ["chiwk12-windows", "chiwk12-wsl"],
+        },
+        writer=store.Writer(role="operator", node="test", identity="test"),
+    )
+    status = {
+        "Peer": {
+            "wsl": {
+                "ID": "wsl-id",
+                "HostName": "chiwk12",
+                "TailscaleIPs": ["100.120.22.21"],
+                "Online": True,
+                "OS": "linux",
+            },
+            "windows": {
+                "ID": "windows-id",
+                "HostName": "chiwk12",
+                "TailscaleIPs": ["100.87.143.116"],
+                "Online": True,
+                "OS": "windows",
+            },
+        }
+    }
+
+    report = endpoint_audit.audit(paths, status)["reports"][0]
+
+    assert report["safe_to_route"] is True
+    assert report["severity"] == "ok"
+    assert report["active_peer_id"] is None
+    assert report["active_routes"] == [
+        {
+            "endpoint": "100.87.143.116",
+            "kind": "tailscale-windows",
+            "os": "windows",
+            "peer_id": "windows-id",
+        },
+        {
+            "endpoint": "100.120.22.21",
+            "kind": "tailscale-wsl",
+            "os": "linux",
+            "peer_id": "wsl-id",
+        },
+    ]
+    assert {item["kind"] for item in report["findings"]} == {"declared_multi_runtime"}
+
+
+def test_declared_multi_runtime_with_wrong_os_fails_closed(tmp_path) -> None:
+    paths = FleetPaths(tmp_path)
+    store.write_spec(
+        paths,
+        "node",
+        "chiwk12",
+        {
+            "address": {"hostname": "chiwk12"},
+            "addresses": [
+                {"kind": "tailscale-wsl", "value": "100.120.22.21"},
+                {"kind": "tailscale-windows", "value": "100.87.143.116"},
+            ],
+        },
+        writer=store.Writer(role="operator", node="test", identity="test"),
+    )
+    status = {
+        "Peer": {
+            "one": {
+                "ID": "one",
+                "HostName": "chiwk12",
+                "TailscaleIPs": ["100.120.22.21"],
+                "Online": True,
+                "OS": "windows",
+            },
+            "two": {
+                "ID": "two",
+                "HostName": "chiwk12",
+                "TailscaleIPs": ["100.87.143.116"],
+                "Online": True,
+                "OS": "windows",
+            },
+        }
+    }
+
+    report = endpoint_audit.audit(paths, status)["reports"][0]
+
+    assert report["safe_to_route"] is False
+    assert any(item["kind"] == "ambiguous_active_endpoint" for item in report["findings"])
+
+
 def test_endpoint_mismatch_never_selects_an_observed_peer(tmp_path) -> None:
     paths = FleetPaths(tmp_path)
     _node(paths)

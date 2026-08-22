@@ -40,6 +40,23 @@ class Peer:
         }
 
 
+@dataclass(frozen=True)
+class DeclaredEndpoint:
+    """A role-scoped endpoint declared by the canonical fleet object."""
+
+    kind: str
+    value: str
+
+    @property
+    def expected_os(self) -> str | None:
+        suffix = self.kind.removeprefix("tailscale-")
+        if suffix == "windows":
+            return "windows"
+        if suffix in {"linux", "wsl", "wsl2"}:
+            return "linux"
+        return None
+
+
 def read_status(path: Path | None = None, *, timeout: float = 10.0) -> dict[str, Any]:
     """Read a fixture or execute the local read-only Tailscale status command."""
     if path is not None:
@@ -85,7 +102,9 @@ def _peers(status: Mapping[str, Any]) -> list[Peer]:
     return sorted(peers, key=lambda item: (item.hostname, item.node_id))
 
 
-def _node_identity(payload: Mapping[str, Any]) -> tuple[set[str], set[str]]:
+def _node_identity(
+    payload: Mapping[str, Any],
+) -> tuple[set[str], set[str], tuple[DeclaredEndpoint, ...]]:
     spec = payload.get("spec") or {}
     address = spec.get("address") or {}
     names = {
@@ -98,20 +117,21 @@ def _node_identity(payload: Mapping[str, Any]) -> tuple[set[str], set[str]]:
         )
         if value
     }
+    declared = tuple(
+        DeclaredEndpoint(kind=str(entry.get("kind") or ""), value=str(entry.get("value")))
+        for entry in (spec.get("addresses") or [])
+        if isinstance(entry, Mapping) and entry.get("value")
+    )
     endpoints = {
         str(value)
         for value in (
             address.get("ip"),
             address.get("tailscale"),
-            *(
-                entry.get("value")
-                for entry in (spec.get("addresses") or [])
-                if isinstance(entry, Mapping)
-            ),
+            *(entry.value for entry in declared),
         )
         if value
     }
-    return names, endpoints
+    return names, endpoints, declared
 
 
 def _peer_names(peer: Peer) -> set[str]:
@@ -122,12 +142,43 @@ def _peer_names(peer: Peer) -> set[str]:
     return {name for name in names if name}
 
 
+def _declared_multi_runtime_routes(
+    active: list[Peer], declared: tuple[DeclaredEndpoint, ...]
+) -> list[dict[str, str]] | None:
+    """Resolve an explicitly declared Windows plus Linux/WSL peer topology."""
+    role_endpoints = [item for item in declared if item.expected_os is not None]
+    if len(active) < 2 or len(role_endpoints) < 2:
+        return None
+
+    routes: list[dict[str, str]] = []
+    routed_peers: set[str] = set()
+    for endpoint in role_endpoints:
+        owners = [peer for peer in active if endpoint.value in peer.ips]
+        if len(owners) != 1 or owners[0].os.lower() != endpoint.expected_os:
+            return None
+        peer = owners[0]
+        if peer.node_id in routed_peers:
+            return None
+        routed_peers.add(peer.node_id)
+        routes.append(
+            {
+                "kind": endpoint.kind,
+                "endpoint": endpoint.value,
+                "peer_id": peer.node_id,
+                "os": peer.os,
+            }
+        )
+    if routed_peers != {peer.node_id for peer in active}:
+        return None
+    return sorted(routes, key=lambda item: (item["kind"], item["peer_id"]))
+
+
 def audit(paths: FleetPaths, status: Mapping[str, Any]) -> dict[str, Any]:
     """Compare canonical node identities with peers without changing either source."""
     peers = _peers(status)
     reports = []
     for node in store.list_specs(paths, "node"):
-        names, configured_endpoints = _node_identity(node)
+        names, configured_endpoints, declared_endpoints = _node_identity(node)
         matches = [
             peer
             for peer in peers
@@ -138,8 +189,9 @@ def audit(paths: FleetPaths, status: Mapping[str, Any]) -> dict[str, Any]:
         active = [peer for peer in matches if peer.online]
         stale = [peer for peer in matches if not peer.online]
         active_ips = {ip for peer in active for ip in peer.ips}
+        active_routes = _declared_multi_runtime_routes(active, declared_endpoints)
         findings = []
-        if len(matches) > 1:
+        if len(matches) > 1 and active_routes is None:
             findings.append(
                 {
                     "kind": "duplicate_tailscale_identity",
@@ -155,7 +207,15 @@ def audit(paths: FleetPaths, status: Mapping[str, Any]) -> dict[str, Any]:
                     "peer_ids": [peer.node_id for peer in stale],
                 }
             )
-        if len(active) > 1:
+        if active_routes is not None:
+            findings.append(
+                {
+                    "kind": "declared_multi_runtime",
+                    "severity": "info",
+                    "peer_ids": [item["peer_id"] for item in active_routes],
+                }
+            )
+        elif len(active) > 1:
             findings.append(
                 {
                     "kind": "ambiguous_active_endpoint",
@@ -180,7 +240,7 @@ def audit(paths: FleetPaths, status: Mapping[str, Any]) -> dict[str, Any]:
                     "peer_ids": [peer.node_id for peer in matches],
                 }
             )
-        safe_to_route = (
+        safe_to_route = active_routes is not None or (
             len(active) == 1
             and bool(configured_endpoints)
             and not configured_endpoints.isdisjoint(active_ips)
@@ -190,14 +250,17 @@ def audit(paths: FleetPaths, status: Mapping[str, Any]) -> dict[str, Any]:
                 "node": node.get("name"),
                 "safe_to_route": safe_to_route,
                 "configured_endpoints": sorted(configured_endpoints),
-                "active_peer_id": active[0].node_id if safe_to_route else None,
+                "active_peer_id": (
+                    active[0].node_id if len(active) == 1 and safe_to_route else None
+                ),
+                "active_routes": active_routes or [],
                 "retirement_candidates": [peer.node_id for peer in stale] if active else [],
                 "peers": [peer.as_dict() for peer in matches],
                 "findings": findings,
                 "severity": (
                     "error"
                     if any(item["severity"] == "error" for item in findings)
-                    else ("warn" if findings else "ok")
+                    else ("warn" if any(item["severity"] == "warn" for item in findings) else "ok")
                 ),
             }
         )
