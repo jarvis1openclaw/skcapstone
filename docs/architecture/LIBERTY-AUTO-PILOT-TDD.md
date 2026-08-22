@@ -4,7 +4,7 @@ Date: 2026-08-19
 Status: Approved, retrieval projection wording amended 2026-08-21
 Source matter: `PRB-2026-009`  
 Source event: `INC-016`  
-Source path: `/mnt/cloud/onedrive/projects/DAVE AI/hammerTime/incidents/problems/liberty-auto-plaza-libertyville-nissan-purchase-order`
+Source path: `/mnt/cloud/onedrive/projects/DAVE-AI/hammerTime/incidents/problems/liberty-auto-plaza-libertyville-nissan-purchase-order`
 
 ## 1. Purpose
 
@@ -32,7 +32,7 @@ Migration must not alter those facts or statuses.
 
 ## 3. Semantic mapping
 
-Qwen3.8 reviewed the selected source records through HammerTime's approved local route and recommended a lossless projection rather than normalization.
+Qwen3 reviewed the selected source records through HammerTime's approved local route and recommended a lossless projection rather than normalization.
 
 | Legacy record | SKLegal target | Rule |
 |---|---|---|

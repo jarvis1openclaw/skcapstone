@@ -24,22 +24,23 @@ def _pinned_hash(path: str) -> str:
 
 
 class AmendmentSklS209ProposalTests(unittest.TestCase):
-    """Guards the pending SKL-S2-09 provenance amendment.
+    """Guards the approved SKL-S2-09 provenance amendment.
 
-    While the amendment awaits human approval, the pinned pilot TDD must
-    keep its recorded hash and the proposal record must stay internally
-    consistent. When the owner approves and re-pins, this module is updated
-    to the approved state per the amendment record.
+    The owner approved the amendment on 2026-08-21. The pinned pilot TDD
+    carries the canonical source path, and the amendment record must stay
+    internally consistent with the approved state.
     """
 
     @classmethod
     def setUpClass(cls) -> None:
         cls.amendment = AMENDMENT.read_text(encoding="utf-8")
 
-    def test_amendment_record_is_proposed_and_pending(self) -> None:
+    def test_amendment_record_is_approved(self) -> None:
         self.assertIn("Amendment ID: `AMENDMENT-SKL-S2-09`", self.amendment)
         self.assertIn("Card: `a4fcdd8e`", self.amendment)
-        self.assertIn("Status: proposed (pending human approval)", self.amendment)
+        self.assertIn("Status: approved", self.amendment)
+        self.assertIn("## Human decision", self.amendment)
+        self.assertIn("## Applied result", self.amendment)
 
     def test_amendment_uses_no_em_or_en_dashes(self) -> None:
         self.assertNotRegex(self.amendment, re.compile("[\u2013\u2014]"))
@@ -52,15 +53,15 @@ class AmendmentSklS209ProposalTests(unittest.TestCase):
         digest = hashlib.sha256(PILOT_TDD.read_bytes()).hexdigest()
         self.assertEqual(_pinned_hash(PILOT_TDD_REL), digest)
 
-    def test_proposed_post_amendment_hash_is_reproducible(self) -> None:
+    def test_applied_hash_matches_pinned_hash(self) -> None:
         source = PILOT_TDD.read_text(encoding="utf-8")
-        self.assertEqual(1, source.count(LEGACY_SOURCE_PATH))
-        amended = source.replace(LEGACY_SOURCE_PATH, CANONICAL_SOURCE_PATH)
-        digest = hashlib.sha256(amended.encode("utf-8")).hexdigest()
+        self.assertEqual(0, source.count(LEGACY_SOURCE_PATH))
+        self.assertGreaterEqual(source.count(CANONICAL_SOURCE_PATH), 1)
+        pinned = _pinned_hash(PILOT_TDD_REL)
         self.assertIn(
-            f"{digest}  {PILOT_TDD_REL}",
+            f"{pinned}  {PILOT_TDD_REL}",
             self.amendment,
-            "proposed post-amendment hash must be recorded in the amendment",
+            "applied post-approval hash must be recorded in the amendment",
         )
 
 

@@ -1,15 +1,24 @@
-# Proposed amendment: HammerTime provenance path for the Liberty Auto pilot
+# Approved amendment: HammerTime provenance path for the Liberty Auto pilot
 
 Amendment ID: `AMENDMENT-SKL-S2-09`
 Card: `a4fcdd8e` (`SKL-S2-09`)
 Recorded timestamp: 2026-08-21T18:19:10-05:00
 Prepared by: `kimi-skl-s2-09`
 Human owner: `skuser01`
-Status: proposed (pending human approval)
+Status: approved
 
-This record proposes a scoped amendment. It does not modify any hash-pinned
-document. The human owner approves, applies the single-line edit, and re-pins
-`docs/approval/DESIGN-HASHES.sha256` separately.
+## Human decision
+
+2026-08-21: the human owner approved this amendment and directed its
+application in the same approved revision as the model-naming correction
+recorded in `AMENDMENT-SKL-MODEL-NAMING.md`. Because that correction also
+edited `docs/architecture/LIBERTY-AUTO-PILOT-TDD.md`, the final pinned hash
+differs from the pre-computed post-amendment hash below; the applied hash is
+recorded in the "Applied result" section at the end of this record.
+
+This record proposed a scoped amendment. It did not modify any hash-pinned
+document before approval. The single-line edit was applied at approval and
+`docs/approval/DESIGN-HASHES.sha256` was re-pinned.
 
 ## Problem
 
@@ -143,3 +152,17 @@ Upon human approval:
 - Set this record's status to approved with the owner's decision recorded.
 
 Rollback is the reverse of the same single-line edit and hash restore.
+
+## Applied result
+
+Applied 2026-08-21 in the same approved revision as the model-naming
+correction. The source-path line now reads the canonical
+`/mnt/cloud/onedrive/projects/DAVE-AI/hammerTime/...` path. Final pinned hash
+after both edits:
+
+```text
+5c796030a888a7bebb197f55b2dde44d14711092856c752d03997907d05b85fd  docs/architecture/LIBERTY-AUTO-PILOT-TDD.md
+```
+
+`tests/test_amendment_skl_s2_09_proposal.py` was updated to the approved
+state per the approval effect above.

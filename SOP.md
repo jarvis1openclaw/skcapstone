@@ -77,7 +77,7 @@ flowchart LR
     Worker --> Model[Model gateway]
     Worker --> Connectors[Simulation-first connectors]
     HammerTime --> Sources[(HammerTime releases)]
-    Model --> Qwen[Qwen3.8 on chiap08]
+    Model --> Qwen[Qwen3 on chiap08]
     Model --> OpenAI[Approved OpenAI API route]
     API --> Audit[Append-only audit and outbox]
     Worker --> Audit
@@ -119,7 +119,7 @@ flowchart LR
     Auth -->|sanitized authorized context| Policy[Legal policy gateway]
     Policy -->|tenant and matter bound query| RLS[(PostgreSQL FORCE RLS<br/>protected legal data)]
     RLS -->|authorized records only| Bundle[Typed evidence bundle<br/>classified legal data]
-    Bundle -->|approved local route| Qwen[Qwen3.8 proposal]
+    Bundle -->|approved local route| Qwen[Qwen3 proposal]
     Bundle -->|separately approved egress| External[External model proposal]
     Qwen --> Reducer[Deterministic reducer]
     External --> Reducer

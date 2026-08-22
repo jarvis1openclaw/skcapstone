@@ -104,8 +104,9 @@ class DevelopmentContractTests(unittest.TestCase):
         ):
             with self.subTest(required=required):
                 self.assertIn(required, normalized_decision)
-        self.assertIn("Status: proposed, pending human approval", amendment)
+        self.assertIn("Status: approved", amendment)
         self.assertIn("No hash-pinned approved document was modified", amendment)
+        self.assertIn("docs/architecture/POSTGRES-PRINCIPAL-SCALING.md", amendment)
 
 
 if __name__ == "__main__":

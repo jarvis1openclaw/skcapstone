@@ -49,14 +49,14 @@ HammerTime remains the source and provenance owner for the initial corpus, origi
 - Do not write directly to arbitrary HammerTime paths.
 - New ingestion must use the existing HammerTime intake, completion-evidence, release, and archive contracts.
 - Any HammerTime workflow modification requires its own task, tests, dry run, and rollback plan.
-- Semantic interpretation of HammerTime corpus material must follow HammerTime's Qwen3.8-first rules.
+- Semantic interpretation of HammerTime corpus material must follow HammerTime's Qwen3-first rules.
 - External-source verification remains separate until an approved corpus ingestion includes it.
 
 ## Model boundary
 
 Models produce typed proposals. Models do not own workflow state, issue authorization, approve work products, or execute external actions.
 
-- Qwen3.8 is the initial local corpus analyst.
+- Qwen3 is the initial local corpus analyst.
 - OpenAI is an optional provider route for approved tasks through the OpenAI API, not a direct use of a consumer ChatGPT session.
 - Protected matter content may leave the local stack only when policy, tenant configuration, classification, purpose, and human approval allow it.
 - Tool access must be mediated by CapAuth and the SKLegal policy gateway.

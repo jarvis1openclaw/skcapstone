@@ -94,16 +94,59 @@ revisions are recorded separately below.
   full owner statement, preserved boundaries, independent review, original
   hashes, and current hashes are recorded in
   `docs/approval/AMENDMENT-SKL-S2-10.md`.
+- 2026-08-21, card `a4fcdd8e` (`SKL-S2-09`): The owner approved the
+  provenance path correction in `docs/architecture/LIBERTY-AUTO-PILOT-TDD.md`.
+  The pilot source path now reads the canonical
+  `/mnt/cloud/onedrive/projects/DAVE-AI/hammerTime/...` root. The legacy
+  space-spelled path survives only as a provenance alias in
+  `docs/approval/AMENDMENT-SKL-S2-09.md`.
+- 2026-08-21, card `3825cca4` (`SKL-S3-08`): The owner approved the
+  database-login scaling decision.
+  `docs/architecture/POSTGRES-PRINCIPAL-SCALING.md` (sha256
+  `4d7a8b628a0db1f1dfda09e902a88e27e532ec105e9175c86a46ca8303e3bd88`) is the
+  governing decision: a shared transaction-pooled `sklegal_runtime` login is
+  permitted only when identity comes from a short-lived, one-use,
+  database-owned authorization-context lease minted by a separate CapAuth and
+  policy broker identity. Caller-set tenant and Principal variables remain
+  rejected and all roles stay NOBYPASSRLS. Implementation, production
+  deployment, credential creation, and role retirement require separate
+  eligible cards.
+- 2026-08-21, card `ea2c9790` (`SKL-S4-07`): The owner approved the connector
+  dispatch ownership decision recorded in `docs/development/AUDIT.md`
+  (section "Connector dispatch ownership (SKL-S4-07)") and in
+  `docs/approval/AMENDMENT-SKL-S4-07.md`. Temporal owns connector dispatch
+  orchestration; the polled PostgreSQL outbox owns only content-free evidence
+  handoff and derived projections and never initiates a provider call.
+- 2026-08-21, card `48fde7c1` (`SKL-S4-08`): The owner approved the external
+  action state machine amendment.
+  `docs/architecture/EXTERNAL-ACTION-STATE-MACHINE.md` (sha256
+  `8a67cf4adff11056939a8e16b454972fa6a1af69a44efd07946666d4255e7156`) is
+  approved architecture guidance, guarded by
+  `tests/test_external_action_state_docs.py`.
+- 2026-08-21, flagged by card `c976908e` (`SKL-S1-10`) and corrected under the
+  owner decision recorded in `docs/approval/AMENDMENT-SKL-MODEL-NAMING.md`:
+  the initial local corpus analyst is named `Qwen3` (the HammerTime-operated
+  local route on chiap08). The four approved documents that carried the
+  `Qwen3.8` token were corrected and re-pinned in this revision.
+- 2026-08-21, card `2a41d17d` (`SKL-S3-09-FU`): The owner approved the audit
+  chain-head scaling decision.
+  `docs/architecture/AUDIT-CHAIN-SCALING.md` (sha256
+  `da578eeb877aec9b82771a71164b9f079f9c3a619deda2599d6158a2daafd217`) is the
+  governing decision: no schema change before or during the Sprint 5 pilot,
+  per-Matter chain heads are the design direction if the numeric trigger
+  gate fires, and batch append is rejected as the primary mitigation. No
+  migration, code, or deployment change is authorized by this amendment.
 
 ## Current approved document hashes
 
 These values match `docs/approval/DESIGN-HASHES.sha256` after the approved
-S2-10 retrieval amendment:
+S2-10 retrieval amendment, the approved S2-09 provenance path correction, and
+the approved model-naming correction:
 
 ```text
-56d88a3d80ba09a96d9f95270fafd1376122368d0a4a7bd891233dae9addfef7  docs/architecture/SKLEGAL-HIGH-LEVEL-TDD.md
-8a30c43f66bc70b9a104beb04686e444e0144c6b9e0842b8239865ae5fcbab52  docs/architecture/LIBERTY-AUTO-PILOT-TDD.md
-103d6e53f2eea27da0e9801ce972bd091cba8abed6e4c70d372dde5618da00cb  docs/planning/EPIC-SPRINT-PLAN.md
+033d09ffaf715a825fb64e15b7b69ba388ca6a0e6775aa82cc2465bec813910f  docs/architecture/SKLEGAL-HIGH-LEVEL-TDD.md
+5c796030a888a7bebb197f55b2dde44d14711092856c752d03997907d05b85fd  docs/architecture/LIBERTY-AUTO-PILOT-TDD.md
+a6c4e60759d10290fe4936072af4bf4a0ff850946dcf4bc4e70d0f90a2539ba4  docs/planning/EPIC-SPRINT-PLAN.md
 7d7155e6cb23566e9cee3226de176a9e14999c5174e30fb24f75185dfc3de8cc  docs/tasks/SUBAGENT-TASK-TTDS.md
-631ee98634e5d194dc54ebc853663fc349525ba69b89a7a912b9a5cb9a355d20  docs/approval/index.html
+3155d2567280ca69b94040a4f5b57befac059b54fac8ac9167f703f23fd4f4a2  docs/approval/index.html
 ```

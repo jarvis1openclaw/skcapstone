@@ -114,7 +114,7 @@ SKL-S0-01 approval
   -> Sprint 5 pilot acceptance
 ```
 
-Within each sprint, independent tasks may run concurrently only after their explicit dependencies pass. Corpus semantic tasks require Qwen3.8. External action tasks remain simulation-only until Sprint 5 acceptance and a separate connector activation approval.
+Within each sprint, independent tasks may run concurrently only after their explicit dependencies pass. Corpus semantic tasks require Qwen3. External action tasks remain simulation-only until Sprint 5 acceptance and a separate connector activation approval.
 
 ## Release gates
 

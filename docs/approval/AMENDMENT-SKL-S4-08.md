@@ -3,7 +3,17 @@
 Amendment ID: `AMENDMENT-SKL-S4-08`
 Card: `48fde7c1` (`SKL-S4-08`)
 Recorded by: `kimi-skl-s4-08`
-Status: proposed, pending human approval
+Status: approved
+
+## Human decision
+
+2026-08-21: the human owner approved this amendment.
+`docs/architecture/EXTERNAL-ACTION-STATE-MACHINE.md` is approved
+architecture guidance, recorded at hash:
+
+```text
+8a67cf4adff11056939a8e16b454972fa6a1af69a44efd07946666d4255e7156  docs/architecture/EXTERNAL-ACTION-STATE-MACHINE.md
+```
 
 ## Baseline
 

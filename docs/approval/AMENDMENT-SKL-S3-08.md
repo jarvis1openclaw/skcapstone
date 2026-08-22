@@ -3,7 +3,17 @@
 Amendment ID: `AMENDMENT-SKL-S3-08`
 Card: `3825cca4` (`SKL-S3-08`)
 Recorded by: `codex-skl-s3-08`
-Status: proposed, pending human approval
+Status: approved
+
+## Human decision
+
+2026-08-21: the human owner approved this amendment.
+`docs/architecture/POSTGRES-PRINCIPAL-SCALING.md` is the governing
+database-login scaling decision, recorded at hash:
+
+```text
+4d7a8b628a0db1f1dfda09e902a88e27e532ec105e9175c86a46ca8303e3bd88  docs/architecture/POSTGRES-PRINCIPAL-SCALING.md
+```
 
 ## Baseline
 

@@ -28,7 +28,7 @@ The UI and APIs cut over immediately to legal terminology. Existing `PRB-*`, `IN
 11. doc.haus concepts and code may be reused only after license and provenance audit.
 12. chiap01 is the initial application host.
 13. CapAuth is designed in from the foundation.
-14. Local Qwen3.8 is the initial corpus analyst. OpenAI is an additional provider route.
+14. Local Qwen3 is the initial corpus analyst. OpenAI is an additional provider route.
 15. Free official legal resources should be integrated through reviewed connectors.
 16. SKLegal may establish its own initial visual identity.
 17. The repository is local, independent, and GPLv3.
@@ -65,7 +65,7 @@ flowchart LR
     R --> V[PostgreSQL FTS and pgvector]
     R --> G[Optional Apache AGE]
     X --> MG[Model gateway]
-    MG --> QW[Qwen3.8 on chiap08]
+    MG --> QW[Qwen3 on chiap08]
     MG --> OA[OpenAI Responses API]
     X --> CN[Action connectors]
     CN --> EM[Email]
@@ -97,7 +97,7 @@ flowchart LR
 
 ### Existing external dependencies
 
-- chiap08 Qwen3.8 endpoint
+- chiap08 Qwen3 endpoint
 - HammerTime filesystem and release manifests
 - existing Qdrant `hammertime-v3` and FalkorDB `hammertime-v4` contracts as
   upstream-owned compatibility and shadow-comparison sources only
@@ -125,7 +125,7 @@ chiap01 currently reports approximately 47 GB free and 95 percent root-filesyste
 | Operational data | Dedicated core PostgreSQL 17 | Transactions, row-level security, audit references, and queryability without derived-store extensions. |
 | Durable workflow | Temporal Python SDK | Retries, human waits, resumability, and execution history. |
 | Model activities | PydanticAI behind an internal provider interface | Typed model outputs without making the framework the workflow owner. |
-| Local model | Qwen3.8 on chiap08 | Existing HammerTime semantic route and local data posture. |
+| Local model | Qwen3 on chiap08 | Existing HammerTime semantic route and local data posture. |
 | External model | OpenAI Responses API | Provider-diverse review and bounded agent roles when egress policy allows. |
 | Vector retrieval | Exact pgvector in dedicated retrieval PostgreSQL | Keep the initial data plane local and use Tenant and generation partitions with Matter row security. |
 | Graph retrieval | Optional Apache AGE in dedicated retrieval PostgreSQL | Keep traversal derived and replaceable, with one physical graph per protected Matter and generation. |

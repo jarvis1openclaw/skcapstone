@@ -58,7 +58,7 @@ migration is active. External actions remain simulation-first and separately gat
 | Product | SKLegal |
 | License | GNU GPL version 3 only |
 | Initial deployment host | chiap01 |
-| Local model route | Qwen3.8 on chiap08 |
+| Local model route | Qwen3 on chiap08 |
 | Optional external model route | OpenAI API through the governed provider adapter |
 | Initial source corpus | Existing HammerTime releases and processes |
 | Pilot migration | One Liberty Auto Plaza matter as the verified pattern |
