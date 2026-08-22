@@ -122,6 +122,15 @@ Success: no issues found in 22 source files
    seconds and produced no validation result. Only those validator processes
    were terminated. This is recorded as incomplete infrastructure evidence,
    not a passed gate and not an assertion failure.
+8. A later shallow-validation retry used a 50-second bounded command. It
+   produced no validator output and ended with timeout exit 124. The candidate
+   manifest and runtime alias remained unchanged. This retry is also incomplete
+   infrastructure evidence and does not satisfy the validation gate.
+9. The secondary-review dry run selected all 14 candidate sources. Formal
+   review was not started because neither `HAMMERTIME_REVIEW_API_URLS` nor
+   `HAMMERTIME_REVIEW_API_URL` is configured. The primary Qwen3.8 route passed
+   its runtime probe, but the corpus SOP prohibits silently using that route as
+   the formal secondary reviewer. No review report was represented as passing.
 
 ## Known limitations and next required evidence
 
@@ -133,6 +142,9 @@ Success: no issues found in 22 source files
 - Complete shallow and deep corpus validation when the OneDrive-backed corpus
   path is responsive. Run a secondary local Qwen3.8 challenge against the exact
   candidate, preserving prompt, output, schema, and model evidence.
+- Configure and qualify a review-specific Qwen3.8 endpoint before the formal
+  secondary-review command. Do not use the primary fallback without an explicit
+  operator decision recorded in the task evidence.
 - Use HammerTime's guarded promotion command for dev only after the candidate
   passes, then capture current and previous alias pins.
 - Test rollback and re-promotion through HammerTime's own release tooling and
