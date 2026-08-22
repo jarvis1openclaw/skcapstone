@@ -1,7 +1,11 @@
 from datetime import UTC, datetime, timedelta
 
 import pytest
-from sklegal_calendar import CalendarConnector, CalendarEvent
+from sklegal_calendar import (
+    CalendarConnector,
+    CalendarEvent,
+    destination_digest,
+)
 from sklegal_connectors.base import (
     Action,
     ActionStatus,
@@ -34,7 +38,7 @@ def make_action(event: CalendarEvent) -> Action:
         artifact_id=event.event_id,
         artifact_version=event.version,
         artifact_sha256=event.digest,
-        destination_sha256="a" * 64,
+        destination_sha256=destination_digest("court-calendar"),
     )
 
 

@@ -21,6 +21,14 @@ def _digest(*parts: str) -> str:
     return hashlib.sha256("\0".join(parts).encode("utf-8")).hexdigest()
 
 
+def destination_digest(calendar_id: str) -> str:
+    """Derive the destination digest binding an action to one exact calendar."""
+
+    if not calendar_id:
+        raise ConnectorInvariantError("calendar destination requires a calendar id")
+    return _digest("sklegal-calendar-destination-v1", calendar_id)
+
+
 @dataclass(frozen=True, slots=True)
 class CalendarEvent:
     """Immutable event version used for conflict checks and calendar writes."""
@@ -102,6 +110,10 @@ class CalendarConnector:
         if action.artifact_sha256 != event.digest:
             raise ConnectorInvariantError(
                 "calendar action is bound to another event version"
+            )
+        if action.destination_sha256 != destination_digest(event.calendar_id):
+            raise ConnectorInvariantError(
+                "calendar action is bound to another destination calendar"
             )
         if self.conflicts(event):
             raise ConnectorInvariantError(
