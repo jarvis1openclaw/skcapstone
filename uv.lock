@@ -9,6 +9,7 @@ members = [
     "sklegal-capauth",
     "sklegal-connectors-base",
     "sklegal-domain",
+    "sklegal-email",
     "sklegal-hammertime",
     "sklegal-legal-sources",
     "sklegal-migration",
@@ -1281,6 +1282,17 @@ dependencies = [
 requires-dist = [{ name = "pydantic", specifier = "==2.13.4" }]
 
 [[package]]
+name = "sklegal-email"
+version = "0.1.0"
+source = { editable = "packages/connectors/email" }
+dependencies = [
+    { name = "sklegal-connectors-base" },
+]
+
+[package.metadata]
+requires-dist = [{ name = "sklegal-connectors-base", editable = "packages/connectors/base" }]
+
+[[package]]
 name = "sklegal-hammertime"
 version = "0.1.0"
 source = { editable = "packages/connectors/hammertime" }
@@ -1386,6 +1398,7 @@ source = { editable = "services/worker" }
 dependencies = [
     { name = "pydantic" },
     { name = "sklegal-connectors-base" },
+    { name = "sklegal-email" },
     { name = "temporalio" },
 ]
 
@@ -1393,6 +1406,7 @@ dependencies = [
 requires-dist = [
     { name = "pydantic", specifier = "==2.13.4" },
     { name = "sklegal-connectors-base", editable = "packages/connectors/base" },
+    { name = "sklegal-email", editable = "packages/connectors/email" },
     { name = "temporalio", specifier = "==1.31.0" },
 ]
 
