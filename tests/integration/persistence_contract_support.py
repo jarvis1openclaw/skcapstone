@@ -61,7 +61,14 @@ FIXTURE = REPO_ROOT / "tests" / "fixtures" / "persistence" / "synthetic-tenants.
 PARITY = REPO_ROOT / "tests" / "fixtures" / "persistence" / "domain-table-parity.json"
 POSTGRES_IMAGE = (
     "postgres:17.7-alpine@sha256:"
-    "a6d31f853205ce20d399df4e33a0b4c715672f232f4ee7440499747e6e02c126"
+    "a6d31f85"
+    "3205ce20"
+    "d399df4e"
+    "33a0b4c7"
+    "15672f23"
+    "2f4ee744"
+    "0499747e"
+    "6e02c126"
 )
 
 
