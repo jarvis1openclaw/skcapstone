@@ -64,6 +64,10 @@
     {
       "file": "0016_pilot_import.sql",
       "sha256": "9a4e93cba889da71f65407b28a292805ccc40f717a919fbb6b24ba3360f2a6bd"
+    },
+    {
+      "file": "0017_skgateway_authorization_snapshot.sql",
+      "sha256": "939baa597e6e913904485d75ab2dee0e43e973ec32edcd8ea804f56f6cb9198f"
     }
   ]
 }

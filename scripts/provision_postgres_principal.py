@@ -87,6 +87,7 @@ EXECUTE_FUNCTIONS = {
     "sklegal_legal.transition_communication(uuid, uuid, uuid, bigint, text, uuid, uuid, text, uuid)",
     "sklegal_legal.revise_communication(uuid, uuid, uuid, bigint, text, text, text, uuid, bigint, text, uuid[])",
     "sklegal_legal.material_policy_snapshot(uuid, uuid, uuid, bigint, uuid)",
+    "sklegal_legal.skgateway_authorization_snapshot(text, text, jsonb, jsonb)",
     "sklegal_audit.append_event(uuid, uuid, uuid, uuid, uuid, uuid, text, text, text, text, text, text, uuid, uuid, uuid, text, text, timestamp with time zone, jsonb)",
     "sklegal_audit.verify_current_tenant_chain()",
     "sklegal_audit.record_outbox_delivery(uuid, text, uuid)",
@@ -312,6 +313,7 @@ def provision(
                 'sklegal_legal.transition_communication(uuid, uuid, uuid, bigint, text, uuid, uuid, text, uuid), '
                 'sklegal_legal.revise_communication(uuid, uuid, uuid, bigint, text, text, text, uuid, bigint, text, uuid[]) '
                 ', sklegal_legal.material_policy_snapshot(uuid, uuid, uuid, bigint, uuid), '
+                'sklegal_legal.skgateway_authorization_snapshot(text, text, jsonb, jsonb), '
                 'sklegal_audit.append_event(uuid, uuid, uuid, uuid, uuid, uuid, text, text, text, text, text, text, uuid, uuid, uuid, text, text, timestamptz, jsonb), '
                 'sklegal_audit.verify_current_tenant_chain(), '
                 'sklegal_audit.record_outbox_delivery(uuid, text, uuid), '

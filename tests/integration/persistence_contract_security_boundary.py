@@ -330,6 +330,107 @@ class PersistenceContract01SecurityBoundaryTests(PersistenceContractBase):
         ).stdout.strip()
         self.assertEqual(64, len(initial_revision))
 
+        authentication_subject = "synthetic:human:alpha-one"
+        self._psql(
+            "postgres",
+            f"""
+            UPDATE sklegal_identity.principals
+            SET authentication_subject = '{authentication_subject}',
+                version = version + 1
+            WHERE tenant_id = '{tenant}' AND id = '{principal}';
+            """,
+        )
+        gateway_snapshot = self._psql(
+            "sklegal_test_alpha_one",
+            f"""
+            SELECT snapshot->>'revision' ~ '^[0-9a-f]{{64}}$',
+                   snapshot->>'service_identity',
+                   snapshot#>>'{{facts,subject}}',
+                   snapshot#>>'{{facts,capability}}',
+                   snapshot#>>'{{facts,resource,material_version}}',
+                   snapshot#>>'{{facts,context,classification}}',
+                   snapshot#>>'{{facts,context,privilege}}',
+                   snapshot#>>'{{facts,context,ethical_wall}}',
+                   snapshot ? 'policy_snapshot', snapshot ? 'content'
+            FROM (
+                SELECT sklegal_legal.skgateway_authorization_snapshot(
+                    'capauth:sklegal-model-gateway@chiap01.skworld',
+                    '{authentication_subject}',
+                    jsonb_build_object(
+                        'tenant_id', '{tenant}',
+                        'matter_id', '{matter}',
+                        'material_id', '{material}',
+                        'material_version', '1',
+                        'route_id', 'qwen.corpus-summary.skgateway.v1'
+                    ),
+                    jsonb_build_object(
+                        'purpose', 'legal_research',
+                        'classification', 'confidential',
+                        'privilege', 'none',
+                        'ethical_wall', 'clear'
+                    )
+                ) AS snapshot
+            ) AS authz_result;
+            """,
+        )
+        self.assertEqual(
+            "t|capauth:sklegal-model-gateway@chiap01.skworld|"
+            "synthetic:human:alpha-one|skgateway.infer|1|confidential|none|clear|f|f",
+            gateway_snapshot.stdout.strip(),
+        )
+
+        wrong_classification = self._psql(
+            "sklegal_test_alpha_one",
+            f"""
+            SELECT sklegal_legal.skgateway_authorization_snapshot(
+                'capauth:sklegal-model-gateway@chiap01.skworld',
+                '{authentication_subject}',
+                jsonb_build_object(
+                    'tenant_id', '{tenant}',
+                    'matter_id', '{matter}',
+                    'material_id', '{material}',
+                    'material_version', '1',
+                    'route_id', 'qwen.corpus-summary.skgateway.v1'
+                ),
+                jsonb_build_object(
+                    'purpose', 'legal_research',
+                    'classification', 'public',
+                    'privilege', 'none',
+                    'ethical_wall', 'clear'
+                )
+            );
+            """,
+            check=False,
+        )
+        self.assertNotEqual(0, wrong_classification.returncode)
+        self.assertIn("facts do not match current state", wrong_classification.stderr)
+
+        wrong_service = self._psql(
+            "sklegal_test_alpha_one",
+            f"""
+            SELECT sklegal_legal.skgateway_authorization_snapshot(
+                'capauth:wrong@chiap01.skworld',
+                '{authentication_subject}',
+                jsonb_build_object(
+                    'tenant_id', '{tenant}',
+                    'matter_id', '{matter}',
+                    'material_id', '{material}',
+                    'material_version', '1',
+                    'route_id', 'qwen.corpus-summary.skgateway.v1'
+                ),
+                jsonb_build_object(
+                    'purpose', 'legal_research',
+                    'classification', 'confidential',
+                    'privilege', 'none',
+                    'ethical_wall', 'clear'
+                )
+            );
+            """,
+            check=False,
+        )
+        self.assertNotEqual(0, wrong_service.returncode)
+        self.assertIn("scope is unavailable", wrong_service.stderr)
+
         duplicate_decision_head = self._psql(
             "postgres",
             f"""

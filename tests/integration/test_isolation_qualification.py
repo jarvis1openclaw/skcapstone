@@ -56,6 +56,7 @@ BOUND_ROLE_EXECUTE_ALLOWLIST = {
     "sklegal_legal.create_communication(uuid, uuid, uuid, text, text, text, uuid[], uuid, bigint, text, sklegal_legal.data_classification, sklegal_legal.record_completeness, timestamp with time zone, timestamp with time zone)",
     "sklegal_legal.has_matter_membership(uuid, uuid)",
     "sklegal_legal.material_policy_snapshot(uuid, uuid, uuid, bigint, uuid)",
+    "sklegal_legal.skgateway_authorization_snapshot(text, text, jsonb, jsonb)",
     "sklegal_legal.resolve_work_product_unknown(uuid, uuid, uuid, bigint, timestamp with time zone)",
     "sklegal_legal.revise_communication(uuid, uuid, uuid, bigint, text, text, text, uuid, bigint, text, uuid[])",
     "sklegal_legal.revise_work_product(uuid, uuid, uuid, bigint, text, text, uuid, bigint, text)",

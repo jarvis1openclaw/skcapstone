@@ -200,7 +200,7 @@ contract and its production limitations.
 
 ## Migration, provisioning, and rollback
 
-Sixteen digest-pinned migrations create the foundation, identity, legal
+Seventeen digest-pinned migrations create the foundation, identity, legal
 records, integration and workflow references, audit target, RLS policies,
 legal information-barrier records, the CapAuth state, snapshot, and grant
 surface, the work product drafting surface, the claim ledger, and the
@@ -291,7 +291,18 @@ pins withdrawn target UUIDs so a later import can never reuse them. Physical
 deletion is possible only by direct data access against a withdrawn batch in
 a disposable development database, matching the pilot rollback contract.
 
-The down sections run in reverse order. The 0016 down drops the pilot import
+Migration 0017 installs the narrow, sanitized
+`skgateway_authorization_snapshot` function. It requires the pinned chiap01
+SKGateway service identity and current principal subject, validates tenant and
+Matter membership, loads the existing material policy snapshot for an exact
+material identifier and version, and derives current classification,
+protective-label, and ethical-wall facts. Caller facts must match the
+normalized durable facts exactly. PUBLIC execution is revoked, the shared
+`sklegal_runtime` role receives execution, and each per-principal runtime role
+receives execution only through the provisioner's exact function allowlist.
+
+The down sections run in reverse order. The 0017 down drops only the
+SKGateway authorization snapshot function. The 0016 down drops the pilot import
 staging tables in reverse dependency order. The 0015 down drops the claim
 ledger
 views, tables, and functions in reverse dependency order. The 0014 down

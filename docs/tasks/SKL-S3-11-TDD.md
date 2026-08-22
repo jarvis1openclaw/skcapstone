@@ -23,6 +23,8 @@ The internal endpoint may use the minimum compatible shape:
   "resource": {
     "tenant_id": "...",
     "matter_id": "...",
+    "material_id": "...",
+    "material_version": "1",
     "route_id": "..."
   },
   "context": {
@@ -38,6 +40,9 @@ The endpoint authenticates the SKGateway service caller with a scoped service
 credential or local authenticated transport. `subject`, capability, resource,
 purpose, classification, privilege, and ethical-wall facts are validated
 against trusted current state. Caller-supplied facts never grant authority.
+`material_id` and `material_version` are required by the durable snapshot so
+classification, privilege, and ethical-wall facts can be derived from the
+existing material policy state instead of echoed from caller content.
 
 The response is sanitized and attributable:
 
