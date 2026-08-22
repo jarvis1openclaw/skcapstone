@@ -1473,6 +1473,8 @@ dependencies = [
     { name = "pydantic" },
     { name = "sklegal-connectors-base" },
     { name = "sklegal-email" },
+    { name = "sklegal-model-gateway" },
+    { name = "sklegal-retrieval" },
     { name = "temporalio" },
 ]
 
@@ -1481,6 +1483,8 @@ requires-dist = [
     { name = "pydantic", specifier = "==2.13.4" },
     { name = "sklegal-connectors-base", editable = "packages/connectors/base" },
     { name = "sklegal-email", editable = "packages/connectors/email" },
+    { name = "sklegal-model-gateway", editable = "packages/model_gateway" },
+    { name = "sklegal-retrieval", editable = "packages/retrieval" },
     { name = "temporalio", specifier = "==1.31.0" },
 ]
 

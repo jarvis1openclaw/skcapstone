@@ -12,6 +12,8 @@ dependencies = [
   "pydantic==2.13.4",
   "sklegal-connectors-base",
   "sklegal-email",
+  "sklegal-model-gateway",
+  "sklegal-retrieval",
   "temporalio==1.31.0",
 ]
 
