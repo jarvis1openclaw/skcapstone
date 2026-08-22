@@ -277,6 +277,42 @@ Browser code will use a secure HttpOnly session. A trusted server component
 obtains or delegates an invocation credential at the effect boundary and
 discards it immediately after authorization.
 
+## Issuer custody and versioned issuer policy
+
+`SKL-S1-03A1` adds the dedicated issuer boundary in
+`sklegal_capauth.issuer`:
+
+- `IssuerCustodyPolicy` declares the dedicated application issuer. The
+  Casey human identity key and the Jarvis agent identity key are trust
+  anchors and are rejected as application issuers by construction, as is
+  any rotation lineage that names them. The custody home or sidecar socket
+  must be absolute and outside every declared synced CapAuth home.
+- `TrustedIssuerPolicyDocument` is the versioned policy contract. Each
+  revision binds a fingerprint allowlist to exact capability, audience,
+  and principal kind ceilings, names the revision it supersedes, and
+  carries an explicit `active` or `revoked` status.
+- `IssuerPolicyStore` holds one immutable document per revision. Loads are
+  strict: no symlink following, no duplicate JSON members, no stale
+  fallback, and a separate revocation tombstone makes a revision fail
+  closed even if the original document is later edited. Rotation writes a
+  new revision. Rollback selects an earlier active revision explicitly.
+- `VersionedTrustedIssuerBackend` adapts the store to the existing
+  `TrustedIssuerBackend` contract and re-reads the store on every
+  snapshot.
+- `GpgAgentSigningHandle` is the protected signing handle. It invokes gpg
+  in batch mode against the custody home with no passphrase argument, so
+  secret operations stay inside gpg-agent. `SidecarSigningHandle`
+  implements the same `IssuerSigningHandle` protocol against a narrow
+  sidecar over a private unix socket using the strict
+  `sklegal-issuer-sidecar/v1` protocol with exactly two operations,
+  readiness and detached signing; only the schema, operation,
+  fingerprint, and payload bytes cross the channel. `readiness()` reports
+  a sanitized readiness verdict and every failure raises
+  `SigningUnavailable` with a static sanitized message.
+
+No production key is created by this boundary. Synthetic temporary keys in
+isolated directories are the only test keys.
+
 ## Backend contracts and deployment prerequisites
 
 The package intentionally provides interfaces without a production default:
