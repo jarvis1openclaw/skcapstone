@@ -14,9 +14,9 @@
       "profile_id": "chiap08.skgateway-chat.v1",
       "kind": "skgateway_chat",
       "enabled": false,
-      "config_sha256": "012cb639fc9cb3c3c7e39e5e3cad19bc780c11aac133a07f4315f1ce33249408",
+      "config_sha256": "d308d4cdbce1dcbd8dc8f562297d9202d7bd5b12adaf53c0d0b96df98ba4a500",
       "endpoint_reference": "SKLEGAL_SKGATEWAY_ENDPOINT",
-      "service_identity": "capauth:sklegal-model-gateway@chiap08.skworld",
+      "service_identity": "capauth:sklegal-model-gateway@chiap01.skworld",
       "capability_scope": "skgateway.infer",
       "notes": "SKGateway /v1/chat/completions behind CapAuth. Disabled until the live-path control gate passes on the exact deployed commit and a human approves activation."
     },

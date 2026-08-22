@@ -7,14 +7,19 @@
     "planning_review_commit": "b4b4115df9a6d5c9c4621d98207a1074e2737ef5",
     "license": "MIT",
     "install_command": "npm ci",
-    "install_host": "chiap08",
+    "install_host": "chiap01",
     "install_path": "/opt/skgateway",
     "vendored_into_sklegal": false,
     "vendoring_decision": "Do not vendor the upstream checkout into SKLegal unless a later source and maintenance decision explicitly requires it."
   },
   "dependency_audit": {
     "planning_observation": "The planning checkout installed js-yaml@4.1.1; npm audit --omit=dev reported one high-severity YAML denial-of-service advisory set.",
-    "gate": "Clear the high-severity advisory through a pinned, tested upstream source or a reviewed lockfile update. Do not apply an unreviewed blanket audit fix. Rerun the full gateway suite before deployment."
+    "gate": "Clear the high-severity advisory through a pinned, tested upstream source or a reviewed lockfile update. Do not apply an unreviewed blanket audit fix. Rerun the full gateway suite before deployment.",
+    "reviewed_lockfile_update": "js-yaml 5.3.0, exact version pin, tested against upstream commit b4b4115df9a6d5c9c4621d98207a1074e2737ef5",
+    "qualified_package_sha256": "544000121048cd3054542fee8e30e70f2282122510788f40e35e85491ffd4656",
+    "qualified_lockfile_sha256": "60374ebcde47a0af9561d1f02f20b7d37022bc660f7fd85cbd828767d297a647",
+    "qualified_audit": "npm audit --omit=dev: 0 info, 0 low, 0 moderate, 0 high, 0 critical",
+    "qualified_test": "npm test: 1325 passed, 0 failed"
   },
   "records_to_capture_on_install": [
     "repository URL",

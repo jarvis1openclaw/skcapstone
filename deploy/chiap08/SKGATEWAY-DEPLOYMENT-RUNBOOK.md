@@ -1,6 +1,8 @@
-# SKGateway deployment and rollback runbook (SKL-S3-10)
+# SKGateway deployment and rollback runbook (historical superseded copy)
 
-Card: `bbf206c3`. Host: chiap08. All commands are run by the human owner or
+Card: `bbf206c3`. Historical host: chiap08. The approved placement is now
+chiap01; use `deploy/chiap01/SKGATEWAY-DEPLOYMENT-RUNBOOK.md` for execution.
+All commands are run by the human owner or
 an explicitly authorized operator. This worktree performs no live
 installation; this runbook is the reviewed procedure for that step.
 
