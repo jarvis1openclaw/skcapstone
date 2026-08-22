@@ -1,0 +1,305 @@
+[
+  {
+    "query_id": "QA-Q-0001",
+    "document_id": "QA-DOC-0001",
+    "grade": 3,
+    "bases": [
+      "exact_citation_match"
+    ],
+    "rationale": "Current fixture statute is the controlling citation source."
+  },
+  {
+    "query_id": "QA-Q-0001",
+    "document_id": "QA-DOC-0002",
+    "grade": 1,
+    "bases": [
+      "superseded_distractor",
+      "background"
+    ],
+    "rationale": "Repealed prior text shares the citation but is background only."
+  },
+  {
+    "query_id": "QA-Q-0001",
+    "document_id": "QA-DOC-0004",
+    "grade": 2,
+    "bases": [
+      "relevant_support"
+    ],
+    "rationale": "Fixture decision applies the cited statute."
+  },
+  {
+    "query_id": "QA-Q-0002",
+    "document_id": "QA-DOC-0001",
+    "grade": 3,
+    "bases": [
+      "paraphrase_support"
+    ],
+    "rationale": "Statute fixes the rescission window the paraphrase asks about."
+  },
+  {
+    "query_id": "QA-Q-0002",
+    "document_id": "QA-DOC-0004",
+    "grade": 2,
+    "bases": [
+      "relevant_support"
+    ],
+    "rationale": "Decision applies the window after actual notice."
+  },
+  {
+    "query_id": "QA-Q-0003",
+    "document_id": "QA-DOC-0001",
+    "grade": 3,
+    "bases": [
+      "relevant_support"
+    ],
+    "rationale": "Statute governs delivery timing and the rescission remedy."
+  },
+  {
+    "query_id": "QA-Q-0003",
+    "document_id": "QA-DOC-0007",
+    "grade": 1,
+    "bases": [
+      "near_neighbor_distractor",
+      "background"
+    ],
+    "rationale": "Lease letter reuses disclosure wording but governs rent withholding, not vehicle sales."
+  },
+  {
+    "query_id": "QA-Q-0004",
+    "document_id": "QA-DOC-0001",
+    "grade": 3,
+    "bases": [
+      "relevant_support"
+    ],
+    "rationale": "Illinois fixture statute is controlling for the query."
+  },
+  {
+    "query_id": "QA-Q-0004",
+    "document_id": "QA-DOC-0003",
+    "grade": 1,
+    "bases": [
+      "jurisdiction_mismatch_distractor",
+      "background"
+    ],
+    "rationale": "Wisconsin rule is on point topically but is not Illinois authority."
+  },
+  {
+    "query_id": "QA-Q-0005",
+    "document_id": "QA-DOC-0001",
+    "grade": 3,
+    "bases": [
+      "relevant_support"
+    ],
+    "rationale": "Current statute imposes the writing requirement."
+  },
+  {
+    "query_id": "QA-Q-0005",
+    "document_id": "QA-DOC-0002",
+    "grade": 1,
+    "bases": [
+      "superseded_distractor",
+      "background"
+    ],
+    "rationale": "Repealed text is the superseded distractor and is background only."
+  },
+  {
+    "query_id": "QA-Q-0006",
+    "document_id": "QA-DOC-0001",
+    "grade": 1,
+    "bases": [
+      "authority_not_fact_source",
+      "background"
+    ],
+    "rationale": "The statute states the duty but cannot establish what happened in this transaction."
+  },
+  {
+    "query_id": "QA-Q-0006",
+    "document_id": "QA-DOC-0005",
+    "grade": 3,
+    "bases": [
+      "evidence_supports_fact"
+    ],
+    "rationale": "The purchase agreement is the record of what the buyer signed and received."
+  },
+  {
+    "query_id": "QA-Q-0007",
+    "document_id": "QA-DOC-0001",
+    "grade": 3,
+    "bases": [
+      "relevant_support"
+    ],
+    "rationale": "The statute is the governing source for content and timing."
+  },
+  {
+    "query_id": "QA-Q-0007",
+    "document_id": "QA-DOC-0005",
+    "grade": 1,
+    "bases": [
+      "background"
+    ],
+    "rationale": "The transaction record illustrates the duty but does not state the rule."
+  },
+  {
+    "query_id": "QA-Q-0008",
+    "document_id": "QA-DOC-0006",
+    "grade": 3,
+    "bases": [
+      "ocr_noise_tolerant"
+    ],
+    "rationale": "Degraded repair order answers both the odometer reading and the declined service."
+  },
+  {
+    "query_id": "QA-Q-0009",
+    "document_id": "QA-DOC-0001",
+    "grade": 0,
+    "bases": [
+      "negative_no_answer"
+    ],
+    "rationale": "Statute does not mention the signage easement order."
+  },
+  {
+    "query_id": "QA-Q-0009",
+    "document_id": "QA-DOC-0005",
+    "grade": 0,
+    "bases": [
+      "negative_no_answer"
+    ],
+    "rationale": "Purchase agreement does not mention the signage easement order."
+  },
+  {
+    "query_id": "QA-Q-0009",
+    "document_id": "QA-DOC-0007",
+    "grade": 0,
+    "bases": [
+      "negative_no_answer"
+    ],
+    "rationale": "Lease letter mentions the easement but records no tribunal order."
+  },
+  {
+    "query_id": "QA-Q-0010",
+    "document_id": "QA-DOC-0001",
+    "grade": 1,
+    "bases": [
+      "background"
+    ],
+    "rationale": "Statute is background for the exposure assessment."
+  },
+  {
+    "query_id": "QA-Q-0010",
+    "document_id": "QA-DOC-0008",
+    "grade": 3,
+    "bases": [
+      "privileged_relevant"
+    ],
+    "rationale": "The privileged memo is directly responsive inside the authorized partition."
+  },
+  {
+    "query_id": "QA-Q-0011",
+    "document_id": "QA-DOC-0001",
+    "grade": 1,
+    "bases": [
+      "background"
+    ],
+    "rationale": "Public statute is the only background material for the unauthorized lane."
+  },
+  {
+    "query_id": "QA-Q-0011",
+    "document_id": "QA-DOC-0008",
+    "grade": 0,
+    "bases": [
+      "privilege_blocked"
+    ],
+    "rationale": "Privileged memo is outside this principal's authorized lane and is judged irrelevant."
+  },
+  {
+    "query_id": "QA-Q-0012",
+    "document_id": "QA-DOC-0006",
+    "grade": 2,
+    "bases": [
+      "relevant_support"
+    ],
+    "rationale": "Repair order corroborates the October service date and odometer reading."
+  },
+  {
+    "query_id": "QA-Q-0012",
+    "document_id": "QA-DOC-0009",
+    "grade": 2,
+    "bases": [
+      "injection_untrusted_payload",
+      "relevant_support"
+    ],
+    "rationale": "Relevant for the service facts; its embedded directive is untrusted payload, not instruction."
+  },
+  {
+    "query_id": "QA-Q-0013",
+    "document_id": "QA-DOC-0001",
+    "grade": 1,
+    "bases": [
+      "background"
+    ],
+    "rationale": "Public statute is background only; the query directive is not a retrieval basis."
+  },
+  {
+    "query_id": "QA-Q-0013",
+    "document_id": "QA-DOC-0008",
+    "grade": 0,
+    "bases": [
+      "privilege_blocked"
+    ],
+    "rationale": "Injection text cannot authorize privilege; the memo stays blocked."
+  },
+  {
+    "query_id": "QA-Q-0014",
+    "document_id": "QA-DOC-0010",
+    "grade": 1,
+    "bases": [
+      "background"
+    ],
+    "rationale": "Notarized extension is background for the holdback question."
+  },
+  {
+    "query_id": "QA-Q-0014",
+    "document_id": "QA-DOC-0011",
+    "grade": 3,
+    "bases": [
+      "paraphrase_support"
+    ],
+    "rationale": "Ledger lists the withheld invoices and ties them to the disclosure letter."
+  },
+  {
+    "query_id": "QB-Q-0001",
+    "document_id": "QB-DOC-0001",
+    "grade": 3,
+    "bases": [
+      "exact_citation_match"
+    ],
+    "rationale": "Fixture regulation is the controlling citation source."
+  },
+  {
+    "query_id": "QB-Q-0001",
+    "document_id": "QB-DOC-0002",
+    "grade": 2,
+    "bases": [
+      "relevant_support"
+    ],
+    "rationale": "Receipt shows the fixture late deposit the rule measures."
+  },
+  {
+    "query_id": "QB-Q-0002",
+    "document_id": "QB-DOC-0001",
+    "grade": 0,
+    "bases": [
+      "negative_no_answer"
+    ],
+    "rationale": "Regulation states the rule but records no counsel conclusion."
+  },
+  {
+    "query_id": "QB-Q-0002",
+    "document_id": "QB-DOC-0002",
+    "grade": 0,
+    "bases": [
+      "negative_no_answer"
+    ],
+    "rationale": "Receipt records timing only, with no counsel conclusion."
+  }
+]
