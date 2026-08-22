@@ -22,6 +22,10 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ### Fixed
 
+- Reject blank legacy `MemoryEntry.memory_id` values at load, save, index,
+  verification, and both promotion boundaries. This prevents the SKCapstone
+  verifier/promoter from recreating unsafe `.json` files after SKMemory has
+  quarantined them.
 - Restored the enforced Black/Ruff gate after the new coordination-amendment
   and qualification VCS-audit modules landed with formatting drift.
 - Updated the legacy CMDB seed tests to the schema-driven discovery contract

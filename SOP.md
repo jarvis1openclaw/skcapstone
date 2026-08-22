@@ -234,6 +234,12 @@ all reach the same object. Consequences worth knowing before you debug:
   passes candidates through `memory_verifier.verify_before_promotion`. Blocked
   candidates stay in short-term. The gate is **fail-open**: when the verifier backend
   is unavailable, promotion proceeds so existing behavior is preserved.
+- **Memory identifier boundary.** Legacy `MemoryEntry` payloads with a blank or
+  whitespace-only `memory_id` are rejected before load, save, index update,
+  truth verification, or cross-tier promotion. Operators should run the
+  SKMemory reconciliation path to place any existing `.json` payload in the
+  content-addressed invalid-record quarantine; do not rename it into an active
+  tier.
 
 ---
 
