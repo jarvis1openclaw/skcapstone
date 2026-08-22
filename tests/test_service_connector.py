@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import hashlib
 import unittest
 
 from sklegal_service import ServiceMailingConnector
@@ -15,10 +14,15 @@ class ServiceConnectorTests(unittest.TestCase):
     def test_simulation_reaches_receipt_verified_with_tracking_and_affidavit(self):
         connector = ServiceMailingConnector()
         action, receipt = connector.simulate(
-            tenant_id="tenant-1", matter_id="matter-1", action_id="action-1",
-            artifact_id="filing-package", artifact_version=2,
-            artifact="approved package", address="123 Main St, Chicago, IL",
-            capability_ref="cap:service", capability_verifier=Verifier(),
+            tenant_id="tenant-1",
+            matter_id="matter-1",
+            action_id="action-1",
+            artifact_id="filing-package",
+            artifact_version=2,
+            artifact="approved package",
+            address="123 Main St, Chicago, IL",
+            capability_ref="cap:service",
+            capability_verifier=Verifier(),
         )
         self.assertEqual(action.status.value, "receipt_verified")
         self.assertTrue(receipt.tracking_number.startswith("SIM-"))
@@ -28,9 +32,14 @@ class ServiceConnectorTests(unittest.TestCase):
     def test_repeated_dispatch_is_idempotent(self):
         connector = ServiceMailingConnector()
         kwargs = dict(
-            tenant_id="tenant-1", matter_id="matter-1", action_id="action-1",
-            artifact_id="package", artifact_version=1, artifact="same",
-            address="123 Main St, Chicago, IL", capability_ref="cap:service",
+            tenant_id="tenant-1",
+            matter_id="matter-1",
+            action_id="action-1",
+            artifact_id="package",
+            artifact_version=1,
+            artifact="same",
+            address="123 Main St, Chicago, IL",
+            capability_ref="cap:service",
             capability_verifier=Verifier(),
         )
         _, first = connector.simulate(**kwargs)
@@ -40,9 +49,15 @@ class ServiceConnectorTests(unittest.TestCase):
     def test_invalid_address_and_capability_fail_closed(self):
         connector = ServiceMailingConnector()
         kwargs = dict(
-            tenant_id="tenant-1", matter_id="matter-1", action_id="action-1",
-            artifact_id="package", artifact_version=1, artifact="same",
-            address="unknown", capability_ref="cap:service", capability_verifier=Verifier(),
+            tenant_id="tenant-1",
+            matter_id="matter-1",
+            action_id="action-1",
+            artifact_id="package",
+            artifact_version=1,
+            artifact="same",
+            address="unknown",
+            capability_ref="cap:service",
+            capability_verifier=Verifier(),
         )
         with self.assertRaises(ValueError):
             connector.simulate(**kwargs)

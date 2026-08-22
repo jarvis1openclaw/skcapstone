@@ -70,7 +70,9 @@ class FilingPlan:
     @property
     def destination_sha256(self) -> str:
         return _sha256(
-            "\0".join((self.forum, self.court.strip(), self.case_number.strip())).encode()
+            "\0".join(
+                (self.forum, self.court.strip(), self.case_number.strip())
+            ).encode()
         )
 
 
@@ -157,8 +159,7 @@ class CourtFilingConnector:
             action.connector == "court-filing"
             and action.receipt == receipt.simulation_receipt
             and receipt.package_sha256 == filing_plan.package_sha256
-            and receipt.destination_sha256
-            == filing_plan.destination_sha256
+            and receipt.destination_sha256 == filing_plan.destination_sha256
             and receipt.forum == filing_plan.forum
             and receipt.court == filing_plan.court.strip()
             and receipt.case_number == filing_plan.case_number.strip()

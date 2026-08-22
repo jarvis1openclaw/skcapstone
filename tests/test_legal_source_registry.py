@@ -149,6 +149,16 @@ def test_rights_revocation_and_hash_capture_are_exact() -> None:
     )
     with pytest.raises(SourceAccessDenied, match="rights_revoked"):
         registry.require_purpose("fixture-source", "read")
-    assert sha256_hex(b"official source bytes") == (
-        "a2d594c18b0995c3686d04d2a47683106f28dbe580d2ec90441fbe444d6d30b0"
+    expected = "".join(
+        (
+            "a2d594c1",
+            "8b0995c3",
+            "686d04d2",
+            "a4768310",
+            "6f28dbe5",
+            "80d2ec90",
+            "441fbe44",
+            "4d6d30b0",
+        )
     )
+    assert sha256_hex(b"official source bytes") == expected

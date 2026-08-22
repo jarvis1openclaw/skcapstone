@@ -1,4 +1,5 @@
 """Simulation-first, HammerTime-owned ingestion bridge."""
+
 from __future__ import annotations
 
 import hashlib
@@ -8,7 +9,11 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Literal, Protocol
 
-from .errors import CompletionEvidenceMissingError, PromotionRejectedError, UnsupportedSubmissionError
+from .errors import (
+    CompletionEvidenceMissingError,
+    PromotionRejectedError,
+    UnsupportedSubmissionError,
+)
 
 ALLOWED_SUFFIXES = frozenset({".md", ".markdown", ".json", ".txt", ".yaml", ".yml"})
 
@@ -62,7 +67,9 @@ class HammerTimeSubmissionBridge:
         if not self._root.is_dir():
             raise ValueError("fixture_root must be an existing directory")
 
-    def plan(self, *, source_paths: Iterable[str | Path], destination: str) -> SubmissionPlan:
+    def plan(
+        self, *, source_paths: Iterable[str | Path], destination: str
+    ) -> SubmissionPlan:
         destination = _validate_destination(destination)
         entries: list[SourceEntry] = []
         for supplied in source_paths:
@@ -72,27 +79,58 @@ class HammerTimeSubmissionBridge:
             if path.suffix.lower() not in ALLOWED_SUFFIXES:
                 raise UnsupportedSubmissionError(path.name)
             data = path.read_bytes()
-            entries.append(SourceEntry(path.relative_to(self._root).as_posix(), hashlib.sha256(data).hexdigest(), len(data)))
+            entries.append(
+                SourceEntry(
+                    path.relative_to(self._root).as_posix(),
+                    hashlib.sha256(data).hexdigest(),
+                    len(data),
+                )
+            )
         if not entries:
             raise ValueError("at least one source is required")
         entries.sort(key=lambda item: item.relative_path)
-        payload = {"destination": destination, "sources": [entry.__dict__ for entry in entries]}
-        key = hashlib.sha256(json.dumps(payload, sort_keys=True, separators=(",", ":")).encode()).hexdigest()
+        payload = {
+            "destination": destination,
+            "sources": [entry.__dict__ for entry in entries],
+        }
+        key = hashlib.sha256(
+            json.dumps(payload, sort_keys=True, separators=(",", ":")).encode()
+        ).hexdigest()
         batch_id = f"sklegal-{key[:20]}"
-        manifest = {"schema_version": 1, "batch_id": batch_id, "idempotency_key": key, **payload}
+        manifest = {
+            "schema_version": 1,
+            "batch_id": batch_id,
+            "idempotency_key": key,
+            **payload,
+        }
         return SubmissionPlan(batch_id, key, destination, tuple(entries), manifest)
 
     def submit(self, plan: SubmissionPlan, *, dry_run: bool = True) -> SubmissionResult:
         if dry_run:
             return SubmissionResult(plan.batch_id, "dry_run", None, None, None)
-        submission_id = self._gateway.submit(idempotency_key=plan.idempotency_key, manifest=plan.manifest)
+        submission_id = self._gateway.submit(
+            idempotency_key=plan.idempotency_key, manifest=plan.manifest
+        )
         completion = self._gateway.poll(submission_id)
-        if completion.get("status") != "completed" or not completion.get("completion_evidence"):
+        if completion.get("status") != "completed" or not completion.get(
+            "completion_evidence"
+        ):
             raise CompletionEvidenceMissingError(plan.batch_id)
         if completion.get("qc") != "accepted":
             raise PromotionRejectedError(plan.batch_id)
         promoted = self._gateway.promote(submission_id)
-        reference, release = promoted.get("artifact_reference"), promoted.get("release_reference")
+        reference, release = (
+            promoted.get("artifact_reference"),
+            promoted.get("release_reference"),
+        )
         if not reference or not release:
-            raise PromotionRejectedError("promotion did not return artifact and release references")
-        return SubmissionResult(plan.batch_id, "receipt_verified", reference, completion["completion_evidence"], release)
+            raise PromotionRejectedError(
+                "promotion did not return artifact and release references"
+            )
+        return SubmissionResult(
+            plan.batch_id,
+            "receipt_verified",
+            reference,
+            completion["completion_evidence"],
+            release,
+        )

@@ -19,7 +19,10 @@ def plan() -> FilingPlan:
         forum="federal",
         court="N.D. Illinois",
         case_number="1:26-cv-00001",
-        documents={"complaint.pdf": b"synthetic complaint", "exhibit-a.pdf": b"exhibit"},
+        documents={
+            "complaint.pdf": b"synthetic complaint",
+            "exhibit-a.pdf": b"exhibit",
+        },
     )
 
 
