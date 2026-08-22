@@ -1,4 +1,4 @@
-"""Build the strict synthetic 31-entity write-first persistence contract."""
+"""Build the strict synthetic 34-entity write-first persistence contract."""
 
 from __future__ import annotations
 
@@ -74,6 +74,9 @@ def build_fresh_contract() -> FreshPersistenceContract:
     execution = _uid(34)
     receipt = _uid(35)
     event_ids = tuple(_uid(value) for value in range(36, 41))
+    template = _uid(41)
+    template_version = _uid(42)
+    unknown = _uid(43)
     digest = "a" * 64
     destination_digest = "b" * 64
 
@@ -360,6 +363,29 @@ def build_fresh_contract() -> FreshPersistenceContract:
             "source_artifact_id": source_artifact,
             "status": "frozen",
         },
+        "WorkProductTemplate": {
+            **protected(template),
+            "name": "Synthetic Fresh Template",
+            "work_product_kind": "memo",
+            "current_version_id": template_version,
+            "status": "draft",
+        },
+        "WorkProductTemplateVersion": {
+            **protected(template_version),
+            "template_id": template,
+            "version_number": 1,
+            "content_sha256": digest,
+            "status": "draft",
+        },
+        "WorkProductUnknown": {
+            **scoped(unknown, version=2),
+            "version_binding": subject,
+            "placeholder_key": "client_name",
+            "hint": "Full legal name",
+            "resolved_by_principal_id": principal,
+            "resolved_at": iso[4],
+            "status": "resolved",
+        },
         "ValidationResult": validation_payload,
         "Approval": approval_payload,
         "Execution": {
@@ -513,6 +539,17 @@ def build_fresh_contract() -> FreshPersistenceContract:
         scalar={"current_version_number": 1, "current_content_sha256": digest}
     )
     metadata["WorkProductVersion"] = PersistenceMetadata(
+        scalar={
+            "encrypted_content": None,
+            "encryption_key_ref": None,
+            "encryption_algorithm": None,
+            "encrypted_at": None,
+        }
+    )
+    metadata["WorkProductTemplate"] = PersistenceMetadata(
+        scalar={"current_version_number": 1, "current_content_sha256": digest}
+    )
+    metadata["WorkProductTemplateVersion"] = PersistenceMetadata(
         scalar={
             "encrypted_content": None,
             "encryption_key_ref": None,

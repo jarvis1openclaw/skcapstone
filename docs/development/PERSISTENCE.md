@@ -19,11 +19,11 @@ relations, functions, and types, must be owned by the exact non-superuser,
 | `sklegal_workflow` | Opaque workflow and policy decision references |
 | `sklegal_audit` | Append-only audit chain, transactional outbox, delivery receipts, and projection watermarks |
 
-The legal schema covers all 31 entities in the approved `SKL-S1-01` domain
+The legal schema covers all 34 entities in the approved `SKL-S1-01` domain
 contract. `tests/fixtures/persistence/domain-table-parity.json` is the reviewed
 entity-to-table and required-column matrix. The reusable, driver-neutral
 `sklegal_persistence.mapping` adapter declares scalar, value-object, and
-normalized-relation mappings for all 31 public `DomainEntity` types. It
+normalized-relation mappings for all 34 public `DomainEntity` types. It
 decomposes canonical instances into closed scalar and relation rows, restores
 those rows with strict Pydantic validation, and rejects missing joins, unknown
 columns, undeclared persistence metadata, over-cardinality, and ambiguous
@@ -197,10 +197,11 @@ contract and its production limitations.
 
 ## Migration, provisioning, and rollback
 
-Thirteen digest-pinned migrations create the foundation, identity, legal
+Fourteen digest-pinned migrations create the foundation, identity, legal
 records, integration and workflow references, audit target, RLS policies,
-legal information-barrier records, and the CapAuth state, snapshot, and grant
-surface. Each file contains explicit up and down sections.
+legal information-barrier records, the CapAuth state, snapshot, and grant
+surface, and the work product drafting surface. Each file contains explicit up
+and down sections.
 Migrations 0001 through 0004 create the six prefixed schemas, shared domains
 and helper functions (0001), tenants, principals, database-role bindings, and
 tenant membership (0002), the legal record tables (0003), and the
@@ -244,8 +245,24 @@ Migrations 0008 through 0013 install the durable CapAuth surface described in
   mirrors the existing controlled write posture: deletes are possible only
   inside migrator-owned SECURITY DEFINER functions invoked by a different
   session user, never by direct data access.
+- 0014 installs the work product drafting surface: tenant-scoped
+  `work_product_templates` with hash-pinned, immutable
+  `work_product_template_versions` (draft to frozen to archived), and the
+  matter-scoped `work_product_unknowns` blocker table. Each unknown binds one
+  exact Work Product Version triple and one bracketed placeholder key, is
+  inserted open, and resolves only through the SECURITY DEFINER
+  `resolve_work_product_unknown`, which records the bound principal and a
+  non-future resolution time. The migration replaces
+  `transition_work_product_version` so a version cannot freeze while any of
+  its exact unknowns remain open. Templates activate only against a frozen
+  exact current version, advance strictly forward through
+  `advance_work_product_template`, and a current version cannot be archived.
+  All three tables carry forced RLS tenant or matter boundary policies, and
+  updates flow only through migrator-owned controlled writers.
 
-The down sections run in reverse order, 0013 through 0008. The 0013 down
+The down sections run in reverse order. The 0014 down restores the 0003-era
+`transition_work_product_version` without the unknown blocker, then drops the
+drafting functions and tables. The 0013 down
 drops the prune function and restores the 0008-era `reserve_capability`, the
 0010 down restores the 0009-era snapshot function after dropping the subject
 column, and the 0008 down drops the three functions, their policies, and both

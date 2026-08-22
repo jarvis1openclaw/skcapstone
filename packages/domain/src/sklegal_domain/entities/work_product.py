@@ -1,4 +1,4 @@
-"""Work product and work product version entities."""
+"""Work product, template, and bracketed-unknown entities."""
 
 from __future__ import annotations
 
@@ -17,16 +17,32 @@ from pydantic import (
     model_validator,
 )
 
-from ..base import MatterStatefulEntity
+from ..base import MatterStatefulEntity, ProtectedStatefulEntity
 from ..exceptions import DomainTransitionError
 from ..states import (
     WorkProductStatus,
+    WorkProductTemplateStatus,
+    WorkProductTemplateVersionStatus,
+    WorkProductUnknownStatus,
     WorkProductVersionStatus,
 )
 from ..value_objects import (
+    ArtifactBinding,
     DomainId,
+    PlaceholderKey,
     Sha256,
     ShortText,
+    UtcDateTime,
+)
+
+WORK_PRODUCT_KINDS = (
+    "memo",
+    "letter",
+    "pleading",
+    "contract",
+    "packet",
+    "report",
+    "other",
 )
 
 
@@ -168,3 +184,117 @@ class WorkProduct(MatterStatefulEntity):
                     f"work product gate evidence cannot be replaced: {names}"
                 )
         return super().transition_to(target, at=at, **changes)
+
+
+class WorkProductTemplate(ProtectedStatefulEntity):
+    """A tenant-scoped drafting template bound to an exact current version."""
+
+    name: ShortText
+    work_product_kind: Literal[
+        "memo", "letter", "pleading", "contract", "packet", "report", "other"
+    ]
+    current_version_id: DomainId
+    status: WorkProductTemplateStatus = WorkProductTemplateStatus.DRAFT
+
+    IMMUTABLE_FIELDS: ClassVar[frozenset[str]] = (
+        ProtectedStatefulEntity.IMMUTABLE_FIELDS | {"work_product_kind"}
+    )
+    TRANSITIONS: ClassVar = {
+        WorkProductTemplateStatus.DRAFT: frozenset(
+            {WorkProductTemplateStatus.ACTIVE, WorkProductTemplateStatus.RETIRED}
+        ),
+        WorkProductTemplateStatus.ACTIVE: frozenset(
+            {WorkProductTemplateStatus.RETIRED}
+        ),
+        WorkProductTemplateStatus.RETIRED: frozenset(),
+    }
+    _DRAFT_PAYLOAD_FIELDS: ClassVar[frozenset[str]] = frozenset({"name"})
+
+    def evolve(self, *, at: datetime, **changes: Any) -> Self:
+        attempted = self._DRAFT_PAYLOAD_FIELDS.intersection(changes)
+        if attempted and self.status != WorkProductTemplateStatus.DRAFT:
+            names = ", ".join(sorted(attempted))
+            raise DomainTransitionError(
+                f"template descriptive payload can change only in draft: {names}"
+            )
+        return super().evolve(at=at, **changes)
+
+
+class WorkProductTemplateVersion(ProtectedStatefulEntity):
+    """An immutable, hash-pinned template version.
+
+    The bracketed unknown inventory is derived from the exact template content
+    with ``sklegal_domain.drafting.extract_unknown_occurrences`` instead of a
+    stored copy, so the inventory can never drift from the hashed body.
+    """
+
+    template_id: DomainId
+    version_number: Annotated[int, Field(ge=1)]
+    content_sha256: Sha256
+    status: WorkProductTemplateVersionStatus = WorkProductTemplateVersionStatus.DRAFT
+
+    IMMUTABLE_FIELDS: ClassVar[frozenset[str]] = (
+        ProtectedStatefulEntity.IMMUTABLE_FIELDS
+        | {
+            "template_id",
+            "version_number",
+            "content_sha256",
+        }
+    )
+
+    TRANSITIONS: ClassVar = {
+        WorkProductTemplateVersionStatus.DRAFT: frozenset(
+            {WorkProductTemplateVersionStatus.FROZEN}
+        ),
+        WorkProductTemplateVersionStatus.FROZEN: frozenset(
+            {WorkProductTemplateVersionStatus.ARCHIVED}
+        ),
+        WorkProductTemplateVersionStatus.ARCHIVED: frozenset(),
+    }
+
+
+class WorkProductUnknown(MatterStatefulEntity):
+    """A first-class bracketed unknown blocking one exact work product version."""
+
+    version_binding: ArtifactBinding
+    placeholder_key: PlaceholderKey
+    hint: ShortText | None = None
+    resolved_by_principal_id: DomainId | None = None
+    resolved_at: UtcDateTime | None = None
+    status: WorkProductUnknownStatus = WorkProductUnknownStatus.OPEN
+
+    IMMUTABLE_FIELDS: ClassVar[frozenset[str]] = (
+        MatterStatefulEntity.IMMUTABLE_FIELDS
+        | {
+            "version_binding",
+            "placeholder_key",
+            "hint",
+            "resolved_by_principal_id",
+            "resolved_at",
+        }
+    )
+    SET_ONCE_FIELDS: ClassVar[frozenset[str]] = frozenset(
+        {"resolved_by_principal_id", "resolved_at"}
+    )
+    TRANSITION_ONLY_FIELDS: ClassVar[frozenset[str]] = (
+        MatterStatefulEntity.TRANSITION_ONLY_FIELDS
+        | {"resolved_by_principal_id", "resolved_at"}
+    )
+
+    TRANSITIONS: ClassVar = {
+        WorkProductUnknownStatus.OPEN: frozenset({WorkProductUnknownStatus.RESOLVED}),
+        WorkProductUnknownStatus.RESOLVED: frozenset(),
+    }
+
+    @model_validator(mode="after")
+    def validate_resolution(self) -> WorkProductUnknown:
+        resolution = (self.resolved_by_principal_id, self.resolved_at)
+        if self.status == WorkProductUnknownStatus.RESOLVED:
+            if any(value is None for value in resolution):
+                raise ValueError("resolved unknown requires resolution evidence")
+            assert self.resolved_at is not None
+            if self.resolved_at > self.updated_at:
+                raise ValueError("resolution time cannot be later than updated_at")
+        elif any(value is not None for value in resolution):
+            raise ValueError("open unknown cannot carry resolution evidence")
+        return self

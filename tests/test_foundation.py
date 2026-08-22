@@ -273,6 +273,8 @@ class FoundationTests(unittest.TestCase):
                 "sklegal_legal.transition_communication(uuid, uuid, uuid, bigint, text, uuid, uuid, text, uuid)",
                 "sklegal_legal.transition_work_product(uuid, uuid, uuid, bigint, text, uuid, uuid)",
                 "sklegal_legal.transition_work_product_version(uuid, uuid, uuid, bigint, text)",
+                "sklegal_legal.transition_work_product_template(uuid, uuid, bigint, text)",
+                "sklegal_legal.transition_work_product_template_version(uuid, uuid, bigint, text)",
             },
             {
                 function

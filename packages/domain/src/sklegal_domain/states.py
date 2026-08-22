@@ -188,6 +188,23 @@ class WorkProductVersionStatus(StrEnum):
     SUPERSEDED = "superseded"
 
 
+class WorkProductTemplateStatus(StrEnum):
+    DRAFT = "draft"
+    ACTIVE = "active"
+    RETIRED = "retired"
+
+
+class WorkProductTemplateVersionStatus(StrEnum):
+    DRAFT = "draft"
+    FROZEN = "frozen"
+    ARCHIVED = "archived"
+
+
+class WorkProductUnknownStatus(StrEnum):
+    OPEN = "open"
+    RESOLVED = "resolved"
+
+
 class ValidationOutcome(StrEnum):
     INCOMPLETE = "incomplete"
     PASSED = "passed"
