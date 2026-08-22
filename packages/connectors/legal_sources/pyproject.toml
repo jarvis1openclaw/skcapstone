@@ -1,0 +1,16 @@
+[project]
+name = "sklegal-legal-sources"
+version = "0.1.0"
+description = "Governed registry for official and free legal research sources"
+requires-python = ">=3.12,<3.13"
+license = "GPL-3.0-only"
+dependencies = [
+  "pydantic==2.13.4",
+]
+
+[build-system]
+requires = ["setuptools==84.0.0"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+where = ["src"]
