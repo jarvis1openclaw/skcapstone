@@ -176,6 +176,83 @@ def test_declared_multi_runtime_with_wrong_os_fails_closed(tmp_path) -> None:
     assert any(item["kind"] == "ambiguous_active_endpoint" for item in report["findings"])
 
 
+def test_wsl_only_policy_rejects_active_windows_peer(tmp_path) -> None:
+    paths = FleetPaths(tmp_path)
+    store.write_spec(
+        paths,
+        "node",
+        "chiwk12",
+        {
+            "address": {"hostname": "chiwk12"},
+            "addresses": [
+                {"kind": "tailscale-wsl", "value": "100.120.22.21"},
+                {"kind": "tailscale-windows", "value": "100.87.143.116"},
+            ],
+            "tailscale": {"allowed_os": ["linux"], "max_active_peers": 1},
+        },
+        writer=store.Writer(role="operator", node="test", identity="test"),
+    )
+    status = {
+        "Peer": {
+            "wsl": {
+                "ID": "wsl-id",
+                "HostName": "chiwk12",
+                "TailscaleIPs": ["100.120.22.21"],
+                "Online": True,
+                "OS": "linux",
+            },
+            "windows": {
+                "ID": "windows-id",
+                "HostName": "chiwk12",
+                "TailscaleIPs": ["100.87.143.116"],
+                "Online": True,
+                "OS": "windows",
+            },
+        }
+    }
+
+    report = endpoint_audit.audit(paths, status)["reports"][0]
+
+    assert report["safe_to_route"] is False
+    assert report["policy"] == {"allowed_os": ["linux"], "max_active_peers": 1}
+    assert {item["kind"] for item in report["findings"]} >= {
+        "disallowed_peer_os",
+        "active_peer_limit_exceeded",
+    }
+
+
+def test_wsl_only_policy_accepts_one_declared_linux_peer(tmp_path) -> None:
+    paths = FleetPaths(tmp_path)
+    store.write_spec(
+        paths,
+        "node",
+        "chiwk12",
+        {
+            "address": {"hostname": "chiwk12"},
+            "addresses": [{"kind": "tailscale-wsl", "value": "100.120.22.21"}],
+            "tailscale": {"allowed_os": ["linux"], "max_active_peers": 1},
+        },
+        writer=store.Writer(role="operator", node="test", identity="test"),
+    )
+    status = {
+        "Peer": {
+            "wsl": {
+                "ID": "wsl-id",
+                "HostName": "chiwk12",
+                "TailscaleIPs": ["100.120.22.21"],
+                "Online": True,
+                "OS": "linux",
+            }
+        }
+    }
+
+    report = endpoint_audit.audit(paths, status)["reports"][0]
+
+    assert report["safe_to_route"] is True
+    assert report["active_peer_id"] == "wsl-id"
+    assert report["findings"] == []
+
+
 def test_endpoint_mismatch_never_selects_an_observed_peer(tmp_path) -> None:
     paths = FleetPaths(tmp_path)
     _node(paths)

@@ -142,6 +142,49 @@ def _peer_names(peer: Peer) -> set[str]:
     return {name for name in names if name}
 
 
+def _node_policy(payload: Mapping[str, Any]) -> dict[str, Any]:
+    spec = payload.get("spec") or {}
+    raw = spec.get("tailscale") or {}
+    if not isinstance(raw, Mapping):
+        raise ValueError("node spec.tailscale must be an object")
+    allowed = raw.get("allowed_os") or []
+    if not isinstance(allowed, list) or not all(isinstance(item, str) for item in allowed):
+        raise ValueError("node spec.tailscale.allowed_os must be a string list")
+    maximum = raw.get("max_active_peers")
+    if maximum is not None and (not isinstance(maximum, int) or maximum < 1):
+        raise ValueError("node spec.tailscale.max_active_peers must be a positive integer")
+    return {
+        "allowed_os": sorted({item.strip().lower() for item in allowed if item.strip()}),
+        "max_active_peers": maximum,
+    }
+
+
+def _policy_findings(active: list[Peer], policy: Mapping[str, Any]) -> list[dict[str, Any]]:
+    findings: list[dict[str, Any]] = []
+    allowed = set(policy.get("allowed_os") or [])
+    disallowed = [peer for peer in active if allowed and peer.os.lower() not in allowed]
+    if disallowed:
+        findings.append(
+            {
+                "kind": "disallowed_peer_os",
+                "severity": "error",
+                "allowed_os": sorted(allowed),
+                "peer_ids": [peer.node_id for peer in disallowed],
+            }
+        )
+    maximum = policy.get("max_active_peers")
+    if maximum is not None and len(active) > maximum:
+        findings.append(
+            {
+                "kind": "active_peer_limit_exceeded",
+                "severity": "error",
+                "maximum": maximum,
+                "peer_ids": [peer.node_id for peer in active],
+            }
+        )
+    return findings
+
+
 def _declared_multi_runtime_routes(
     active: list[Peer], declared: tuple[DeclaredEndpoint, ...]
 ) -> list[dict[str, str]] | None:
@@ -179,6 +222,7 @@ def audit(paths: FleetPaths, status: Mapping[str, Any]) -> dict[str, Any]:
     reports = []
     for node in store.list_specs(paths, "node"):
         names, configured_endpoints, declared_endpoints = _node_identity(node)
+        policy = _node_policy(node)
         matches = [
             peer
             for peer in peers
@@ -189,8 +233,10 @@ def audit(paths: FleetPaths, status: Mapping[str, Any]) -> dict[str, Any]:
         active = [peer for peer in matches if peer.online]
         stale = [peer for peer in matches if not peer.online]
         active_ips = {ip for peer in active for ip in peer.ips}
-        active_routes = _declared_multi_runtime_routes(active, declared_endpoints)
-        findings = []
+        findings = _policy_findings(active, policy)
+        active_routes = (
+            None if findings else _declared_multi_runtime_routes(active, declared_endpoints)
+        )
         if len(matches) > 1 and active_routes is None:
             findings.append(
                 {
@@ -240,14 +286,18 @@ def audit(paths: FleetPaths, status: Mapping[str, Any]) -> dict[str, Any]:
                     "peer_ids": [peer.node_id for peer in matches],
                 }
             )
-        safe_to_route = active_routes is not None or (
-            len(active) == 1
-            and bool(configured_endpoints)
-            and not configured_endpoints.isdisjoint(active_ips)
+        safe_to_route = not any(item["severity"] == "error" for item in findings) and (
+            active_routes is not None
+            or (
+                len(active) == 1
+                and bool(configured_endpoints)
+                and not configured_endpoints.isdisjoint(active_ips)
+            )
         )
         reports.append(
             {
                 "node": node.get("name"),
+                "policy": policy,
                 "safe_to_route": safe_to_route,
                 "configured_endpoints": sorted(configured_endpoints),
                 "active_peer_id": (
