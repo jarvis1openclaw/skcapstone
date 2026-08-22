@@ -218,6 +218,16 @@ class WorkProductUnknownStatus(StrEnum):
     RESOLVED = "resolved"
 
 
+class DraftGroundingStatus(StrEnum):
+    """Grounding state of one factual draft sentence (SKL-S4-04B)."""
+
+    GROUNDED = "grounded"
+    UNGROUNDED = "ungrounded"
+    DEFERRED_UNKNOWN = "deferred_unknown"
+    CLAIM_WITHDRAWN = "claim_withdrawn"
+    CLAIM_MISSING = "claim_missing"
+
+
 class ValidationOutcome(StrEnum):
     INCOMPLETE = "incomplete"
     PASSED = "passed"
