@@ -5,6 +5,7 @@ import io
 import json
 import math
 import os
+import re
 import shutil
 import signal
 import socket
@@ -454,6 +455,25 @@ class CleanRoomCheckTests(unittest.TestCase):
         self.assertNotIn(Path("/"), readable)
         self.assertNotIn(Path("/tmp"), readable)
         self.assertTrue(all(path.is_absolute() for path in readable))
+
+    def test_landlock_allowlist_covers_gate_script_utilities(self) -> None:
+        gate_scripts = (
+            "scripts/bootstrap.sh",
+            "scripts/run_checks.sh",
+            "scripts/dev_dependencies.sh",
+        )
+        pattern = re.compile(
+            r"(?<![\w./-])"
+            r"(basename|cat|cp|date|dirname|find|head|rg|sed|sort|tail|tr|wc|xargs)"
+            r"(?![\w-])"
+        )
+        invoked: set[str] = set()
+        for relative in gate_scripts:
+            text = (clean_room_check.REPO_ROOT / relative).read_text(encoding="utf-8")
+            invoked.update(pattern.findall(text))
+        allowed = {path.name for path in clean_room_check.LANDLOCK_EXECUTABLES}
+        self.assertTrue(invoked, "gate script utility scan found nothing")
+        self.assertEqual(set(), invoked - allowed)
 
     def test_docker_broker_contract_is_exact_and_disposable_only(self) -> None:
         with tempfile.TemporaryDirectory(dir="/tmp") as raw:
