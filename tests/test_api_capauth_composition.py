@@ -49,9 +49,7 @@ def test_postgres_composition_injects_durable_state_adapters() -> None:
                             "fingerprint": STUB_ISSUER_FPR,
                             "capabilities": [item.value for item in Capability],
                             "audiences": [item.value for item in Audience],
-                            "principal_types": [
-                                item.value for item in PrincipalType
-                            ],
+                            "principal_types": [item.value for item in PrincipalType],
                         }
                     ],
                 }

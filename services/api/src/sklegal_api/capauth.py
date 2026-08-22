@@ -37,7 +37,10 @@ type PrincipalResolver = Callable[[Request], PrincipalResolution]
 type ScopeResolver = Callable[[Request], ScopeResolution]
 type SqlExecutor = Callable[[str, tuple[object, ...]], object]
 
-_SYNTHETIC_ISSUER_BACKENDS = (StaticTrustedIssuerBackend, UnavailableTrustedIssuerBackend)
+_SYNTHETIC_ISSUER_BACKENDS = (
+    StaticTrustedIssuerBackend,
+    UnavailableTrustedIssuerBackend,
+)
 _SYNTHETIC_AUDIT_SINKS = (InMemoryAuditSink, UnavailableAuditSink)
 
 

@@ -332,9 +332,7 @@ class ComposedAuthorizerHealthTest(unittest.TestCase):
         self.assertIsInstance(
             env.authorizer._principals, PostgresPrincipalPolicyBackend
         )
-        self.assertIsInstance(
-            env.authorizer._revocations, PostgresRevocationBackend
-        )
+        self.assertIsInstance(env.authorizer._revocations, PostgresRevocationBackend)
         self.assertIsInstance(env.authorizer._replay, PostgresReplayBackend)
 
         principal = env.bind_principal()
@@ -416,9 +414,7 @@ class ComposedAuthorizerHealthTest(unittest.TestCase):
                 self.assertEqual(reason, DecisionReason.BACKEND_UNAVAILABLE)
 
         recovered = env.rig.issue(principal, grant)
-        context = env.authorizer.authorize(
-            recovered, env.rig.request(principal, grant)
-        )
+        context = env.authorizer.authorize(recovered, env.rig.request(principal, grant))
         self.assertTrue(context.decision.allow)
 
 
@@ -503,9 +499,7 @@ class ComposedAuthorizerRaceTest(unittest.TestCase):
         kinds = [kind for kind, _payload in outcomes.values()]
         self.assertEqual(kinds.count("allow"), 1)
         self.assertEqual(kinds.count("denied"), 7)
-        reasons = [
-            payload for kind, payload in outcomes.values() if kind == "denied"
-        ]
+        reasons = [payload for kind, payload in outcomes.values() if kind == "denied"]
         self.assertEqual(reasons, [DecisionReason.REPLAYED] * 7)
 
     def test_concurrent_mid_call_outage_denies_closed_without_cross_talk(self) -> None:
