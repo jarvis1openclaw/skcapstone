@@ -253,9 +253,7 @@ class SaturationDatabase(chain.BenchDatabase):
 
 
 def _read_input(scope: chain.TenantScope, reads: int) -> str:
-    return (
-        f"SELECT bench.timed_read('{scope.matter_id}');\n"
-    ) * reads
+    return (f"SELECT bench.timed_read('{scope.matter_id}');\n") * reads
 
 
 def _principal_snapshot_input(scope: chain.TenantScope, ops: int) -> str:
@@ -395,14 +393,22 @@ def _execute_workers(
         assert isinstance(values, list)
         return values
 
-    all_started = [value for worker in worker_results for value in _floats(worker, "started")]
-    all_finished = [value for worker in worker_results for value in _floats(worker, "finished")]
+    all_started = [
+        value for worker in worker_results for value in _floats(worker, "started")
+    ]
+    all_finished = [
+        value for worker in worker_results for value in _floats(worker, "finished")
+    ]
 
     kinds: dict[str, object] = {}
     for kind in sorted({str(worker["kind"]) for worker in worker_results}):
         members = [worker for worker in worker_results if worker["kind"] == kind]
-        kind_started = [value for worker in members for value in _floats(worker, "started")]
-        kind_finished = [value for worker in members for value in _floats(worker, "finished")]
+        kind_started = [
+            value for worker in members for value in _floats(worker, "started")
+        ]
+        kind_finished = [
+            value for worker in members for value in _floats(worker, "finished")
+        ]
         latencies_ms = [
             (stop - start) * 1000.0
             for worker in members
@@ -533,9 +539,7 @@ def run_audit_under_load(
             (
                 append_scope,
                 "append",
-                chain._worker_input(
-                    append_scope, arguments.appends_per_worker, rng
-                ),
+                chain._worker_input(append_scope, arguments.appends_per_worker, rng),
             )
             for _ in range(arguments.append_workers)
         ],
@@ -575,7 +579,11 @@ def run_audit_under_load(
     mixed_append = mixed_kinds["append"]
     assert isinstance(idle_append, dict) and isinstance(mixed_append, dict)
     retained = (
-        round(float(mixed_append["ops_per_second"]) / float(idle_append["ops_per_second"]), 3)
+        round(
+            float(mixed_append["ops_per_second"])
+            / float(idle_append["ops_per_second"]),
+            3,
+        )
         if float(idle_append["ops_per_second"]) > 0
         else 0.0
     )
@@ -668,7 +676,9 @@ def run_benchmark(arguments: argparse.Namespace) -> dict[str, object]:
 
 def main(argv: list[str] | None = None) -> int:
     if shutil.which("docker") is None:
-        print("docker is required for the postgres saturation benchmark", file=sys.stderr)
+        print(
+            "docker is required for the postgres saturation benchmark", file=sys.stderr
+        )
         return 2
     arguments = parse_arguments(argv)
     result = run_benchmark(arguments)
