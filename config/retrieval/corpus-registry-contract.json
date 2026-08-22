@@ -1,0 +1,63 @@
+{
+  "schema": "sklegal-corpus-registry/v1",
+  "card": "f5ed9d24",
+  "task": "SKL-S2-05",
+  "paired_document": "docs/development/CORPUS-REGISTRY.md",
+  "health": {
+    "read_source": "materialized_registry_snapshot_only",
+    "full_tree_scan_on_health_request": "forbidden",
+    "projection_backend_scan_on_health_request": "forbidden",
+    "fixed_budget_ms": 100,
+    "budget_exceeded_status": "unavailable",
+    "store_unavailable_status": "unavailable",
+    "degraded_lag_events_threshold": 1000,
+    "never_reconciled_status": "degraded",
+    "per_tenant_breakdown_on_unauthenticated_health": "forbidden",
+    "failed_read_reports_zero_counts": "forbidden"
+  },
+  "materialized_counts": [
+    "source",
+    "normalized",
+    "decomposition",
+    "vector",
+    "graph",
+    "reject",
+    "orphan",
+    "release"
+  ],
+  "registry_entry_fields": [
+    "tenant_id",
+    "release_id",
+    "counts",
+    "core_watermark",
+    "core_event_sha256",
+    "required_replay_lsn",
+    "lag",
+    "last_reconciled_at"
+  ],
+  "incremental_updates": {
+    "transport": "transactional_outbox",
+    "idempotent_delivery": true,
+    "absolute_counts_not_deltas": true,
+    "strict_event_sequence": true,
+    "populates_required_replay_lsn_from_core_outbox": true,
+    "watermark_compare_and_set": true
+  },
+  "reconciliation": {
+    "trigger": "scheduled_batch_job",
+    "user_facing_health_path_permitted": false,
+    "deep_scan_permitted": true,
+    "writes_last_reconciled_state": true,
+    "reports_complete_coverage_separately": true,
+    "partial_or_timeout_writes_state": false,
+    "write_conflict_aborts_run": true,
+    "detects": [
+      "missing_decomposition",
+      "orphan_vector",
+      "stale_graph",
+      "changed_source",
+      "missing_source",
+      "count_drift"
+    ]
+  }
+}
