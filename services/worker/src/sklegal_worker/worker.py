@@ -5,6 +5,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 from temporalio.client import Client
+from temporalio.contrib.pydantic import pydantic_data_converter
 from temporalio.worker import Worker
 
 from .activities import WorkerActivities
@@ -15,6 +16,25 @@ from .workflows import (
     MatterBatchWorkflow,
     MatterTaskWorkflow,
 )
+
+# Workflow payloads are pydantic v2 models. Temporal documents the pydantic
+# data converter as required for them: without it UUID and datetime fields
+# degrade to plain strings across payload round trips, which corrupts typed
+# activity results after a worker restart or workflow replay. Every runtime
+# client entrypoint must connect through this converter.
+WORKER_DATA_CONVERTER = pydantic_data_converter
+
+
+async def connect_worker_client(
+    address: str, *, namespace: str = "default"
+) -> Client:
+    """Connect the runtime Temporal client with the pinned converter."""
+
+    return await Client.connect(
+        address,
+        namespace=namespace,
+        data_converter=WORKER_DATA_CONVERTER,
+    )
 
 
 @dataclass(frozen=True, slots=True)
