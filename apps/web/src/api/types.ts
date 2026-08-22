@@ -115,6 +115,55 @@ export interface WorkspaceVersionLineage {
   currentReviewBaseline: boolean;
 }
 
+export type WorkspaceDraftGroundingStatus =
+  | "grounded"
+  | "ungrounded"
+  | "deferred_unknown"
+  | "claim_withdrawn"
+  | "claim_missing";
+
+export interface WorkspaceDraftSentence {
+  sentenceKey: string;
+  text: string;
+  groundingStatus: WorkspaceDraftGroundingStatus;
+  claimId: string | null;
+  claimStatement: string | null;
+  claimStatus: string | null;
+  warning: string | null;
+}
+
+export interface WorkspaceDraftCompareRow {
+  change: "unchanged" | "added" | "removed";
+  previousText: string | null;
+  currentText: string | null;
+}
+
+export interface WorkspaceWorkProductVersion {
+  versionId: string;
+  versionNumber: number;
+  contentSha256: string;
+  status: string;
+  content: string;
+  sentences: readonly WorkspaceDraftSentence[];
+  compareRows: readonly WorkspaceDraftCompareRow[];
+}
+
+export interface WorkspaceApprovalBinding {
+  versionId: string;
+  versionNumber: number;
+  contentSha256: string;
+}
+
+export interface WorkspaceWorkProduct {
+  workProductId: string;
+  title: string;
+  workProductKind: string;
+  status: string;
+  currentVersion: WorkspaceWorkProductVersion;
+  previousVersionNumber: number | null;
+  approvalBinding: WorkspaceApprovalBinding | null;
+}
+
 /**
  * Approval or execution state for one workspace target. Negative states
  * such as pending_review and not_started are first-class data and are
@@ -169,6 +218,7 @@ export interface MatterWorkspace {
   tensions: readonly WorkspaceTensionGroup[];
   evidence: readonly WorkspaceEvidenceItem[];
   communications: readonly WorkspaceCommunication[];
+  workProducts: readonly WorkspaceWorkProduct[];
   versionLineage: readonly WorkspaceVersionLineage[];
   executionStates: readonly WorkspaceExecutionState[];
   gaps: readonly WorkspaceGap[];

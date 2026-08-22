@@ -227,6 +227,7 @@ class WorkspaceApiTest(unittest.TestCase):
         self.assertIn("tensions", body)
         self.assertIn("executionStates", body)
         self.assertIn("gaps", body)
+        self.assertEqual([], body["workProducts"])
 
     def test_matter_detail_requires_membership(self) -> None:
         response = self.client.get(

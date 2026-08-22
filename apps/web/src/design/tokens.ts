@@ -171,6 +171,37 @@ export const approvalState = {
     tone: "caution",
   },
   rejected: { label: "Rejected", glyph: "\u2715", tone: "critical" },
+  invalidated: {
+    label: "Approval invalidated",
+    glyph: "!",
+    tone: "critical",
+  },
+} as const satisfies Record<string, StatusPresentation>;
+
+export const draftGroundingStatus = {
+  grounded: { label: "Claim grounded", glyph: "\u2713", tone: "positive" },
+  ungrounded: { label: "Ungrounded sentence", glyph: "!", tone: "critical" },
+  deferred_unknown: {
+    label: "Unknown unresolved",
+    glyph: "?",
+    tone: "caution",
+  },
+  claim_withdrawn: {
+    label: "Bound claim withdrawn",
+    glyph: "\u2190",
+    tone: "critical",
+  },
+  claim_missing: {
+    label: "Bound claim missing",
+    glyph: "\u2715",
+    tone: "critical",
+  },
+} as const satisfies Record<string, StatusPresentation>;
+
+export const draftCompareState = {
+  unchanged: { label: "Unchanged", glyph: "=", tone: "neutral" },
+  added: { label: "Added", glyph: "+", tone: "positive" },
+  removed: { label: "Removed", glyph: "-", tone: "critical" },
 } as const satisfies Record<string, StatusPresentation>;
 
 /** Corpus supersession semantics for the source-span viewer. */

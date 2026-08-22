@@ -18,7 +18,7 @@ routes for usability only.
 from __future__ import annotations
 
 from datetime import datetime
-from typing import Any, Protocol
+from typing import Any, Literal, Protocol
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Request, status
@@ -155,6 +155,60 @@ class CommunicationRead(WorkspaceReadModel):
     source_missing: bool = False
 
 
+class DraftSentenceRead(WorkspaceReadModel):
+    """One factual sentence and its exact claim-ledger grounding state."""
+
+    sentence_key: str
+    text: str
+    grounding_status: Literal[
+        "grounded",
+        "ungrounded",
+        "deferred_unknown",
+        "claim_withdrawn",
+        "claim_missing",
+    ]
+    claim_id: UUID | None = None
+    claim_statement: str | None = None
+    claim_status: str | None = None
+    warning: str | None = None
+
+
+class DraftCompareRowRead(WorkspaceReadModel):
+    """One sentence-level row in the previous-to-current version compare."""
+
+    change: Literal["unchanged", "added", "removed"]
+    previous_text: str | None = None
+    current_text: str | None = None
+
+
+class WorkProductVersionRead(WorkspaceReadModel):
+    version_id: UUID
+    version_number: int
+    content_sha256: str
+    status: str
+    content: str
+    sentences: tuple[DraftSentenceRead, ...] = ()
+    compare_rows: tuple[DraftCompareRowRead, ...] = ()
+
+
+class ApprovalBindingRead(WorkspaceReadModel):
+    """Exact version triple named by a recorded Approval."""
+
+    version_id: UUID
+    version_number: int
+    content_sha256: str
+
+
+class WorkProductRead(WorkspaceReadModel):
+    work_product_id: UUID
+    title: str
+    work_product_kind: str
+    status: str
+    current_version: WorkProductVersionRead
+    previous_version_number: int | None = None
+    approval_binding: ApprovalBindingRead | None = None
+
+
 class VersionLineageRead(WorkspaceReadModel):
     packet_version: int
     source_path: str
@@ -220,6 +274,7 @@ class MatterWorkspaceRead(WorkspaceReadModel):
     tensions: tuple[TensionGroupRead, ...] = ()
     evidence: tuple[EvidenceItemRead, ...] = ()
     communications: tuple[CommunicationRead, ...] = ()
+    work_products: tuple[WorkProductRead, ...] = ()
     version_lineage: tuple[VersionLineageRead, ...] = ()
     execution_states: tuple[ExecutionStateRead, ...] = ()
     gaps: tuple[WorkspaceGapRead, ...] = ()
