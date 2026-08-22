@@ -29,6 +29,9 @@ SELECT sklegal_identity.capability_revocation_snapshot(%s, %s)
 REPLAY_RESERVE_SQL = """
 SELECT sklegal_identity.reserve_capability(%s, %s, %s, %s)
 """.strip()
+REPLAY_PRUNE_SQL = """
+SELECT sklegal_identity.prune_expired_capability_replay_reservations(%s)
+""".strip()
 
 
 def _payload(value: object) -> Mapping[str, object]:
@@ -123,6 +126,22 @@ class PostgresReplayBackend(ReplayBackend):
                 value = value[0]
             if not isinstance(value, bool):
                 raise ValueError("database replay adapter returned invalid state")
+            return value
+        except BackendUnavailable:
+            raise
+        except Exception:
+            raise BackendUnavailable("replay backend unavailable") from None
+
+    def prune_expired(self) -> int:
+        """Delete expired reservations for the bound tenant and return the count."""
+        try:
+            value = self._executor(REPLAY_PRUNE_SQL, (self._tenant_id,))
+            if isinstance(value, Mapping):
+                value = value.get("prune_expired_capability_replay_reservations")
+            if isinstance(value, (list, tuple)) and len(value) == 1:
+                value = value[0]
+            if isinstance(value, bool) or not isinstance(value, int) or value < 0:
+                raise ValueError("database replay prune returned invalid state")
             return value
         except BackendUnavailable:
             raise

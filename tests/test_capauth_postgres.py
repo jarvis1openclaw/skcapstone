@@ -89,3 +89,35 @@ def test_replay_reservation_accepts_only_boolean_and_binds_tenant() -> None:
             decision_id=str(uuid4()),
             expires_at=expires,
         )
+
+
+def test_replay_prune_binds_tenant_and_accepts_only_strict_counts() -> None:
+    calls: list[tuple[object, ...]] = []
+
+    def execute(_sql: str, params: tuple[object, ...]) -> object:
+        calls.append(params)
+        return (3,)
+
+    pruned = PostgresReplayBackend(execute, tenant_id=TENANT).prune_expired()
+    assert pruned == 3
+    assert calls and calls[0] == (TENANT,)
+
+    backend = PostgresReplayBackend(lambda *_: (0,), tenant_id=TENANT)
+    assert backend.prune_expired() == 0
+
+    for invalid in (
+        (True,),
+        (-1,),
+        ("3",),
+        (None,),
+        {"unexpected": 3},
+        object(),
+    ):
+        with pytest.raises(BackendUnavailable):
+            PostgresReplayBackend(lambda *_: invalid, tenant_id=TENANT).prune_expired()
+
+    def outage(_sql: str, _params: tuple[object, ...]) -> object:
+        raise RuntimeError("synthetic outage")
+
+    with pytest.raises(BackendUnavailable):
+        PostgresReplayBackend(outage, tenant_id=TENANT).prune_expired()

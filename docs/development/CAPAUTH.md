@@ -274,13 +274,21 @@ atomic replay backend, and the S1-05 durable audit sink. PostgreSQL is the
 shared state for principal, revocation, replay, and audit adapters.
 `PostgresPrincipalPolicyBackend`, `PostgresRevocationBackend`, and
 `PostgresReplayBackend` in `sklegal_capauth.postgres` implement those three
-contracts over the migration 0008 through 0010 SECURITY DEFINER functions.
+contracts over the migration 0008 through 0013 SECURITY DEFINER functions.
 Each adapter revalidates the current runtime scope inside the database
 function, converts any database error into a fail-closed
 `BackendUnavailable`, and never sees raw credential material. The audit sink
 implementation is available, but no production route composition is enabled
 by either card. Replay reservation needs
 a unique credential-digest insert or equivalent serializable atomic operation.
+Migration 0013 makes the durable reservation match the reviewed in-memory
+expiry semantics: `reserve_capability` removes an expired row for the same
+tenant and credential digest inside the same statement transaction before the
+atomic `ON CONFLICT DO NOTHING` insert, so exactly one concurrent worker wins
+and expired state never blocks or accumulates. The scoped
+`prune_expired_capability_replay_reservations` janitor, exposed as
+`PostgresReplayBackend.prune_expired`, deletes every expired reservation for
+the calling tenant and returns the pruned count for scheduled cleanup.
 Read errors, unavailable revisions, corrupt state, and write ambiguity must
 deny. The package provides explicit unavailable adapters so an incomplete
 composition fails closed during development.
@@ -317,8 +325,11 @@ check-runner entries. Never replace the authorizer with an allow fallback. A
 missing integration must leave the operation unavailable.
 
 The database half runs the explicit down sections of migrations 0008 through
-0012 in reverse order through the digest-pinned runner:
+0013 in reverse order through the digest-pinned runner:
 
+- 0013 drops the `capability_replay_controlled_delete` policy and
+  `prune_expired_capability_replay_reservations`, then restores the 0008-era
+  `reserve_capability` without the expired-row purge.
 - 0012 and 0011 revoke schema USAGE from `sklegal_runtime`.
 - 0010 drops the authentication subject index, constraint, and column, then
   restores the 0009-era `capability_principal_snapshot` that derives the
