@@ -33,6 +33,7 @@ from .errors import (
 )
 from .gateway import (
     AgentRun,
+    DenialRecord,
     ToolCallContext,
     ToolCallRecord,
     ToolGateway,
@@ -74,6 +75,7 @@ __all__ = [
     "AgentSpecRegistry",
     "AgentSpecValue",
     "AllowedContext",
+    "DenialRecord",
     "KnownTool",
     "ModelRouteNotEnabledError",
     "RunInputValidationError",
