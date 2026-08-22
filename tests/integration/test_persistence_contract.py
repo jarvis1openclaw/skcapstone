@@ -54,6 +54,9 @@ from tests.integration.persistence_contract_migration_guards import (
 from tests.integration.persistence_contract_claim_ledger import (
     PersistenceContract12ClaimLedgerTests,
 )
+from tests.integration.persistence_contract_capauth_replay import (
+    PersistenceContract13CapAuthReplayTests,
+)
 
 __all__ = [
     "PersistenceContract00MigrationPreflightTests",
@@ -70,6 +73,7 @@ __all__ = [
     "PersistenceContract10OutboxWatermarkTests",
     "PersistenceContract11MigrationGuardTests",
     "PersistenceContract12ClaimLedgerTests",
+    "PersistenceContract13CapAuthReplayTests",
 ]
 
 
