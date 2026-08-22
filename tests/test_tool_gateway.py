@@ -361,6 +361,25 @@ class UnauthorizedToolTests(ToolGatewayFixture):
             DecisionReason.WRONG_TARGET, caught.exception.decision.reason_code
         )
 
+    def test_credential_scoped_to_another_matter_is_denied(self) -> None:
+        run = self.begin_run()
+        contract = tool_contract("matter.read")
+        foreign = self.rig.issue(
+            self.agent,
+            self.rig.grant(
+                audience=Audience.TOOL,
+                capability=contract.capability,
+                purpose=contract.purpose,
+                target="tool:matter.read",
+                matter_id=uuid4(),
+            ),
+        )
+        with self.assertRaises(AuthorizationDenied) as caught:
+            self.call(run, "matter.read", presented=foreign)
+        self.assertEqual(
+            DecisionReason.WRONG_MATTER, caught.exception.decision.reason_code
+        )
+
     def test_handler_registration_outside_catalog_is_rejected(self) -> None:
         handlers = stub_handlers()
         handlers["shell.exec"] = StubHandler({})  # type: ignore[assignment]
