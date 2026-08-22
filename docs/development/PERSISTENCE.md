@@ -19,11 +19,14 @@ relations, functions, and types, must be owned by the exact non-superuser,
 | `sklegal_workflow` | Opaque workflow and policy decision references |
 | `sklegal_audit` | Append-only audit chain, transactional outbox, delivery receipts, and projection watermarks |
 
-The legal schema covers all 34 entities in the approved `SKL-S1-01` domain
-contract. `tests/fixtures/persistence/domain-table-parity.json` is the reviewed
+The legal schema covers all 36 entities in the approved `SKL-S1-01` domain
+contract plus the `SKL-S3-05A` claim ledger entities (LedgerClaim and
+ClaimSupport) and the `SKL-S4-04A` work product drafting entities
+(WorkProductTemplate, WorkProductTemplateVersion, and WorkProductUnknown).
+`tests/fixtures/persistence/domain-table-parity.json` is the reviewed
 entity-to-table and required-column matrix. The reusable, driver-neutral
 `sklegal_persistence.mapping` adapter declares scalar, value-object, and
-normalized-relation mappings for all 34 public `DomainEntity` types. It
+normalized-relation mappings for all 36 public `DomainEntity` types. It
 decomposes canonical instances into closed scalar and relation rows, restores
 those rows with strict Pydantic validation, and rejects missing joins, unknown
 columns, undeclared persistence metadata, over-cardinality, and ambiguous
@@ -197,11 +200,11 @@ contract and its production limitations.
 
 ## Migration, provisioning, and rollback
 
-Fourteen digest-pinned migrations create the foundation, identity, legal
+Fifteen digest-pinned migrations create the foundation, identity, legal
 records, integration and workflow references, audit target, RLS policies,
 legal information-barrier records, the CapAuth state, snapshot, and grant
-surface, and the work product drafting surface. Each file contains explicit up
-and down sections.
+surface, the work product drafting surface, and the claim ledger. Each file
+contains explicit up and down sections.
 Migrations 0001 through 0004 create the six prefixed schemas, shared domains
 and helper functions (0001), tenants, principals, database-role bindings, and
 tenant membership (0002), the legal record tables (0003), and the
@@ -260,9 +263,19 @@ Migrations 0008 through 0013 install the durable CapAuth surface described in
   All three tables carry forced RLS tenant or matter boundary policies, and
   updates flow only through migrator-owned controlled writers.
 
-The down sections run in reverse order. The 0014 down restores the 0003-era
-`transition_work_product_version` without the unknown blocker, then drops the
-drafting functions and tables. The 0013 down
+Migration 0015 installs the claim ledger: versioned `ledger_claims` rows with
+an immutable policy revision, append-only `ledger_claim_support` records that
+link support and counter-support to exact source spans, and the
+`ledger_claim_identities` anchor. A deferred constraint trigger rejects any
+claim write that lacks at least one supporting source span, all three tables
+are forced-RLS with matter-boundary select and insert policies, and the
+`ledger_claim_history` and `ledger_claim_current` security-invoker views
+expose the revision history.
+
+The down sections run in reverse order. The 0015 down drops the claim ledger
+views, tables, and functions in reverse dependency order. The 0014 down
+restores the 0003-era `transition_work_product_version` without the unknown
+blocker, then drops the drafting functions and tables. The 0013 down
 drops the prune function and restores the 0008-era `reserve_capability`, the
 0010 down restores the 0009-era snapshot function after dropping the subject
 column, and the 0008 down drops the three functions, their policies, and both

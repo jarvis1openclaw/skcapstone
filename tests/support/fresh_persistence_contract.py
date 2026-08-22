@@ -1,4 +1,4 @@
-"""Build the strict synthetic 34-entity write-first persistence contract."""
+"""Build the strict synthetic 36-entity write-first persistence contract."""
 
 from __future__ import annotations
 
@@ -77,6 +77,8 @@ def build_fresh_contract() -> FreshPersistenceContract:
     template = _uid(41)
     template_version = _uid(42)
     unknown = _uid(43)
+    ledger_claim = _uid(44)
+    claim_support = _uid(45)
     digest = "a" * 64
     destination_digest = "b" * 64
 
@@ -320,6 +322,38 @@ def build_fresh_contract() -> FreshPersistenceContract:
             "authority_ids": [authority],
             "status": "proposed",
         },
+        "ClaimSupport": {
+            **scoped(claim_support),
+            "claim_id": ledger_claim,
+            "kind": "support",
+            "source_reference": source,
+            "span_start": 0,
+            "span_end": 12,
+            "excerpt_sha256": "e" * 64,
+            "note": None,
+            "recorded_by_principal_id": principal,
+            "policy_revision": digest,
+        },
+        "LedgerClaim": {
+            **scoped(ledger_claim),
+            "statement": "Synthetic fresh ledger claim statement.",
+            "policy_revision": digest,
+            "support": [
+                {
+                    **scoped(claim_support),
+                    "claim_id": ledger_claim,
+                    "kind": "support",
+                    "source_reference": source,
+                    "span_start": 0,
+                    "span_end": 12,
+                    "excerpt_sha256": "e" * 64,
+                    "note": None,
+                    "recorded_by_principal_id": principal,
+                    "policy_revision": digest,
+                }
+            ],
+            "status": "proposed",
+        },
         "DeadlineCalculation": {
             **scoped(calculation, version=2),
             "trigger_fact_id": fact_one,
@@ -517,6 +551,15 @@ def build_fresh_contract() -> FreshPersistenceContract:
     defense_element_metadata = PersistenceMetadata(relations={"evidence": ()})
     metadata["Remedy"] = PersistenceMetadata(
         relations={"authorities": (relation(remedy_id=UUID(remedy)),)}
+    )
+    metadata["ClaimSupport"] = PersistenceMetadata(
+        relations={"source_reference": (source_relation(),)}
+    )
+    metadata["LedgerClaim"] = PersistenceMetadata(
+        scalar={"system_from": times[0], "system_to": None},
+        relations={
+            "support": ({"nested_metadata": metadata["ClaimSupport"]},),
+        },
     )
     metadata["DeadlineCalculation"] = PersistenceMetadata(
         relations={

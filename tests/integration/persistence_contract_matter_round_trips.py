@@ -268,6 +268,27 @@ class PersistenceContract04MatterRoundTripTests(PersistenceContractBase):
             VALUES ('{tenant}', '{matter}',
                     '80000000-0000-4000-8000-000000000017',
                     '80000000-0000-4000-8000-000000000011');
+            INSERT INTO sklegal_legal.ledger_claim_identities
+                (tenant_id, matter_id, id)
+            VALUES ('{tenant}', '{matter}',
+                    '80000000-0000-4000-8000-000000000022');
+            INSERT INTO sklegal_legal.ledger_claims
+                (id, tenant_id, matter_id, statement, policy_revision, version)
+            VALUES ('80000000-0000-4000-8000-000000000022', '{tenant}',
+                    '{matter}', 'Synthetic ledger claim statement.', '{digest}', 1);
+            INSERT INTO sklegal_legal.ledger_claim_support
+                (id, tenant_id, matter_id, claim_id, kind, source_reference_id,
+                 span_start, span_end, excerpt_sha256, recorded_by_principal_id,
+                 policy_revision)
+            VALUES
+                ('80000000-0000-4000-8000-000000000023', '{tenant}', '{matter}',
+                 '80000000-0000-4000-8000-000000000022', 'support',
+                 '80000000-0000-4000-8000-000000000001', 0, 12, '{digest}',
+                 '{principal}', '{digest}'),
+                ('80000000-0000-4000-8000-000000000024', '{tenant}', '{matter}',
+                 '80000000-0000-4000-8000-000000000022', 'counter_support',
+                 '80000000-0000-4000-8000-000000000001', 20, 31, '{digest}',
+                 '{principal}', '{digest}');
             INSERT INTO sklegal_legal.deadline_calculations
                 (id, tenant_id, matter_id, trigger_fact_id, calculation_rule,
                  candidate_due_at, calculated_at, calculation_version)
@@ -312,7 +333,13 @@ class PersistenceContract04MatterRoundTripTests(PersistenceContractBase):
                     WHERE id = '80000000-0000-4000-8000-000000000019'),
                 'communication', (SELECT direction || ':' || channel
                     FROM sklegal_legal.communications
-                    WHERE id = '80000000-0000-4000-8000-000000000021')
+                    WHERE id = '80000000-0000-4000-8000-000000000021'),
+                'ledger_claim_support_count',
+                    (SELECT count(*) FROM sklegal_legal.ledger_claim_support
+                    WHERE claim_id = '80000000-0000-4000-8000-000000000022'),
+                'ledger_claim_current_status', (SELECT status
+                    FROM sklegal_legal.ledger_claim_current
+                    WHERE id = '80000000-0000-4000-8000-000000000022')
             );
             """,
         )
@@ -321,6 +348,8 @@ class PersistenceContract04MatterRoundTripTests(PersistenceContractBase):
         self.assertEqual(2, payload["element_count"])
         self.assertTrue(payload["deadline_candidate_unknown"])
         self.assertEqual("internal:calendar", payload["communication"])
+        self.assertEqual(2, payload["ledger_claim_support_count"])
+        self.assertEqual("proposed", payload["ledger_claim_current_status"])
 
     def test_09_optimistic_conflict_and_monotonic_long_transaction_time(self) -> None:
         value = self.fixture

@@ -42,6 +42,9 @@ INSERT_TABLES = {
     "sklegal_legal.theory_authorities",
     "sklegal_legal.remedies",
     "sklegal_legal.remedy_authorities",
+    "sklegal_legal.ledger_claim_identities",
+    "sklegal_legal.ledger_claims",
+    "sklegal_legal.ledger_claim_support",
     "sklegal_legal.deadline_calculations",
     "sklegal_legal.deadline_calculation_sources",
     "sklegal_legal.deadlines",
@@ -332,6 +335,8 @@ def provision(
                 'sklegal_legal.elements, sklegal_legal.element_evidence, '
                 'sklegal_legal.theory_evidence, sklegal_legal.theory_authorities, '
                 'sklegal_legal.remedies, sklegal_legal.remedy_authorities, '
+                'sklegal_legal.ledger_claim_identities, '
+                'sklegal_legal.ledger_claims, sklegal_legal.ledger_claim_support, '
                 'sklegal_legal.deadline_calculations, '
                 'sklegal_legal.deadline_calculation_sources, '
                 'sklegal_legal.deadlines, sklegal_legal.tasks, '

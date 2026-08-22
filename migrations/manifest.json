@@ -56,6 +56,10 @@
     {
       "file": "0014_work_product_drafting.sql",
       "sha256": "37713a60b45d92807f089c96349873eaf7726c2c6db62d808c8e18c50bd8a5c7"
+    },
+    {
+      "file": "0015_claim_ledger.sql",
+      "sha256": "3a53e9150815daef22d1b76475deab1f96c5e72060bed811296ddbd9a5b3aa7f"
     }
   ]
 }
