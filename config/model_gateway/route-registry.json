@@ -1,0 +1,55 @@
+{
+  "schema": "sklegal-model-route-registry/v1",
+  "registry_purpose": "Pin every model route before any workflow may submit to it. A route pins provider, model name and revision, prompt template id and SHA-256, output schema id and SHA-256, context token budget, timeout, retry class, egress classification ceiling, and admission concurrency.",
+  "admission": {
+    "behavior": "fail_fast_typed_saturation_error",
+    "queueing": "none",
+    "slot_release": "on_success_timeout_cancellation_or_error",
+    "note": "The fifth concurrent in-flight request for a provider receives a ProviderSaturationError. Callers retry through the pinned Temporal retry class; the gateway never queues."
+  },
+  "provider_boundary": {
+    "qwen_local": "Local Qwen endpoint. Corpus content never leaves the local stack on this route.",
+    "openai": "OpenAI Platform API with a secret-store API key and the Responses API with structured outputs. A consumer ChatGPT session or subscription is not an application credential."
+  },
+  "routes": [
+    {
+      "route_id": "qwen.corpus-summary.v1",
+      "provider": "qwen_local",
+      "enabled": true,
+      "model": {
+        "name": "qwen3-32b",
+        "revision": "2025-04-28"
+      },
+      "prompt_template_id": "corpus-summary.v1",
+      "prompt_template_sha256": "61d4b53cd8121b3f4b76a90e459022f68e2b33eeb2093cf1b9db17d75ffc4cc4",
+      "output_schema_id": "sklegal.corpus-summary/v1",
+      "output_schema_sha256": "2743099233b9845f8b96e5dd6baab31a83daebaafb94c5721cd68c2afa34575d",
+      "context_token_budget": 24000,
+      "max_output_tokens": 2048,
+      "timeout_seconds": 120,
+      "retry_class": "model",
+      "egress_classification_ceiling": "highly_restricted",
+      "max_concurrent": 4
+    },
+    {
+      "route_id": "openai.corpus-summary.v1",
+      "provider": "openai",
+      "enabled": true,
+      "model": {
+        "name": "gpt-4o",
+        "revision": "2024-08-06"
+      },
+      "prompt_template_id": "corpus-summary.v1",
+      "prompt_template_sha256": "61d4b53cd8121b3f4b76a90e459022f68e2b33eeb2093cf1b9db17d75ffc4cc4",
+      "output_schema_id": "sklegal.corpus-summary/v1",
+      "output_schema_sha256": "2743099233b9845f8b96e5dd6baab31a83daebaafb94c5721cd68c2afa34575d",
+      "context_token_budget": 16000,
+      "max_output_tokens": 2048,
+      "timeout_seconds": 60,
+      "retry_class": "model",
+      "egress_classification_ceiling": "confidential",
+      "max_concurrent": 4,
+      "secret_reference": "vault:sklegal/openai/platform-api-key"
+    }
+  ]
+}

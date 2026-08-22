@@ -1,0 +1,20 @@
+{
+  "id": "resp_fixture0001",
+  "model": "gpt-4o-2024-08-06",
+  "output": [
+    {
+      "type": "message",
+      "content": [
+        {
+          "type": "output_text",
+          "text": "{\"summary\": \"The synthetic matter bundle describes a boundary easement dispute between two neighboring landowners with a recorded survey and one prior demand letter.\", \"key_points\": [\"A recorded survey places the fence line three feet inside the parcel boundary.\", \"The demand letter asserts adverse possession for eleven years.\"], \"open_questions\": [\"Is the survey certified by a licensed surveyor?\", \"Does the jurisdiction require twenty years for adverse possession?\"], \"confidence\": \"medium\"}"
+        }
+      ]
+    }
+  ],
+  "usage": {
+    "input_tokens": 512,
+    "output_tokens": 180,
+    "total_tokens": 692
+  }
+}
