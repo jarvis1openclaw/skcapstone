@@ -1,0 +1,32 @@
+{
+  "schema": "sklegal-agent-spec/v1",
+  "spec_id": "corpus-analyst",
+  "version": 1,
+  "task_purpose": "Summarize released corpus material for one matter into a typed corpus-summary proposal for attorney review. The agent reads scoped matter, evidence, and authority context only. It never mutates workflow or domain state, never approves work product, and never dispatches external actions.",
+  "input_schema": {
+    "schema_id": "sklegal.corpus-summary-input/v1",
+    "sha256": "bf1df4b41ce8ee82fd5083d6fd8ab2d6bcbfecd14609e8383049a0a87b43a107"
+  },
+  "allowed_context": {
+    "classification_ceiling": "confidential",
+    "matter_scoped": true
+  },
+  "tool_allowlist": [
+    "matter.read",
+    "evidence.search",
+    "evidence.read",
+    "authority.search"
+  ],
+  "budgets": {
+    "max_tool_calls": 16,
+    "max_wall_clock_seconds": 600,
+    "max_retries": 2
+  },
+  "model_routes": ["qwen.corpus-summary.v1"],
+  "output_schema": {
+    "schema_id": "sklegal.corpus-summary/v1",
+    "sha256": "2743099233b9845f8b96e5dd6baab31a83daebaafb94c5721cd68c2afa34575d"
+  },
+  "retry_class": "model",
+  "escalation_target": "human.attorney-review"
+}
