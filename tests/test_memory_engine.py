@@ -99,6 +99,27 @@ class TestStore:
 
         assert _load_entry(path) is None
 
+    def test_load_silently_routes_unified_record_away_from_legacy_promoter(
+        self, agent_home: Path, caplog: pytest.LogCaptureFixture
+    ) -> None:
+        """Canonical SKMemory records are not misread as blank legacy entries."""
+        path = agent_home / "memory" / "short-term" / "unified-id.json"
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(
+            json.dumps(
+                {
+                    "id": "unified-id",
+                    "title": "Unified record",
+                    "content": "owned by SKMemory",
+                    "layer": "short-term",
+                }
+            ),
+            encoding="utf-8",
+        )
+
+        assert _load_entry(path) is None
+        assert not [record for record in caplog.records if record.levelno >= 30]
+
     def test_save_rejects_blank_memory_id_before_writing(self, agent_home: Path):
         """The legacy writer cannot recreate the unsafe `.json` filename."""
         entry = MemoryEntry(memory_id="", content="must not persist")
