@@ -15,6 +15,13 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ### Added
 
+- Added a single-fire CMDB reconciliation job pinned to `chiap04` and
+  `jarvis`. The bundled scheduler tick remains inert until reviewed JSON
+  configuration enables it with exact targets and `skvault://` references.
+  Enabled runs use bounded collection, configurable retries and stale grace,
+  safe positive reconciliation, retained checksummed summaries, and
+  deduplicated CI-linked ITIL escalation.
+
 - Added explicit `skcapstone cmdb plan`, `cmdb apply`, and `cmdb status`
   operations. Apply validates the evidence batch before writes and delays
   retirement lifecycle updates until validation succeeds; the existing
