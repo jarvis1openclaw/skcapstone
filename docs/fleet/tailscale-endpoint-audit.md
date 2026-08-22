@@ -46,6 +46,11 @@ any matched node is unsafe to route.
   emits an `active_routes` entry for each peer and routing is safe. This supports
   a Windows workstation whose WSL2 runtime intentionally runs its own Tailscale
   node without treating undeclared dual-active identities as safe.
+- `disallowed_peer_os`: an active peer violates the node's explicit
+  `spec.tailscale.allowed_os` policy. Routing fails closed.
+- `active_peer_limit_exceeded`: active peer count exceeds the node's explicit
+  `spec.tailscale.max_active_peers` policy. Routing fails closed. A WSL-only
+  workstation declares `allowed_os: [linux]` and `max_active_peers: 1`.
 
 `retirement_candidates` is a plan field, not deletion authorization. Before
 retiring a device in the Tailscale admin plane, verify its exact node ID,

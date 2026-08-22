@@ -22,6 +22,9 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   active peer matches the declared endpoint or every active Windows and
   Linux/WSL runtime has a unique role-scoped endpoint with matching OS
   evidence.
+- Added fail-closed per-node Tailscale policy checks for allowed peer operating
+  systems and maximum active peer count, including WSL-only workstation
+  enforcement.
 
 - Added a single-fire CMDB reconciliation job pinned to `chiap04` and
   `jarvis`. The bundled scheduler tick remains inert until reviewed JSON
