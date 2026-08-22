@@ -1,0 +1,106 @@
+[build-system]
+requires = ["setuptools>=68.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "capauth"
+version = "0.3.1"
+description = "Capability-based Authentication — decentralized, PGP-based identity and authorization"
+readme = "README.md"
+license = {text = "GPL-3.0-or-later"}
+requires-python = ">=3.10"
+authors = [
+    {name = "smilinTux", email = "admin@smilintux.org"},
+]
+keywords = ["authentication", "pgp", "decentralized", "identity", "capability"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Environment :: Console",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: GNU General Public License v3 or later (GPLv3+)",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Security :: Cryptography",
+]
+dependencies = [
+    "click>=8.1",
+    "pydantic>=2.0",
+    "PGPy>=0.6",
+    "pyyaml>=6.0",
+    "rich>=13.0",
+    "httpx>=0.25",
+]
+
+[project.optional-dependencies]
+skcapstone = [
+    "skcapstone>=0.6.8",
+]
+gnupg = [
+    "python-gnupg>=0.5",
+]
+service = [
+    "fastapi>=0.110",
+    "uvicorn[standard]>=0.27",
+    "python-multipart>=0.0.6",
+    "PyJWT>=2.8",
+    "python-gnupg>=0.5",
+    "httpx>=0.25",
+    "segno>=1.6",
+    "pywebpush>=1.14",
+    "webauthn>=2.0",
+]
+dev = [
+    "pytest>=7.0",
+    "pytest-cov>=4.0",
+    "pytest-asyncio>=0.23",
+    "httpx>=0.25",
+    "fastapi>=0.110",
+    "python-gnupg>=0.5",
+    "black>=24.0",
+    "ruff>=0.3",
+    "zeroconf>=0.38",
+    "webauthn>=2.0",
+    "soft-webauthn>=0.1",
+    "pywebpush>=1.14",
+]
+all = [
+    "capauth[gnupg,service,dev]",
+]
+
+[project.scripts]
+capauth = "capauth.cli:main"
+capauth-service = "capauth.service.server:main"
+
+[project.urls]
+Homepage = "https://capauth.io"
+Documentation = "https://capauth.io"
+Repository = "https://github.com/smilinTux/capauth"
+Issues = "https://github.com/smilinTux/capauth/issues"
+Changelog = "https://github.com/smilinTux/capauth/releases"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-data]
+capauth = ["SKILL.md"]
+
+[tool.black]
+line-length = 99
+target-version = ["py310"]
+
+[tool.ruff]
+line-length = 99
+target-version = "py310"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "N", "W"]
+ignore = ["E501"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["src"]
+addopts = "-v --tb=short"
+

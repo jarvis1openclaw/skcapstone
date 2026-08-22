@@ -82,7 +82,8 @@ migration is active. External actions remain simulation-first and separately gat
 ## Related projects / See also
 
 - **Depends on:** [CapAuth](https://github.com/smilinTux/capauth) for signed,
-  scoped capability credentials and verification primitives.
+  scoped capability credentials and verification primitives, vendored under
+  `vendor/capauth` (see `docs/development/CAPAUTH.md`).
 - **Integrates with:** the separately governed HammerTime corpus through source and
   release adapters. The historical `hammerTimeOS` proposal is retained as
   [legacy provenance](docs/legacy/hammerTimeOS-2026-08-19/README.md), not as a second

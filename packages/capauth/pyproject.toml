@@ -9,7 +9,7 @@ description = "Strict CapAuth integration and protected boundary enforcement for
 requires-python = ">=3.12,<3.13"
 license = "GPL-3.0-only"
 dependencies = [
-  "capauth @ git+https://github.com/smilinTux/capauth.git@183c04a7c623e8abcf37bd705bf8bca1deb4a364",
+  "capauth==0.3.1",
   "pydantic==2.13.4",
 ]
 

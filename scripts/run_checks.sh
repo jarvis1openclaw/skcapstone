@@ -32,6 +32,7 @@ run_type_check() {
     scripts/provision_postgres_principal.py \
     scripts/check_fixture_safety.py \
     scripts/check_secrets.py \
+    scripts/check_vendor_capauth.py \
     scripts/clean_room_check.py \
     scripts/audit_doc_haus_provenance.py \
     services packages
@@ -140,7 +141,8 @@ run_secret_scan() {
 
 run_vulnerability_scan() {
   mkdir -p build/audit
-  capauth_requirement='capauth @ git+https://github.com/smilinTux/capauth.git@183c04a7c623e8abcf37bd705bf8bca1deb4a364'
+  "$uv" run --locked python scripts/check_vendor_capauth.py
+  capauth_requirement='-e ./vendor/capauth'
   "$uv" export \
     --locked \
     --all-packages \
@@ -148,14 +150,19 @@ run_vulnerability_scan() {
     --format requirements-txt \
     --output-file build/audit/python-requirements.txt \
     >/dev/null
-  capauth_match_count=$(grep -Fxc \
+  capauth_match_count=$(grep -Fxc -- \
     "$capauth_requirement" \
     build/audit/python-requirements.txt || true)
   if [[ "$capauth_match_count" != "1" ]]; then
-    echo "locked CapAuth VCS requirement is missing or ambiguous" >&2
+    echo "vendored CapAuth path requirement is missing or ambiguous" >&2
     return 1
   fi
-  grep -Fvx \
+  if grep -Fn 'git+https://github.com/smilinTux/capauth' \
+    build/audit/python-requirements.txt; then
+    echo "personal CapAuth remote must not appear in exported requirements" >&2
+    return 1
+  fi
+  grep -Fvx -- \
     "$capauth_requirement" \
     build/audit/python-requirements.txt \
     >build/audit/python-registry-requirements.txt

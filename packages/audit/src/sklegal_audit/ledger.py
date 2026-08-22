@@ -200,6 +200,21 @@ class InMemoryAuditLedger:
                 event for event in tenant_events if event.correlation.run_id == run_id
             )
 
+    def event(self, *, tenant_id: UUID, event_id: UUID) -> DurableAuditEvent:
+        """Return one exact event after chain verification, or fail closed."""
+
+        with self._lock:
+            tenant_events = tuple(self._events.get(tenant_id, ()))
+            if not verify_event_chain(tenant_events):
+                raise AuditUnavailable("audit chain verification failed") from None
+            match = next(
+                (event for event in tenant_events if event.event_id == event_id),
+                None,
+            )
+            if match is None:
+                raise AuditUnavailable("audit event unavailable") from None
+            return match
+
     def pending_outbox(self, *, tenant_id: UUID) -> tuple[OutboxMessage, ...]:
         with self._lock:
             return tuple(

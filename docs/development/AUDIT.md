@@ -107,6 +107,45 @@ initializers cannot both succeed or overwrite each other. Stale, backward,
 different-event, or unknown targets fail closed. Watermarks report replay
 position; they do not make a projection authoritative over PostgreSQL evidence.
 
+## Policy-revision reconciliation (SKL-S2-07)
+
+`PolicyRevisionReconciler` propagates policy revisions from the transactional
+outbox to every registered derived store: request caches, model-context
+bundles, exports, backups, workflow snapshots, and materialized lexical,
+vector, and graph retrieval state. Every derived record carries a
+`DerivedRecordPin` binding its tenant and optional matter scope, store kind,
+opaque partition key, source material ID, version, and SHA256, exact policy
+revision, optional rights revision, retrieval projection set and generation
+pins where applicable, and the exact core audit event sequence and hash it
+was derived from. Pins contain only opaque identifiers and digests, never
+protected content or credentials.
+
+The reconciler polls the tenant outbox in event order, records an idempotent
+delivery receipt per message, computes the newest policy revision per tenant
+and matter scope, and commits the read-gate view before applying denials, so
+a partial store failure still fails closed at the gate. It then
+synchronously denies every derived record pinned to a different revision or
+to watermark evidence ahead of the reconciled head, and only then advances
+its compare-and-set projection watermark. Purge is a separate asynchronous
+step that can remove only records already denied. Denial and purge are
+idempotent; repeated runs report zero new transitions.
+
+`DerivedStore.require_current` rechecks the exact pin, state marker, tenant
+and matter scope, policy revision, and watermark position before any use of
+a derived record. Unknown, superseded, denied, cross-scope, revision-mismatch,
+or rollback-evident records deny synchronously even while they await purge,
+and a scope the reconciler has never reconciled has no view and fails closed.
+Outbox outage, store outage, watermark conflict, lag, rollback, and
+revocation races raise `ReconciliationUnavailable` or deny at the gate
+without advancing the watermark.
+
+`ReconciliationReport` carries complete per-store scanned, current, denied,
+and purged counts plus the applied watermark. It never carries partition
+keys, material identifiers, matter detail, or denied-record content. The
+in-memory store and the reconciler instance state are isolated-development
+adapters; the durable consumer path must apply its effect and receipt inside
+one PostgreSQL transaction per the outbox contract above.
+
 ## Connector dispatch ownership (SKL-S4-07)
 
 Decision record: SKCapstone card `ea2c9790`. This section supplements TDD

@@ -11,7 +11,9 @@ license = "GPL-3.0-only"
 dependencies = [
   "fastapi==0.141.1",
   "pydantic==2.13.4",
+  "sklegal-audit",
   "sklegal-capauth",
+  "sklegal-policies",
   "uvicorn==0.52.4",
 ]
 

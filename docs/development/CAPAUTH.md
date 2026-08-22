@@ -40,11 +40,36 @@ below are deployment prerequisites.
 
 ## CapAuth provenance and reuse boundary
 
-The dependency is pinned to CapAuth `0.3.1` at commit
-`183c04a7c623e8abcf37bd705bf8bca1deb4a364` from
-`https://github.com/smilinTux/capauth.git`. CapAuth is GPL-3.0-or-later. SKLegal
-is GPL-3.0-only, so combined distribution remains under GPLv3 with source and
-notice obligations preserved.
+CapAuth `0.3.1` is vendored in `vendor/capauth`, copied from upstream commit
+`183c04a7c623e8abcf37bd705bf8bca1deb4a364` of
+`https://github.com/smilinTux/capauth.git`. The workspace resolves the
+dependency from that vendored path through `tool.uv.sources`, so installs and
+lock exports never fetch the personal remote. `scripts/check_vendor_capauth.py`
+enforces the provenance manifest `vendor/capauth/VENDOR-MANIFEST.json`, which
+records the upstream commit, the package version, the inclusion and exclusion
+lists, the local build patch, and a SHA256 for every vendored file. The
+vulnerability scan in `scripts/run_checks.sh` runs this verification and
+refuses any exported requirement that references the personal remote. CapAuth
+is GPL-3.0-or-later. SKLegal is GPL-3.0-only, so combined distribution remains
+under GPLv3 with source and notice obligations preserved; the vendored copy
+carries the upstream `LICENSE` and `README.md` verbatim.
+
+### Updating the vendored copy
+
+1. Fetch the upstream repository and check out the new reviewed commit.
+2. Replace the `vendor/capauth` content with the upstream `LICENSE`,
+   `MANIFEST.in`, `README.md`, `pyproject.toml`, and `src/` tree.
+3. Reapply the local build patch recorded under `local_modifications` in the
+   manifest: a static `version` in `pyproject.toml` replacing `setuptools_scm`
+   dynamic versioning, because the vendored tree carries no git metadata.
+4. Update `PINNED_COMMIT` and `PINNED_VERSION` in
+   `scripts/check_vendor_capauth.py`, the version pin in
+   `packages/capauth/pyproject.toml`, and the surrogate audit version in
+   `scripts/run_checks.sh`.
+5. Regenerate the manifest with
+   `.tools/bin/uv run --locked python scripts/check_vendor_capauth.py --write-manifest`.
+6. Run `./scripts/run_checks.sh all` and record the upstream review evidence
+   on the governing SKCapstone card.
 
 SKLegal reuses these narrow CapAuth public surfaces:
 

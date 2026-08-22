@@ -144,7 +144,7 @@ filecache = [
 [[package]]
 name = "capauth"
 version = "0.3.1"
-source = { git = "https://github.com/smilinTux/capauth.git?rev=183c04a7c623e8abcf37bd705bf8bca1deb4a364#183c04a7c623e8abcf37bd705bf8bca1deb4a364" }
+source = { editable = "vendor/capauth" }
 dependencies = [
     { name = "click" },
     { name = "httpx" },
@@ -153,6 +153,41 @@ dependencies = [
     { name = "pyyaml" },
     { name = "rich" },
 ]
+
+[package.metadata]
+requires-dist = [
+    { name = "black", marker = "extra == 'dev'", specifier = ">=24.0" },
+    { name = "capauth", extras = ["gnupg", "service", "dev"], marker = "extra == 'all'" },
+    { name = "click", specifier = ">=8.1" },
+    { name = "fastapi", marker = "extra == 'dev'", specifier = ">=0.110" },
+    { name = "fastapi", marker = "extra == 'service'", specifier = ">=0.110" },
+    { name = "httpx", specifier = ">=0.25" },
+    { name = "httpx", marker = "extra == 'dev'", specifier = ">=0.25" },
+    { name = "httpx", marker = "extra == 'service'", specifier = ">=0.25" },
+    { name = "pgpy", specifier = ">=0.6" },
+    { name = "pydantic", specifier = ">=2.0" },
+    { name = "pyjwt", marker = "extra == 'service'", specifier = ">=2.8" },
+    { name = "pytest", marker = "extra == 'dev'", specifier = ">=7.0" },
+    { name = "pytest-asyncio", marker = "extra == 'dev'", specifier = ">=0.23" },
+    { name = "pytest-cov", marker = "extra == 'dev'", specifier = ">=4.0" },
+    { name = "python-gnupg", marker = "extra == 'dev'", specifier = ">=0.5" },
+    { name = "python-gnupg", marker = "extra == 'gnupg'", specifier = ">=0.5" },
+    { name = "python-gnupg", marker = "extra == 'service'", specifier = ">=0.5" },
+    { name = "python-multipart", marker = "extra == 'service'", specifier = ">=0.0.6" },
+    { name = "pywebpush", marker = "extra == 'dev'", specifier = ">=1.14" },
+    { name = "pywebpush", marker = "extra == 'service'", specifier = ">=1.14" },
+    { name = "pyyaml", specifier = ">=6.0" },
+    { name = "rich", specifier = ">=13.0" },
+    { name = "ruff", marker = "extra == 'dev'", specifier = ">=0.3" },
+    { name = "segno", marker = "extra == 'service'", specifier = ">=1.6" },
+    { name = "skcapstone", marker = "extra == 'skcapstone'", specifier = ">=0.6.8" },
+    { name = "soft-webauthn", marker = "extra == 'dev'", specifier = ">=0.1" },
+    { name = "uvicorn", extras = ["standard"], marker = "extra == 'service'", specifier = ">=0.27" },
+    { name = "webauthn", marker = "extra == 'dev'", specifier = ">=2.0" },
+    { name = "webauthn", marker = "extra == 'service'", specifier = ">=2.0" },
+    { name = "zeroconf", marker = "extra == 'dev'", specifier = ">=0.38" },
+]
+provides-extras = ["skcapstone", "gnupg", "service", "dev", "all"]
 
 [[package]]
 name = "certifi"
@@ -1177,7 +1212,9 @@ source = { editable = "services/api" }
 dependencies = [
     { name = "fastapi" },
     { name = "pydantic" },
+    { name = "sklegal-audit" },
     { name = "sklegal-capauth" },
+    { name = "sklegal-policies" },
     { name = "uvicorn" },
 ]
 
@@ -1185,7 +1222,9 @@ dependencies = [
 requires-dist = [
     { name = "fastapi", specifier = "==0.141.1" },
     { name = "pydantic", specifier = "==2.13.4" },
+    { name = "sklegal-audit", editable = "packages/audit" },
     { name = "sklegal-capauth", editable = "packages/capauth" },
+    { name = "sklegal-policies", editable = "packages/policies" },
     { name = "uvicorn", specifier = "==0.52.4" },
 ]
 
@@ -1217,7 +1256,7 @@ dependencies = [
 
 [package.metadata]
 requires-dist = [
-    { name = "capauth", git = "https://github.com/smilinTux/capauth.git?rev=183c04a7c623e8abcf37bd705bf8bca1deb4a364" },
+    { name = "capauth", editable = "vendor/capauth" },
     { name = "pydantic", specifier = "==2.13.4" },
 ]
 

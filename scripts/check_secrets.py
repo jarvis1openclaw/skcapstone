@@ -15,6 +15,7 @@ DEFAULT_BASELINE = REPO_ROOT / ".secrets.baseline"
 EXCLUDE_FILES = (
     r"(^|/)(\.git|\.venv|\.tools|\.cleanroom-[^/]+|node_modules|dist|build|coverage|"
     r"\.mypy_cache|\.ruff_cache|\.pytest_cache|__pycache__)(/|$)|"
+    r"(^|/)vendor(/|$)|"
     r"(^|/)docs/evidence/licensing/(DOC-HAUS-RIGHTS-INVENTORY\.json|"
     r"DOC-HAUS-SBOM\.cdx\.json)$|"
     r"(^|/)(\.secrets\.baseline|uv\.lock|package-lock\.json)$"
