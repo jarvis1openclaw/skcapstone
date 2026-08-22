@@ -39,6 +39,7 @@ members = [
   "packages/connectors/base",
   "packages/connectors/calendar",
   "packages/connectors/email",
+  "packages/connectors/filing",
   "packages/connectors/legal_sources",
   "packages/persistence",
   "packages/policies",

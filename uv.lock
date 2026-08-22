@@ -10,6 +10,7 @@ members = [
     "sklegal-connectors-base",
     "sklegal-domain",
     "sklegal-email",
+    "sklegal-filing-connector",
     "sklegal-hammertime",
     "sklegal-legal-sources",
     "sklegal-migration",
@@ -1285,6 +1286,17 @@ requires-dist = [{ name = "pydantic", specifier = "==2.13.4" }]
 name = "sklegal-email"
 version = "0.1.0"
 source = { editable = "packages/connectors/email" }
+dependencies = [
+    { name = "sklegal-connectors-base" },
+]
+
+[package.metadata]
+requires-dist = [{ name = "sklegal-connectors-base", editable = "packages/connectors/base" }]
+
+[[package]]
+name = "sklegal-filing-connector"
+version = "0.1.0"
+source = { editable = "packages/connectors/filing" }
 dependencies = [
     { name = "sklegal-connectors-base" },
 ]
