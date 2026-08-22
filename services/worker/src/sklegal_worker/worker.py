@@ -25,9 +25,7 @@ from .workflows import (
 WORKER_DATA_CONVERTER = pydantic_data_converter
 
 
-async def connect_worker_client(
-    address: str, *, namespace: str = "default"
-) -> Client:
+async def connect_worker_client(address: str, *, namespace: str = "default") -> Client:
     """Connect the runtime Temporal client with the pinned converter."""
 
     return await Client.connect(
@@ -68,5 +66,6 @@ def build_worker(
             activities.dispatch_connector,
             activities.compensate_step,
             activities.raise_stale_run_alert,
+            activities.export_tracked_work_product,
         ],
     )

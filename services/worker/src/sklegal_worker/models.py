@@ -148,6 +148,54 @@ class DispatchReceipt(WorkflowPayload):
     recorded_at: UtcDateTime
 
 
+SourceRef = Annotated[
+    str,
+    StringConstraints(
+        strip_whitespace=True,
+        min_length=1,
+        max_length=255,
+        pattern=r"^[A-Za-z0-9][A-Za-z0-9._:/@-]*$",
+    ),
+]
+
+
+class WorkProductExportRequest(WorkflowPayload):
+    """Reference-only request for one exact Work Product DOCX export.
+
+    Document bodies are resolved by an activity-side artifact store. They are
+    never serialized into Temporal workflow history.
+    """
+
+    idempotency_key: Slug
+    tenant_id: UUID
+    matter_id: UUID
+    work_product_id: UUID
+    version_id: UUID
+    version_number: int = Field(ge=1)
+    base_artifact_ref: SourceRef
+    base_content_sha256: Sha256Digest
+    current_artifact_ref: SourceRef
+    current_content_sha256: Sha256Digest
+    expected_docx_sha256: Sha256Digest
+    approval_id: UUID
+
+
+class WorkProductExportResult(WorkflowPayload):
+    """Content-free receipt for an exact DOCX and its validated PDF preview."""
+
+    idempotency_key: Slug
+    work_product_id: UUID
+    version_id: UUID
+    version_number: int = Field(ge=1)
+    docx_artifact_ref: SourceRef
+    docx_sha256: Sha256Digest
+    preview_artifact_ref: SourceRef
+    preview_pdf_sha256: Sha256Digest
+    preview_page_count: int = Field(ge=1)
+    approval_id: UUID
+    completed_at: UtcDateTime
+
+
 class StepActivityInput(WorkflowPayload):
     """Typed input for one step activity invocation."""
 
@@ -210,17 +258,6 @@ class TaskWorkflowResult(WorkflowPayload):
     completed_steps: tuple[Slug, ...]
     dispatch_receipt_digest: Sha256Digest | None = None
     finished_at: UtcDateTime
-
-
-SourceRef = Annotated[
-    str,
-    StringConstraints(
-        strip_whitespace=True,
-        min_length=1,
-        max_length=255,
-        pattern=r"^[A-Za-z0-9][A-Za-z0-9._:/@-]*$",
-    ),
-]
 
 
 class SourcePin(WorkflowPayload):

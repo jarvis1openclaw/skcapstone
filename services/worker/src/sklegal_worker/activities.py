@@ -21,6 +21,7 @@ from uuid import UUID
 
 from temporalio import activity
 
+from .document_export import WorkProductExporter
 from .errors import PolicyDeniedError, WorkflowInvariantError
 from .models import (
     DispatchReceipt,
@@ -28,6 +29,8 @@ from .models import (
     StaleRunAlert,
     StepActivityInput,
     StepOutcome,
+    WorkProductExportRequest,
+    WorkProductExportResult,
 )
 
 
@@ -145,12 +148,12 @@ class FileDispatchLedger:
         try:
             state = json.loads(self._path.read_text(encoding="utf-8"))
         except (OSError, ValueError) as exc:
-            raise WorkflowInvariantError(
-                "dispatch ledger state is unreadable"
-            ) from exc
-        if not isinstance(state, dict) or not isinstance(
-            state.get("receipts"), dict
-        ) or not isinstance(state.get("fingerprints"), dict):
+            raise WorkflowInvariantError("dispatch ledger state is unreadable") from exc
+        if (
+            not isinstance(state, dict)
+            or not isinstance(state.get("receipts"), dict)
+            or not isinstance(state.get("fingerprints"), dict)
+        ):
             raise WorkflowInvariantError("dispatch ledger state is malformed")
         return state
 
@@ -256,6 +259,7 @@ class WorkerActivities:
         approval_gate: ApprovalGate | None = None,
         dispatch_ledger: DispatchLedger | None = None,
         stale_sink: StaleAlertSink | None = None,
+        work_product_exporter: WorkProductExporter | None = None,
         clock: Callable[[], datetime] = _utcnow,
         heartbeat_seconds: float | None = 10.0,
     ) -> None:
@@ -265,6 +269,7 @@ class WorkerActivities:
         self._approval_gate = approval_gate or StaticApprovalGate({})
         self._dispatch_ledger = dispatch_ledger or SimulatedDispatchLedger()
         self._stale_sink = stale_sink or InMemoryStaleAlertSink()
+        self._work_product_exporter = work_product_exporter
         self._clock = clock
         self._heartbeat_seconds = heartbeat_seconds
 
@@ -342,3 +347,13 @@ class WorkerActivities:
     async def raise_stale_run_alert(self, alert: StaleRunAlert) -> bool:
         """Publish a stale-run alert exactly once per run and phase."""
         return self._stale_sink.record(alert)
+
+    @activity.defn
+    async def export_tracked_work_product(
+        self, request: WorkProductExportRequest
+    ) -> WorkProductExportResult:
+        """Export one exact approved Work Product version and validate preview."""
+
+        if self._work_product_exporter is None:
+            raise WorkflowInvariantError("Work Product exporter is not configured")
+        return self._work_product_exporter.export(request)
