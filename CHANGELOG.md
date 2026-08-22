@@ -15,6 +15,12 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ### Added
 
+- Added read-only `skfleet node endpoint-audit` reconciliation between
+  canonical fleet node identities and live or captured Tailscale status. It
+  flags duplicate, stale, mismatched, offline, and ambiguous registrations,
+  names exact retirement candidates, and only marks routing safe when one
+  active peer matches the declared endpoint.
+
 - Added a single-fire CMDB reconciliation job pinned to `chiap04` and
   `jarvis`. The bundled scheduler tick remains inert until reviewed JSON
   configuration enables it with exact targets and `skvault://` references.
