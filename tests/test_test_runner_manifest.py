@@ -15,16 +15,32 @@ REPO_ROOT = Path(__file__).resolve().parents[1]
 RUN_CHECKS = REPO_ROOT / "scripts" / "run_checks.sh"
 
 UNIT_DISCOVERY = [
-    "rg",
-    "--files",
-    "-0",
-    "-g",
-    "test_*.py",
-    "-g",
-    "!tests/integration/**",
+    "find",
     "tests",
+    "-type",
+    "f",
+    "-name",
+    "test_*.py",
+    "-not",
+    "-path",
+    "*/__pycache__/*",
+    "-not",
+    "-path",
+    "tests/integration/*",
+    "-print0",
 ]
-INTEGRATION_DISCOVERY = ["rg", "--files", "-0", "-g", "test_*.py", "tests/integration"]
+INTEGRATION_DISCOVERY = [
+    "find",
+    "tests/integration",
+    "-type",
+    "f",
+    "-name",
+    "test_*.py",
+    "-not",
+    "-path",
+    "*/__pycache__/*",
+    "-print0",
+]
 
 
 def _run_discovery(argv: list[str]) -> set[str]:
@@ -74,7 +90,9 @@ class RunnerDiscoveryParityTests(unittest.TestCase):
         )
         self.assertGreater(len(unit_modules), 0)
         probe = unit_modules[0]
-        narrowed = _run_discovery([*UNIT_DISCOVERY, "-g", f"!{probe}"])
+        narrowed = _run_discovery(
+            [*UNIT_DISCOVERY[:-1], "-not", "-path", probe, "-print0"]
+        )
         narrowed |= _run_discovery(INTEGRATION_DISCOVERY)
         self.assertEqual(narrowed, _filesystem_modules() - {probe})
         self.assertNotEqual(narrowed, _filesystem_modules())
@@ -88,7 +106,10 @@ class RunnerWiringTests(unittest.TestCase):
         cls.script = RUN_CHECKS.read_text(encoding="utf-8")
 
     def test_gate_uses_discovery_not_a_handwritten_module_list(self) -> None:
-        self.assertIn("rg --files", self.script)
+        # Discovery must stay rg-free so the gate runs on hosts and CI
+        # runners that do not ship ripgrep.
+        self.assertIn("find tests", self.script)
+        self.assertNotIn("rg --files", self.script)
         self.assertIn("test_*.py", self.script)
         self.assertNotIn("python -m unittest", self.script)
         self.assertNotRegex(self.script, r"tests\.test_[a-z0-9_]+")

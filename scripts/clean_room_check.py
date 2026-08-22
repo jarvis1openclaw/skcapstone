@@ -77,6 +77,7 @@ LANDLOCK_EXECUTABLES = tuple(
         "/usr/bin/dirname",
         "/usr/bin/env",
         "/usr/bin/false",
+        "/usr/bin/find",
         "/usr/bin/git",
         "/usr/bin/grep",
         "/usr/bin/make",
