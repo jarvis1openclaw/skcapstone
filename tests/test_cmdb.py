@@ -107,3 +107,10 @@ def test_dashboard_cmdb_routes(home):
     assert "types" in client.get("/api/cmdb/overview").json()
     r = client.get("/cmdb")
     assert r.status_code == 200 and "CMDB" in r.text
+
+
+def test_seed_never_invents_assets(home):
+    # An empty home has no declared sources: the reconciler must not fabricate any.
+    mgr = CMDBManager(home)
+    res = mgr.seed_from_inventory()
+    assert res["cis"] == 0 and res["touched"] == 0
