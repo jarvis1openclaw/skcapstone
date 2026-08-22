@@ -13,6 +13,7 @@ dependencies = [
   "pydantic==2.13.4",
   "sklegal-audit",
   "sklegal-capauth",
+  "sklegal-migration",
   "sklegal-policies",
   "uvicorn==0.52.4",
 ]

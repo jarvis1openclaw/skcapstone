@@ -577,8 +577,24 @@ class PersistenceContractBase(unittest.TestCase):
             "EvidenceItem",
             "CustodyEvent",
             "Authority",
+            "ClaimSupport",
         }:
             relations["source_reference"] = source(row.get("source_reference_id"))
+        if entity_name == "LedgerClaim":
+            support_rows = rows(
+                "sklegal_legal.ledger_claim_support",
+                f"{scope} AND claim_id = '{identifier}'",
+                "created_at, id",
+            )
+            relations["support"] = [
+                {
+                    "row": support_row,
+                    "relations": self._normalized_relations(
+                        role, "ClaimSupport", support_row
+                    ),
+                }
+                for support_row in support_rows
+            ]
         if entity_name in {"Matter", "MatterEvent"}:
             kind = "matter" if entity_name == "Matter" else "matter_event"
             relations["aliases"] = rows(

@@ -226,6 +226,32 @@ a:hover {
   font-size: 0.875rem;
 }
 
+.sl-record-link {
+  font-size: 0.875rem;
+}
+
+.sl-hash {
+  font-family: var(--sl-font-mono);
+  font-size: 0.75rem;
+  word-break: break-all;
+  user-select: all;
+}
+
+.sl-detail-list {
+  display: grid;
+  grid-template-columns: max-content 1fr;
+  gap: var(--sl-space-2) var(--sl-space-4);
+  margin: 0 0 var(--sl-space-4);
+}
+
+.sl-detail-list dt {
+  font-weight: 600;
+}
+
+.sl-detail-list dd {
+  margin: 0;
+}
+
 .sl-status-badge {
   display: inline-flex;
   align-items: center;

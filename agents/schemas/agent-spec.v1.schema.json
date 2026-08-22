@@ -1,0 +1,104 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "sklegal.agent-spec/v1",
+  "title": "SKLegal agent specification",
+  "description": "Versioned, bounded agent role contract. Authoritative validation is the sklegal_agents package; this schema documents the wire format and rejects unbounded authority structurally (finite capped budgets, exact tool ids, human escalation target).",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema",
+    "spec_id",
+    "version",
+    "task_purpose",
+    "input_schema",
+    "allowed_context",
+    "tool_allowlist",
+    "budgets",
+    "model_routes",
+    "output_schema",
+    "retry_class",
+    "escalation_target"
+  ],
+  "properties": {
+    "schema": {"const": "sklegal-agent-spec/v1"},
+    "spec_id": {"$ref": "#/$defs/shortCode"},
+    "version": {"type": "integer", "minimum": 1},
+    "task_purpose": {"type": "string", "minLength": 1, "maxLength": 2000},
+    "input_schema": {"$ref": "#/$defs/schemaPin"},
+    "allowed_context": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["classification_ceiling", "matter_scoped"],
+      "properties": {
+        "classification_ceiling": {
+          "enum": [
+            "public",
+            "internal",
+            "confidential",
+            "privileged_work_product",
+            "highly_restricted"
+          ]
+        },
+        "matter_scoped": {
+          "const": true,
+          "description": "Agent context is always scoped to one matter. Tenant-wide context is unbounded authority and is rejected."
+        }
+      }
+    },
+    "tool_allowlist": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/shortCode",
+        "description": "Exact id of a tool in the known domain-tool catalog. Wildcard patterns are rejected."
+      },
+      "uniqueItems": true
+    },
+    "budgets": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["max_tool_calls", "max_wall_clock_seconds", "max_retries"],
+      "properties": {
+        "max_tool_calls": {"type": "integer", "minimum": 1, "maximum": 64},
+        "max_wall_clock_seconds": {
+          "type": "integer",
+          "exclusiveMinimum": 0,
+          "maximum": 3600
+        },
+        "max_retries": {"type": "integer", "minimum": 0, "maximum": 8}
+      }
+    },
+    "model_routes": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "$ref": "#/$defs/shortCode",
+        "description": "Route id pinned in config/model_gateway/route-registry.json. Unknown or disabled routes are rejected at load."
+      },
+      "uniqueItems": true
+    },
+    "output_schema": {"$ref": "#/$defs/schemaPin"},
+    "retry_class": {"enum": ["interactive", "batch", "long_context", "model"]},
+    "escalation_target": {
+      "type": "string",
+      "pattern": "^human\\.[a-z0-9][a-z0-9._:/-]*$",
+      "description": "Named human review queue. A model never escalates to itself or to another agent."
+    }
+  },
+  "$defs": {
+    "shortCode": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 160,
+      "pattern": "^[a-z0-9][a-z0-9._:/-]*$"
+    },
+    "schemaPin": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["schema_id", "sha256"],
+      "properties": {
+        "schema_id": {"$ref": "#/$defs/shortCode"},
+        "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"}
+      }
+    }
+  }
+}

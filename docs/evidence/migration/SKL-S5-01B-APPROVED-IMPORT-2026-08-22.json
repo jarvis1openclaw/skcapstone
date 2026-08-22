@@ -1,0 +1,172 @@
+{
+  "artifact": "SKL-S5-01B approved import replay (synthetic fixture)",
+  "changed_source_revision": {
+    "batch_created": true,
+    "facts_created": 9,
+    "facts_suppressed": 9,
+    "import_batch_id": "2bcf5ae7-def5-52d1-8eb4-2662dd68fe17",
+    "reconciliation": {
+      "approval_states_advanced": 0,
+      "changed_sources": [],
+      "execution_states_advanced": 0,
+      "fact_assertions_created": 9,
+      "fact_assertions_suppressed": 9,
+      "hash_mismatches": [],
+      "inventoried_files": 7,
+      "missing_from_plan": [],
+      "plan_source_files": 8,
+      "plan_sources_outside_inventory": [
+        "incidents/_incident-registry.md"
+      ],
+      "records_created": 1,
+      "records_suppressed": 1,
+      "source_files_recorded": 8,
+      "source_files_suppressed": 0,
+      "states_created": 0,
+      "states_suppressed": 4,
+      "tension_groups_created": 1,
+      "tension_groups_suppressed": 0
+    },
+    "records_created": 1,
+    "records_suppressed": 1,
+    "rerun": false,
+    "source_files_recorded": 8,
+    "source_files_suppressed": 0,
+    "states_created": 0,
+    "states_suppressed": 4,
+    "tenant_id": "a5b70000-0000-4000-8000-000000000101",
+    "tensions_created": 1,
+    "tensions_suppressed": 0
+  },
+  "counts_after_rerun": {
+    "batches": 1,
+    "facts": 18,
+    "records": 2,
+    "source_files": 8,
+    "states": 4,
+    "tension_groups": 1,
+    "withdrawn_targets": 0
+  },
+  "counts_after_reset": {
+    "batches": 2,
+    "facts": 18,
+    "records": 2,
+    "source_files": 8,
+    "states": 4,
+    "tension_groups": 1,
+    "withdrawn_targets": 1
+  },
+  "disposable_reset_deleted": {
+    "facts": 9,
+    "records": 1,
+    "source_files": 8,
+    "states": 0,
+    "tension_groups": 1
+  },
+  "environment": "in-memory pilot store over the synthetic fixture tree",
+  "first_import": {
+    "batch_created": true,
+    "facts_created": 18,
+    "facts_suppressed": 0,
+    "import_batch_id": "0a611807-8af6-5c42-bdcc-ba11b0d51605",
+    "reconciliation": {
+      "approval_states_advanced": 0,
+      "changed_sources": [],
+      "execution_states_advanced": 0,
+      "fact_assertions_created": 18,
+      "fact_assertions_suppressed": 0,
+      "hash_mismatches": [],
+      "inventoried_files": 7,
+      "missing_from_plan": [],
+      "plan_source_files": 8,
+      "plan_sources_outside_inventory": [
+        "incidents/_incident-registry.md"
+      ],
+      "records_created": 2,
+      "records_suppressed": 0,
+      "source_files_recorded": 8,
+      "source_files_suppressed": 0,
+      "states_created": 4,
+      "states_suppressed": 0,
+      "tension_groups_created": 1,
+      "tension_groups_suppressed": 0
+    },
+    "records_created": 2,
+    "records_suppressed": 0,
+    "rerun": false,
+    "source_files_recorded": 8,
+    "source_files_suppressed": 0,
+    "states_created": 4,
+    "states_suppressed": 0,
+    "tenant_id": "a5b70000-0000-4000-8000-000000000101",
+    "tensions_created": 1,
+    "tensions_suppressed": 0
+  },
+  "invariants": {
+    "batch_tombstones_preserved": true,
+    "changed_source_created_new_revision": true,
+    "negative_states_only": true,
+    "rerun_created_no_duplicates": true,
+    "rollback_removed_withdrawn_batch_rows": true,
+    "withdrawn_targets_pinned": true
+  },
+  "inventoried_files": 7,
+  "record_revisions": [
+    {
+      "revision": 1,
+      "target": "matter:problem.matter@1"
+    },
+    {
+      "revision": 1,
+      "target": "matter_event:incident.transaction_review@1"
+    },
+    {
+      "revision": 2,
+      "target": "matter_event:incident.transaction_review@1"
+    }
+  ],
+  "rerun": {
+    "batch_created": false,
+    "facts_created": 0,
+    "facts_suppressed": 18,
+    "import_batch_id": "0a611807-8af6-5c42-bdcc-ba11b0d51605",
+    "reconciliation": {
+      "approval_states_advanced": 0,
+      "changed_sources": [],
+      "execution_states_advanced": 0,
+      "fact_assertions_created": 0,
+      "fact_assertions_suppressed": 18,
+      "hash_mismatches": [],
+      "inventoried_files": 7,
+      "missing_from_plan": [],
+      "plan_source_files": 8,
+      "plan_sources_outside_inventory": [
+        "incidents/_incident-registry.md"
+      ],
+      "records_created": 0,
+      "records_suppressed": 2,
+      "source_files_recorded": 0,
+      "source_files_suppressed": 8,
+      "states_created": 0,
+      "states_suppressed": 4,
+      "tension_groups_created": 0,
+      "tension_groups_suppressed": 1
+    },
+    "records_created": 0,
+    "records_suppressed": 2,
+    "rerun": true,
+    "source_files_recorded": 0,
+    "source_files_suppressed": 8,
+    "states_created": 0,
+    "states_suppressed": 4,
+    "tenant_id": "a5b70000-0000-4000-8000-000000000101",
+    "tensions_created": 0,
+    "tensions_suppressed": 1
+  },
+  "review_artifact": "SKL-S5-01A-PILOT-MAPPING-REVIEW-2099-01-02.md#approved",
+  "reviewer": "Synthetic Human Reviewer",
+  "source_snapshot": "fixture-snapshot-2099-01-02",
+  "tenant_id": "a5b70000-0000-4000-8000-000000000101",
+  "withdrawn": true,
+  "zero_source_changes": true
+}

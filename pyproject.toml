@@ -24,9 +24,11 @@ sklegal-connectors-base = { workspace = true }
 sklegal-email = { workspace = true }
 sklegal-domain = { workspace = true }
 sklegal-capauth = { workspace = true }
+sklegal-model-gateway = { workspace = true }
 sklegal-policies = { workspace = true }
 sklegal-audit = { workspace = true }
 sklegal-hammertime = { workspace = true }
+sklegal-migration = { workspace = true }
 capauth = { path = "vendor/capauth", editable = true }
 
 [tool.uv.workspace]
@@ -43,6 +45,7 @@ members = [
   "packages/connectors/filing",
   "packages/connectors/legal_sources",
   "packages/connectors/service",
+  "packages/agents",
   "packages/persistence",
   "packages/policies",
   "packages/audit",

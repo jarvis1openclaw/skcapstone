@@ -64,7 +64,9 @@
                 "created_at",
                 "updated_at"
             ],
-            "relations": ["sklegal_legal.legacy_aliases"]
+            "relations": [
+                "sklegal_legal.legacy_aliases"
+            ]
         },
         "Party": {
             "table": "sklegal_legal.parties",
@@ -159,7 +161,9 @@
                 "created_at",
                 "updated_at"
             ],
-            "relations": ["sklegal_legal.legacy_aliases"]
+            "relations": [
+                "sklegal_legal.legacy_aliases"
+            ]
         },
         "Transaction": {
             "table": "sklegal_legal.legal_transactions",
@@ -225,7 +229,9 @@
                 "created_at",
                 "updated_at"
             ],
-            "relations": ["sklegal_legal.tension_assertions"]
+            "relations": [
+                "sklegal_legal.tension_assertions"
+            ]
         },
         "EvidenceItem": {
             "table": "sklegal_legal.evidence_items",
@@ -368,7 +374,9 @@
                 "created_at",
                 "updated_at"
             ],
-            "relations": ["sklegal_legal.element_evidence"]
+            "relations": [
+                "sklegal_legal.element_evidence"
+            ]
         },
         "Remedy": {
             "table": "sklegal_legal.remedies",
@@ -385,7 +393,53 @@
                 "created_at",
                 "updated_at"
             ],
-            "relations": ["sklegal_legal.remedy_authorities"]
+            "relations": [
+                "sklegal_legal.remedy_authorities"
+            ]
+        },
+        "LedgerClaim": {
+            "table": "sklegal_legal.ledger_claims",
+            "columns": [
+                "id",
+                "tenant_id",
+                "matter_id",
+                "classification",
+                "completeness",
+                "status",
+                "statement",
+                "policy_revision",
+                "version",
+                "created_at",
+                "updated_at",
+                "system_from"
+            ],
+            "relations": [
+                "sklegal_legal.ledger_claim_support",
+                "sklegal_legal.ledger_claim_current",
+                "sklegal_legal.ledger_claim_history"
+            ]
+        },
+        "ClaimSupport": {
+            "table": "sklegal_legal.ledger_claim_support",
+            "columns": [
+                "id",
+                "tenant_id",
+                "matter_id",
+                "classification",
+                "completeness",
+                "claim_id",
+                "kind",
+                "source_reference_id",
+                "span_start",
+                "span_end",
+                "excerpt_sha256",
+                "note",
+                "recorded_by_principal_id",
+                "policy_revision",
+                "version",
+                "created_at",
+                "updated_at"
+            ]
         },
         "DeadlineCalculation": {
             "table": "sklegal_legal.deadline_calculations",
@@ -404,7 +458,9 @@
                 "created_at",
                 "updated_at"
             ],
-            "relations": ["sklegal_legal.deadline_calculation_sources"]
+            "relations": [
+                "sklegal_legal.deadline_calculation_sources"
+            ]
         },
         "Deadline": {
             "table": "sklegal_legal.deadlines",
@@ -471,7 +527,9 @@
                 "created_at",
                 "updated_at"
             ],
-            "relations": ["sklegal_legal.communication_participants"]
+            "relations": [
+                "sklegal_legal.communication_participants"
+            ]
         },
         "WorkProduct": {
             "table": "sklegal_legal.work_products",
@@ -512,6 +570,59 @@
                 "updated_at"
             ]
         },
+        "WorkProductTemplate": {
+            "table": "sklegal_legal.work_product_templates",
+            "columns": [
+                "id",
+                "tenant_id",
+                "classification",
+                "status",
+                "name",
+                "work_product_kind",
+                "current_version_id",
+                "current_version_number",
+                "current_content_sha256",
+                "version",
+                "created_at",
+                "updated_at"
+            ]
+        },
+        "WorkProductTemplateVersion": {
+            "table": "sklegal_legal.work_product_template_versions",
+            "columns": [
+                "id",
+                "tenant_id",
+                "classification",
+                "status",
+                "template_id",
+                "version_number",
+                "content_sha256",
+                "version",
+                "created_at",
+                "updated_at"
+            ]
+        },
+        "WorkProductUnknown": {
+            "table": "sklegal_legal.work_product_unknowns",
+            "columns": [
+                "id",
+                "tenant_id",
+                "matter_id",
+                "classification",
+                "completeness",
+                "status",
+                "work_product_version_id",
+                "work_product_version_number",
+                "work_product_content_sha256",
+                "placeholder_key",
+                "hint",
+                "resolved_by_principal_id",
+                "resolved_at",
+                "version",
+                "created_at",
+                "updated_at"
+            ]
+        },
         "ValidationResult": {
             "table": "sklegal_legal.validations",
             "columns": [
@@ -532,7 +643,9 @@
                 "created_at",
                 "updated_at"
             ],
-            "relations": ["sklegal_legal.validation_checks"]
+            "relations": [
+                "sklegal_legal.validation_checks"
+            ]
         },
         "Approval": {
             "table": "sklegal_legal.approvals",

@@ -3,7 +3,8 @@
 This module is the only SKLegal code allowed to construct HammerTime
 filesystem paths. It wraps release aliases, release manifests, artifact
 reads, source hashes, decompositions, packet references, validation
-results, and legacy matter path resolution behind typed read-only APIs.
+results, legacy matter path resolution, and gated matter-tree artifact
+inventory behind typed read-only APIs.
 
 Hard boundaries:
 
@@ -60,6 +61,8 @@ from .models import (
     LegacyMatterRecord,
     LegacyPathResolution,
     MatterAccessRequest,
+    MatterArtifact,
+    MatterArtifactInventory,
     MatterAuthorizer,
     MatterValidationReport,
     PacketReference,
@@ -888,6 +891,120 @@ class HammerTimeReleaseAdapter:
         relative = incident_dir / "correspondence" / "OWNER-DIRECTIONS.md"
         content, digest = self._read_bytes(relative)
         return ArtifactRead(pin=self._pin(relative, digest), content=content)
+
+    def read_matter_artifact(
+        self,
+        legacy_id: str,
+        relative_path: str,
+        *,
+        parent_legacy_id: str | None = None,
+        expected_sha256: str | None = None,
+    ) -> ArtifactRead:
+        """Read exact bytes from one file inside an authorized matter tree.
+
+        Unlike ``read_artifact`` this API reaches matter-scoped content, so
+        it requires the same allow decision as the matter record itself and
+        refuses any path that escapes the resolved matter directory. When
+        ``expected_sha256`` is supplied, a changed artifact raises
+        SourceHashMismatchError instead of returning unpinned content.
+        """
+        read = self._read_authorized_legacy(
+            legacy_id,
+            parent_legacy_id=parent_legacy_id,
+        )
+        matter_root = read.relative.parent
+        if (
+            not relative_path
+            or relative_path != relative_path.strip()
+            or "\\" in relative_path
+            or "\x00" in relative_path
+        ):
+            raise ForbiddenPathError(
+                f"denied non-normalized matter artifact path: {relative_path!r}"
+            )
+        pure = self._validate_relative(PurePosixPath(relative_path))
+        if (
+            pure.is_absolute()
+            or len(pure.parts) <= len(matter_root.parts)
+            or pure.parts[: len(matter_root.parts)] != matter_root.parts
+        ):
+            raise ForbiddenPathError(
+                f"matter artifact reads are bounded to {matter_root}: {relative_path!r}"
+            )
+        content, digest = self._read_bytes(pure)
+        if expected_sha256 is not None and digest != expected_sha256:
+            raise SourceHashMismatchError(
+                f"matter artifact hash changed for {relative_path!r}: "
+                f"expected {expected_sha256}, observed {digest}"
+            )
+        return ArtifactRead(pin=self._pin(pure, digest), content=content)
+
+    def list_matter_artifacts(
+        self,
+        legacy_id: str,
+        *,
+        parent_legacy_id: str | None = None,
+    ) -> MatterArtifactInventory:
+        """Recursively pin every regular file under one authorized matter tree.
+
+        Every regular file is hashed exactly once with read-only flags and
+        returned with its byte count and source modification time. Entries
+        that cannot be hashed losslessly are never followed and are listed
+        verbatim in ``skipped``. ``Inbox`` components are denied in any
+        casing, consistent with the rest of the adapter.
+        """
+        read = self._read_authorized_legacy(
+            legacy_id,
+            parent_legacy_id=parent_legacy_id,
+        )
+        matter_root = read.relative.parent
+        artifacts: list[MatterArtifact] = []
+        skipped: list[str] = []
+        stack = [matter_root]
+        while stack:
+            current = stack.pop()
+            with self._directory_descriptor(current) as descriptor:
+                entries: list[tuple[str, os.stat_result]] = []
+                for name in sorted(os.listdir(descriptor)):
+                    try:
+                        entries.append(
+                            (
+                                name,
+                                os.stat(name, dir_fd=descriptor, follow_symlinks=False),
+                            )
+                        )
+                    except OSError:
+                        skipped.append(f"{current / name}:unreadable")
+            for name, metadata in entries:
+                relative = current / name
+                if stat.S_ISLNK(metadata.st_mode):
+                    skipped.append(f"{relative}:symlink")
+                    continue
+                if stat.S_ISDIR(metadata.st_mode):
+                    if name.lower() == "inbox":
+                        skipped.append(f"{relative}:forbidden-inbox")
+                        continue
+                    stack.append(relative)
+                    continue
+                if not stat.S_ISREG(metadata.st_mode):
+                    skipped.append(f"{relative}:special-file")
+                    continue
+                if metadata.st_size > self._max_artifact_bytes:
+                    skipped.append(f"{relative}:exceeds-read-budget")
+                    continue
+                content, digest = self._read_bytes(relative)
+                artifacts.append(
+                    MatterArtifact(
+                        pin=self._pin(relative, digest),
+                        byte_count=len(content),
+                        modified_at=datetime.fromtimestamp(metadata.st_mtime, UTC),
+                    )
+                )
+        return MatterArtifactInventory(
+            matter_root=str(matter_root),
+            artifacts=sorted(artifacts, key=lambda item: item.pin.relative_path),
+            skipped=sorted(skipped),
+        )
 
     # ------------------------------------------------------------------
     # legacy path resolution internals (index reads only, no content)

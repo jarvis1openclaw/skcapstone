@@ -1,0 +1,19 @@
+[build-system]
+requires = ["setuptools==84.0.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "sklegal-agents"
+version = "0.1.0"
+description = "Versioned, hash-pinned, bounded SKLegal agent specifications and registry"
+requires-python = ">=3.12,<3.13"
+license = "GPL-3.0-only"
+dependencies = [
+  "jsonschema==4.26.0",
+  "pydantic==2.13.4",
+  "sklegal-capauth",
+  "sklegal-model-gateway",
+]
+
+[tool.setuptools.packages.find]
+where = ["src"]

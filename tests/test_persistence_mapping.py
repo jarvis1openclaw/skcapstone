@@ -80,7 +80,7 @@ def metadata_with_relation_change(
 class PersistenceMappingTests(unittest.TestCase):
     def test_mapping_contract_covers_every_public_domain_entity(self) -> None:
         validate_mapping_contract()
-        self.assertEqual(31, len(MAPPINGS))
+        self.assertEqual(36, len(MAPPINGS))
 
     def test_all_decompositions_have_closed_machine_verifiable_write_contracts(
         self,

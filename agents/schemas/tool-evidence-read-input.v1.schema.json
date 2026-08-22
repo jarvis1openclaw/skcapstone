@@ -1,0 +1,17 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "sklegal.tool.evidence-read-input/v1",
+  "title": "Evidence read input",
+  "description": "Arguments for the evidence.read tool. The item must belong to the run matter partition.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["evidence_item_ref"],
+  "properties": {
+    "evidence_item_ref": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 160,
+      "pattern": "^[a-z0-9][a-z0-9._:/-]*$"
+    }
+  }
+}

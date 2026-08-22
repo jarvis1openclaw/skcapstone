@@ -22,17 +22,21 @@ class PinnedRecord(Protocol):
 
     legacy_id: str
     relative_path: str
-    frontmatter: Mapping[str, Any]
     body: str
     pin: Any
     registry_pin: Any
+
+    @property
+    def frontmatter(self) -> Mapping[str, Any]: ...
 
 
 class PinnedPacket(Protocol):
     packet_version: int
     facts_pin: Any
-    facts: Mapping[str, Any]
     review_pin: Any | None
+
+    @property
+    def facts(self) -> Mapping[str, Any]: ...
 
 
 def _sha256(value: bytes) -> str:
@@ -63,6 +67,19 @@ def _value_type(value: Any) -> str:
     if isinstance(value, float):
         return "number"
     return "string"
+
+
+def _json_value(value: Any) -> Any:
+    """Make a fact value JSON-safe without altering its source text form."""
+    if isinstance(value, (str, int, float, bool)) or value is None:
+        return value
+    if isinstance(value, (list, tuple)):
+        return [_json_value(item) for item in value]
+    if isinstance(value, Mapping):
+        return {str(key): _json_value(item) for key, item in value.items()}
+    if hasattr(value, "isoformat"):
+        return value.isoformat()
+    return str(value)
 
 
 def _json_pointer(parts: tuple[str, ...]) -> str:
@@ -169,7 +186,9 @@ class PilotImportPlan:
             "adapter_version": self.adapter_version,
             "source_files": [vars(item) for item in self.source_files],
             "records": [vars(item) for item in self.records],
-            "facts": [vars(item) for item in self.facts],
+            "facts": [
+                {**vars(item), "value": _json_value(item.value)} for item in self.facts
+            ],
             "tensions": [vars(item) for item in self.tensions],
             "version_lineage": [vars(item) for item in self.version_lineage],
             "review_required": self.review_required,

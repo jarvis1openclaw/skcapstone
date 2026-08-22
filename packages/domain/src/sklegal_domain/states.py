@@ -144,6 +144,19 @@ class RemedyStatus(StrEnum):
     DENIED = "denied"
 
 
+class LedgerClaimStatus(StrEnum):
+    PROPOSED = "proposed"
+    UNDER_REVIEW = "under_review"
+    SUPPORTED = "supported"
+    CHALLENGED = "challenged"
+    WITHDRAWN = "withdrawn"
+
+
+class ClaimSupportKind(StrEnum):
+    SUPPORT = "support"
+    COUNTER_SUPPORT = "counter_support"
+
+
 class DeadlineStatus(StrEnum):
     CANDIDATE = "candidate"
     REVIEWED = "reviewed"
@@ -186,6 +199,23 @@ class WorkProductVersionStatus(StrEnum):
     DRAFT = "draft"
     FROZEN = "frozen"
     SUPERSEDED = "superseded"
+
+
+class WorkProductTemplateStatus(StrEnum):
+    DRAFT = "draft"
+    ACTIVE = "active"
+    RETIRED = "retired"
+
+
+class WorkProductTemplateVersionStatus(StrEnum):
+    DRAFT = "draft"
+    FROZEN = "frozen"
+    ARCHIVED = "archived"
+
+
+class WorkProductUnknownStatus(StrEnum):
+    OPEN = "open"
+    RESOLVED = "resolved"
 
 
 class ValidationOutcome(StrEnum):

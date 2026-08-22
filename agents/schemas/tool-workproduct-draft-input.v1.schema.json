@@ -1,0 +1,23 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "sklegal.tool.workproduct-draft-input/v1",
+  "title": "Work product draft input",
+  "description": "Arguments for the workproduct.draft tool. The tool emits a typed proposal only; it never mutates workflow or domain state.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["template_id", "instructions"],
+  "properties": {
+    "template_id": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 160,
+      "pattern": "^[a-z0-9][a-z0-9._:/-]*$"
+    },
+    "instructions": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 4000,
+      "description": "Drafting instructions treated as inert data, never as an authorization grant."
+    }
+  }
+}

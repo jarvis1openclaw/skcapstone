@@ -12,11 +12,20 @@ import {
   approvalState,
   breakpoints,
   color,
+  communicationStatus,
   deadlineState,
+  evidenceItemStatus,
+  executionStateValue,
+  factReviewStatus,
   layoutModeForWidth,
+  matterEventStatus,
   matterStatus,
   minTouchTargetPx,
+  snapshotFreshness,
+  statusOrFallback,
+  tensionStatus,
   textContrastPairs,
+  verificationStatus,
 } from "./tokens";
 
 describe("contrast helpers", () => {
@@ -47,7 +56,19 @@ describe("WCAG AA token contrast", () => {
 });
 
 describe("status semantics", () => {
-  const groups = { matterStatus, deadlineState, approvalState };
+  const groups = {
+    matterStatus,
+    deadlineState,
+    approvalState,
+    verificationStatus,
+    matterEventStatus,
+    factReviewStatus,
+    tensionStatus,
+    evidenceItemStatus,
+    communicationStatus,
+    executionStateValue,
+    snapshotFreshness,
+  };
 
   it.each(
     Object.entries(groups).flatMap(([group, statuses]) =>
@@ -62,6 +83,21 @@ describe("status semantics", () => {
       expect(status.glyph.trim().length).toBeGreaterThan(0);
     },
   );
+});
+
+describe("statusOrFallback", () => {
+  it("returns the declared presentation for known keys", () => {
+    expect(statusOrFallback(tensionStatus, "unresolved").label).toBe(
+      "Unresolved",
+    );
+  });
+
+  it("renders unknown states as a neutral badge instead of dropping them", () => {
+    const fallback = statusOrFallback(tensionStatus, "unexpected_state");
+    expect(fallback.label).toBe("unexpected_state");
+    expect(fallback.tone).toBe("neutral");
+    expect(fallback.glyph.trim().length).toBeGreaterThan(0);
+  });
 });
 
 describe("responsive breakpoints", () => {

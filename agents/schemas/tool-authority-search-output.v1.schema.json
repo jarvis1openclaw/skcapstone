@@ -1,0 +1,40 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "sklegal.tool.authority-search-output/v1",
+  "title": "Authority search output",
+  "description": "Authority matches with jurisdiction and status metadata. Status is reported exactly and never harmonized.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["authorities"],
+  "properties": {
+    "authorities": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["authority_ref", "citation", "jurisdiction", "status"],
+        "properties": {
+          "authority_ref": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 160
+          },
+          "citation": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 300
+          },
+          "jurisdiction": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 120
+          },
+          "status": {
+            "type": "string",
+            "enum": ["active", "superseded", "overruled", "questioned"]
+          }
+        }
+      }
+    }
+  }
+}

@@ -49,12 +49,109 @@ export const toneColors: Record<
   neutral: { foreground: "#44403c", background: "#e7e5e4", border: "#78716c" },
 };
 
-/** Matter lifecycle status semantics. */
+/** Matter lifecycle status semantics (domain MatterStatus values). */
 export const matterStatus = {
-  active: { label: "Active", glyph: "\u25CF", tone: "positive" },
+  proposed: { label: "Proposed", glyph: "\u25CB", tone: "info" },
+  open: { label: "Open", glyph: "\u25CF", tone: "positive" },
   on_hold: { label: "On hold", glyph: "\u275A\u275A", tone: "caution" },
   closed: { label: "Closed", glyph: "\u25A0", tone: "neutral" },
+  archived: { label: "Archived", glyph: "\u25A1", tone: "neutral" },
 } as const satisfies Record<string, StatusPresentation>;
+
+/** Party and record verification semantics (domain VerificationStatus). */
+export const verificationStatus = {
+  proposed: { label: "Proposed", glyph: "\u25CB", tone: "info" },
+  verified: { label: "Verified", glyph: "\u2713", tone: "positive" },
+  disputed: { label: "Disputed", glyph: "!", tone: "caution" },
+  superseded: { label: "Superseded", glyph: "\u2190", tone: "neutral" },
+} as const satisfies Record<string, StatusPresentation>;
+
+/** Matter event status semantics (domain MatterEventStatus values). */
+export const matterEventStatus = {
+  proposed: { label: "Proposed", glyph: "\u25CB", tone: "info" },
+  recorded: { label: "Recorded", glyph: "\u2022", tone: "info" },
+  verified: { label: "Verified", glyph: "\u2713", tone: "positive" },
+  superseded: { label: "Superseded", glyph: "\u2190", tone: "neutral" },
+} as const satisfies Record<string, StatusPresentation>;
+
+/** Fact review semantics (domain FactReviewStatus values). */
+export const factReviewStatus = {
+  source_asserted: { label: "Source asserted", glyph: "\u2022", tone: "info" },
+  ambiguous: { label: "Ambiguous", glyph: "?", tone: "caution" },
+  verified: { label: "Verified", glyph: "\u2713", tone: "positive" },
+  superseded: { label: "Superseded", glyph: "\u2190", tone: "neutral" },
+} as const satisfies Record<string, StatusPresentation>;
+
+/**
+ * Tension semantics (domain TensionStatus values). Unresolved tensions
+ * use the critical tone and are always rendered, never hidden.
+ */
+export const tensionStatus = {
+  unresolved: { label: "Unresolved", glyph: "!", tone: "critical" },
+  under_review: { label: "Under review", glyph: "\u25CB", tone: "caution" },
+  resolved: { label: "Resolved", glyph: "\u2713", tone: "positive" },
+  dismissed: { label: "Dismissed", glyph: "\u2190", tone: "neutral" },
+} as const satisfies Record<string, StatusPresentation>;
+
+/** Evidence status semantics (domain EvidenceStatus values). */
+export const evidenceItemStatus = {
+  proposed: { label: "Proposed", glyph: "\u25CB", tone: "info" },
+  collected: { label: "Collected", glyph: "\u2022", tone: "info" },
+  verified: { label: "Verified", glyph: "\u2713", tone: "positive" },
+  challenged: { label: "Challenged", glyph: "!", tone: "caution" },
+  excluded: { label: "Excluded", glyph: "\u2715", tone: "critical" },
+  superseded: { label: "Superseded", glyph: "\u2190", tone: "neutral" },
+} as const satisfies Record<string, StatusPresentation>;
+
+/** Communication status semantics (domain CommunicationStatus values). */
+export const communicationStatus = {
+  recorded: { label: "Recorded", glyph: "\u2022", tone: "info" },
+  draft: { label: "Draft", glyph: "\u25CB", tone: "neutral" },
+  validated: { label: "Validated", glyph: "\u2022", tone: "info" },
+  approved: { label: "Approved", glyph: "\u2713", tone: "positive" },
+  queued: { label: "Queued", glyph: "\u2022", tone: "info" },
+  dispatched: { label: "Dispatched", glyph: "\u25CF", tone: "info" },
+  receipt_verified: {
+    label: "Receipt verified",
+    glyph: "\u2713",
+    tone: "positive",
+  },
+  failed: { label: "Failed", glyph: "\u2715", tone: "critical" },
+  cancelled: { label: "Cancelled", glyph: "\u2190", tone: "neutral" },
+} as const satisfies Record<string, StatusPresentation>;
+
+/**
+ * Approval and execution state values imported as negative states. They
+ * stay visible until a human advances them through the governed flow.
+ */
+export const executionStateValue = {
+  pending_review: { label: "Pending review", glyph: "\u2022", tone: "caution" },
+  not_started: { label: "Not started", glyph: "\u25CB", tone: "neutral" },
+} as const satisfies Record<string, StatusPresentation>;
+
+/** Provenance freshness semantics for the workspace source snapshot. */
+export const snapshotFreshness = {
+  current: { label: "Current snapshot", glyph: "\u2713", tone: "positive" },
+  stale: { label: "Stale snapshot", glyph: "!", tone: "caution" },
+} as const satisfies Record<string, StatusPresentation>;
+
+/** Marker shown when a record references a source with no recorded file. */
+export const missingSource: StatusPresentation = {
+  label: "Source missing",
+  glyph: "!",
+  tone: "critical",
+};
+
+/**
+ * Look up a status presentation, falling back to a neutral badge that
+ * shows the raw value. Unknown states are rendered, never dropped.
+ */
+export function statusOrFallback(
+  group: Record<string, StatusPresentation>,
+  key: string,
+): StatusPresentation {
+  return group[key] ?? { label: key, glyph: "\u2022", tone: "neutral" };
+}
 
 /** Deadline state semantics. */
 export const deadlineState = {

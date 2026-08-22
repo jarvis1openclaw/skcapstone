@@ -317,6 +317,28 @@ class PacketReference(FrozenValue):
         return self.review_pin.relative_path
 
 
+class MatterArtifact(FrozenValue):
+    """Pinned inventory entry for one regular file in a legacy matter tree."""
+
+    pin: SnapshotPin
+    byte_count: int = Field(ge=0)
+    modified_at: UtcDateTime
+
+
+class MatterArtifactInventory(FrozenValue):
+    """Read-only recursive inventory of one authorized legacy matter tree.
+
+    Entries that cannot be hashed losslessly (symlinks, special files,
+    unreadable names, oversized artifacts, or any ``Inbox`` component)
+    are recorded verbatim in ``skipped`` instead of being silently
+    harmonized out of the inventory.
+    """
+
+    matter_root: RelativePosixPath
+    artifacts: list[MatterArtifact]
+    skipped: list[ShortText]
+
+
 def mapping_of(value: Mapping[str, Any]) -> dict[str, Any]:
     """Copy an external mapping into a plain dict without altering content."""
     return {str(key): item for key, item in value.items()}

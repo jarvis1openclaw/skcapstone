@@ -1,5 +1,6 @@
 """Typed SKLegal entities and legal-domain state machines."""
 
+from .claim_ledger import ClaimSupport, LedgerClaim
 from .claims import Claim, Defense, Element, Issue, Remedy
 from .facts import (
     Authority,
@@ -27,12 +28,19 @@ from .structure import (
     Transaction,
 )
 from .work import Communication, Deadline, DeadlineCalculation, Task
-from .work_product import WorkProduct, WorkProductVersion
+from .work_product import (
+    WorkProduct,
+    WorkProductTemplate,
+    WorkProductTemplateVersion,
+    WorkProductUnknown,
+    WorkProductVersion,
+)
 
 __all__ = [
     "Approval",
     "Authority",
     "Claim",
+    "ClaimSupport",
     "Client",
     "Communication",
     "CustodyEvent",
@@ -48,6 +56,7 @@ __all__ = [
     "FactAssertion",
     "Forum",
     "Issue",
+    "LedgerClaim",
     "Matter",
     "MatterEvent",
     "Party",
@@ -60,6 +69,9 @@ __all__ = [
     "Transaction",
     "ValidationResult",
     "WorkProduct",
+    "WorkProductTemplate",
+    "WorkProductTemplateVersion",
+    "WorkProductUnknown",
     "WorkProductVersion",
     "effective_at",
 ]

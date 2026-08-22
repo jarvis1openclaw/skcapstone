@@ -36,6 +36,9 @@ from tests.integration.persistence_contract_communication_work_product import (
 from tests.integration.persistence_contract_work_product_gates import (
     PersistenceContract07WorkProductGateTests,
 )
+from tests.integration.persistence_contract_work_product_drafting import (
+    PersistenceContract07BWorkProductDraftingTests,
+)
 from tests.integration.persistence_contract_canonical_parity import (
     PersistenceContract08CanonicalParityTests,
 )
@@ -48,6 +51,9 @@ from tests.integration.persistence_contract_outbox_watermark import (
 from tests.integration.persistence_contract_migration_guards import (
     PersistenceContract11MigrationGuardTests,
 )
+from tests.integration.persistence_contract_claim_ledger import (
+    PersistenceContract12ClaimLedgerTests,
+)
 
 __all__ = [
     "PersistenceContract00MigrationPreflightTests",
@@ -58,10 +64,12 @@ __all__ = [
     "PersistenceContract05ArtifactConsumerTests",
     "PersistenceContract06CommunicationWorkProductTests",
     "PersistenceContract07WorkProductGateTests",
+    "PersistenceContract07BWorkProductDraftingTests",
     "PersistenceContract08CanonicalParityTests",
     "PersistenceContract09AuditChainTests",
     "PersistenceContract10OutboxWatermarkTests",
     "PersistenceContract11MigrationGuardTests",
+    "PersistenceContract12ClaimLedgerTests",
 ]
 
 

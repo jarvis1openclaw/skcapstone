@@ -40,7 +40,8 @@ import { AppShell } from "./shell/AppShell";
 import { ClientList } from "./pages/ClientsPage";
 import { ClientDetailView } from "./pages/ClientDetailPage";
 import { MatterList } from "./pages/MattersPage";
-import { MatterDetailView } from "./pages/MatterDetailPage";
+import { MatterWorkspaceView } from "./pages/MatterWorkspace";
+import { syntheticWorkspace } from "./testing/workspace";
 import { ErrorState } from "./components/ErrorState";
 import { StatusBadge } from "./components/StatusBadge";
 import { ForbiddenPage, NotFoundPage } from "./pages/StatusPages";
@@ -84,7 +85,7 @@ const matters = [
     clientId: "c1",
     clientDisplayName: "Casey Rivera",
     title: "Rivera probate",
-    status: "active" as const,
+    status: "open" as const,
   },
   {
     id: "m2",
@@ -157,15 +158,7 @@ describe("visual regression snapshots", () => {
     ).toMatchSnapshot();
     expect(
       snap(
-        renderStatic(
-          <MatterDetailView
-            matter={{
-              ...matters[0]!,
-              openedOn: "2026-08-01",
-              description: "Probate administration for the Rivera estate.",
-            }}
-          />,
-        ),
+        renderStatic(<MatterWorkspaceView workspace={syntheticWorkspace} />),
       ),
     ).toMatchSnapshot();
   });

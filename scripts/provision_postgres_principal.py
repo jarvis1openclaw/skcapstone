@@ -42,12 +42,18 @@ INSERT_TABLES = {
     "sklegal_legal.theory_authorities",
     "sklegal_legal.remedies",
     "sklegal_legal.remedy_authorities",
+    "sklegal_legal.ledger_claim_identities",
+    "sklegal_legal.ledger_claims",
+    "sklegal_legal.ledger_claim_support",
     "sklegal_legal.deadline_calculations",
     "sklegal_legal.deadline_calculation_sources",
     "sklegal_legal.deadlines",
     "sklegal_legal.tasks",
     "sklegal_legal.work_products",
     "sklegal_legal.work_product_versions",
+    "sklegal_legal.work_product_templates",
+    "sklegal_legal.work_product_template_versions",
+    "sklegal_legal.work_product_unknowns",
     "sklegal_legal.validations",
     "sklegal_legal.validation_checks",
     "sklegal_legal.approvals",
@@ -71,6 +77,10 @@ EXECUTE_FUNCTIONS = {
     "sklegal_legal.transition_work_product_version(uuid, uuid, uuid, bigint, text)",
     "sklegal_legal.transition_work_product(uuid, uuid, uuid, bigint, text, uuid, uuid)",
     "sklegal_legal.revise_work_product(uuid, uuid, uuid, bigint, text, text, uuid, bigint, text)",
+    "sklegal_legal.transition_work_product_template_version(uuid, uuid, bigint, text)",
+    "sklegal_legal.transition_work_product_template(uuid, uuid, bigint, text)",
+    "sklegal_legal.advance_work_product_template(uuid, uuid, bigint, uuid, bigint, text)",
+    "sklegal_legal.resolve_work_product_unknown(uuid, uuid, uuid, bigint, timestamp with time zone)",
     "sklegal_legal.transition_approval(uuid, uuid, uuid, bigint, text, text)",
     "sklegal_legal.transition_execution(uuid, uuid, uuid, bigint, text, text, uuid, uuid, uuid, text, text, timestamp with time zone, timestamp with time zone)",
     "sklegal_legal.create_communication(uuid, uuid, uuid, text, text, text, uuid[], uuid, bigint, text, sklegal_legal.data_classification, sklegal_legal.record_completeness, timestamp with time zone, timestamp with time zone)",
@@ -292,6 +302,10 @@ def provision(
                 'sklegal_legal.transition_work_product_version(uuid, uuid, uuid, bigint, text), '
                 'sklegal_legal.transition_work_product(uuid, uuid, uuid, bigint, text, uuid, uuid), '
                 'sklegal_legal.revise_work_product(uuid, uuid, uuid, bigint, text, text, uuid, bigint, text), '
+                'sklegal_legal.transition_work_product_template_version(uuid, uuid, bigint, text), '
+                'sklegal_legal.transition_work_product_template(uuid, uuid, bigint, text), '
+                'sklegal_legal.advance_work_product_template(uuid, uuid, bigint, uuid, bigint, text), '
+                'sklegal_legal.resolve_work_product_unknown(uuid, uuid, uuid, bigint, timestamptz), '
                 'sklegal_legal.transition_approval(uuid, uuid, uuid, bigint, text, text), '
                 'sklegal_legal.transition_execution(uuid, uuid, uuid, bigint, text, text, uuid, uuid, uuid, text, text, timestamptz, timestamptz), '
                 'sklegal_legal.create_communication(uuid, uuid, uuid, text, text, text, uuid[], uuid, bigint, text, sklegal_legal.data_classification, sklegal_legal.record_completeness, timestamptz, timestamptz), '
@@ -321,10 +335,15 @@ def provision(
                 'sklegal_legal.elements, sklegal_legal.element_evidence, '
                 'sklegal_legal.theory_evidence, sklegal_legal.theory_authorities, '
                 'sklegal_legal.remedies, sklegal_legal.remedy_authorities, '
+                'sklegal_legal.ledger_claim_identities, '
+                'sklegal_legal.ledger_claims, sklegal_legal.ledger_claim_support, '
                 'sklegal_legal.deadline_calculations, '
                 'sklegal_legal.deadline_calculation_sources, '
                 'sklegal_legal.deadlines, sklegal_legal.tasks, '
                 'sklegal_legal.work_products, sklegal_legal.work_product_versions, '
+                'sklegal_legal.work_product_templates, '
+                'sklegal_legal.work_product_template_versions, '
+                'sklegal_legal.work_product_unknowns, '
                 'sklegal_legal.validations, sklegal_legal.validation_checks, '
                 'sklegal_legal.approvals, sklegal_legal.executions, '
                 'sklegal_integrations.external_references, '
