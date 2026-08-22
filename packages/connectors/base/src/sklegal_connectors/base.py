@@ -11,7 +11,7 @@ import hashlib
 from dataclasses import dataclass, replace
 from enum import StrEnum
 from threading import RLock
-from typing import Protocol
+from typing import Any, Protocol
 
 
 class ConnectorInvariantError(ValueError):
@@ -175,7 +175,7 @@ class Action:
             artifact_sha256=self.artifact_sha256,
         )
 
-    def _move(self, target: ActionStatus, **changes: object) -> Action:
+    def _move(self, target: ActionStatus, **changes: Any) -> Action:
         if target not in _TRANSITIONS[self.status]:
             raise ConnectorInvariantError(
                 f"invalid connector transition {self.status} -> {target}"
