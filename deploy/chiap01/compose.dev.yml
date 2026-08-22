@@ -32,7 +32,9 @@ services:
     ports:
       - "127.0.0.1:17233:7233"
     healthcheck:
-      test: ["CMD", "tctl", "--address", "127.0.0.1:7233", "cluster", "health"]
+      # auto-setup binds the frontend to the container IP, not loopback,
+      # so the probe must target the same address or it always fails.
+      test: ["CMD-SHELL", "tctl --address $$(hostname -i):7233 cluster health"]
       interval: 10s
       timeout: 5s
       retries: 30
