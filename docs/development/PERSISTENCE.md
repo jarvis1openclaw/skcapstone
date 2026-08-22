@@ -197,9 +197,9 @@ contract and its production limitations.
 
 ## Migration, provisioning, and rollback
 
-Twelve digest-pinned migrations create the foundation, identity, legal records,
-integration and workflow references, audit target, RLS policies, legal
-information-barrier records, and the CapAuth state, snapshot, and grant
+Thirteen digest-pinned migrations create the foundation, identity, legal
+records, integration and workflow references, audit target, RLS policies,
+legal information-barrier records, and the CapAuth state, snapshot, and grant
 surface. Each file contains explicit up and down sections.
 Migrations 0001 through 0004 create the six prefixed schemas, shared domains
 and helper functions (0001), tenants, principals, database-role bindings, and
@@ -210,7 +210,7 @@ discovery. Migration 0006 adds sealed policy records and the sanitized policy
 snapshot function described in `POLICIES.md`.
 Migration 0007 installs the append-only audit chain, transactional outbox,
 delivery receipts, and exact projection watermarks described in `AUDIT.md`.
-Migrations 0008 through 0012 install the durable CapAuth surface described in
+Migrations 0008 through 0013 install the durable CapAuth surface described in
 `CAPAUTH.md` and grant it to the shared `sklegal_runtime` role:
 
 - 0008 creates the tenant-scoped, forced-RLS `capability_revocations` and
@@ -233,11 +233,23 @@ Migrations 0008 through 0012 install the durable CapAuth surface described in
 - 0012 grants USAGE on schema `sklegal_legal` to `sklegal_runtime` so the
   runtime role can resolve the `sha256_digest` domain used by the CapAuth
   function signatures.
+- 0013 replaces `reserve_capability` so the atomic reservation first removes
+  an expired row for the same tenant and credential digest inside the same
+  statement transaction, keeping exactly one winner under concurrent workers
+  while bounding dead reservation state. It also installs the scoped SECURITY
+  DEFINER `prune_expired_capability_replay_reservations` janitor, which
+  deletes every expired reservation for the calling tenant and returns the
+  pruned count. PUBLIC access is revoked and EXECUTE is granted to
+  `sklegal_runtime`. A `capability_replay_controlled_delete` RLS policy
+  mirrors the existing controlled write posture: deletes are possible only
+  inside migrator-owned SECURITY DEFINER functions invoked by a different
+  session user, never by direct data access.
 
-The down sections run in reverse order, 0012 through 0008. The 0010 down
-restores the 0009-era snapshot function after dropping the subject column, and
-the 0008 down drops the three functions, their policies, and both CapAuth
-state tables.
+The down sections run in reverse order, 0013 through 0008. The 0013 down
+drops the prune function and restores the 0008-era `reserve_capability`, the
+0010 down restores the 0009-era snapshot function after dropping the subject
+column, and the 0008 down drops the three functions, their policies, and both
+CapAuth state tables.
 
 Three PostgreSQL role classes exist:
 
