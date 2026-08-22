@@ -40,18 +40,24 @@ run_type_check() {
   npm run build
 }
 
+# Test discovery intentionally uses find instead of rg so the gate runs on
+# minimal CI runners and hosts that do not ship ripgrep.
 discover_unit_test_modules() {
-  rg --files -0 \
-    -g 'test_*.py' \
-    -g '!tests/integration/**' \
-    tests \
+  find tests \
+    -type f \
+    -name 'test_*.py' \
+    -not -path '*/__pycache__/*' \
+    -not -path 'tests/integration/*' \
+    -print0 \
     | sort -z
 }
 
 discover_integration_test_modules() {
-  rg --files -0 \
-    -g 'test_*.py' \
-    tests/integration \
+  find tests/integration \
+    -type f \
+    -name 'test_*.py' \
+    -not -path '*/__pycache__/*' \
+    -print0 \
     | sort -z
 }
 
