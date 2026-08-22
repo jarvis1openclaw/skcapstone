@@ -20,6 +20,7 @@ dev = [
 package = false
 
 [tool.uv.sources]
+sklegal-connectors-base = { workspace = true }
 sklegal-domain = { workspace = true }
 sklegal-capauth = { workspace = true }
 sklegal-policies = { workspace = true }
@@ -34,6 +35,7 @@ members = [
   "packages/domain",
   "packages/capauth",
   "packages/connectors/hammertime",
+  "packages/connectors/base",
   "packages/persistence",
   "packages/policies",
   "packages/audit",
