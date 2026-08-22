@@ -1,0 +1,22 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "sklegal.tool.deadline-compute-input/v1",
+  "title": "Deadline compute input",
+  "description": "Arguments for the deadline.compute tool, which runs the deterministic calendar for one timing rule.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["rule_id", "trigger_date"],
+  "properties": {
+    "rule_id": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 160,
+      "pattern": "^[a-z0-9][a-z0-9._:/-]*$"
+    },
+    "trigger_date": {
+      "type": "string",
+      "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}$",
+      "description": "Trigger event date in ISO calendar form."
+    }
+  }
+}

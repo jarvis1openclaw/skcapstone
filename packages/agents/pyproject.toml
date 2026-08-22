@@ -9,7 +9,9 @@ description = "Versioned, hash-pinned, bounded SKLegal agent specifications and 
 requires-python = ">=3.12,<3.13"
 license = "GPL-3.0-only"
 dependencies = [
+  "jsonschema==4.26.0",
   "pydantic==2.13.4",
+  "sklegal-capauth",
   "sklegal-model-gateway",
 ]
 

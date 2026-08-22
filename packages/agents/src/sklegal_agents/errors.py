@@ -40,3 +40,35 @@ class SpecVersionImmutableError(AgentSpecError):
 
 class SpecNotFoundError(AgentSpecError):
     """Raised when a lookup names a spec or version absent from the registry."""
+
+
+class ToolGatewayError(RuntimeError):
+    """Base class for runtime tool gateway failures."""
+
+
+class ToolSchemaIntegrityError(ToolGatewayError):
+    """Raised when a pinned schema artifact is missing or hash-mismatched."""
+
+
+class RunInputValidationError(ToolGatewayError):
+    """Raised when run input fails the spec's pinned input schema."""
+
+
+class ToolNotAllowlistedError(ToolGatewayError):
+    """Raised when a run calls a tool outside its spec's allowlist."""
+
+
+class ToolArgumentValidationError(ToolGatewayError):
+    """Raised when tool arguments fail the pinned input schema."""
+
+
+class ToolResultValidationError(ToolGatewayError):
+    """Raised when a tool result fails the pinned output schema."""
+
+
+class ToolBudgetExhaustedError(ToolGatewayError):
+    """Raised when a run budget is exhausted before or during a call."""
+
+
+class ToolHandlerUnavailableError(ToolGatewayError):
+    """Raised when no handler is registered for an allowlisted tool."""

@@ -1,0 +1,60 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "sklegal.tool.matter-read-output/v1",
+  "title": "Matter read output",
+  "description": "Scoped matter structure returned by the matter.read tool for the run matter only.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["matter", "parties", "issues"],
+  "properties": {
+    "matter": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["matter_ref", "title", "status"],
+      "properties": {
+        "matter_ref": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 160
+        },
+        "title": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 500
+        },
+        "status": {
+          "type": "string",
+          "enum": ["open", "on_hold", "closed"]
+        }
+      }
+    },
+    "parties": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["name", "role"],
+        "properties": {
+          "name": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 300
+          },
+          "role": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 120
+          }
+        }
+      }
+    },
+    "issues": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1,
+        "maxLength": 500
+      }
+    }
+  }
+}
