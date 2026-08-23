@@ -15,9 +15,9 @@ SKLegal session.
 - Branch: `main`
 - Main worktree is clean at the time of handover.
 - `origin/main` is synchronized with local main.
-- The separate qualification worktree remains for inspection:
-  `/tmp/sklegal-skgateway-swarm-20260823-wave3/qualification`
-  on branch `codex/skl-s3-10c-qualification`. It is not an active worker.
+- The separate review worktree remains for inspection:
+  `/tmp/sklegal-skgateway-swarm-20260823-review/review`
+  on branch `codex/skl-s3-11-final-review`. It is not an active worker.
 - The local Qwen S6-05 worktree was stopped and removed after checkpointing.
 - The Qwen checkpoint branch is preserved remotely as
   `origin/swarm/0ad49216` at commit `d461bb3`. It is not merged.
