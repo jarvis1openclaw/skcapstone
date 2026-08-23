@@ -196,6 +196,13 @@ def test_preview_api_is_explicitly_synthetic_and_contains_no_secret_values() -> 
     assert app.state.public_synthetic_preview is True
     composition = app.state.mvp_composition
     assert composition.mode == "development"
+    assert composition.browser_sessions._capability_names == (
+        "tenant.read",
+        "client.read",
+        "matter.read",
+        "claim.review",
+        "corpus.read",
+    )
     assert all(probe.synthetic for probe in composition.probes)
     rendered = repr(composition.browser_session_audit.events)
     assert PUBLIC_SYNTHETIC_CREDENTIAL_REFERENCE not in rendered

@@ -336,7 +336,13 @@ def build_public_synthetic_preview_app():
         principal=principal,
         display_name="Public Synthetic Reviewer",
         tenants=(BrowserTenant(id=TENANT_ID, display_name="Synthetic Tenant"),),
-        capability_names=("tenant.read", "client.read", "matter.read"),
+        capability_names=(
+            "tenant.read",
+            "client.read",
+            "matter.read",
+            "claim.review",
+            "corpus.read",
+        ),
         capabilities_by_request={},
     )
 
