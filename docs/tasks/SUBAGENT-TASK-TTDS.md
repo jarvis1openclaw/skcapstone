@@ -665,3 +665,21 @@ Every task begins by loading SK context, reading `AGENTS.md`, checking the SKCap
 - **Tests and acceptance:** Full Python regression, focused API, policy, audit and persistence suites, web test, typecheck, lint, format and build gates, repository Ruff, intended mypy gates, official secret scan with planted negative controls, migrations, dependency and lock integrity, real-browser public-synthetic qualification, fixture teardown, hashes, diff, ASCII dash, rollback, clean worktree, and owner-preview preservation. Seal an immutable replacement candidate and evidence for independent review `dd4bb79d`.
 - **Rollback:** Reverse only the exact integrated candidate to `bfd1a973510d327c26f05096350a38a3d0cedaf1`. Test fixtures must be disposable and fully removed by their owners. Shared main and owner preview require no rollback because they remain untouched.
 - **Prohibited:** No shared-main edit, deployment, non-test database mutation, credential, protected content, provider traffic, HammerTime `Inbox/`, external action, merge, push, broad cleanup, or mutation of another agent's runtime or fixture.
+
+### SKL-MVP-BASE-01F1: Repair hermetic full-regression gate failures
+
+- **Card:** `b0e71aae`
+- **Dependency:** `91988c9e`
+- **Base:** Immutable BASE candidate `bfd1a973510d327c26f05096350a38a3d0cedaf1`.
+- **Objective:** Repair only the three full Python regression failures reproduced by independent review `855ef00a`: pre-existing `sklegal-dev` container interference, the missing exact `cat` Landlock utility allowance, and the `candidate_release.py` package-source write detector finding.
+- **Implementation:** Make container assertions ownership-aware without stopping or weakening checks, add only the exact required `cat` executable path to Landlock, and preserve candidate release creation through a read-only package source by moving any temporary output custody outside that package. Keep test fixtures public-synthetic, uniquely attributable, and exactly torn down.
+- **Tests and acceptance:** Reproduce the three original failures and their negative controls. Run focused foundation, clean-room, release, containment, diff, ASCII dash, secret, and rollback gates. Prove every pre-existing container, service, listener, and volume is unchanged and no card-created fixture remains. Seal exact candidate, tree, parent, evidence, hashes, limitations, and rollback for review `e7fdf28d`.
+- **Prohibited:** No shared-main or live-preview mutation, deployment, credential or protected-data access, provider traffic, HammerTime `Inbox/`, external action, merge, push, foreign cleanup, or database mutation outside disposable public-synthetic tests.
+
+### SKL-MVP-BASE-01F1R: Independently review hermetic regression repairs
+
+- **Card:** `e7fdf28d`
+- **Dependency:** `b0e71aae`
+- **Objective:** Independently reproduce the exact repair and negative controls without changing it.
+- **Tests and acceptance:** Recompute hashes and prove the three original failures, focused regression, containment, secret, diff, ASCII dash, safe-state, teardown, and rollback gates. Return PASS or BLOCKED.
+- **Prohibited:** No repair, merge, push, cleanup, runtime mutation, protected data, provider, credential, or external action.

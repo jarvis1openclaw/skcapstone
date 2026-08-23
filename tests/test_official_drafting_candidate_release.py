@@ -223,6 +223,22 @@ def _builder(root: Path) -> OfficialDraftingCandidateReleaseBuilder:
     )
 
 
+def _exclusive_manifest_sink(target: Path, content: bytes) -> None:
+    target.parent.mkdir(parents=True, exist_ok=True)
+    with target.open("xb") as handle:
+        handle.write(content)
+    if target.read_bytes() != content:
+        raise ValueError("written candidate manifest bytes differ from the plan")
+
+
+def _applying_builder(root: Path) -> OfficialDraftingCandidateReleaseBuilder:
+    return OfficialDraftingCandidateReleaseBuilder(
+        HammerTimeReleaseAdapter(root=root),
+        clock=lambda: NOW,
+        manifest_sink=_exclusive_manifest_sink,
+    )
+
+
 def test_dry_run_builds_deterministic_plan_without_writes(tmp_path: Path) -> None:
     paths = _build_root(tmp_path)
     aliases_before = _sha256(tmp_path, str(paths["runtime_aliases_path"]))
@@ -247,7 +263,7 @@ def test_dry_run_builds_deterministic_plan_without_writes(tmp_path: Path) -> Non
 
 def test_apply_writes_one_manifest_with_exclusive_create(tmp_path: Path) -> None:
     paths = _build_root(tmp_path)
-    plan = _builder(tmp_path).build(_request(paths, apply=True))
+    plan = _applying_builder(tmp_path).build(_request(paths, apply=True))
 
     assert plan.status == "ready"
     assert plan.dry_run is False
@@ -261,6 +277,44 @@ def test_apply_writes_one_manifest_with_exclusive_create(tmp_path: Path) -> None
         expected_source_count=SOURCE_COUNT,
     )
     assert report.status is QualificationStatus.QUALIFIED
+
+
+def test_apply_without_external_sink_fails_closed_without_writes(
+    tmp_path: Path,
+) -> None:
+    paths = _build_root(tmp_path)
+    plan = _builder(tmp_path).build(_request(paths, apply=True))
+
+    assert plan.status == "blocked"
+    assert plan.actual_write_set == ()
+    assert CandidateBuildBlockerCode.INVALID_INPUT in {
+        blocker.code for blocker in plan.blockers
+    }
+    assert not (tmp_path / plan.manifest_path).exists()
+
+
+def test_external_sink_byte_drift_is_detected_without_package_cleanup(
+    tmp_path: Path,
+) -> None:
+    paths = _build_root(tmp_path)
+
+    def drifting_sink(target: Path, content: bytes) -> None:
+        target.parent.mkdir(parents=True, exist_ok=True)
+        target.write_bytes(content + b"drift\n")
+
+    builder = OfficialDraftingCandidateReleaseBuilder(
+        HammerTimeReleaseAdapter(root=tmp_path),
+        clock=lambda: NOW,
+        manifest_sink=drifting_sink,
+    )
+    plan = builder.build(_request(paths, apply=True))
+
+    assert plan.status == "blocked"
+    assert plan.actual_write_set == (plan.manifest_path,)
+    assert CandidateBuildBlockerCode.HASH_MISMATCH in {
+        blocker.code for blocker in plan.blockers
+    }
+    assert (tmp_path / plan.manifest_path).read_bytes().endswith(b"drift\n")
 
 
 def test_missing_normalized_artifact_blocks_without_alias_change(tmp_path: Path) -> None:
@@ -456,7 +510,7 @@ def test_existing_release_collision_blocks_apply(tmp_path: Path) -> None:
     target.parent.mkdir(parents=True, exist_ok=True)
     target.write_text("already exists\n", encoding="utf-8")
 
-    plan = _builder(tmp_path).build(_request(paths, apply=True))
+    plan = _applying_builder(tmp_path).build(_request(paths, apply=True))
 
     assert plan.status == "blocked"
     assert CandidateBuildBlockerCode.RELEASE_COLLISION in {
@@ -468,7 +522,7 @@ def test_existing_release_collision_blocks_apply(tmp_path: Path) -> None:
 def test_runtime_alias_file_is_immutable_after_success_and_failures(tmp_path: Path) -> None:
     paths = _build_root(tmp_path)
     alias_before = _sha256(tmp_path, str(paths["runtime_aliases_path"]))
-    ready = _builder(tmp_path).build(_request(paths, apply=True))
+    ready = _applying_builder(tmp_path).build(_request(paths, apply=True))
     assert ready.status == "ready"
     assert _sha256(tmp_path, str(paths["runtime_aliases_path"])) == alias_before
 

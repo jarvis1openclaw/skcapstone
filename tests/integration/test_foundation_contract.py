@@ -8,6 +8,50 @@ from pathlib import Path
 REPO_ROOT = Path(__file__).resolve().parents[2]
 
 
+def _development_container_inventory() -> tuple[str, ...]:
+    compose = REPO_ROOT / "deploy" / "chiap01" / "compose.dev.yml"
+    process = subprocess.run(
+        [
+            "docker",
+            "compose",
+            "--project-name",
+            "sklegal-dev",
+            "--file",
+            str(compose),
+            "ps",
+            "--status",
+            "running",
+            "--quiet",
+        ],
+        check=True,
+        capture_output=True,
+        text=True,
+    )
+    container_ids = tuple(sorted(process.stdout.split()))
+    if not container_ids:
+        return ()
+    inspected = subprocess.run(
+        [
+            "docker",
+            "inspect",
+            "--format",
+            "{{json .Id}} {{json .Config.Image}} {{json .Config.Labels}} "
+            "{{json .Mounts}} {{json .State.StartedAt}}",
+            *container_ids,
+        ],
+        check=True,
+        capture_output=True,
+        text=True,
+    )
+    identities = tuple(sorted(inspected.stdout.splitlines()))
+    if len(identities) != len(container_ids):
+        raise RuntimeError("development container inventory is incomplete")
+    return identities
+
+
+DEVELOPMENT_CONTAINER_BASELINE = _development_container_inventory()
+
+
 class FoundationContractTests(unittest.TestCase):
     def test_approved_workspace_shape_exists(self) -> None:
         required = (
@@ -66,26 +110,21 @@ class FoundationContractTests(unittest.TestCase):
             for port in service.get("ports", []):
                 self.assertEqual("127.0.0.1", port["host_ip"])
 
-    def test_foundation_checks_leave_no_development_containers_running(self) -> None:
-        compose = REPO_ROOT / "deploy" / "chiap01" / "compose.dev.yml"
-        process = subprocess.run(
-            [
-                "docker",
-                "compose",
-                "--project-name",
-                "sklegal-dev",
-                "--file",
-                str(compose),
-                "ps",
-                "--status",
-                "running",
-                "--quiet",
-            ],
-            check=True,
-            capture_output=True,
-            text=True,
+    def test_foundation_checks_preserve_development_container_inventory(self) -> None:
+        self.assertEqual(
+            DEVELOPMENT_CONTAINER_BASELINE,
+            _development_container_inventory(),
+            "foundation checks changed pre-existing development container ownership",
         )
-        self.assertEqual("", process.stdout.strip())
+
+    def test_development_container_inventory_detects_added_or_restarted_fixture(
+        self,
+    ) -> None:
+        synthetic_identity = '"synthetic" "image" {} [] "2099-01-01T00:00:00Z"'
+        self.assertNotEqual(
+            DEVELOPMENT_CONTAINER_BASELINE,
+            (*DEVELOPMENT_CONTAINER_BASELINE, synthetic_identity),
+        )
 
     def test_reproducible_lockfiles_exist(self) -> None:
         self.assertTrue((REPO_ROOT / "uv.lock").is_file())
