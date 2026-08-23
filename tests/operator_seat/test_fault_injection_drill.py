@@ -32,9 +32,7 @@ def _capauth_signer_prerequisite_available() -> bool:
     path = (
         Path(configured).expanduser()
         if configured
-        else Path(credentials_dir) / "capauth-passphrase"
-        if credentials_dir
-        else None
+        else Path(credentials_dir) / "capauth-passphrase" if credentials_dir else None
     )
     if path is None:
         return False
