@@ -1,132 +1,242 @@
 # SKLegal session handover
 
 Date: 2026-08-23
-Session state: paused by owner request
+Session state: paused after swarm implementation, qualification, and independent review
 
-## Stop condition
+## Resume rule
 
-No implementation, deployment, promotion, rollback, external action, board
-claim, or model worker should start until the owner explicitly resumes the
-SKLegal session.
+The next session must read this handover and `AGENTS.md` before acting. Do not
+activate protected Matter traffic, create credentials, deploy services, process
+HammerTime `Inbox/`, or perform external actions without the required explicit
+human gates.
+
+The current safe state is fail closed. The SKGateway profile is disabled and
+the direct chiap08 Qwen route remains the rollback route.
 
 ## Repository state
 
-- Repository: `/mnt/cloud/onedrive/projects/DAVE-AI/sklegal`
+SKLegal repository:
+
+- Path: `/mnt/cloud/onedrive/projects/DAVE-AI/sklegal`
 - Branch: `main`
-- Main worktree is clean at the time of handover.
-- `origin/main` is synchronized with local main.
-- The separate review worktree remains for inspection:
-  `/tmp/sklegal-skgateway-swarm-20260823-review/review`
-  on branch `codex/skl-s3-11-final-review`. It is not an active worker.
-- The local Qwen S6-05 worktree was stopped and removed after checkpointing.
-- The Qwen checkpoint branch is preserved remotely as
-  `origin/swarm/0ad49216` at commit `d461bb3`. It is not merged.
+- Local HEAD: `c755e1e`
+- `origin/main`: `c755e1e`
+- Worktree: clean
+- No temporary SKLegal implementation or review worktrees remain
 
-## Board state
+SKGateway repository:
 
-- `reconcile-agents`: clean, zero issues.
-- `0ad49216` S6-05 is ready and unassigned.
-- `72df1b66` S3-10A is in review and unassigned. Its qualification result is
-  fail-closed. Protected traffic remains disabled.
-- `a060fa3d` S3-11 is in review and unassigned.
-- `d9552c4c` S1-03A is in review and unassigned.
-- `35a1b90a` S5-05 remains open and human-gated. Do not auto-complete it.
-- The orchestration card remains the Jarvis current task.
+- Path: `/home/skuser01/work/skgateway`
+- Branch: `main`
+- Local and remote HEAD: `3cf16fe`
+- Worktree: clean
+- Pre-existing provider work was preserved, committed, rebased onto latest upstream, merged with the Codex work, tested, and pushed
 
-## Completed implementation wave
+The unrelated existing worktree `/tmp/swarm/0ad49216` may still exist. Do not
+remove or modify it unless its owner explicitly authorizes that action.
 
-The following implementation cards were merged to main, tested, pushed, and
-had their worker branches and worktrees cleaned:
+## Completed SKGateway work
 
-- S2-05 corpus registry and reconciliation
-- S3-04A, S3-04B, S3-04C retrieval evaluation chain
-- S3-05B and S3-05C authority and release gates
-- S3-10 model router
-- S4-03A, S4-03B, S4-03C research and claim-ledger UI
-- S4-04B and S4-04C drafting and DOCX export
-- S5-01C pilot workspace replay evidence
-- S5-02A and S5-02B governed Qwen proposal and replay evidence
-- S5-03A, S5-03B, S5-03C connector simulation qualification
-- S5-04A, S5-04B, S5-04C, S5-04D security, load, outage, backup, and restore
-- S3-07 resilience smoke review
-- S3-03 parent review and all three agent-gateway slices
+The following work was farmed to Codex workers in isolated worktrees, reviewed,
+merged, tested, pushed, and cleaned up:
 
-## Model orchestration state
+### Wire contract
 
-- z.ai GLM workers were stopped after the coding-plan quota was exhausted.
-- Codex workers used `gpt-5.6-sol` with low or high reasoning by task risk.
-- The local Qwen3.8 lane ran on chiap08 through OpenCode at the configured
-  local Qwen endpoint. It was used only for corpus and release-semantic work.
-- No active tmux worker sessions remain for this SKLegal session.
+Card: `b2240a8d`
+Upstream integration: `fcbfeb6`, included in final upstream `3cf16fe`
 
-## S6-05 Qwen checkpoint
+Implemented:
 
-Branch: `origin/swarm/0ad49216`
-Commit: `d461bb3`
+- Separate `X-SKLegal-Service-Authorization` service credential.
+- Request-local `Authorization` CapAuth credential.
+- Exact Tenant, Matter, material, material version, route, purpose,
+  classification, privilege, and ethical-wall scope.
+- No caller-controlled scope authority.
+- No governed internal-peer bypass.
+- No governed allow cache.
+- Bounded response validation.
+- Decision, policy revision, correlation, and obligation propagation.
+- Synthetic allow, deny, unavailable, malformed, and leakage tests.
 
-The checkpoint includes:
-
-- scoped official-drafting retrieval contracts and tests
-- deterministic S6-05 qualification report generator
-- scoped retrieval evidence for 5 queries with zero findings
-- secondary-review challenge and verdict artifacts
-- deterministic qualification report
-- Qwen semantic conflict review across the 14-source candidate
-- handoff and deterministic qualification evidence
-
-Focused result:
-
-- 132 tests passed, 7 subtests passed
-- Ruff and ASCII-dash checks passed after formatting
-- Scoped retrieval: 5 queries, 0 findings
-- Full release qualification remains blocked and must remain blocked until the
-  exact missing evidence is supplied:
-  - candidate manifest missing decomposed snapshot hash
-  - stale vector or graph projection pins
-  - no formal secondary review endpoint configured
-  - alias drift
-  - no valid guarded promotion receipt
-  - no valid rollback receipt
-- Workspace mypy still reports two pre-existing errors in
-  `packages/domain/src/sklegal_domain/claim_grounded.py`. Do not attribute
-  those errors to the S6-05 Qwen changes without a new comparison.
-
-Resume procedure for S6-05:
-
-1. Read this handover and `AGENTS.md`.
-2. Claim `0ad49216` only after the owner resumes the session.
-3. Recreate a worktree from `origin/swarm/0ad49216` or a fresh branch from
-   current main, preserving commit `d461bb3`.
-4. Run the focused 132-test suite and inspect the typed evidence artifacts.
-5. Do not promote, alter aliases, rollback, or process Inbox material.
-6. Obtain the missing HammerTime and human review gates before any release
-   transition.
-
-## S3-10A review state
-
-The S3-10A Codex qualification package is on main and records a deliberate
-`FAIL_CLOSED` result. The installed SKGateway revision did not satisfy the
-S3-11 two-credential exact-scope authorization contract. Evidence includes
-synthetic denial, health, rollback, audit, dependency, and upstream test
-results. Keep protected traffic disabled.
-
-## Human gates still required
-
-- Human review and decision for S1-03A production CapAuth composition
-- Human review and decision for S3-11 PDP endpoint qualification
-- Human review and decision for S3-10A fail-closed live-path qualification
-- Human acceptance for S5-05 and the migration playbook
-- Any production deployment, promotion, alias mutation, rollback, or external
-  action
-
-## Suggested next session opening
+Upstream verification after integration:
 
 ```text
+npm test
+1393 passed, 0 failed
+```
+
+### Startup disablement
+
+Card: `171315a5`
+Upstream integration: final upstream `3cf16fe`
+
+Implemented:
+
+- `dashboard.enabled=false` prevents dashboard construction and listener binding.
+- `metrics.enabled=false` prevents metrics initialization, database creation,
+  and writes.
+- Disabled discovery cannot be force-refreshed.
+- Qualification controls require loopback binding, strict authorization, no
+  cache, and disabled auxiliary services.
+- Enabled behavior remains covered by compatibility tests.
+
+### Canonical endpoint composition
+
+Card: `a53695e8`
+SKLegal merge: `c653cae`
+Evidence:
+`docs/evidence/platform/SKL-S3-11B-AUTHZ-COMPOSITION-2026-08-23.md`
+
+Implemented and tested:
+
+- Canonical CapAuth and `PolicyGateway` composition.
+- Durable current-state, replay, revocation, route, and audit dependencies.
+- Startup rejection of missing, synthetic, or unavailable production
+  dependencies.
+- Authenticated loopback endpoint contract.
+- Sanitized 401, 403, and 503 behavior.
+- Migration `0018` for durable one-use policy invocation reservation.
+- Deterministic rollback denial behavior.
+
+### Exact chiap01 qualification package
+
+Card: `60cb0c9a`
+SKLegal merge: `c1f3a33`
+Evidence:
+`docs/evidence/platform/SKL-S3-10C-CHIAP01-LIVE-PATH-QUALIFICATION-2026-08-22.md`
+Handoff:
+`docs/evidence/swarm/60cb0c9a-HANDOFF.md`
+
+Added:
+
+- Integrated upstream source and package pins.
+- SKLegal composition revision and hash checks.
+- A 13-case fixture-only qualification matrix.
+- Direct-Qwen parity fixture.
+- Updated source preflight, tests, synthetic denial fixture, and runbook.
+- Explicit dashboard, metrics, discovery, internal-bypass, and cache controls.
+
+Result:
+
+```text
+Source preflight: PASS
+Composition preflight: PASS
+Protected traffic: false
+Activation permitted: false
+Live result: FAIL_CLOSED
+```
+
+The exact chiap01 endpoint was unavailable without credentials. The recorded
+probe returned HTTP code `000`. No live allow, policy revision, audit revision,
+or decision ID was invented.
+
+### Independent review
+
+Replacement review card: `2ebda0d1`
+SKLegal merge: `c755e1e`
+Evidence:
+`docs/evidence/platform/SKL-S3-11-REVIEW-3-2026-08-22.md`
+
+Disposition:
+
+```text
+BLOCKED
+```
+
+The review confirmed that source, composition, and disposable fixture evidence
+supports the intended contract, but exact live chiap01 evidence is absent. All
+live controls remain unqualified. Activation remains prohibited.
+
+The older card `c6fc807e` was voided because its dependency pointed directly to
+conditionally accepted `a060fa3d` and could not be claimed without force. It was
+replaced by dependency-correct card `2ebda0d1`.
+
+## Current board state
+
+Completed:
+
+- `b2240a8d` S3-11A exact two-credential wire contract
+- `171315a5` S3-10B dashboard and metrics disablement
+- `a53695e8` S3-11B canonical endpoint composition
+- `60cb0c9a` S3-10C exact chiap01 qualification package
+- `2ebda0d1` independent fail-closed live-path review
+
+Still in review:
+
+- `a060fa3d` S3-11 implementation card
+- `72df1b66` S3-10A parent live-path card
+
+The two cards remain in review because source and fixture completion does not
+satisfy the missing live chiap01 gates.
+
+## Test evidence summary
+
+Upstream SKGateway:
+
+```text
+npm test: 1393 passed, 0 failed
+npm audit --omit=dev --audit-level=high: zero vulnerabilities
+```
+
+SKLegal qualification and boundaries:
+
+```text
+Focused qualification suite: 113 passed, 16 subtests passed
+Broader CapAuth, policy, audit, and composition suite: 88 passed, 73 subtests passed
+Ruff: passed for the qualification scope
+git diff --check: passed
+```
+
+Known environment limitations recorded in evidence:
+
+- Mypy was unavailable during the qualification run.
+- The repository secret scanner could not start because `detect-secrets` was
+  unavailable.
+- Card-specific leakage and forbidden-literal tests passed.
+- These limitations do not qualify the live route.
+
+## Required next steps
+
+Do these only after the owner resumes the session and the required human gates
+are confirmed:
+
+1. Confirm the exact installed SKGateway revision on chiap01.
+2. Confirm package, lockfile, configuration, service unit, and source hashes.
+3. Confirm the authenticated local endpoint binding and pinned service identity.
+4. Run the complete live synthetic matrix on the exact chiap01 entrypoint:
+   allow, deny, PDP outage, audit outage, malformed request, oversized request,
+   exact scope mismatch, saturation, restart, sanitizer leakage, attribution,
+   direct-Qwen parity, and rollback.
+5. Record live decision IDs, policy revision, audit revision, endpoint binding,
+   service identity, test hashes, and rollback evidence.
+6. Run the independent review again against the new live report.
+7. Obtain separate human security approval and explicit activation approval.
+8. Only then consider any profile transition. Protected Matter traffic remains
+   denied until every gate passes.
+
+Do not use force claims to bypass dependencies. Do not treat synthetic decision
+IDs or fixture results as live authorization evidence.
+
+## Startup commands for the next session
+
+```bash
 cd /mnt/cloud/onedrive/projects/DAVE-AI/sklegal
 "${CODEX_HOME:-$HOME/.codex}/bin/load-sk-agent-context.sh"
 skcapstone coord status
 skcapstone coord reconcile-agents
+
+# Verify both repositories before any work
+ git -C /mnt/cloud/onedrive/projects/DAVE-AI/sklegal status --short --branch
+ git -C /home/skuser01/work/skgateway status --short --branch
+ git -C /home/skuser01/work/skgateway log -3 --oneline --decorate
 ```
 
-Then inspect this handover before taking any card. Do not launch the swarm
-until the owner explicitly resumes the work.
+The leading space before the final `git` command is intentional only for
+readability and may be removed when running it.
+
+## Safety boundary
+
+No protected Matter data, provider credential, capability token, private key,
+or HammerTime `Inbox/` material was accessed during this swarm wave. No
+production service was activated. No external legal action, filing, service,
+mailing, client communication, or calendar action was performed.
