@@ -429,7 +429,11 @@ export function MatterCockpit(props: CockpitProps) {
         eyebrow="Original preserved, derived artifacts separately traced"
         state="safely-unavailable"
       >
-        <div className="sl-v2-table-wrap">
+        <div
+          className="sl-v2-table-wrap"
+          tabIndex={0}
+          aria-label="Scrollable Evidence Item inventory"
+        >
           <table>
             <caption>Authorized Evidence Item inventory</caption>
             <thead>
@@ -475,7 +479,11 @@ export function MatterCockpit(props: CockpitProps) {
         eyebrow="Existing Claim support only, no invented Element state"
         state="proposal"
       >
-        <div className="sl-v2-table-wrap">
+        <div
+          className="sl-v2-table-wrap"
+          tabIndex={0}
+          aria-label="Scrollable public-synthetic proof map"
+        >
           <table>
             <caption>Public-synthetic proof map</caption>
             <thead>
@@ -848,7 +856,11 @@ export function MatterCockpit(props: CockpitProps) {
         title="Failure and incomplete states"
         eyebrow="Useful work continues only where authorized"
       >
-        <div className="sl-v2-table-wrap">
+        <div
+          className="sl-v2-table-wrap"
+          tabIndex={0}
+          aria-label="Scrollable failure and incomplete-state table"
+        >
           <table>
             <caption>Explicit failure and incomplete-state behavior</caption>
             <thead>
