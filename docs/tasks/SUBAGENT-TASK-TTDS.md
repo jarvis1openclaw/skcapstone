@@ -683,3 +683,15 @@ Every task begins by loading SK context, reading `AGENTS.md`, checking the SKCap
 - **Objective:** Independently reproduce the exact repair and negative controls without changing it.
 - **Tests and acceptance:** Recompute hashes and prove the three original failures, focused regression, containment, secret, diff, ASCII dash, safe-state, teardown, and rollback gates. Return PASS or BLOCKED.
 - **Prohibited:** No repair, merge, push, cleanup, runtime mutation, protected data, provider, credential, or external action.
+
+### SKL-MVP-BASE-01F2: Repair inherited BASE static gates
+
+- **Card:** `f34239e4`
+- **Agent:** `codex-mvp-base-static-repair`
+- **Base:** Immutable BASE candidate `bfd1a973510d327c26f05096350a38a3d0cedaf1`, tree `f75fde4cdcb747278a122f473f5717af826aed74`.
+- **Dependencies:** `91988c9e`
+- **Objective:** Repair only the mypy assignment mismatch at `tests/support/mvp_v2_cockpit.py:389` and the origin-identical Ruff import-order failure at `vendor/capauth/src/capauth/__init__.py:220`, without changing behavior.
+- **Implementation:** Give the loop-local failure tuple a non-conflicting typed name and reorder only the exact vendor CapAuth imports. Do not add ignores or `noqa` markers, weaken configuration, or format unrelated files.
+- **Tests and acceptance:** Reproduce both failures before repair. Make focused and repository mypy and Ruff gates pass. Run the affected contract, CapAuth import, web fixture, API, diff, ASCII dash, secret, dependency, and rollback checks. Pin exact candidate and evidence commits, trees, hashes, results, limitations, and rollback for independent review `0040b661`.
+- **Rollback:** Revert only the two named static repairs, this TDD, and its evidence to exact base `bfd1a973510d327c26f05096350a38a3d0cedaf1`.
+- **Prohibited:** No central integration, migration, runtime, preview, shared main, database, credential, protected content, provider, HammerTime `Inbox/`, external action, merge, push, or cleanup work.

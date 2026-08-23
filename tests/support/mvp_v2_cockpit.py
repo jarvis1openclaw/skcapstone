@@ -386,15 +386,15 @@ def validate_v2_acceptance(
     if not isinstance(failures, list) or len(failures) != len(expected_failures):
         raise V2AcceptanceError("exact cockpit failure states are missing")
     for failure in failures:
-        expected = expected_failures.get(failure.get("fixtureId"))
+        expected_failure = expected_failures.get(failure.get("fixtureId"))
         if (
-            expected is None
+            expected_failure is None
             or (
                 failure.get("path"),
                 failure.get("expectedStatus"),
                 failure.get("expectedCode"),
             )
-            != expected
+            != expected_failure
         ):
             raise V2AcceptanceError("cockpit failure status or code drift")
         if failure.get("recordDetailVisible") is not False:
