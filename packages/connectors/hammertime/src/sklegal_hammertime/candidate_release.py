@@ -46,6 +46,9 @@ class OfficialDraftingCandidateBuildRequest(FrozenValue):
     expected_source_count: int = Field(default=14, ge=1)
 
 
+REQUIRED_RIGHTS_PURPOSE = "internal_release_candidate_assembly"
+
+
 class OfficialDraftingCandidatePlan(FrozenValue):
     status: str
     dry_run: bool
@@ -498,7 +501,19 @@ class OfficialDraftingCandidateReleaseBuilder:
                     detail="rights quarantine must be empty for candidate assembly",
                 )
             )
-        return {"purpose": purpose}
+        normalized_purpose = purpose.strip()
+        if normalized_purpose != REQUIRED_RIGHTS_PURPOSE:
+            blockers.append(
+                CandidateBuildBlocker(
+                    code=CandidateBuildBlockerCode.INVALID_INPUT,
+                    subject=request.rights_review_path,
+                    detail=(
+                        "rights review purpose must be "
+                        f"{REQUIRED_RIGHTS_PURPOSE}"
+                    ),
+                )
+            )
+        return {"purpose": normalized_purpose}
 
     def _validated_profile(
         self,
@@ -589,6 +604,13 @@ class OfficialDraftingCandidateReleaseBuilder:
                     normalized.text,
                     relative_path=normalized_path,
                 )
+                if (
+                    self._normalized_source_id(frontmatter.get("source_id", ""))
+                    != self._normalized_source_id(source_id)
+                ):
+                    raise ValueError(
+                        "normalized frontmatter source_id differs from completion evidence"
+                    )
                 source_sha256 = self._normalized_sha256(source["source_sha256"])
                 if (
                     self._normalized_sha256(frontmatter.get("source_sha256", ""))
@@ -636,11 +658,7 @@ class OfficialDraftingCandidateReleaseBuilder:
             except Exception as exc:
                 blockers.append(
                     CandidateBuildBlocker(
-                        code=(
-                            CandidateBuildBlockerCode.HASH_MISMATCH
-                            if "sha256" in str(exc)
-                            else CandidateBuildBlockerCode.MISSING_ARTIFACT
-                        ),
+                        code=self._artifact_blocker_code(exc),
                         subject=source_id,
                         detail=str(exc),
                     )
@@ -653,6 +671,19 @@ class OfficialDraftingCandidateReleaseBuilder:
         if isinstance(value, int):
             return f"{value:064x}"
         return str(value).strip().lower()
+
+    def _normalized_source_id(self, value: object) -> str:
+        return str(value).strip()
+
+    def _artifact_blocker_code(
+        self, exc: Exception
+    ) -> CandidateBuildBlockerCode:
+        detail = str(exc)
+        if "sha256" in detail or "source hash" in detail:
+            return CandidateBuildBlockerCode.HASH_MISMATCH
+        if "source_id" in detail:
+            return CandidateBuildBlockerCode.INVALID_INPUT
+        return CandidateBuildBlockerCode.MISSING_ARTIFACT
 
     def _validated_projection(
         self,

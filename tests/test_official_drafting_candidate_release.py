@@ -226,19 +226,23 @@ def _builder(root: Path) -> OfficialDraftingCandidateReleaseBuilder:
 def test_dry_run_builds_deterministic_plan_without_writes(tmp_path: Path) -> None:
     paths = _build_root(tmp_path)
     aliases_before = _sha256(tmp_path, str(paths["runtime_aliases_path"]))
+    request = _request(paths)
 
-    plan = _builder(tmp_path).build(_request(paths))
+    first = _builder(tmp_path).build(request)
+    second = _builder(tmp_path).build(request)
 
-    assert plan.status == "ready"
-    assert plan.dry_run is True
-    assert plan.actual_write_set == ()
-    assert plan.write_set == (
+    assert request.apply is False
+    assert first == second
+    assert first.status == "ready"
+    assert first.dry_run is True
+    assert first.actual_write_set == ()
+    assert first.write_set == (
         f"json/releases/corpus-release-{RELEASE_ID}.json",
     )
-    assert plan.source_count == SOURCE_COUNT
-    assert plan.decomposition_count == SOURCE_COUNT
+    assert first.source_count == SOURCE_COUNT
+    assert first.decomposition_count == SOURCE_COUNT
     assert _sha256(tmp_path, str(paths["runtime_aliases_path"])) == aliases_before
-    assert not (tmp_path / plan.manifest_path).exists()
+    assert not (tmp_path / first.manifest_path).exists()
 
 
 def test_apply_writes_one_manifest_with_exclusive_create(tmp_path: Path) -> None:
@@ -335,6 +339,19 @@ def test_rights_quarantine_and_source_set_mismatch_block(tmp_path: Path) -> None
     assert any("rights-cleared source identifiers" in blocker.detail for blocker in plan.blockers)
 
 
+def test_rights_purpose_must_match_candidate_assembly(tmp_path: Path) -> None:
+    paths = _build_root(tmp_path)
+    rights_path = tmp_path / str(paths["rights_review_path"])
+    rights = json.loads(rights_path.read_text(encoding="utf-8"))
+    rights["purpose"] = "internal_research"
+    rights_path.write_text(json.dumps(rights, indent=2, sort_keys=True) + "\n")
+
+    plan = _builder(tmp_path).build(_request(paths))
+
+    assert plan.status == "blocked"
+    assert any("rights review purpose must be" in blocker.detail for blocker in plan.blockers)
+
+
 def test_changed_normalized_source_hash_blocks(tmp_path: Path) -> None:
     paths = _build_root(tmp_path)
     normalized = tmp_path / "reference/legal/official-style-01.md"
@@ -351,6 +368,29 @@ def test_changed_normalized_source_hash_blocks(tmp_path: Path) -> None:
     assert CandidateBuildBlockerCode.HASH_MISMATCH in {
         blocker.code for blocker in plan.blockers
     }
+
+
+def test_normalized_frontmatter_source_id_must_match_completion_evidence(
+    tmp_path: Path,
+) -> None:
+    paths = _build_root(tmp_path)
+    normalized = tmp_path / "reference/legal/official-style-01.md"
+    normalized.write_text(
+        normalized.read_text(encoding="utf-8").replace(
+            "source_id: OFFICIAL-01",
+            "source_id: OFFICIAL-99",
+            1,
+        ),
+        encoding="utf-8",
+    )
+
+    plan = _builder(tmp_path).build(_request(paths))
+
+    assert plan.status == "blocked"
+    assert CandidateBuildBlockerCode.INVALID_INPUT in {
+        blocker.code for blocker in plan.blockers
+    }
+    assert any("frontmatter source_id differs" in blocker.detail for blocker in plan.blockers)
 
 
 def test_missing_duplicate_empty_and_wrong_parent_decomposition_block(tmp_path: Path) -> None:
