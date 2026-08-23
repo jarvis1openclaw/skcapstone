@@ -16,6 +16,13 @@ from .bridge import (
     SubmissionPlan,
     SubmissionResult,
 )
+from .candidate_release import (
+    CandidateBuildBlocker,
+    CandidateBuildBlockerCode,
+    OfficialDraftingCandidateBuildRequest,
+    OfficialDraftingCandidatePlan,
+    OfficialDraftingCandidateReleaseBuilder,
+)
 from .candidate_inspection import (
     OfficialDraftingCandidateInspector,
     OfficialDraftingCandidateReport,
@@ -98,6 +105,8 @@ __all__ = [
     "AmbiguousLegacyIdError",
     "ArtifactRead",
     "ArtifactTooLargeError",
+    "CandidateBuildBlocker",
+    "CandidateBuildBlockerCode",
     "DecomposedStateSeal",
     "Decomposition",
     "DecompositionClaim",
@@ -129,8 +138,11 @@ __all__ = [
     "OfficialDraftingReleaseReport",
     "OfficialDraftingReleaseRequest",
     "OfficialDraftingSource",
+    "OfficialDraftingCandidateBuildRequest",
     "OfficialDraftingCandidateInspector",
+    "OfficialDraftingCandidatePlan",
     "OfficialDraftingCandidateReport",
+    "OfficialDraftingCandidateReleaseBuilder",
     "ProjectionQualificationEvidence",
     "QualificationFinding",
     "QualificationFindingCode",
