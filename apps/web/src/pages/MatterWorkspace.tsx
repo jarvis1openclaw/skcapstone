@@ -10,6 +10,8 @@
  * content changes.
  */
 
+import { useState } from "react";
+
 import type {
   ClaimLedger,
   MatterWorkspace,
@@ -56,14 +58,44 @@ export const matterWorkspaceSections = [
 ] as const;
 
 export function MatterWorkspaceNav() {
+  const [expanded, setExpanded] = useState(false);
   return (
-    <nav aria-label="Matter workspace" className="sl-matter-nav">
-      <ul>
+    <nav
+      aria-label="Matter workspace"
+      className="sl-matter-nav"
+      data-expanded={expanded}
+    >
+      <button
+        type="button"
+        className="sl-matter-nav-toggle"
+        aria-expanded={expanded}
+        aria-controls="sl-matter-section-links"
+        onClick={() => setExpanded((current) => !current)}
+      >
+        {expanded ? "Hide Matter sections" : "Explore Matter sections"}
+      </button>
+      <ul id="sl-matter-section-links">
         {v2CockpitSections.map((section) => (
           <li key={section.id}>
-            <a href={`#${section.id}`}>{section.label}</a>
+            <a href={`#${section.id}`} onClick={() => setExpanded(false)}>
+              {section.label}
+            </a>
           </li>
         ))}
+        <li>
+          <a href="#underlying-records" onClick={() => setExpanded(false)}>
+            Underlying records
+          </a>
+        </li>
+      </ul>
+    </nav>
+  );
+}
+
+function UnderlyingRecordNav() {
+  return (
+    <nav aria-label="Underlying Matter records" className="sl-record-nav">
+      <ul>
         {matterWorkspaceSections.map((section) => (
           <li key={section.id}>
             <a href={`#${section.id}`}>{section.label}</a>
@@ -745,15 +777,20 @@ export function MatterWorkspaceView(props: {
             workspace={workspace}
             claimLedger={props.claimLedger ?? null}
           />
-          <div className="sl-v2-records" aria-label="Authorized Matter records">
-            <header className="sl-v2-records-head">
-              <p className="sl-v2-eyebrow">Authorized API record</p>
-              <h2>Underlying Matter workspace</h2>
-              <p>
+          <details
+            className="sl-v2-records"
+            id="underlying-records"
+            aria-label="Authorized Matter records"
+          >
+            <summary>
+              <span className="sl-v2-eyebrow">Authorized API record</span>
+              <strong>Underlying Matter workspace</strong>
+              <span>
                 The AI-first cockpit does not replace source records. These
                 existing read surfaces remain the reconstructable record.
-              </p>
-            </header>
+              </span>
+            </summary>
+            <UnderlyingRecordNav />
             <OverviewSection workspace={workspace} />
             <PartiesSection workspace={workspace} />
             <TimelineSection workspace={workspace} />
@@ -775,7 +812,7 @@ export function MatterWorkspaceView(props: {
             />
             <AuditSection workspace={workspace} />
             <FeatureMatrixSection matterId={workspace.matter.matterId} />
-          </div>
+          </details>
         </div>
       </div>
     </article>

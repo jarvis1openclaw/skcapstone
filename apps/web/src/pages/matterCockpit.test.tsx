@@ -6,7 +6,11 @@ import { describe, expect, it } from "vitest";
 import { syntheticClaimLedger } from "../testing/claims";
 import { renderStatic } from "../testing/ssr";
 import { syntheticWorkspace } from "../testing/workspace";
-import { MatterCockpit, v2CockpitSections } from "./MatterCockpit";
+import {
+  MatterCockpit,
+  v2CockpitSections,
+  workProductApprovalState,
+} from "./MatterCockpit";
 
 function render(): string {
   return renderStatic(
@@ -32,6 +36,16 @@ describe("V2 AI-first Matter cockpit", () => {
     expect(html).toContain("AI Work Product assembly");
     expect(html).toContain("Tasks, Deadlines, and external-action handoff");
     expect(html).toContain("Matter activity and provenance log");
+    expect(v2CockpitSections).toHaveLength(18);
+    expect(html.indexOf('id="decision"')).toBeLessThan(
+      html.indexOf('id="ai-operating-model"'),
+    );
+    expect(html.indexOf('id="ai-operating-model"')).toBeLessThan(
+      html.indexOf('id="corpus-map"'),
+    );
+    expect(html.indexOf('id="corpus-map"')).toBeLessThan(
+      html.indexOf('id="ai-cockpit"'),
+    );
   });
 
   it("uses authorized Matter, Claim, Evidence Item, audit, and provenance data", () => {
@@ -54,6 +68,12 @@ describe("V2 AI-first Matter cockpit", () => {
     expect(html).toContain("No model request is sent");
     expect(html).toContain("not running");
     expect(html).toContain("disabled");
+    expect(html).toContain("Ranked recommendation queue unavailable");
+    expect(html).toContain("Blind challenge and human disposition");
+    expect(html).toContain("Course instruction: not evaluated");
+    expect(html).toContain("Current Authority: not evaluated");
+    expect(html).not.toContain("Top ranked proposals");
+    expect(html).not.toContain("Proof coverage %");
     expect(html).not.toContain("provider.example");
     expect(html).not.toContain("Authorization: Bearer");
   });
@@ -89,5 +109,56 @@ describe("V2 AI-first Matter cockpit", () => {
     expect(styles).toContain(
       "grid-template-columns: repeat(2, minmax(0, 1fr))",
     );
+    expect(styles).toContain(
+      '.sl-v2-layout > .sl-matter-nav[data-expanded="true"] ul',
+    );
+  });
+
+  it("renders explicit empty Evidence Item and activity states", () => {
+    const emptyWorkspace = {
+      ...syntheticWorkspace,
+      evidence: [],
+      audit: [],
+    };
+    const html = renderStatic(
+      <MatterCockpit
+        workspace={emptyWorkspace}
+        claimLedger={syntheticClaimLedger()}
+      />,
+    );
+    expect(html).toContain(
+      "The authorized API returned no Evidence Items for this Matter.",
+    );
+    expect(html).toContain(
+      "The authorized API returned no Matter activity entries.",
+    );
+  });
+
+  it("treats Approval as current only for an exact version and hash binding", () => {
+    const stale = syntheticWorkspace.workProducts[0]!;
+    expect(workProductApprovalState(stale)).toBe("invalidated");
+    expect(workProductApprovalState({ ...stale, approvalBinding: null })).toBe(
+      "unbound",
+    );
+    expect(
+      workProductApprovalState({
+        ...stale,
+        approvalBinding: {
+          versionId: stale.currentVersion.versionId,
+          versionNumber: stale.currentVersion.versionNumber,
+          contentSha256: stale.currentVersion.contentSha256,
+        },
+      }),
+    ).toBe("current");
+    expect(
+      workProductApprovalState({
+        ...stale,
+        approvalBinding: {
+          versionId: stale.currentVersion.versionId,
+          versionNumber: stale.currentVersion.versionNumber,
+          contentSha256: "0".repeat(64),
+        },
+      }),
+    ).toBe("invalidated");
   });
 });

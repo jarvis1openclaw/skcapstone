@@ -36,6 +36,22 @@ describe("matter workspace structure and accessibility", () => {
     }
   });
 
+  it("keeps compact V2 navigation bounded and legacy records collapsed", () => {
+    const html = render();
+    expect(html).toContain('class="sl-matter-nav-toggle"');
+    expect(html).toContain('aria-controls="sl-matter-section-links"');
+    expect(html).toContain('aria-expanded="false"');
+    expect(html).toContain('href="#decision"');
+    expect(html).toContain('href="#blind-challenge"');
+    expect(html).toContain('href="#underlying-records"');
+    expect(html).toContain(
+      '<details class="sl-v2-records" id="underlying-records"',
+    );
+    expect(html).not.toContain(
+      '<details class="sl-v2-records" id="underlying-records" open=""',
+    );
+  });
+
   it("marks sections focusable for anchor navigation", () => {
     const html = render();
     expect(html).toContain('id="overview"');

@@ -1,4 +1,8 @@
-import type { ClaimLedger, MatterWorkspace } from "../api/types";
+import type {
+  ClaimLedger,
+  MatterWorkspace,
+  WorkspaceWorkProduct,
+} from "../api/types";
 import type { ReactNode } from "react";
 
 type CockpitProps = {
@@ -7,6 +11,19 @@ type CockpitProps = {
 };
 
 type SurfaceState = "available" | "proposal" | "safely-unavailable";
+
+export function workProductApprovalState(
+  workProduct: WorkspaceWorkProduct,
+): "unbound" | "current" | "invalidated" {
+  const binding = workProduct.approvalBinding;
+  if (binding === null) return "unbound";
+  const current = workProduct.currentVersion;
+  return binding.versionId === current.versionId &&
+    binding.versionNumber === current.versionNumber &&
+    binding.contentSha256 === current.contentSha256
+    ? "current"
+    : "invalidated";
+}
 
 function Pill(props: { children: string; tone?: string }) {
   return (
@@ -127,15 +144,17 @@ const failureRows = [
 ] as const;
 
 export const v2CockpitSections = [
-  { id: "ai-cockpit", label: "AI cockpit" },
+  { id: "decision", label: "Decision" },
   { id: "ai-operating-model", label: "Operating model" },
   { id: "corpus-map", label: "Corpus map" },
+  { id: "ai-cockpit", label: "AI cockpit" },
   { id: "ai-intake", label: "AI intake" },
   { id: "artifact-intake", label: "Artifacts" },
   { id: "element-matrix", label: "Element matrix" },
   { id: "recommendation", label: "Recommendation" },
   { id: "strategy-authority", label: "Strategy and Authority" },
   { id: "agent-team", label: "Agent team" },
+  { id: "blind-challenge", label: "Blind challenge" },
   { id: "model-routing", label: "Model routing" },
   { id: "work-product-assembly", label: "Work Product" },
   { id: "deadline-actions", label: "Deadlines and actions" },
@@ -148,7 +167,6 @@ export const v2CockpitSections = [
 export function MatterCockpit(props: CockpitProps) {
   const { workspace, claimLedger } = props;
   const claims = claimLedger?.claims ?? [];
-  const firstClaim = claims[0];
   const supportedClaims = claims.filter(
     (claim) => claim.support.length > 0,
   ).length;
@@ -161,109 +179,137 @@ export function MatterCockpit(props: CockpitProps) {
       count + claim.support.length + claim.counterSupport.length,
     0,
   );
-  const proofDenominator = Math.max(claims.length + unresolvedTensions, 1);
-  const proofCoverage = Math.round((supportedClaims / proofDenominator) * 100);
+  const cockpitSurface = (
+    <Surface
+      id="ai-cockpit"
+      title="AI Matter cockpit"
+      eyebrow="Matter scope and pinned context"
+    >
+      <div className="sl-v2-scope">
+        <div>
+          <p className="sl-v2-kicker">AI-first public-synthetic workspace</p>
+          <h2>{workspace.matter.title}</h2>
+          <p>{workspace.matter.summary}</p>
+        </div>
+        <div className="sl-v2-pills" aria-label="Matter scope status">
+          <Pill tone="good">Matter member</Pill>
+          <Pill>{workspace.matter.status}</Pill>
+          <Pill tone="info">source grounded</Pill>
+          <Pill tone="warn">Authority verification incomplete</Pill>
+        </div>
+      </div>
+      <p className="sl-v2-context">
+        Snapshot <code>{workspace.provenance.sourceSnapshot}</code> | adapter{" "}
+        <code>{workspace.provenance.adapterVersion}</code> | observed{" "}
+        {workspace.provenance.observedAt}
+      </p>
+      <div className="sl-v2-composer" data-feature-state="safely-unavailable">
+        <div>
+          <p className="sl-v2-eyebrow">Ask the AI case team</p>
+          <strong>
+            What should we do next to close the highest-impact proof gap?
+          </strong>
+          <p>
+            Analysis execution is safely unavailable until a reviewed Agent
+            input and recommendation contract is mounted.
+          </p>
+        </div>
+        <button className="sl-button" type="button" disabled>
+          Analyze Matter
+        </button>
+      </div>
+      <div className="sl-v2-ribbon" aria-label="Continuous analysis workflow">
+        <Pill tone="good">scope passed</Pill>
+        <Pill tone="good">snapshot pinned</Pill>
+        <Pill tone="good">Issues mapped</Pill>
+        <Pill tone="warn">Authority review</Pill>
+        <Pill>challenge unavailable</Pill>
+        <Pill>human decision required</Pill>
+      </div>
+      <div className="sl-v2-metrics">
+        <div>
+          <span>Claims with support</span>
+          <strong>{supportedClaims}</strong>
+          <small>raw authorized ledger count</small>
+        </div>
+        <div>
+          <span>Evidence Items</span>
+          <strong>{evidenceCount}</strong>
+          <small>authorized Matter records</small>
+        </div>
+        <div>
+          <span>Record tensions</span>
+          <strong>{unresolvedTensions}</strong>
+          <small>review required</small>
+        </div>
+        <div>
+          <span>Source links</span>
+          <strong>{authorityCount}</strong>
+          <small>support and counter-support</small>
+        </div>
+      </div>
+      <div
+        className="sl-v2-unavailable"
+        data-feature-state="safely-unavailable"
+      >
+        <h3>Ranked recommendation queue unavailable</h3>
+        <p>
+          No typed recommendation or scoring-policy response is mounted. React
+          does not calculate proof coverage, rank next steps, or infer urgency
+          from adjacent Matter records.
+        </p>
+      </div>
+    </Surface>
+  );
 
   return (
     <div className="sl-v2-cockpit">
       <Surface
-        id="ai-cockpit"
-        title="AI Matter cockpit"
-        eyebrow="Matter scope and pinned context"
+        id="decision"
+        title="SKLegal as an active AI case team"
+        eyebrow="V2 product decision and evidence boundary"
       >
-        <div className="sl-v2-scope">
-          <div>
-            <p className="sl-v2-kicker">AI-first public-synthetic workspace</p>
-            <h2>{workspace.matter.title}</h2>
-            <p>{workspace.matter.summary}</p>
-          </div>
-          <div className="sl-v2-pills" aria-label="Matter scope status">
-            <Pill tone="good">Matter member</Pill>
-            <Pill>{workspace.matter.status}</Pill>
-            <Pill tone="info">source grounded</Pill>
-            <Pill tone="warn">Authority verification incomplete</Pill>
-          </div>
-        </div>
-        <p className="sl-v2-context">
-          Snapshot <code>{workspace.provenance.sourceSnapshot}</code> | adapter{" "}
-          <code>{workspace.provenance.adapterVersion}</code> | observed{" "}
-          {workspace.provenance.observedAt}
+        <p className="sl-v2-lead">
+          AI prepares source-grounded typed proposals inside the authorized
+          Matter. Humans set the objective and make the decisions that can bind
+          strategy, a Work Product, or an external action.
         </p>
-        <div className="sl-v2-composer" data-feature-state="safely-unavailable">
+        <div className="sl-v2-decision">
           <div>
-            <p className="sl-v2-eyebrow">Ask the AI case team</p>
-            <strong>
-              What should we do next to close the highest-impact proof gap?
-            </strong>
-            <p>
-              Analysis execution is safely unavailable until a reviewed Agent
-              input and recommendation contract is mounted.
-            </p>
-          </div>
-          <button className="sl-button" type="button" disabled>
-            Analyze Matter
-          </button>
-        </div>
-        <div className="sl-v2-ribbon" aria-label="Continuous analysis workflow">
-          <Pill tone="good">scope passed</Pill>
-          <Pill tone="good">snapshot pinned</Pill>
-          <Pill tone="good">Issues mapped</Pill>
-          <Pill tone="warn">Authority review</Pill>
-          <Pill>challenge unavailable</Pill>
-          <Pill>human decision required</Pill>
-        </div>
-        <div className="sl-v2-metrics">
-          <div>
-            <span>Proof coverage</span>
-            <strong>{proofCoverage}%</strong>
-            <small>{supportedClaims} supported Claims</small>
+            <strong>Already coherent</strong>
+            <span>
+              Matter records, immutable provenance, policy-filtered retrieval,
+              Claims, Work Products, Approval, and audit.
+            </span>
           </div>
           <div>
-            <span>Evidence Items</span>
-            <strong>{evidenceCount}</strong>
-            <small>authorized Matter records</small>
+            <strong>Product gap</strong>
+            <span>
+              Recommendation, joined Issue and Authority, challenge, and Agent
+              Run HTTP contracts remain unavailable.
+            </span>
           </div>
           <div>
-            <span>Record tensions</span>
-            <strong>{unresolvedTensions}</strong>
-            <small>review required</small>
-          </div>
-          <div>
-            <span>Source links</span>
-            <strong>{authorityCount}</strong>
-            <small>support and counter-support</small>
+            <strong>V2 decision</strong>
+            <span>
+              Keep the authorized Matter at the center and never infer missing
+              workflow state in React.
+            </span>
           </div>
         </div>
-        <div className="sl-v2-ranked">
-          <h3>Top ranked proposals</h3>
-          <article>
-            <span className="sl-v2-rank">1</span>
-            <div>
-              <strong>
-                Verify controlling Authority before relying on any candidate
-                Deadline
-              </strong>
-              <p>
-                Current workspace data has no joined operative Deadline and
-                Authority contract.
-              </p>
-              <Pill tone="warn">blocked by Authority lane</Pill>
-            </div>
-          </article>
-          <article>
-            <span className="sl-v2-rank">2</span>
-            <div>
-              <strong>
-                {firstClaim?.statement ?? "Close the most material record gap"}
-              </strong>
-              <p>
-                Derived only from the authorized Claim ledger and Matter
-                evidence already returned by the API.
-              </p>
-              <Pill tone="model">inert proposal preview</Pill>
-            </div>
-          </article>
+        <h3>Non-negotiable evidence equation</h3>
+        <div className="sl-v2-source-roles" aria-label="Proposal source roles">
+          <Pill tone="course">Course instruction</Pill>
+          <Pill tone="warn">Current Authority</Pill>
+          <Pill tone="info">Matter record</Pill>
+          <Pill tone="model">Model inference</Pill>
+          <Pill tone="good">Human decision</Pill>
         </div>
+        <p className="sl-v2-callout">
+          No source role silently impersonates another. Research counts and
+          corpus coverage remain in their reviewed planning artifacts until a
+          pinned product response exposes them.
+        </p>
       </Surface>
 
       <Surface
@@ -345,6 +391,8 @@ export function MatterCockpit(props: CockpitProps) {
         </p>
       </Surface>
 
+      {cockpitSurface}
+
       <Surface
         id="ai-intake"
         title="AI-guided Matter intake"
@@ -393,16 +441,25 @@ export function MatterCockpit(props: CockpitProps) {
               </tr>
             </thead>
             <tbody>
-              {workspace.evidence.map((item) => (
-                <tr key={item.evidenceItemId}>
-                  <th scope="row">{item.title}</th>
-                  <td>{item.mediaType}</td>
-                  <td>
-                    <code>{item.contentSha256}</code>
+              {workspace.evidence.length === 0 ? (
+                <tr>
+                  <td colSpan={4}>
+                    The authorized API returned no Evidence Items for this
+                    Matter.
                   </td>
-                  <td>{item.status}</td>
                 </tr>
-              ))}
+              ) : (
+                workspace.evidence.map((item) => (
+                  <tr key={item.evidenceItemId}>
+                    <th scope="row">{item.title}</th>
+                    <td>{item.mediaType}</td>
+                    <td>
+                      <code>{item.contentSha256}</code>
+                    </td>
+                    <td>{item.status}</td>
+                  </tr>
+                ))
+              )}
             </tbody>
           </table>
         </div>
@@ -474,8 +531,7 @@ export function MatterCockpit(props: CockpitProps) {
                 Authority fit <b>blocked</b>
               </span>
               <span>
-                Evidence ready{" "}
-                <b>{evidenceCount > 0 ? "partial" : "unknown"}</b>
+                Evidence ready <b>unknown</b>
               </span>
             </div>
           </article>
@@ -489,6 +545,16 @@ export function MatterCockpit(props: CockpitProps) {
               Accept as proposed Task
             </button>
           </article>
+        </div>
+        <div
+          className="sl-v2-source-roles"
+          aria-label="Recommendation source-role availability"
+        >
+          <Pill tone="course">Course instruction: not evaluated</Pill>
+          <Pill tone="warn">Current Authority: not evaluated</Pill>
+          <Pill tone="info">Matter record: not joined</Pill>
+          <Pill tone="model">Model inference: unavailable</Pill>
+          <Pill>Human decision: absent</Pill>
         </div>
       </Surface>
 
@@ -537,6 +603,37 @@ export function MatterCockpit(props: CockpitProps) {
       </Surface>
 
       <Surface
+        id="blind-challenge"
+        title="Blind challenge and human disposition"
+        eyebrow="Independent defects, typed result, attributable decision"
+        state="safely-unavailable"
+      >
+        <div className="sl-v2-grid sl-v2-grid-3">
+          <article className="sl-v2-card">
+            <h3>Challenge input</h3>
+            <p>
+              Exact proposal version, Matter snapshot, supporting records, and
+              contrary material are required.
+            </p>
+          </article>
+          <article className="sl-v2-card">
+            <h3>Defect classes</h3>
+            <p>
+              Prerequisite, proof, admissibility, Authority, procedure, remedy,
+              and downside risk remain separately reported.
+            </p>
+          </article>
+          <article className="sl-v2-card">
+            <h3>Challenge result</h3>
+            <p>
+              No challenge contract is mounted, so there is no result,
+              confidence, rerun, or human disposition to display.
+            </p>
+          </article>
+        </div>
+      </Surface>
+
+      <Surface
         id="model-routing"
         title="Provider-neutral model routing seam"
         eyebrow="Logical routes, never private hosts"
@@ -554,6 +651,32 @@ export function MatterCockpit(props: CockpitProps) {
           <span>transport profile</span>
           <b>to</b>
           <span>served-model evidence</span>
+        </div>
+        <div className="sl-v2-grid sl-v2-grid-3">
+          <article className="sl-v2-card">
+            <h3>Deployment binding</h3>
+            <p>
+              Logical route, transport profile, classification ceiling, timeout,
+              retry class, and workload class.
+            </p>
+            <Pill>not returned</Pill>
+          </article>
+          <article className="sl-v2-card">
+            <h3>Route and execution evidence</h3>
+            <p>
+              Gateway revision, requested bucket, backend, served model,
+              failover, usage, latency, prompt hash, and schema hash.
+            </p>
+            <Pill>not returned</Pill>
+          </article>
+          <article className="sl-v2-card">
+            <h3>Qualification and policy evidence</h3>
+            <p>
+              Matter scope, source rights, classification, egress, policy
+              decision, and provider attribution must all be present.
+            </p>
+            <Pill tone="warn">required before use</Pill>
+          </article>
         </div>
         <p className="sl-v2-unavailable">
           No model request is sent. Direct Qwen, SKGateway, and OpenAI bindings
@@ -588,17 +711,25 @@ export function MatterCockpit(props: CockpitProps) {
                   </dd>
                   <dt>Approval</dt>
                   <dd>
-                    {workProduct.approvalBinding === null
+                    {workProductApprovalState(workProduct) === "unbound"
                       ? "not bound"
-                      : `bound to version ${workProduct.approvalBinding.versionNumber}`}
+                      : workProductApprovalState(workProduct) === "current"
+                        ? `bound to current version ${workProduct.currentVersion.versionNumber}`
+                        : `invalidated: binding names version ${workProduct.approvalBinding?.versionNumber}, current version is ${workProduct.currentVersion.versionNumber}`}
                   </dd>
                 </dl>
                 <Pill
-                  tone={workProduct.approvalBinding === null ? "warn" : "good"}
+                  tone={
+                    workProductApprovalState(workProduct) === "current"
+                      ? "good"
+                      : "warn"
+                  }
                 >
-                  {workProduct.approvalBinding === null
-                    ? "human review required"
-                    : "exact version bound"}
+                  {workProductApprovalState(workProduct) === "current"
+                    ? "exact version bound"
+                    : workProductApprovalState(workProduct) === "invalidated"
+                      ? "Approval invalidated"
+                      : "human review required"}
                 </Pill>
               </article>
             ))}
@@ -687,18 +818,24 @@ export function MatterCockpit(props: CockpitProps) {
         eyebrow="Readable projection over immutable records"
       >
         <div className="sl-v2-log">
-          {workspace.audit.map((entry) => (
-            <article key={entry.auditId}>
-              <time>{entry.occurredAt}</time>
-              <div>
-                <strong>{entry.action}</strong>
-                <p>
-                  {entry.actor} | outcome {entry.outcome}
-                </p>
-                {entry.detail && <p>{entry.detail}</p>}
-              </div>
-            </article>
-          ))}
+          {workspace.audit.length === 0 ? (
+            <p className="sl-v2-unavailable">
+              The authorized API returned no Matter activity entries.
+            </p>
+          ) : (
+            workspace.audit.map((entry) => (
+              <article key={entry.auditId}>
+                <time>{entry.occurredAt}</time>
+                <div>
+                  <strong>{entry.action}</strong>
+                  <p>
+                    {entry.actor} | outcome {entry.outcome}
+                  </p>
+                  {entry.detail && <p>{entry.detail}</p>}
+                </div>
+              </article>
+            ))
+          )}
         </div>
         <p className="sl-v2-unavailable">
           Chronology, manifest, dossier, and action-log exports are safely
