@@ -1,6 +1,6 @@
-# SKGateway deployment and rollback runbook (SKL-S3-10A)
+# SKGateway deployment and rollback runbook (SKL-S3-10C)
 
-Card: `72df1b66`. Parent qualification: `bbf206c3`. Host: chiap01.
+Card: `60cb0c9a`. Parent qualification: `72df1b66`. Host: chiap01.
 
 SKGateway runs as a non-GPU control-plane service beside the SKLegal API on
 chiap01. It forwards only after qualification to Qwen on chiap08:11439. The
@@ -13,7 +13,8 @@ no protected Matter activation and installs no provider keys.
 - chiap08: RTX 5090 host dedicated to Qwen3.8 inference and its shared
   four-active, four-queued capacity domain.
 - Install path: `/opt/skgateway` on chiap01.
-- Upstream commit: `b4b4115df9a6d5c9c4621d98207a1074e2737ef5`.
+- Integrated upstream commit:
+  `3cf16fe6ca1a6e5ec92e5f090fc798dfd6404596`.
 - Required runtime: Node.js 20 or newer, `npm ci`, and a clean production
   dependency audit.
 
@@ -24,9 +25,9 @@ no protected Matter activation and installs no provider keys.
    versions, configuration hash, and observed time.
 2. Run `npm ci` and the complete upstream test suite. Build native modules
    rather than using `--ignore-scripts`.
-3. Apply the reviewed exact `js-yaml@5.3.0` lockfile update recorded in the
-   source-pin record, then confirm `npm audit --omit=dev` reports zero high or
-   critical findings. Do not use an unreviewed blanket audit fix.
+3. Confirm the integrated package and lock hashes match the source-pin record,
+   then confirm `npm audit --omit=dev --audit-level=high` reports no
+   vulnerability. Do not use an unreviewed blanket audit fix.
 4. Bind the proxy and dashboard to the narrowest approved interface. Use
    authenticated transport and network policy for any non-loopback hop.
 5. Configure the Qwen backend to chiap08:11439 without putting a private
@@ -87,10 +88,10 @@ timeout --signal=TERM --kill-after=2s 20s node src/index.mjs
 ```
 
 The expected result is public health `200` and synthetic Chat Completions
-`403` before body parsing or upstream dispatch. Hash and inspect the sanitized
-response and audit line, then delete only the temporary fixture and output.
-This proves deterministic denial only. It does not prove an allow, canonical
-policy composition, or a qualified live path.
+`403` before upstream dispatch. Hash and inspect the sanitized response and
+audit line, then delete only the temporary fixture and output. This proves
+deterministic denial only. It does not prove an allow, canonical policy
+composition, or a qualified live path.
 
 ## Activation and rollback
 
@@ -104,5 +105,4 @@ Proposal contract. Preserve all transition and audit evidence.
 ## Evidence
 
 Link install, audit, service, capacity, live-path, parity, and rollback records
-to card `72df1b66`. Link the parent hermetic qualification record to
-`bbf206c3`.
+to card `60cb0c9a`. Retain links to parent cards `72df1b66` and `bbf206c3`.

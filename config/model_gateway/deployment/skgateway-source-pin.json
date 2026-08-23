@@ -21,6 +21,14 @@
     "qualified_audit": "npm audit --omit=dev: 0 info, 0 low, 0 moderate, 0 high, 0 critical",
     "qualified_test": "npm test: 1325 passed, 0 failed"
   },
+  "integrated_qualification_source": {
+    "commit": "3cf16fe6ca1a6e5ec92e5f090fc798dfd6404596",
+    "package_sha256": "152544873a5f0405a5665dabef53f83f5c09b998282d908f265e8e809cde1fbc",
+    "lockfile_sha256": "60374ebcde47a0af9561d1f02f20b7d37022bc660f7fd85cbd828767d297a647",
+    "dependency_audit": "npm audit --omit=dev --audit-level=high: 0 vulnerabilities",
+    "full_test": "SK_STANDALONE=1 npm test: 1393 passed, 0 failed",
+    "qualification_card": "60cb0c9a"
+  },
   "records_to_capture_on_install": [
     "repository URL",
     "pinned commit",

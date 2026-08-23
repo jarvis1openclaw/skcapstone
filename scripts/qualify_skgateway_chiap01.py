@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Fail-closed preflight for the SKL-S3-10A chiap01 gateway path.
+"""Fail-closed preflight for the SKL-S3-10C chiap01 gateway path.
 
 The preflight reads source and public deployment metadata only. It never reads
 environment values, service credentials, provider keys, capability tokens, or
@@ -29,9 +29,19 @@ DEFAULT_DEPLOYMENT = (
     / "skgateway-chiap01-qualification.json"
 )
 EXPECTED_SCHEMA = "sklegal-skgateway-chiap01-qualification/v1"
-EXPECTED_CARD = "72df1b66"
+EXPECTED_CARD = "60cb0c9a"
 EXPECTED_SERVICE_IDENTITY = "capauth:sklegal-model-gateway@chiap01.skworld"
 EXPECTED_CAPABILITY = "skgateway.infer"
+EXPECTED_COMPOSITION_REVISION = (
+    "sklegal-skgateway-authz-production-composition/v1"
+)
+DEFAULT_MATRIX = (
+    ROOT
+    / "config"
+    / "model_gateway"
+    / "deployment"
+    / "skgateway-chiap01-synthetic-matrix.json"
+)
 EXPECTED_CONTROLS = (
     "capauth_identity",
     "capauth_capability",
@@ -61,9 +71,33 @@ EXPECTED_CONTEXT_FIELDS = (
 )
 SOURCE_FILES = (
     "src/index.mjs",
+    "src/config.mjs",
     "src/policy/authz_decide.mjs",
     "src/policy/authz_gate.mjs",
     "src/policy/authz_routes.mjs",
+    "src/policy/sklegal_authz_decide.mjs",
+    "src/proxy/router.mjs",
+)
+COMPOSITION_FILES = (
+    "services/api/src/sklegal_api/skgateway_authz.py",
+    "config/model_gateway/deployment/skgateway-authz-adapter.json",
+)
+REQUIRED_SCENARIOS = frozenset(
+    {
+        "canonical_allow",
+        "canonical_deny",
+        "pdp_unavailable",
+        "audit_unavailable",
+        "malformed_request",
+        "oversized_request",
+        "exact_scope_mismatch",
+        "saturation_ninth_request",
+        "restart_recovery",
+        "sanitizer_leakage",
+        "audit_attribution",
+        "direct_qwen_parity",
+        "rollback_direct_qwen",
+    }
 )
 
 
@@ -104,14 +138,16 @@ def load_deployment(path: Path) -> dict[str, Any]:
     source = value.get("source")
     runtime = value.get("runtime")
     authorization = value.get("authorization")
+    composition = value.get("composition")
     live_path = value.get("live_path")
     rollback = value.get("rollback")
     if not all(
         isinstance(item, dict)
-        for item in (source, runtime, authorization, live_path, rollback)
+        for item in (source, composition, runtime, authorization, live_path, rollback)
     ):
         raise QualificationError("deployment contract section is missing")
     assert isinstance(source, dict)
+    assert isinstance(composition, dict)
     assert isinstance(runtime, dict)
     assert isinstance(authorization, dict)
     assert isinstance(live_path, dict)
@@ -131,6 +167,22 @@ def load_deployment(path: Path) -> dict[str, Any]:
         raise QualificationError("repository must use its environment reference")
     if source.get("install_path_reference") != "SKLEGAL_SKGATEWAY_INSTALL_PATH":
         raise QualificationError("install path must use its environment reference")
+
+    if composition != {
+        "sklegal_commit": "c653cae62cb0dd4c51022836e231bac1b36733fa",
+        "revision": EXPECTED_COMPOSITION_REVISION,
+        "source_sha256": (
+            "98b09722eca21e1bb0592cc3daca8aa618eb39af5b687994c16867087713e16f"
+        ),
+        "deployment_sha256": (
+            "7f3a8b2a4b65026d765b8c4601e9b925520c251fc90be7af51c5b7e686f1a42e"
+        ),
+        "endpoint_path": "/v1/authz/decide",
+        "bind_host": "127.0.0.1",
+        "transport": "authenticated-local-http",
+        "profile_enabled": False,
+    }:
+        raise QualificationError("SKLegal composition contract is not exact")
 
     if runtime != {
         "host": "chiap01",
@@ -204,19 +256,18 @@ def inspect_source(source_dir: Path, deployment: dict[str, Any]) -> dict[str, An
         for line in _git(source_dir, "status", "--short").splitlines()
         if line.strip()
     )
-    permitted_status = {
-        "M package-lock.json",
-        "M package.json",
-        "?? package-lock.json.pre-jsyaml53-20260822T205623Z",
-        "?? package.json.pre-jsyaml53-20260822T205623Z",
-    }
-    unexpected_status = sorted(set(status_lines) - permitted_status)
+    unexpected_status = sorted(set(status_lines))
 
     decide = source_text["src/policy/authz_decide.mjs"]
     gate = source_text["src/policy/authz_gate.mjs"]
     routes = source_text["src/policy/authz_routes.mjs"]
     index = source_text["src/index.mjs"]
-    combined_authz = "\n".join((decide, gate, routes, index))
+    config = source_text["src/config.mjs"]
+    sklegal_decide = source_text["src/policy/sklegal_authz_decide.mjs"]
+    router = source_text["src/proxy/router.mjs"]
+    combined_authz = "\n".join(
+        (decide, gate, routes, sklegal_decide, index, config, router)
+    )
     normalized = combined_authz.lower()
 
     service_header = "x-sklegal-service-authorization" in normalized
@@ -242,6 +293,12 @@ def inspect_source(source_dir: Path, deployment: dict[str, Any]) -> dict[str, An
         )
     )
     allow_cache_disabled_by_contract = deployment["runtime"]["allow_cache"] is False
+    governed_allow_cache_disabled = "cacheEnabled: false" in sklegal_decide
+    internal_bypass_disabled = (
+        "if (sklegalQualification)" in gate
+        and "qualification routes returned above always consult the strict PDP client"
+        in gate
+    )
     dashboard_disable_honored = (
         "config.dashboard?.enabled !== false" in index
         or "config.dashboard?.enabled === true" in index
@@ -249,6 +306,15 @@ def inspect_source(source_dir: Path, deployment: dict[str, Any]) -> dict[str, An
     metrics_disable_honored = (
         "config.metrics?.enabled !== false" in index
         or "config.metrics?.enabled === true" in index
+    )
+    discovery_disable_honored = (
+        "getConfig().discovery?.enabled === false" in index
+        and "config.discovery?.enabled !== false" in index
+        and "Model discovery is disabled" in index
+    )
+    credential_headers_stripped = (
+        "CLIENT_CREDENTIAL_HEADERS" in router
+        and "delete forwardHeaders[h]" in router
     )
 
     compatibility = {
@@ -261,8 +327,12 @@ def inspect_source(source_dir: Path, deployment: dict[str, Any]) -> dict[str, An
         "strict_internal_switch": strict_internal_switch,
         "sanitized_response_shape": response_is_sanitized,
         "allow_cache_disabled_by_contract": allow_cache_disabled_by_contract,
+        "governed_allow_cache_disabled": governed_allow_cache_disabled,
+        "internal_bypass_disabled": internal_bypass_disabled,
         "dashboard_disable_honored": dashboard_disable_honored,
         "metrics_disable_honored": metrics_disable_honored,
+        "discovery_disable_honored": discovery_disable_honored,
+        "credential_headers_stripped": credential_headers_stripped,
     }
     checks = {
         "commit_matches": commit == source_contract["commit"],
@@ -306,6 +376,84 @@ def inspect_source(source_dir: Path, deployment: dict[str, Any]) -> dict[str, An
     }
 
 
+def inspect_composition(
+    repository_root: Path, deployment: dict[str, Any]
+) -> dict[str, Any]:
+    """Verify the exact SKLegal endpoint composition without runtime secrets."""
+
+    composition = deployment["composition"]
+    hashes: dict[str, str] = {}
+    texts: dict[str, str] = {}
+    for relative in COMPOSITION_FILES:
+        payload = _read_regular(repository_root / relative, maximum=4 * 1024 * 1024)
+        hashes[relative] = _sha256(payload)
+        try:
+            texts[relative] = payload.decode("ascii")
+        except UnicodeDecodeError as exc:
+            raise QualificationError(
+                f"composition file is not ASCII: {relative}"
+            ) from exc
+
+    source_text = texts[COMPOSITION_FILES[0]]
+    deployment_text = texts[COMPOSITION_FILES[1]]
+    checks = {
+        "source_hash_matches": hashes[COMPOSITION_FILES[0]]
+        == composition["source_sha256"],
+        "deployment_hash_matches": hashes[COMPOSITION_FILES[1]]
+        == composition["deployment_sha256"],
+        "revision_matches": EXPECTED_COMPOSITION_REVISION in source_text,
+        "endpoint_path_matches": composition["endpoint_path"] in source_text,
+        "service_identity_matches": EXPECTED_SERVICE_IDENTITY in deployment_text,
+        "loopback_binding_matches": '"bind": "loopback-only"' in deployment_text,
+        "profile_disabled": '"enabled": false' in deployment_text,
+        "allow_cache_disabled": '"allow_cache": false' in deployment_text,
+    }
+    return {
+        "revision": composition["revision"],
+        "sklegal_commit": composition["sklegal_commit"],
+        "endpoint_binding": (
+            f'{composition["bind_host"]}:{composition["endpoint_path"]}'
+        ),
+        "transport": composition["transport"],
+        "service_identity": EXPECTED_SERVICE_IDENTITY,
+        "artifact_hashes": hashes,
+        "checks": checks,
+        "result": "PASS" if all(checks.values()) else "FAIL_CLOSED",
+    }
+
+
+def load_synthetic_matrix(path: Path) -> dict[str, Any]:
+    """Load and validate non-activating public synthetic evidence."""
+
+    raw = _read_regular(path, maximum=256 * 1024)
+    if any(byte >= 128 for byte in raw):
+        raise QualificationError("synthetic matrix must be ASCII")
+    try:
+        value = json.loads(raw)
+    except (UnicodeDecodeError, json.JSONDecodeError) as exc:
+        raise QualificationError("synthetic matrix is malformed") from exc
+    if not isinstance(value, dict):
+        raise QualificationError("synthetic matrix must be an object")
+    if (
+        value.get("schema")
+        != "sklegal-skgateway-chiap01-synthetic-matrix/v1"
+        or value.get("card") != EXPECTED_CARD
+        or value.get("fixture_only") is not True
+        or value.get("activation_permitted") is not False
+        or value.get("protected_traffic") is not False
+    ):
+        raise QualificationError("synthetic matrix identity is not fail closed")
+    scenarios = value.get("scenarios")
+    if not isinstance(scenarios, list):
+        raise QualificationError("synthetic scenarios are missing")
+    scenario_ids = {
+        item.get("id") for item in scenarios if isinstance(item, dict)
+    }
+    if scenario_ids != REQUIRED_SCENARIOS or len(scenarios) != len(REQUIRED_SCENARIOS):
+        raise QualificationError("synthetic scenario set is not exact")
+    return value
+
+
 def write_report(path: Path, payload: dict[str, Any]) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     temporary = path.with_suffix(path.suffix + ".tmp")
@@ -320,6 +468,8 @@ def parse_args(argv: list[str]) -> argparse.Namespace:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--deployment", type=Path, default=DEFAULT_DEPLOYMENT)
     parser.add_argument("--source-dir", type=Path, required=True)
+    parser.add_argument("--repository-root", type=Path, default=ROOT)
+    parser.add_argument("--matrix", type=Path, default=DEFAULT_MATRIX)
     parser.add_argument("--report", type=Path)
     parser.add_argument(
         "--require-pass",
@@ -334,6 +484,17 @@ def main(argv: list[str] | None = None) -> int:
     try:
         deployment = load_deployment(args.deployment)
         report = inspect_source(args.source_dir, deployment)
+        report["composition"] = inspect_composition(
+            args.repository_root, deployment
+        )
+        matrix = load_synthetic_matrix(args.matrix)
+        report["synthetic_matrix"] = {
+            "sha256": _sha256(args.matrix.read_bytes()),
+            "scenario_count": len(matrix["scenarios"]),
+            "fixture_only": True,
+        }
+        if report["composition"]["result"] != "PASS":
+            report["result"] = "FAIL_CLOSED"
     except QualificationError as exc:
         print(f"FAIL_CLOSED: {exc}", file=sys.stderr)
         return 2

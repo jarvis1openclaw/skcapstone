@@ -1,0 +1,13 @@
+{
+  "schema_id": "sklegal.synthetic.proposal/v1",
+  "schema_sha256": "1111111111111111111111111111111111111111111111111111111111111111",
+  "prompt_sha256": "2222222222222222222222222222222222222222222222222222222222222222",
+  "route_id": "qwen.corpus-summary.synthetic.v1",
+  "requested_model": "synthetic-qwen-alias",
+  "served_model": "synthetic-qwen-served-model",
+  "payload": {
+    "summary": "Synthetic public qualification sentinel.",
+    "source_spans": [],
+    "uncertainty": "fixture-only"
+  }
+}
