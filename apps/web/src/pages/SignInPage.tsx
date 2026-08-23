@@ -4,9 +4,9 @@ import { useNavigate } from "@tanstack/react-router";
 import { useSession } from "../auth/SessionProvider";
 import { PUBLIC_SYNTHETIC_CREDENTIAL_REFERENCE } from "../auth/sessionClient";
 
-const PUBLIC_SYNTHETIC_TENANT_ID = "10000000-0000-4000-8000-000000000001";
+const PUBLIC_SYNTHETIC_TENANT_ID = "11111111-1111-4111-8111-111111111111";
 export const PUBLIC_SYNTHETIC_MATTER_ID =
-  "20000000-0000-4000-8000-000000000101";
+  "44444444-4444-4444-8444-444444444441";
 export const PUBLIC_SYNTHETIC_MATTER_PATH = `/matters/${PUBLIC_SYNTHETIC_MATTER_ID}`;
 
 export function publicSyntheticPreviewEnabled(value: unknown): boolean {
