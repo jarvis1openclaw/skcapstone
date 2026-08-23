@@ -15,6 +15,13 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ### Added
 
+- Added priority-based context-window budgeting to
+  `SystemPromptBuilder._build_prompt`: when the assembled system prompt would
+  exceed the token budget, soul, identity, warmth, behavioral rules, and the
+  most-recent peer history are preserved verbatim while the trimmable middle
+  (gathered memories/journal context and recent snapshots) is shortened or
+  dropped lowest-priority-first, replacing the previous blind tail-truncation
+  that could cut off protected sections first.
 - Added `validate_seed_for_store()` to `skcapstone cli skseed`, wiring a
   raising guard (schema validation plus store-level size/type limits on
   summary length, key-claim count, and tag type) into the `ingest_document`
