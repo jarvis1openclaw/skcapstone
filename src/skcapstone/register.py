@@ -13,10 +13,13 @@ Usage:
 from __future__ import annotations
 
 import importlib.resources
+import os
 from pathlib import Path
 from typing import Optional
 
 from skmemory.register import detect_environments, register_mcp, register_package
+
+from .skill_roots import link_installed_skills
 
 # ── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -348,6 +351,12 @@ def register_all(
                 "action": "updated" if actions else "exists",
                 "actions": actions,
             }
+
+    results["skskills_roots"] = link_installed_skills(
+        environments,
+        dry_run=dry_run,
+        agent=os.environ.get("SKAGENT") or os.environ.get("SKCAPSTONE_AGENT"),
+    )
 
     for pkg in packages:
         name = pkg["name"]

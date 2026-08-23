@@ -19,6 +19,8 @@ import stat
 from pathlib import Path
 from typing import Callable
 
+from ..key_io import read_armored_public_key
+
 MODES = frozenset({"off", "permissive", "enforce"})
 
 
@@ -267,11 +269,15 @@ def load_roster() -> list[str]:
     keys: list[str] = []
     own = home / "identity" / "public.asc"
     if own.exists():
-        keys.append(own.read_text(encoding="utf-8"))
+        own_armored = read_armored_public_key(own)
+        if own_armored:
+            keys.append(own_armored)
     trust_dir = home / "fleet-trust"
     if trust_dir.exists():
         for path in sorted(trust_dir.glob("*.asc")):
-            keys.append(path.read_text(encoding="utf-8"))
+            armored = read_armored_public_key(path)
+            if armored:
+                keys.append(armored)
     return keys
 
 

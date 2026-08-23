@@ -603,6 +603,7 @@ See [Architecture](docs/ARCHITECTURE.md) | [Security Design](docs/SECURITY_DESIG
 | [Security Design](docs/SECURITY_DESIGN.md) | Four-layer security model |
 | [Token System](docs/TOKEN_SYSTEM.md) | PGP-signed capability tokens |
 | [Backup](docs/BACKUP.md) | Portable `backup` CLI + recommended GFS cron rotation |
+| [ChatGPT/Codex SK client deployment](docs/runbooks/chatgpt-codex-sk-client.md) | Linux and Windows/WSL2 desktop setup, MCPs, skills, soul, SKWhisper, acceptance, and rollback |
 
 ## Contributing
 

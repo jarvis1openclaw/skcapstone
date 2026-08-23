@@ -7,6 +7,22 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased]
 
+### Added
+
+- Added `skcapstone atlas eyes` (`operator_seat/eyes.py` + `cli/atlas_cmd.py`):
+  a read-only, freeze-proof estate assessor. In one pass it observes every
+  registered Operatorapp through TWO lanes - the declared `<spec.cli> observe`
+  contract out-of-process (hard per-app timeout) and the in-process
+  `loop.ADAPTERS` code an unfrozen ATLAS would run - and renders per-app
+  verdicts (OK / FIRING / CONFLICT / UNKNOWN / BLIND). Unknown is a first-class
+  result distinct from unreachable (`no-cli` / `cli-error` / `timeout` /
+  `unparseable` / `no-adapter`), declared-but-unreported conditions surface as
+  Unknown (absent), and lane disagreements are flagged per condition. The pass
+  correlates open ITIL incidents/problems to apps, surfaces the pending-change
+  backlog, unmigrated legacy flat ITIL files, unregistered shell modules, and
+  ends with a plain "blind even if unfrozen" list. It never calls `act`, never
+  touches the freeze, and writes nothing.
+
 ### Documentation
 
 - Recorded the GitHub-first, two-node CMDB package deployment and verification
@@ -15,6 +31,46 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ### Added
 
+- Added priority-based context-window budgeting to
+  `SystemPromptBuilder._build_prompt`: when the assembled system prompt would
+  exceed the token budget, soul, identity, warmth, behavioral rules, and the
+  most-recent peer history are preserved verbatim while the trimmable middle
+  (gathered memories/journal context and recent snapshots) is shortened or
+  dropped lowest-priority-first, replacing the previous blind tail-truncation
+  that could cut off protected sections first.
+- Added `validate_seed_for_store()` to `skcapstone cli skseed`, wiring a
+  raising guard (schema validation plus store-level size/type limits on
+  summary length, key-claim count, and tag type) into the `ingest_document`
+  store flow before a seed reaches `MemoryStore.snapshot`, so malformed or
+  oversized seeds are rejected with a clear error instead of being silently
+  stored.
+- Added a bounded Syncthing guard for scheduled fleet reconciliation. It can
+  verify service state and CMDB coverage, attempt an approved service restart,
+  and retain checksummed evidence without exposing API credentials.
+
+- Added an opt-in, loopback-only Windows browser proxy through each
+  workstation's canonical WSL Tailscale identity. The installer provides
+  shared enable and disable desktop controls, preserves per-profile browser
+  settings for rollback, and denies resolved destinations outside the
+  Tailscale overlay ranges.
+- Added read-only `skfleet node endpoint-audit` reconciliation between
+  canonical fleet node identities and live or captured Tailscale status. It
+  flags duplicate, stale, mismatched, offline, and ambiguous registrations,
+  names exact retirement candidates, and only marks routing safe when one
+  active peer matches the declared endpoint or every active Windows and
+  Linux/WSL runtime has a unique role-scoped endpoint with matching OS
+  evidence.
+- Added fail-closed per-node Tailscale policy checks for allowed peer operating
+  systems and maximum active peer count, including WSL-only workstation
+  enforcement.
+
+- Added a single-fire CMDB reconciliation job pinned to `chiap04` and
+  `jarvis`. The bundled scheduler tick remains inert until reviewed JSON
+  configuration enables it with exact targets and `skvault://` references.
+  Enabled runs use bounded collection, configurable retries and stale grace,
+  safe positive reconciliation, retained checksummed summaries, and
+  deduplicated CI-linked ITIL escalation.
+
 - Added explicit `skcapstone cmdb plan`, `cmdb apply`, and `cmdb status`
   operations. Apply validates the evidence batch before writes and delays
   retirement lifecycle updates until validation succeeds; the existing
@@ -22,6 +78,25 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ### Fixed
 
+- Fixed `cmdb reconcile --local`/`--host` silently dropping `--record-run`
+  and `--apply` evidence: `write_run_artifact()` was only ever wired into
+  the `--network` branch, so the 3-hourly `skcapstone-cmdb-reconcile.service`
+  timer (`--local --apply`) was mutating the live CMDB with zero auditable
+  artifact. The local/host branch now builds the same checksummed run
+  envelope (scan id, timing, scope, reconcile report) as the network branch
+  and persists it via the existing `orch.write_run_artifact()`, with
+  `completeness.complete` only true for an actual `--apply` so a
+  `--record-run`-only dry run cannot be mistaken for a fresh apply by
+  `cmdb status`'s freshness SLO.
+- Updated the release gate and runtime dependency to require the Syncthing
+  discovery contract published by skcoord 0.1.32.
+
+- Reject blank legacy `MemoryEntry.memory_id` values at load, save, index,
+  verification, and both promotion boundaries. This prevents the SKCapstone
+  verifier/promoter from recreating unsafe `.json` files after SKMemory has
+  quarantined them. Canonical unified SKMemory records (`id`, not
+  `memory_id`) are now routed away from the legacy loader at debug level, so a
+  promotion sweep neither mutates them nor emits one warning per valid record.
 - Restored the enforced Black/Ruff gate after the new coordination-amendment
   and qualification VCS-audit modules landed with formatting drift.
 - Updated the legacy CMDB seed tests to the schema-driven discovery contract
@@ -62,6 +137,9 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   Atlas can preserve the controller-owned cross-agent lineage back to an immutable card,
   signed contract, source commit, attempt, and evidence rather than treating a display
   name as identity or authority.
+- Added the ChatGPT/Codex SK client deployment runbook for Linux and Windows
+  with WSL2, including MCP registration, current Codex skill paths, global
+  Jarvis/soul bootstrap, SKWhisper, acceptance, safe restart, and rollback.
 - Added `skcapstone dashboard --host ADDRESS` and propagated the selected bind
   address to SKDashboard. The default remains `127.0.0.1`; the SOP documents
   deliberate tailnet or all-interface exposure.

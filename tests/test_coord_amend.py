@@ -9,11 +9,11 @@ and re-applying reverses the change.
 from __future__ import annotations
 
 import json
-import tomllib
 from pathlib import Path
 
 import click
 import pytest
+import tomllib
 from click.testing import CliRunner
 from packaging.requirements import Requirement
 
@@ -67,13 +67,13 @@ def _assert_authoritative_criteria(tmp_path, task_id: str, expected: list[str]) 
     assert view.task.acceptance_criteria == expected
 
 
-def test_skcoord_dependency_requires_authoritative_criteria_fold():
+def test_skcoord_dependency_requires_scheduled_reconcile_policy():
     project = tomllib.loads((PROJECT_ROOT / "pyproject.toml").read_text(encoding="utf-8"))
     requirements = [Requirement(value) for value in project["project"]["dependencies"]]
     skcoord = next(requirement for requirement in requirements if requirement.name == "skcoord")
 
-    assert "0.1.17" not in skcoord.specifier
-    assert "0.1.18" in skcoord.specifier
+    assert "0.1.27" not in skcoord.specifier
+    assert "0.1.32" in skcoord.specifier
 
 
 def test_current_acceptance_criteria_delegates_to_card_store_fold(tmp_path, monkeypatch):

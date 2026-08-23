@@ -36,3 +36,12 @@ System services should use instance templates such as `skcapstone@.service`
 and bind all three agent variables to `%i`. Fleet nodes choose their own
 instance: for example, Casey's Chi node can run `skcapstone@jarvis` without
 changing shared source or synced configuration.
+
+## Desktop deployment
+
+See
+[`runbooks/chatgpt-codex-sk-client.md`](runbooks/chatgpt-codex-sk-client.md)
+for the Linux and Windows/WSL2 ChatGPT desktop procedure. That runbook records
+the accepted four-entry desktop compatibility profile separately from the
+two-server default above; it does not make the compatibility profile the
+canonical MCP ownership model.

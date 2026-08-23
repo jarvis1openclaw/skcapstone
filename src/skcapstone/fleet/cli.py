@@ -6,7 +6,9 @@ Available standalone as `skfleet` and as `skcapstone fleet ...`.
 from __future__ import annotations
 
 import json as jsonlib
+import subprocess
 from datetime import datetime, timezone
+from pathlib import Path
 
 import click
 
@@ -222,9 +224,7 @@ def services_cmd() -> None:
         return
     for r in rows:
         flags = "".join([" PAUSED" if r.paused else "", " STALE" if r.stale else ""])
-        click.echo(
-            f"{r.name}\t-> {r.node or 'unplaced'}\t" f"state={r.state}\tready={r.ready}{flags}"
-        )
+        click.echo(f"{r.name}\t-> {r.node or 'unplaced'}\tstate={r.state}\tready={r.ready}{flags}")
 
 
 def _nodes_by_role(paths_) -> dict[str, list[str]]:
@@ -722,6 +722,40 @@ def node_stignore_cmd(as_json: bool, strict: bool) -> None:
                 click.echo("  (clean)")
 
     if strict and any(p["severity"] == "error" for p in reports):
+        raise SystemExit(1)
+
+
+@node_group.command("endpoint-audit")
+@click.option(
+    "--status-file",
+    type=click.Path(exists=True, dir_okay=False, path_type=Path),
+    help="Read a captured tailscale status JSON file instead of the local CLI.",
+)
+@click.option("--json", "as_json", is_flag=True, help="Machine-readable output.")
+@click.option("--strict", is_flag=True, help="Exit 1 when endpoint routing is unsafe.")
+def node_endpoint_audit_cmd(status_file, as_json: bool, strict: bool) -> None:
+    """Reconcile fleet node endpoints with Tailscale peers. REPORT ONLY."""
+    from . import endpoint_audit
+
+    try:
+        report = endpoint_audit.audit(default_paths(), endpoint_audit.read_status(status_file))
+    except (OSError, ValueError, subprocess.SubprocessError) as exc:
+        raise click.ClickException(str(exc)) from exc
+    if as_json:
+        click.echo(jsonlib.dumps(report, indent=2, sort_keys=True))
+    elif not report["reports"]:
+        click.echo("no Tailscale peers matched fleet node identities")
+    else:
+        for node in report["reports"]:
+            click.echo(
+                f"{node['node']}\t{node['severity'].upper()}\t"
+                f"safe_to_route={str(node['safe_to_route']).lower()}"
+            )
+            for finding in node["findings"]:
+                click.echo(f"  {finding['severity']:5} {finding['kind']}")
+            for peer_id in node["retirement_candidates"]:
+                click.echo(f"  plan  retirement_candidate        {peer_id}")
+    if strict and report["summary"]["unsafe"]:
         raise SystemExit(1)
 
 
