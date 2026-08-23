@@ -653,3 +653,15 @@ Every task begins by loading SK context, reading `AGENTS.md`, checking the SKCap
 - **Objective:** Review the immutable reconciled base and collision ownership map without repair.
 - **Tests and acceptance:** Recompute lineage, conflicts, handoffs, feature ownership, all regression gates, rollback, and exclusions. PASS only if seven feature lanes can edit without central-file collision.
 - **Prohibited:** Repair, main mutation, merge, push, cleanup, deployment, protected content, provider, credential, or external action.
+
+### SKL-MVP-BASE-01F4: Integrate independently reviewed BASE gate repairs
+
+- **Card:** `c9162ae6`
+- **Agent:** `codex-skl-mvp-base-integration`
+- **Base:** Immutable BASE candidate `bfd1a973510d327c26f05096350a38a3d0cedaf1`, tree `f75fde4cdcb747278a122f473f5717af826aed74`.
+- **Dependencies:** Independently reviewed F1, F2, and F3 candidates under cards `e7fdf28d`, `0040b661`, and `ebf37535`.
+- **Objective:** Integrate only reviewed repair candidates `b734feeb946a3d139fbdfbe10ec315838a89fd8a`, `abf01e6f7ef4a8b2d195327ff7352dacb1478a14`, and `7f8abf808f680d720a58a143527a2783d3dc3ae5` onto the immutable BASE. Preserve all BASE allowlist exclusions, migration reservations, product behavior, security controls, and provider boundaries.
+- **Implementation:** Verify every candidate commit, tree, parent, review PASS, evidence hash, changed-file ownership, and rollback before integration. Apply only the reviewed bytes in deterministic F1, F2, F3 order. Resolve only genuine merge conflicts with an attributable conflict ledger. Do not import producer evidence commits, shared-main bytes, or unrelated changes.
+- **Tests and acceptance:** Full Python regression, focused API, policy, audit and persistence suites, web test, typecheck, lint, format and build gates, repository Ruff, intended mypy gates, official secret scan with planted negative controls, migrations, dependency and lock integrity, real-browser public-synthetic qualification, fixture teardown, hashes, diff, ASCII dash, rollback, clean worktree, and owner-preview preservation. Seal an immutable replacement candidate and evidence for independent review `dd4bb79d`.
+- **Rollback:** Reverse only the exact integrated candidate to `bfd1a973510d327c26f05096350a38a3d0cedaf1`. Test fixtures must be disposable and fully removed by their owners. Shared main and owner preview require no rollback because they remain untouched.
+- **Prohibited:** No shared-main edit, deployment, non-test database mutation, credential, protected content, provider traffic, HammerTime `Inbox/`, external action, merge, push, broad cleanup, or mutation of another agent's runtime or fixture.
