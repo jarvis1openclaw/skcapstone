@@ -1,0 +1,115 @@
+{
+  "manifest_id": "sklegal-mvp-handoff-02-include-exclude",
+  "version": 1,
+  "card_id": "0a5e4e0c",
+  "base_integration_card": "91988c9e",
+  "review_card": "7c2c9e20",
+  "policy": "Only an attributable immutable Git commit and tree may authorize source inclusion. Observed working-tree hashes and evidence-only receipts never provide Git custody.",
+  "immutable_allowlist": [
+    {
+      "item": "reviewed_v2_candidate",
+      "decision": "include_after_required_reviews",
+      "commit": "8177c88c5fd371a487e2c206c53b24e3619c1855",
+      "tree": "a23e08dc6edfde8397298b3d1ee0b354434c3bcd",
+      "condition": "Final review ac4c56f7 remains PASS and BASE-01 independently verifies the exact lineage."
+    },
+    {
+      "item": "v2_contract_freeze",
+      "decision": "include_after_independent_review",
+      "commit": "d03305180c050f90243a63dee866cf657612f033",
+      "tree": "3d1ad95d166ff6c8721bb8d2da947fd53e845182",
+      "evidence_commit": "447913d92387ab4f66e0495f24ec6ed84497ffe5",
+      "condition": "Independent review b417bc62 returns PASS against these exact objects."
+    },
+    {
+      "item": "handoff_02_owned_tdd_and_evidence",
+      "decision": "include_by_owned_patch_after_review",
+      "commit": null,
+      "tree": null,
+      "condition": "Populate from the final HANDOFF-02 evidence commit and tree, then require review 7c2c9e20 PASS. Apply only the HANDOFF-02 and HANDOFF-02R owned TDD sections plus evidence, never a whole-file TDD winner."
+    }
+  ],
+  "fail_closed_exclusions": [
+    {
+      "item": "shared_main_tdd_composite",
+      "path": "docs/tasks/SUBAGENT-TASK-TTDS.md",
+      "observed_sha256": "abe5bdd3d55d613a411cfb81450ea02f7ac87108b931ae70ee08f7c0e1050a64",
+      "owner_receipt": "codex-root owns only the ARCH-01 through CLEAN-01 appended range, SHA-256 cf86ce5bc64af7a180653afa3c73a805012abacc660ee5459407f94237979b03, and reports no immutable commit or tree.",
+      "decision": "exclude_entire_shared_working_file",
+      "future_resolution": "Reapply exact attributable sections from separately sealed commits. Do not select a whole-file winner."
+    },
+    {
+      "item": "shared_main_migration_manifest",
+      "path": "migrations/manifest.json",
+      "observed_sha256": "347ad82aee1c414fd99da33ba216980050e9d747af11c3ab531eaae77063af09",
+      "owner_receipt": "No reliable single owner and no immutable aggregate commit or tree. codex-root requires exclusion.",
+      "decision": "exclude",
+      "future_resolution": "Integration owner regenerates the manifest from separately reviewed immutable migration files."
+    },
+    {
+      "item": "shared_main_persistence_security_test",
+      "path": "tests/integration/persistence_contract_security_boundary.py",
+      "observed_sha256": "a8cc08ccfe5aa987dce1f956f429d7ff47b29442602dc4e12c5d79f5f3c814b6",
+      "owner_receipt": "No reliable single owner and no immutable aggregate commit or tree. codex-root requires exclusion.",
+      "decision": "exclude",
+      "future_resolution": "Owning feature lane reissues scoped test changes in its isolated immutable candidate."
+    },
+    {
+      "item": "card_51ed3820_source_aggregate",
+      "card_id": "51ed3820",
+      "evidence_sha256": "8f8da23c5fce5d8e9491cc93a99afa70d7f3e2a6472cffa052a7afef59ef3cef",
+      "commit": null,
+      "tree": null,
+      "decision": "exclude_source_bytes",
+      "future_resolution": "A new owner must reissue the forward delta at reserved migration 0020 from a clean base and seal a commit, tree, tests, and rollback. Historical 0008 and 0010 bytes remain governed by their applied digests."
+    },
+    {
+      "item": "card_78c95e1f_source_aggregate",
+      "card_id": "78c95e1f",
+      "evidence_sha256": "d3b47ce9d9c72f2008dad5e0169a7af3e2675fa54d9490f12bfb13b6ffa01647",
+      "commit": null,
+      "tree": null,
+      "decision": "exclude_source_bytes",
+      "future_resolution": "A new owner must reissue qualification scope at reserved migration 0021 after 0020 and seal a commit, tree, tests, and rollback."
+    },
+    {
+      "item": "card_c4dfd1df_source_aggregate",
+      "card_id": "c4dfd1df",
+      "evidence_sha256": "05b693819a05ce801d8c6308dbe9a31574912ce3aa17a32a52602dd44f3a61b9",
+      "commit": null,
+      "tree": null,
+      "decision": "exclude_source_bytes",
+      "future_resolution": "Runtime files may enter a later base only through a clean attributable immutable owner candidate and independent review."
+    },
+    {
+      "item": "stale_card_e7a3d02e",
+      "card_id": "e7a3d02e",
+      "owner": "kimi-skl-s3-03b",
+      "last_card_update": "2026-08-23T16:45:02.373949+00:00",
+      "last_owner_attributable_update": "2026-08-23T09:10:42.566893+00:00",
+      "commit": null,
+      "tree": null,
+      "decision": "retain_claim_and_exclude",
+      "future_resolution": "Accept only a current owner handoff with exact commit, tree, scope, tests, evidence, and rollback, or a separately authorized append-only supersession. No takeover or cleanup."
+    },
+    {
+      "item": "all_other_shared_main_dirty_bytes",
+      "decision": "preserve_unsealed_exclude",
+      "receipt": "HANDOFF-01 sealed 176 dirty paths. No shared-main byte is authorized for absorption by the current codex-root receipt."
+    }
+  ],
+  "candidate_collision_baseline": {
+    "tdd": {
+      "candidate_blob": "6a018c2d5cec396d0776388e074f429a47f97d5f",
+      "candidate_sha256": "5932379a625b1aee34a4f05426577aec66415aedc9b8004c683c2bd421037e56"
+    },
+    "migration_manifest": {
+      "candidate_blob": "9d421b5cb939a51383fe50309d0c077b88c0dae7",
+      "candidate_sha256": "93666474456b984d0bab5139ceda4209d8f520f206583bcdcda8a23f596dedf9"
+    },
+    "persistence_security_test": {
+      "candidate_blob": "3b4394cbfe1b8a12f5de57472c256e5a86b6f748",
+      "candidate_sha256": "782dc9fa93c72719588f5eceb6da3a9043c8be1d7895c2729931a954496ec4df"
+    }
+  }
+}
