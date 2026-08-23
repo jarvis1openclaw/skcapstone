@@ -4,7 +4,11 @@ from unittest.mock import create_autospec
 from uuid import UUID, uuid4
 
 import pytest
-from sklegal_api.skgateway_authz import CanonicalSkGatewayPolicyEvaluator
+from sklegal_api.skgateway_authz import (
+    CanonicalSkGatewayPolicyEvaluator,
+    SkGatewayAuthorizationDependencyUnavailable,
+    SkGatewayScopeDenied,
+)
 from sklegal_capauth import (
     Audience,
     Capability,
@@ -142,7 +146,6 @@ def test_canonical_evaluator_binds_capauth_grant_to_policy_gateway(
     [
         (PolicyReason.WALL_EXCLUDED, "policy_denied"),
         (PolicyReason.CAPAUTH_REPLAYED, "capability_denied"),
-        (PolicyReason.AUDIT_UNAVAILABLE, "audit_unavailable"),
     ],
 )
 def test_canonical_evaluator_returns_sanitized_denial(
@@ -163,6 +166,29 @@ def test_canonical_evaluator_returns_sanitized_denial(
     assert result.policy_revision == POLICY_REVISION
 
 
+@pytest.mark.parametrize(
+    "policy_reason",
+    [
+        PolicyReason.AUDIT_UNAVAILABLE,
+        PolicyReason.CAPAUTH_CURRENT_STATE_UNAVAILABLE,
+        PolicyReason.POLICY_UNAVAILABLE,
+    ],
+)
+def test_canonical_evaluator_raises_sanitized_dependency_outage(
+    authorized_context,
+    policy_reason: PolicyReason,
+) -> None:  # type: ignore[no-untyped-def]
+    gateway = create_autospec(PolicyGateway, instance=True)
+    gateway.authorize.side_effect = PolicyDenied(
+        _decision(authorized_context, reason=policy_reason)
+    )
+
+    with pytest.raises(SkGatewayAuthorizationDependencyUnavailable):
+        CanonicalSkGatewayPolicyEvaluator(gateway).decide(
+            **_wire_scope(authorized_context)
+        )
+
+
 def test_canonical_evaluator_rejects_scope_mismatch_before_policy(
     authorized_context,
 ) -> None:  # type: ignore[no-untyped-def]
@@ -170,7 +196,7 @@ def test_canonical_evaluator_rejects_scope_mismatch_before_policy(
     wire = _wire_scope(authorized_context)
     wire["resource"] = {**wire["resource"], "matter_id": str(uuid4())}
 
-    with pytest.raises(ValueError, match="matter_id"):
+    with pytest.raises(SkGatewayScopeDenied):
         CanonicalSkGatewayPolicyEvaluator(gateway).decide(**wire)
 
     gateway.authorize.assert_not_called()

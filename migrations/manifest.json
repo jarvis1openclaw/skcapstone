@@ -68,6 +68,10 @@
     {
       "file": "0017_skgateway_authorization_snapshot.sql",
       "sha256": "939baa597e6e913904485d75ab2dee0e43e973ec32edcd8ea804f56f6cb9198f"
+    },
+    {
+      "file": "0018_policy_authorization_use.sql",
+      "sha256": "877ca73f682bbec2f3d0b4f33300ca5c18f5a1a3e0615b55d13ab3cf8da227b5"
     }
   ]
 }

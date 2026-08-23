@@ -10,6 +10,7 @@ from __future__ import annotations
 import hmac
 import json
 from collections.abc import Callable, Mapping
+from dataclasses import dataclass
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Annotated, Literal, Protocol, Self
@@ -17,25 +18,56 @@ from uuid import UUID
 
 from fastapi import APIRouter, Header, HTTPException, Request, status
 from pydantic import BaseModel, ConfigDict, Field, StringConstraints, model_validator
-from sklegal_capauth import Audience, AuthorizedContext
+from sklegal_audit import (
+    AuditBoundary,
+    PostgresAuditRepository,
+    RequestCorrelatedDurableAuditSink,
+)
+from sklegal_capauth import (
+    Audience,
+    AuthorizedContext,
+    Capability,
+    FileTrustedIssuerBackend,
+    ModelCapabilityBoundary,
+    PostgresPrincipalPolicyBackend,
+    PostgresRevocationBackend,
+    Purpose,
+    TrustedIssuerBackend,
+    VersionedTrustedIssuerBackend,
+)
+from sklegal_model_gateway import SkGatewayRoutePolicyVerifier
+from sklegal_model_gateway.errors import ModelGatewayError
 from sklegal_policies import (
+    CapAuthCurrentStateVerifier,
     DataFlowBoundary,
     PolicyAccessRequest,
     PolicyBoundaryRequirement,
     PolicyDenied,
     PolicyGateway,
     PolicyReason,
+    PostgresAuthorizationUseBackend,
+    PostgresPolicyBackend,
 )
 
-from .capauth import ProtectedRouteDependency
+from .capauth import (
+    PrincipalResolver,
+    ProtectedRouteDependency,
+    ScopeResolver,
+    build_postgres_capability_authorizer,
+)
 
-ShortText = Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=256)]
+ShortText = Annotated[
+    str, StringConstraints(strip_whitespace=True, min_length=1, max_length=256)
+]
 DecisionReason = Literal[
     "allow",
     "policy_denied",
     "capability_denied",
     "audit_unavailable",
 ]
+SKGATEWAY_AUTHZ_PRODUCTION_COMPOSITION_REVISION = (
+    "sklegal-skgateway-authz-production-composition/v1"
+)
 _SAFE_RESPONSE_FIELDS = frozenset(
     {
         "allow",
@@ -56,9 +88,7 @@ _REQUIRED_PROHIBITED_FIELDS = frozenset(
         "raw_capability",
     }
 )
-SKGATEWAY_AUTHZ_SNAPSHOT_SQL = (
-    "SELECT sklegal_legal.skgateway_authorization_snapshot(%s, %s, %s::jsonb, %s::jsonb)"
-)
+SKGATEWAY_AUTHZ_SNAPSHOT_SQL = "SELECT sklegal_legal.skgateway_authorization_snapshot(%s, %s, %s::jsonb, %s::jsonb)"
 SqlExecutor = Callable[[str, tuple[object, ...]], object]
 
 
@@ -88,7 +118,9 @@ class SkGatewayAuthzDeployment(BaseModel):
         if not self.service_secret_reference.startswith("vault:"):
             raise ValueError("service secret must be a vault reference")
         if set(self.response_fields) != _SAFE_RESPONSE_FIELDS:
-            raise ValueError("authorization response fields must match the safe contract")
+            raise ValueError(
+                "authorization response fields must match the safe contract"
+            )
         if not _REQUIRED_PROHIBITED_FIELDS.issubset(self.prohibited_fields):
             raise ValueError("authorization prohibited-field set is incomplete")
         return self
@@ -249,24 +281,27 @@ class CanonicalSkGatewayFactsResolver:
             request=request,
         )
         if not isinstance(snapshot, SkGatewayTrustedSnapshot):
-            raise ValueError("trusted state backend returned the wrong type")
+            raise SkGatewayScopeDenied
         if snapshot.service_identity != self._service_identity:
-            raise ValueError("trusted service identity does not match the deployment pin")
+            raise SkGatewayScopeDenied
         facts = snapshot.facts
         if facts.subject != request.subject:
-            raise ValueError("trusted subject does not match the requested selector")
+            raise SkGatewayScopeDenied
         if facts.capability != request.capability:
-            raise ValueError("trusted capability does not match the requested capability")
+            raise SkGatewayScopeDenied
         if facts.resource != request.resource:
-            raise ValueError("trusted resource scope does not match the requested scope")
+            raise SkGatewayScopeDenied
         if facts.context != request.context:
-            raise ValueError("trusted policy context does not match the requested context")
-        self._route_verifier.verify(
-            service_identity=self._service_identity,
-            capability=facts.capability,
-            resource=facts.resource,
-            context=facts.context,
-        )
+            raise SkGatewayScopeDenied
+        try:
+            self._route_verifier.verify(
+                service_identity=self._service_identity,
+                capability=facts.capability,
+                resource=facts.resource,
+                context=facts.context,
+            )
+        except ModelGatewayError:
+            raise SkGatewayScopeDenied from None
         return facts
 
 
@@ -299,7 +334,13 @@ class CanonicalSkGatewayPolicyEvaluator:
             PolicyReason.CAPAUTH_EXPIRED,
             PolicyReason.CAPAUTH_REPLAYED,
             PolicyReason.CAPAUTH_STALE,
+        }
+    )
+    _OUTAGE_REASONS = frozenset(
+        {
+            PolicyReason.AUDIT_UNAVAILABLE,
             PolicyReason.CAPAUTH_CURRENT_STATE_UNAVAILABLE,
+            PolicyReason.POLICY_UNAVAILABLE,
         }
     )
 
@@ -325,24 +366,24 @@ class CanonicalSkGatewayPolicyEvaluator:
             "material_version": str(grant.resource_version),
         }
         if capability != "skgateway.infer":
-            raise ValueError("SKGateway capability is not exact")
+            raise SkGatewayScopeDenied
         if subject != authorized.principal.subject:
-            raise ValueError("SKGateway subject does not match CapAuth")
+            raise SkGatewayScopeDenied
         if grant.audience != Audience.MODEL:
-            raise ValueError("CapAuth grant is not model-scoped")
+            raise SkGatewayScopeDenied
         if grant.matter_id is None or grant.resource_id is None:
-            raise ValueError("CapAuth grant lacks exact material scope")
+            raise SkGatewayScopeDenied
         if grant.resource_version is None or grant.resource_sha256 is None:
-            raise ValueError("CapAuth grant lacks an exact material version")
+            raise SkGatewayScopeDenied
         if grant.model_route is None or grant.workflow_run_id is None:
-            raise ValueError("CapAuth grant lacks model execution scope")
+            raise SkGatewayScopeDenied
         for key, expected in expected_resource.items():
             if resource.get(key) != expected:
-                raise ValueError(f"SKGateway {key} does not match CapAuth")
+                raise SkGatewayScopeDenied
         if not resource.get("route_id"):
-            raise ValueError("SKGateway route_id is required")
+            raise SkGatewayScopeDenied
         if context.get("purpose") != grant.purpose.value:
-            raise ValueError("SKGateway purpose does not match CapAuth")
+            raise SkGatewayScopeDenied
 
     def decide(
         self,
@@ -393,9 +434,9 @@ class CanonicalSkGatewayPolicyEvaluator:
             result = self._gateway.authorize(authorized, requirement, request)
         except PolicyDenied as exc:
             decision = exc.decision
-            if decision.reason == PolicyReason.AUDIT_UNAVAILABLE:
-                reason = "audit_unavailable"
-            elif decision.reason in self._CAPAUTH_REASONS:
+            if decision.reason in self._OUTAGE_REASONS:
+                raise SkGatewayAuthorizationDependencyUnavailable from None
+            if decision.reason in self._CAPAUTH_REASONS:
                 reason = "capability_denied"
             else:
                 reason = "policy_denied"
@@ -428,6 +469,14 @@ class ServiceAuthenticationUnavailable(RuntimeError):
     """The trusted service-credential state cannot produce a current answer."""
 
 
+class SkGatewayScopeDenied(PermissionError):
+    """Trusted scope does not authorize the requested gateway operation."""
+
+
+class SkGatewayAuthorizationDependencyUnavailable(RuntimeError):
+    """A canonical authorization dependency has no authoritative answer."""
+
+
 class SkGatewayServiceAuthenticator(Protocol):
     """Authenticate the SKGateway caller through trusted credential state."""
 
@@ -451,6 +500,246 @@ class ConstantTimeBearerServiceAuthenticator:
         if not hmac.compare_digest(authorization, self._expected):
             raise ServiceAuthenticationDenied
         return self._service_identity
+
+
+class VaultServiceCredentialBackend(Protocol):
+    """Verify a credential through custody without returning secret material."""
+
+    production_ready: bool
+
+    def available(self, *, reference: str, service_identity: str) -> bool: ...
+
+    def verify(
+        self,
+        *,
+        reference: str,
+        service_identity: str,
+        authorization: str,
+    ) -> bool: ...
+
+
+class VaultReferenceServiceAuthenticator:
+    """Authenticate against one approved vault reference and pinned identity."""
+
+    def __init__(
+        self,
+        *,
+        backend: VaultServiceCredentialBackend,
+        secret_reference: str,
+        service_identity: str,
+    ) -> None:
+        if not secret_reference.startswith("vault:"):
+            raise ValueError("service credential must use a vault reference")
+        if not service_identity or not service_identity.strip():
+            raise ValueError("service identity must be configured")
+        if getattr(backend, "production_ready", False) is not True:
+            raise TypeError("service credential backend is not production-ready")
+        self._backend = backend
+        self._secret_reference = secret_reference
+        self._service_identity = service_identity
+
+    def require_ready(self) -> None:
+        try:
+            ready = self._backend.available(
+                reference=self._secret_reference,
+                service_identity=self._service_identity,
+            )
+        except Exception:
+            raise ServiceAuthenticationUnavailable from None
+        if ready is not True:
+            raise ServiceAuthenticationUnavailable
+
+    def authenticate(self, authorization: str | None) -> str:
+        if authorization is None:
+            raise ServiceAuthenticationRequired
+        try:
+            verified = self._backend.verify(
+                reference=self._secret_reference,
+                service_identity=self._service_identity,
+                authorization=authorization,
+            )
+        except Exception:
+            raise ServiceAuthenticationUnavailable from None
+        if not isinstance(verified, bool):
+            raise ServiceAuthenticationUnavailable
+        if not verified:
+            raise ServiceAuthenticationDenied
+        return self._service_identity
+
+
+class SkGatewayProductionReadinessBackend(Protocol):
+    """Qualification-owned readiness checks for each durable dependency."""
+
+    production_ready: bool
+
+    def check(self, dependency: str) -> bool: ...
+
+
+class SkGatewayProductionCompositionUnavailable(RuntimeError):
+    """The production endpoint cannot start with authoritative dependencies."""
+
+
+_PRODUCTION_DEPENDENCIES = (
+    "trusted_state",
+    "service_identity",
+    "principal_state",
+    "revocation",
+    "replay",
+    "route_policy",
+    "material_policy",
+    "append_only_audit",
+)
+
+
+@dataclass(frozen=True, slots=True)
+class SkGatewayAuthzProductionComposition:
+    """Ready, loopback-only composition for isolated qualification."""
+
+    router: APIRouter
+    revision: Literal["sklegal-skgateway-authz-production-composition/v1"]
+    bind_host: Literal["127.0.0.1"]
+    endpoint_reference: Literal["SKLEGAL_CAPAUTH_AUTHZ_ENDPOINT"]
+    service_identity: str
+    service_secret_reference: str
+    transport: Literal["authenticated-local-http"]
+    profile_enabled: Literal[False]
+    protected_traffic: Literal[False]
+
+
+def build_skgateway_authz_rollback_router() -> APIRouter:
+    """Return the deterministic denial surface used by rollback."""
+
+    router = APIRouter()
+
+    @router.post("/v1/authz/decide")
+    async def unavailable() -> None:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail={"code": "authorization_backend_unavailable"},
+        )
+
+    return router
+
+
+def build_skgateway_authz_production_composition(
+    *,
+    deployment: SkGatewayAuthzDeployment,
+    executor: SqlExecutor,
+    trusted_issuers: TrustedIssuerBackend,
+    audit_repository: PostgresAuditRepository,
+    service_credentials: VaultServiceCredentialBackend,
+    route_verifier: SkGatewayRoutePolicyVerifier,
+    readiness: SkGatewayProductionReadinessBackend,
+    tenant_id: UUID,
+    clock: Callable[[], datetime],
+    principal_resolver: PrincipalResolver,
+    scope_resolver: ScopeResolver,
+) -> SkGatewayAuthzProductionComposition:
+    """Compose the canonical endpoint from durable, production-owned adapters."""
+
+    if deployment.enabled is not False or deployment.bind != "loopback-only":
+        raise SkGatewayProductionCompositionUnavailable(
+            "SKGateway authorization profile must remain disabled and loopback-only"
+        )
+    if deployment.transport != "authenticated-local-http":
+        raise SkGatewayProductionCompositionUnavailable(
+            "SKGateway authorization transport is not authenticated local HTTP"
+        )
+    if not isinstance(
+        trusted_issuers,
+        (FileTrustedIssuerBackend, VersionedTrustedIssuerBackend),
+    ):
+        raise TypeError("trusted issuer state must use a durable canonical backend")
+    if not isinstance(audit_repository, PostgresAuditRepository):
+        raise TypeError("audit repository must use the append-only PostgreSQL adapter")
+    if not isinstance(route_verifier, SkGatewayRoutePolicyVerifier):
+        raise TypeError("route policy must use the canonical SKGateway verifier")
+    if getattr(readiness, "production_ready", False) is not True:
+        raise TypeError("readiness backend must be qualification-owned")
+    try:
+        for dependency in _PRODUCTION_DEPENDENCIES:
+            if readiness.check(dependency) is not True:
+                raise SkGatewayProductionCompositionUnavailable(
+                    "required authorization dependency is unavailable"
+                )
+    except SkGatewayProductionCompositionUnavailable:
+        raise
+    except Exception:
+        raise SkGatewayProductionCompositionUnavailable(
+            "required authorization dependency is unavailable"
+        ) from None
+
+    service_authenticator = VaultReferenceServiceAuthenticator(
+        backend=service_credentials,
+        secret_reference=deployment.service_secret_reference,
+        service_identity=deployment.service_identity,
+    )
+    try:
+        service_authenticator.require_ready()
+    except ServiceAuthenticationUnavailable:
+        raise SkGatewayProductionCompositionUnavailable(
+            "service authentication dependency is unavailable"
+        ) from None
+
+    audit_sink = RequestCorrelatedDurableAuditSink(
+        repository=audit_repository,
+        boundary=AuditBoundary.MODEL,
+        clock=clock,
+    )
+
+    authorizer = build_postgres_capability_authorizer(
+        executor=executor,
+        trusted_issuers=trusted_issuers,
+        audit=audit_sink,
+        tenant_id=tenant_id,
+        clock=clock,
+    )
+    model_boundary: ModelCapabilityBoundary[object] = ModelCapabilityBoundary(
+        authorizer=authorizer,
+        model_target="qwen.generate",
+        capability=Capability.CORPUS_ARTIFACT_READ,
+        purpose=Purpose.LEGAL_RESEARCH,
+    )
+    protected_route = ProtectedRouteDependency(
+        boundary=model_boundary,
+        principal_resolver=principal_resolver,
+        scope_resolver=scope_resolver,
+    )
+    current_authorization = CapAuthCurrentStateVerifier(
+        trusted_issuers=trusted_issuers,
+        principals=PostgresPrincipalPolicyBackend(executor),
+        revocations=PostgresRevocationBackend(executor, tenant_id=tenant_id),
+        uses=PostgresAuthorizationUseBackend(executor, tenant_id=tenant_id),
+    )
+    policy_gateway = PolicyGateway(
+        backend=PostgresPolicyBackend(executor),
+        audit_sink=audit_sink,
+        current_authorization=current_authorization,
+        clock=clock,
+    )
+    resolver = CanonicalSkGatewayFactsResolver(
+        backend=PostgresSkGatewayTrustedStateBackend(executor),
+        route_verifier=route_verifier,
+        service_identity=deployment.service_identity,
+    )
+    router = build_skgateway_authz_router(
+        facts_resolver=resolver,
+        evaluator=CanonicalSkGatewayPolicyEvaluator(policy_gateway),
+        service_authenticator=service_authenticator,
+        protected_route=protected_route,
+        service_identity=deployment.service_identity,
+    )
+    return SkGatewayAuthzProductionComposition(
+        router=router,
+        revision=SKGATEWAY_AUTHZ_PRODUCTION_COMPOSITION_REVISION,
+        bind_host="127.0.0.1",
+        endpoint_reference=deployment.endpoint_reference,
+        service_identity=deployment.service_identity,
+        service_secret_reference=deployment.service_secret_reference,
+        transport=deployment.transport,
+        profile_enabled=False,
+        protected_traffic=False,
+    )
 
 
 def build_skgateway_authz_router(
@@ -528,6 +817,11 @@ def build_skgateway_authz_router(
             )
         except HTTPException:
             raise
+        except SkGatewayScopeDenied:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail={"code": "scope_denied"},
+            ) from None
         except Exception as exc:
             del exc
             raise HTTPException(

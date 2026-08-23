@@ -219,3 +219,38 @@ class DurableAuditSink:
             occurred_at=self._clock(),
             attributes=attributes,
         )
+
+
+class RequestCorrelatedDurableAuditSink:
+    """Append decisions using correlation carried by the canonical decision."""
+
+    def __init__(
+        self,
+        *,
+        repository: AuditRepository,
+        boundary: AuditBoundary,
+        clock: Callable[[], datetime] | None = None,
+    ) -> None:
+        self._repository = repository
+        self._boundary = boundary
+        self._clock = clock
+
+    def record(
+        self,
+        decision: AuthorizationDecision | PolicyDecision | RetentionDecision,
+    ) -> None:
+        correlation_id = decision.correlation_id
+        if correlation_id is None:
+            raise AuditUnavailable("decision correlation is unavailable")
+        correlation = RunCorrelation(
+            run_id=correlation_id,
+            correlation_id=correlation_id,
+            trace_id=correlation_id.hex,
+            span_id=decision.decision_id.hex[:16],
+        )
+        DurableAuditSink(
+            repository=self._repository,
+            correlation=correlation,
+            boundary=self._boundary,
+            clock=self._clock,
+        ).record(decision)

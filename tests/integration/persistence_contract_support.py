@@ -285,7 +285,7 @@ class PersistenceContractBase(unittest.TestCase):
         output = cls._psql(CAPAUTH_RUNTIME_ROLE, rendered).stdout.strip()
         if "prune_expired_capability_replay_reservations" in sql:
             return (int(output),)
-        if "reserve_capability" in sql:
+        if "reserve_capability" in sql or "reserve_policy_authorization_use" in sql:
             return (output == "t",)
         return (output,)
 

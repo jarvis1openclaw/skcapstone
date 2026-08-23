@@ -339,8 +339,10 @@ contracts over the migration 0008 through 0013 SECURITY DEFINER functions.
 Each adapter revalidates the current runtime scope inside the database
 function, converts any database error into a fail-closed
 `BackendUnavailable`, and never sees raw credential material. The audit sink
-implementation is available, but no production route composition is enabled
-by either card. Replay reservation needs
+implementation is available. The S3-11 production factory composes only the
+disabled, loopback-bound SKGateway authorization endpoint and rejects synthetic
+or unavailable dependencies before startup. It does not activate protected
+traffic. Replay reservation needs
 a unique credential-digest insert or equivalent serializable atomic operation.
 Migration 0013 makes the durable reservation match the reviewed in-memory
 expiry semantics: `reserve_capability` removes an expired row for the same
@@ -350,6 +352,10 @@ and expired state never blocks or accumulates. The scoped
 `prune_expired_capability_replay_reservations` janitor, exposed as
 `PostgresReplayBackend.prune_expired`, deletes every expired reservation for
 the calling tenant and returns the pruned count for scheduled cleanup.
+Migration 0018 separately reserves each canonical PolicyGateway invocation by
+CapAuth decision ID and invocation digest through
+`PostgresAuthorizationUseBackend`. This prevents a handler from reusing one
+already-authorized request context after the credential-level replay check.
 Read errors, unavailable revisions, corrupt state, and write ambiguity must
 deny. The package provides explicit unavailable adapters so an incomplete
 composition fails closed during development.
@@ -386,7 +392,11 @@ check-runner entries. Never replace the authorizer with an allow fallback. A
 missing integration must leave the operation unavailable.
 
 The database half runs the explicit down sections of migrations 0008 through
-0013 in reverse order through the digest-pinned runner:
+0018 in reverse order through the digest-pinned runner:
+
+- 0018 drops the policy authorization-use function, its RLS policies, and the
+  `policy_authorization_uses` table. This rollback is appropriate only after
+  the disabled endpoint is restored to deterministic denial.
 
 - 0013 drops the `capability_replay_controlled_delete` policy and
   `prune_expired_capability_replay_reservations`, then restores the 0008-era

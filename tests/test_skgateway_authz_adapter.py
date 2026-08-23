@@ -14,6 +14,7 @@ from sklegal_api.skgateway_authz import (
     ServiceAuthenticationUnavailable,
     SkGatewayAuthzRequest,
     SkGatewayAuthzResponse,
+    SkGatewayScopeDenied,
     SkGatewayTrustedFacts,
     SkGatewayTrustedSnapshot,
     build_skgateway_authz_router,
@@ -52,15 +53,24 @@ class _Evaluator:
 
 
 class _Resolver:
-    def __init__(self, *, subject: str = "trusted-subject", fail: bool = False) -> None:
+    def __init__(
+        self,
+        *,
+        subject: str = "trusted-subject",
+        fail: bool = False,
+        deny: bool = False,
+    ) -> None:
         self.subject = subject
         self.fail = fail
+        self.deny = deny
         self.calls: list[object] = []
 
     def resolve(self, request: object) -> SkGatewayTrustedFacts:
         self.calls.append(request)
         if self.fail:
             raise RuntimeError("trusted state unavailable")
+        if self.deny:
+            raise SkGatewayScopeDenied
         return SkGatewayTrustedFacts(
             subject=self.subject,
             capability="skgateway.infer",
@@ -316,6 +326,19 @@ def test_trusted_state_outage_fails_closed_before_evaluator() -> None:
     assert evaluator.calls == []
 
 
+def test_trusted_scope_denial_returns_sanitized_forbidden() -> None:
+    evaluator = _Evaluator()
+    with _client(evaluator, _Resolver(deny=True)) as client:
+        response = client.post(
+            "/v1/authz/decide",
+            headers={"X-SKLegal-Service-Authorization": "Bearer test-secret"},
+            json={"subject": "attacker", "capability": "skgateway.infer"},
+        )
+    assert response.status_code == 403
+    assert response.json() == {"detail": {"code": "scope_denied"}}
+    assert evaluator.calls == []
+
+
 def test_unknown_request_fields_are_rejected() -> None:
     with _client(_Evaluator()) as client:
         response = client.post(
@@ -433,7 +456,7 @@ def test_canonical_resolver_denies_wire_scope_mismatch() -> None:
         resource={"tenant_id": "tenant-1", "matter_id": "matter-2"},
         context={"classification": "public"},
     )
-    with pytest.raises(ValueError, match="resource scope"):
+    with pytest.raises(SkGatewayScopeDenied):
         resolver.resolve(request)
 
 

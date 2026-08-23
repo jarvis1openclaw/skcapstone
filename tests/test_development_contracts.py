@@ -25,6 +25,7 @@ NUMBER_WORDS = {
     15: "Fifteen",
     16: "Sixteen",
     17: "Seventeen",
+    18: "Eighteen",
 }
 
 PERSISTENCE_DOC = ROOT / "docs/development/PERSISTENCE.md"
