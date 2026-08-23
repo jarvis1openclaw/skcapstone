@@ -5,6 +5,7 @@ from .adapters import (
     AuditRepository,
     DurableAuditSink,
     PostgresAuditRepository,
+    RequestCorrelatedDurableAuditSink,
 )
 from .ledger import (
     AuditUnavailable,
@@ -72,6 +73,7 @@ __all__ = [
     "PolicyRevisionReconciler",
     "PolicyRevisionView",
     "PostgresAuditRepository",
+    "RequestCorrelatedDurableAuditSink",
     "ProjectionWatermark",
     "ReconciliationReport",
     "ReconciliationUnavailable",

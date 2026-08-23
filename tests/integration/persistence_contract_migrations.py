@@ -21,6 +21,7 @@ from sklegal_capauth import (
     PrincipalContext,
     PrincipalType,
 )
+from sklegal_policies import PostgresAuthorizationUseBackend
 
 from tests.integration.persistence_contract_support import (
     AUDIT_MIGRATION_STEPS,
@@ -224,6 +225,35 @@ class PersistenceContract00MigrationPreflightTests(PersistenceContractBase):
                 FROM sklegal_identity.capability_revocations
                 WHERE tenant_id = '{tenant_id}'
                   AND credential_digest = '{digest}';
+                """,
+            ).stdout.strip(),
+        )
+
+    def test_00_policy_authorization_use_is_durable_and_one_use(self) -> None:
+        tenant_id = UUID(self.fixture["tenant_alpha"])
+        decision_id = UUID("a5400000-0000-4000-8000-000000000018")
+        evaluated_at = datetime.now(UTC)
+        backend = PostgresAuthorizationUseBackend(
+            self._capauth_execute,
+            tenant_id=tenant_id,
+        )
+        arguments = {
+            "capauth_decision_id": decision_id,
+            "invocation_digest": "c8" * 32,
+            "expires_at": evaluated_at + timedelta(minutes=5),
+            "evaluated_at": evaluated_at,
+        }
+        self.assertTrue(backend.reserve(**arguments))
+        self.assertFalse(backend.reserve(**arguments))
+        self.assertEqual(
+            "1",
+            self._psql(
+                "postgres",
+                f"""
+                SELECT count(*)
+                FROM sklegal_identity.policy_authorization_uses
+                WHERE tenant_id = '{tenant_id}'
+                  AND capauth_decision_id = '{decision_id}';
                 """,
             ).stdout.strip(),
         )

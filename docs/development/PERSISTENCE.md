@@ -200,7 +200,7 @@ contract and its production limitations.
 
 ## Migration, provisioning, and rollback
 
-Seventeen digest-pinned migrations create the foundation, identity, legal
+Eighteen digest-pinned migrations create the foundation, identity, legal
 records, integration and workflow references, audit target, RLS policies,
 legal information-barrier records, the CapAuth state, snapshot, and grant
 surface, the work product drafting surface, the claim ledger, and the
@@ -301,7 +301,17 @@ normalized durable facts exactly. PUBLIC execution is revoked, the shared
 `sklegal_runtime` role receives execution, and each per-principal runtime role
 receives execution only through the provisioner's exact function allowlist.
 
-The down sections run in reverse order. The 0017 down drops only the
+Migration 0018 adds the tenant-scoped, forced-RLS
+`policy_authorization_uses` table and the controlled
+`reserve_policy_authorization_use` function. The canonical PolicyGateway uses
+this separate durable reservation after the request-local CapAuth credential
+has passed its own replay reservation. One CapAuth decision can therefore bind
+to only one exact policy invocation across workers. Expired rows are pruned in
+the same transaction, PUBLIC execution is revoked, and only
+`sklegal_runtime` receives execute authority.
+
+The down sections run in reverse order. The 0018 down drops only its controlled
+function, policies, and reservation table. The 0017 down drops only the
 SKGateway authorization snapshot function. The 0016 down drops the pilot import
 staging tables in reverse dependency order. The 0015 down drops the claim
 ledger

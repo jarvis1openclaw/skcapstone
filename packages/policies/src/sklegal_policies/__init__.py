@@ -2,6 +2,7 @@
 
 from .backends import (
     MATERIAL_POLICY_SNAPSHOT_SQL,
+    POLICY_AUTHORIZATION_USE_RESERVE_SQL,
     CapAuthCurrentStateVerifier,
     CurrentAuthorizationExpired,
     CurrentAuthorizationReplayed,
@@ -14,6 +15,7 @@ from .backends import (
     PolicyAuditUnavailable,
     PolicyBackend,
     PolicyBackendUnavailable,
+    PostgresAuthorizationUseBackend,
     PostgresPolicyBackend,
     UnavailableAuthorizationUseBackend,
     UnavailablePolicyAuditSink,
@@ -158,6 +160,7 @@ __all__ = [
     "InMemoryGovernanceAuditSink",
     "InMemoryPolicyAuditSink",
     "InMemoryPolicyBackend",
+    "POLICY_AUTHORIZATION_USE_RESERVE_SQL",
     "InMemoryAuthorizationUseBackend",
     "InMemoryPolicyGovernanceStore",
     "IssueLegalHold",
@@ -190,6 +193,7 @@ __all__ = [
     "PolicyMutationReceipt",
     "PolicyReason",
     "PostgresPolicyBackend",
+    "PostgresAuthorizationUseBackend",
     "PrivilegeLabel",
     "ProtectedAccessGrant",
     "ProtectedAccessLevel",

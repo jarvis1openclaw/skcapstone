@@ -9,7 +9,6 @@ from uuid import UUID, uuid4
 
 from fastapi import HTTPException, Request, status
 from sklegal_capauth import (
-    ApiCapabilityBoundary,
     AuditSink,
     AuthorizationDenied,
     AuthorizedContext,
@@ -22,6 +21,7 @@ from sklegal_capauth import (
     PostgresRevocationBackend,
     PresentedCapability,
     PrincipalContext,
+    ProtectedBoundary,
     SignatureVerificationCache,
     StaticTrustedIssuerBackend,
     TrustedIssuerBackend,
@@ -115,7 +115,7 @@ class ProtectedRouteDependency:
     def __init__(
         self,
         *,
-        boundary: ApiCapabilityBoundary[object],
+        boundary: ProtectedBoundary[object],
         principal_resolver: PrincipalResolver,
         scope_resolver: ScopeResolver,
     ) -> None:

@@ -131,6 +131,59 @@ class UnavailableAuthorizationUseBackend:
         raise CurrentAuthorizationUnavailable("authorization-use backend unavailable")
 
 
+POLICY_AUTHORIZATION_USE_RESERVE_SQL = """
+SELECT sklegal_identity.reserve_policy_authorization_use(%s, %s, %s, %s, %s)
+""".strip()
+
+
+type AuthorizationUseExecutor = Callable[
+    [str, tuple[UUID, UUID, Sha256, datetime, datetime]], object
+]
+
+
+class PostgresAuthorizationUseBackend:
+    """Reserve one policy use of a CapAuth decision in durable current state."""
+
+    def __init__(self, executor: AuthorizationUseExecutor, *, tenant_id: UUID) -> None:
+        if not callable(executor):
+            raise TypeError("executor must be callable")
+        if not isinstance(tenant_id, UUID):
+            raise TypeError("tenant_id must be a UUID")
+        self._executor = executor
+        self._tenant_id = tenant_id
+
+    def reserve(
+        self,
+        *,
+        capauth_decision_id: UUID,
+        invocation_digest: Sha256,
+        expires_at: datetime,
+        evaluated_at: datetime,
+    ) -> bool:
+        try:
+            value = self._executor(
+                POLICY_AUTHORIZATION_USE_RESERVE_SQL,
+                (
+                    self._tenant_id,
+                    capauth_decision_id,
+                    invocation_digest,
+                    expires_at,
+                    evaluated_at,
+                ),
+            )
+            if isinstance(value, Mapping):
+                value = value.get("reserve_policy_authorization_use")
+            if isinstance(value, (list, tuple)) and len(value) == 1:
+                value = value[0]
+            if not isinstance(value, bool):
+                raise TypeError("policy authorization-use result is not boolean")
+            return value
+        except Exception:
+            raise CurrentAuthorizationUnavailable(
+                "authorization-use backend unavailable"
+            ) from None
+
+
 class CapAuthCurrentStateVerifier:
     """Recheck safe CapAuth evidence and reserve one exact policy invocation."""
 
