@@ -14,22 +14,29 @@
       "condition": "Final review ac4c56f7 remains PASS and BASE-01 independently verifies the exact lineage."
     },
     {
-      "item": "v2_contract_freeze",
-      "decision": "include_after_independent_review",
-      "commit": "d03305180c050f90243a63dee866cf657612f033",
-      "tree": "3d1ad95d166ff6c8721bb8d2da947fd53e845182",
-      "evidence_commit": "447913d92387ab4f66e0495f24ec6ed84497ffe5",
-      "condition": "Independent review b417bc62 returns PASS against these exact objects."
-    },
-    {
-      "item": "handoff_02_owned_tdd_and_evidence",
+      "item": "handoff_02_owned_tdd_and_supporting_manifests",
       "decision": "include_by_owned_patch_after_review",
-      "commit": null,
-      "tree": null,
-      "condition": "Populate from the final HANDOFF-02 evidence commit and tree, then require review 7c2c9e20 PASS. Apply only the HANDOFF-02 and HANDOFF-02R owned TDD sections plus evidence, never a whole-file TDD winner."
+      "commit": "a44a5144913c7ab6277ce542a0de5687aeb80687",
+      "tree": "c7892ceba1aab09600545ef98792c178143501c1",
+      "condition": "Require review 7c2c9e20 PASS. Apply only the HANDOFF-02 and HANDOFF-02R owned TDD sections plus the three HANDOFF-02 JSON manifests from this commit, never a whole-file TDD winner. The card separately pins the final evidence-only descendant commit."
     }
   ],
   "fail_closed_exclusions": [
+    {
+      "item": "v2_contract_freeze_blocked_candidate",
+      "card_id": "cb60092e",
+      "review_card": "b417bc62",
+      "commit": "d03305180c050f90243a63dee866cf657612f033",
+      "tree": "3d1ad95d166ff6c8721bb8d2da947fd53e845182",
+      "evidence_commit": "447913d92387ab4f66e0495f24ec6ed84497ffe5",
+      "review_commit": "cd0cbf14835a40a938c610dd1b3f01ba781c40c6",
+      "review_tree": "f06758d908c0374f9676bb457a98b9c6cf6507ee",
+      "review_disposition": "BLOCKED_P1_CLAIM_APPROVAL_SPLIT_TRUTH",
+      "decision": "exclude_pending_repair_and_independent_rereview",
+      "repair_card": "09c527da",
+      "rereview_card": "cf83cb57",
+      "future_resolution": "Repair card 09c527da must produce an immutable replacement candidate that closes the Claim and Approval split-truth blockers, and independent rereview cf83cb57 must return PASS before BASE-01 may include the replacement."
+    },
     {
       "item": "shared_main_tdd_composite",
       "path": "docs/tasks/SUBAGENT-TASK-TTDS.md",
