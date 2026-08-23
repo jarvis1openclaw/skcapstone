@@ -2,6 +2,7 @@
 
 from .base import (
     Action,
+    ActionAuditReplay,
     ActionStatus,
     ApprovalBinding,
     CapabilityVerifier,
@@ -9,10 +10,12 @@ from .base import (
     SimulationReceipt,
     SimulationRegistry,
     canonical_idempotency_key,
+    replay_action_audit,
 )
 
 __all__ = [
     "Action",
+    "ActionAuditReplay",
     "ActionStatus",
     "ApprovalBinding",
     "CapabilityVerifier",
@@ -20,4 +23,5 @@ __all__ = [
     "SimulationReceipt",
     "SimulationRegistry",
     "canonical_idempotency_key",
+    "replay_action_audit",
 ]

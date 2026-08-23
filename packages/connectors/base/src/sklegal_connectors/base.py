@@ -8,6 +8,7 @@ dispatches return the original immutable receipt.
 from __future__ import annotations
 
 import hashlib
+import json
 from dataclasses import dataclass, replace
 from enum import StrEnum
 from threading import RLock
@@ -111,6 +112,19 @@ class SimulationReceipt:
     destination_sha256: str
     receipt_sha256: str
     simulated: bool = True
+
+
+@dataclass(frozen=True, slots=True)
+class ActionAuditReplay:
+    """Content-free proof produced by replaying one action history."""
+
+    connector: str
+    action_id: str
+    idempotency_key: str
+    events: tuple[ActionStatus, ...]
+    final_status: ActionStatus
+    simulation_receipt_verified: bool
+    replay_sha256: str
 
 
 class _ActionChanges(TypedDict, total=False):
@@ -304,3 +318,77 @@ class SimulationRegistry:
                 return existing
             self._receipts[action.idempotency_key] = receipt
             return receipt
+
+
+def replay_action_audit(action: Action) -> ActionAuditReplay:
+    """Replay and validate the append-only, content-free action audit history.
+
+    The replay starts from ``draft`` and accepts only declared state edges. A
+    verified receipt must be the exact immutable receipt for the action and
+    must carry the simulation marker. The returned digest contains identities,
+    digests, and state only, never message or artifact content.
+    """
+
+    current = ActionStatus.DRAFT
+    for event in action.events:
+        if event not in _TRANSITIONS[current]:
+            raise ConnectorInvariantError(
+                f"audit replay found invalid transition {current} -> {event}"
+            )
+        current = event
+    if current is not action.status:
+        raise ConnectorInvariantError("audit replay final status does not match action")
+
+    reached_approval = ActionStatus.APPROVED in action.events
+    reached_queue = ActionStatus.QUEUED in action.events
+    if reached_approval and action.approval is None:
+        raise ConnectorInvariantError("audit replay is missing exact approval evidence")
+    if reached_queue and (
+        not action.destination_verified or not action.capability_verified
+    ):
+        raise ConnectorInvariantError(
+            "audit replay is missing destination or capability evidence"
+        )
+
+    simulation_receipt_verified = False
+    if action.status is ActionStatus.RECEIPT_VERIFIED:
+        receipt = action.receipt
+        if receipt is None or not receipt.simulated:
+            raise ConnectorInvariantError(
+                "audit replay requires a simulation-only receipt"
+            )
+        if (
+            receipt.idempotency_key != action.idempotency_key
+            or receipt.action_id != action.action_id
+            or receipt.artifact_sha256 != action.artifact_sha256
+            or receipt.destination_sha256 != action.destination_sha256
+        ):
+            raise ConnectorInvariantError(
+                "audit replay receipt does not bind the exact action"
+            )
+        simulation_receipt_verified = True
+
+    replay_payload = json.dumps(
+        {
+            "action_id": action.action_id,
+            "artifact_sha256": action.artifact_sha256,
+            "connector": action.connector,
+            "destination_sha256": action.destination_sha256,
+            "events": [event.value for event in action.events],
+            "final_status": action.status.value,
+            "idempotency_key": action.idempotency_key,
+            "receipt_sha256": action.receipt.receipt_sha256 if action.receipt else None,
+            "simulation_receipt_verified": simulation_receipt_verified,
+        },
+        sort_keys=True,
+        separators=(",", ":"),
+    ).encode("ascii")
+    return ActionAuditReplay(
+        connector=action.connector,
+        action_id=action.action_id,
+        idempotency_key=action.idempotency_key,
+        events=action.events,
+        final_status=action.status,
+        simulation_receipt_verified=simulation_receipt_verified,
+        replay_sha256=hashlib.sha256(replay_payload).hexdigest(),
+    )
