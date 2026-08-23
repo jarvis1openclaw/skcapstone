@@ -450,3 +450,17 @@ Every task begins by loading SK context, reading `AGENTS.md`, checking the SKCap
 - **Tests:** Dry-run no-write proof, missing source, unrelated file, Inbox path rejection, quarantined rights, changed normalized hash, missing or stale decomposition, projection mismatch, existing release collision, and alias immutability.
 - **Acceptance:** One exact 14-source candidate is reproducible, source-complete, profile-linked, and ready for the parent S6-05 qualification gates without changing a runtime alias.
 - **Prohibited:** Do not scan or process HammerTime Inbox, discover the repository corpus implicitly, change processing state, rebuild shared stores, promote an alias, or include unrelated sources.
+
+## Internal public-synthetic MVP
+
+### SKL-MVP-01: Compose fail-closed internal application API
+
+- **Card:** `bb5cb31d`
+- **Agent:** Internal MVP API engineering
+- **Size:** M
+- **Dependencies:** `SKL-S1-02`, `SKL-S1-03`, `SKL-S1-04`, `SKL-S1-05`, `SKL-S1-04A`, `SKL-S2-04`, `SKL-S3-05`, `SKL-S4-05`
+- **Objective:** Compose one explicit FastAPI application for the existing workspace, corpus, claim, governance, task, deadline, Work Product, Approval, and audit boundaries using only public synthetic data.
+- **Implementation:** Add an application factory that mounts an explicit reviewed router set and accepts durable authentication, Tenant and Matter policy, audit, persistence, and provenance dependencies. Production-mode construction must fail closed when any dependency is absent or synthetic. Development mode may use deterministic public-synthetic adapters only when explicitly selected. Authenticate before resource lookup, authorize Tenant and Matter membership plus conflicts, privilege, ethical walls, retention, hold, capability, and operation policy, then emit correlation and append-only audit records with bounded redacted detail. Health may report only bounded component state and must not expose protected fields or trigger unbounded scans.
+- **Tests:** Application construction, OpenAPI route inventory, health bounds, missing dependency startup denial, explicit development mode, missing authentication, expired or revoked capability, cross-Tenant and cross-Matter denial before lookup, conflict and wall denial, audit outage, persistence outage, provenance requirements, redaction, correlation, pagination, public-synthetic fixture validation, and deterministic rollback.
+- **Acceptance:** The public-synthetic internal API starts only with the complete reviewed dependency composition, every protected route enforces policy before lookup, audit and provenance remain reconstructable, relevant focused and integration tests pass, and completion evidence records exact files, results, limitations, and rollback.
+- **Prohibited:** No HammerTime `Inbox/` access, protected Matter content, provider request, production credential, external action, host deployment, merge, or push. Do not weaken authentication, Tenant or Matter isolation, custody, audit, provenance, provider-purity, rollback, or external-action gates.
