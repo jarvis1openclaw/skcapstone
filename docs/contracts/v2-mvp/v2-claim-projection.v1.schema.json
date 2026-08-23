@@ -19,10 +19,19 @@
     "ledger_projection": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["claim_id", "projected_claim_version", "policy_revision", "support", "counter_support", "applicability", "challenges", "review_history", "gate", "projection_state"],
+      "required": ["tenant_id", "matter_id", "claim_id", "projected_claim_version", "projected_claim_status", "legacy_migration", "policy_revision", "support", "counter_support", "applicability", "challenges", "review_history", "gate", "projection_state"],
       "properties": {
+        "tenant_id": {"type": "string", "format": "uuid"},
+        "matter_id": {"type": "string", "format": "uuid"},
         "claim_id": {"type": "string", "format": "uuid"},
         "projected_claim_version": {"type": "integer", "minimum": 1},
+        "projected_claim_status": {"enum": ["proposed", "under_review", "accepted", "challenged", "rejected", "withdrawn"]},
+        "legacy_migration": {
+          "anyOf": [
+            {"$ref": "#/$defs/legacy_migration"},
+            {"type": "null"}
+          ]
+        },
         "policy_revision": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
         "support": {"type": "array", "items": {"$ref": "#/$defs/source_span"}},
         "counter_support": {"type": "array", "items": {"$ref": "#/$defs/source_span"}},
@@ -35,6 +44,17 @@
     }
   },
   "$defs": {
+    "legacy_migration": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["legacy_ledger_claim_id", "legacy_status", "mapped_claim_status", "mapping_revision"],
+      "properties": {
+        "legacy_ledger_claim_id": {"type": "string", "format": "uuid"},
+        "legacy_status": {"enum": ["proposed", "under_review", "supported", "challenged", "withdrawn"]},
+        "mapped_claim_status": {"enum": ["proposed", "under_review", "accepted", "challenged", "withdrawn"]},
+        "mapping_revision": {"const": "ledger-claim-to-claim-v1"}
+      }
+    },
     "source_span": {
       "type": "object",
       "additionalProperties": false,

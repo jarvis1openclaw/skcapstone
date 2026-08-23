@@ -1,10 +1,13 @@
 {
   "contract_id": "sklegal-v2-mvp-joined-contract",
-  "contract_version": "1.0.0",
-  "status": "frozen_for_independent_review",
+  "contract_version": "1.0.1",
+  "status": "repaired_for_independent_review",
   "base_commit": "8177c88c5fd371a487e2c206c53b24e3619c1855",
   "base_tree": "a23e08dc6edfde8397298b3d1ee0b354434c3bcd",
-  "card_id": "cb60092e",
+  "card_id": "09c527da",
+  "repair_base_commit": "d03305180c050f90243a63dee866cf657612f033",
+  "source_review_card": "b417bc62",
+  "independent_rereview_card": "cf83cb57",
   "source_paths": {
     "react": "apps/web/src/pages/MatterCockpit.tsx",
     "wireframe": "docs/planning/wireframes/index-v2.html",
@@ -40,6 +43,13 @@
     "canonical_lifecycle_owner": "Claim.status",
     "ledger_role": "one_to_one_append_only_evidence_review_projection",
     "ledger_identity_rule": "LedgerClaim.claim_id equals Claim.id",
+    "legacy_status_mapping": {
+      "proposed": "proposed",
+      "under_review": "under_review",
+      "supported": "accepted",
+      "challenged": "challenged",
+      "withdrawn": "withdrawn"
+    },
     "required_invariants": ["same_tenant", "same_matter", "same_claim_id", "projected_claim_version_pinned", "no_orphan_ledger", "no_competing_lifecycle", "no_silent_statement_reconciliation"]
   },
   "approval_validity": {
@@ -63,6 +73,26 @@
     "contract_tests": "tests/contracts/test_v2_mvp_contract_freeze.py",
     "browser_qualifier_requirement": "Browser qualifiers must load canonical section_id values from this manifest and must not define an independent ordered tuple.",
     "openapi_requirement": "Current bindings must exist in generated OpenAPI. Durable target operations must be added by their owning lane and registered only by the backend integration owner."
+  },
+  "surface_consumers": {
+    "decision": {"legacy_fixture_section_id": "cover", "component": "V2DecisionOverview", "api_contract": null, "legacy_expected_state": "complete", "legacy_contract_state": "static_reviewed_contract", "react_feature_state": "available"},
+    "ai-operating-model": {"legacy_fixture_section_id": "operating-model", "component": "AiOperatingModel", "api_contract": null, "legacy_expected_state": "complete", "legacy_contract_state": "static_reviewed_contract", "react_feature_state": "available"},
+    "corpus-map": {"legacy_fixture_section_id": "corpus-map", "component": "CorpusStrategyMap", "api_contract": null, "legacy_expected_state": "complete", "legacy_contract_state": "static_reviewed_contract", "react_feature_state": "proposal"},
+    "ai-cockpit": {"legacy_fixture_section_id": "cockpit", "component": "MatterCockpitOverview", "api_contract": "GET /v1/matters/{matter_id}/workspace", "legacy_expected_state": "complete", "legacy_contract_state": "workspace_contract_available", "react_feature_state": "available"},
+    "ai-intake": {"legacy_fixture_section_id": "intake", "component": "AiMatterIntake", "api_contract": null, "legacy_expected_state": "safely_unavailable", "legacy_contract_state": "missing_versioned_agent_input_contract", "react_feature_state": "safely-unavailable"},
+    "artifact-intake": {"legacy_fixture_section_id": "artifacts", "component": "MatterArtifactIntake", "api_contract": null, "legacy_expected_state": "safely_unavailable", "legacy_contract_state": "missing_unified_artifact_intake_contract", "react_feature_state": "safely-unavailable"},
+    "element-matrix": {"legacy_fixture_section_id": "elements", "component": "EssentialElementsMatrix", "api_contract": null, "legacy_expected_state": "safely_unavailable", "legacy_contract_state": "missing_joined_analysis_http_contract", "react_feature_state": "proposal"},
+    "recommendation": {"legacy_fixture_section_id": "recommendation", "component": "RankedRecommendationDetail", "api_contract": null, "legacy_expected_state": "safely_unavailable", "legacy_contract_state": "missing_typed_recommendation_contract", "react_feature_state": "safely-unavailable"},
+    "strategy-authority": {"legacy_fixture_section_id": "strategy", "component": "StrategyAuthorityOverlay", "api_contract": null, "legacy_expected_state": "safely_unavailable", "legacy_contract_state": "missing_joined_authority_applicability_contract", "react_feature_state": "proposal"},
+    "agent-team": {"legacy_fixture_section_id": null, "component": "AgentTeam", "api_contract": null, "legacy_expected_state": "safely_unavailable", "legacy_contract_state": "missing_agent_team_run_contract", "react_feature_state": "safely-unavailable"},
+    "blind-challenge": {"legacy_fixture_section_id": "challenge", "component": "AgentChallengeTeam", "api_contract": null, "legacy_expected_state": "safely_unavailable", "legacy_contract_state": "missing_challenge_proposal_http_contract", "react_feature_state": "safely-unavailable"},
+    "model-routing": {"legacy_fixture_section_id": "model-routing", "component": "ModelRoutingEvidence", "api_contract": null, "legacy_expected_state": "safely_unavailable", "legacy_contract_state": "missing_sklegal_model_evidence_http_contract", "react_feature_state": "safely-unavailable"},
+    "work-product-assembly": {"legacy_fixture_section_id": "workproduct", "component": "WorkProductAssembly", "api_contract": "GET /v1/matters/{matter_id}/workspace", "legacy_expected_state": "complete", "legacy_contract_state": "workspace_contract_available_assembler_unavailable", "react_feature_state": "proposal"},
+    "deadline-actions": {"legacy_fixture_section_id": "deadlines", "component": "DeadlineActionHandoff", "api_contract": null, "legacy_expected_state": "safely_unavailable", "legacy_contract_state": "missing_joined_deadline_task_action_projection", "react_feature_state": "safely-unavailable"},
+    "source-run-evidence": {"legacy_fixture_section_id": "evidence", "component": "SourceRunEvidence", "api_contract": null, "legacy_expected_state": "safely_unavailable", "legacy_contract_state": "missing_joined_agent_run_evidence_contract", "react_feature_state": "proposal"},
+    "case-log": {"legacy_fixture_section_id": "case-log", "component": "MatterActivityLog", "api_contract": null, "legacy_expected_state": "safely_unavailable", "legacy_contract_state": "missing_joined_append_only_activity_projection", "react_feature_state": "available"},
+    "failure-states": {"legacy_fixture_section_id": "failures", "component": "CockpitFailureStates", "api_contract": null, "legacy_expected_state": "complete", "legacy_contract_state": "static_reviewed_contract", "react_feature_state": "available"},
+    "delivery-map": {"legacy_fixture_section_id": "delivery", "component": "CockpitDeliveryMap", "api_contract": null, "legacy_expected_state": "complete", "legacy_contract_state": "static_reviewed_contract", "react_feature_state": "available"}
   },
   "current_openapi_bindings": [
     {"operation_id": "get_workspace", "fastapi_operation_id": "workspace_matters_workspace"},

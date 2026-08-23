@@ -8,7 +8,10 @@ from html.parser import HTMLParser
 from pathlib import Path
 from typing import Any
 
-from tests.support.v2_contract_manifest import legacy_fixture_surface_ids
+from tests.support.v2_contract_manifest import (
+    legacy_fixture_surface_contracts,
+    legacy_fixture_surface_ids,
+)
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 V1_FIXTURE_PATH = REPO_ROOT / "tests/fixtures/mvp/public-synthetic-mvp-v1.json"
@@ -16,70 +19,22 @@ V2_FIXTURE_PATH = REPO_ROOT / "tests/fixtures/mvp/public-synthetic-mvp-v2-cockpi
 MATRIX_PATH = REPO_ROOT / "tests/fixtures/mvp/public-synthetic-mvp-v2-acceptance.json"
 
 EXPECTED_SECTIONS = legacy_fixture_surface_ids()
-
+EXPECTED_SURFACE_CONTRACTS = legacy_fixture_surface_contracts()
 EXPECTED_COMPONENTS = {
-    "cover": "V2DecisionOverview",
-    "operating-model": "AiOperatingModel",
-    "corpus-map": "CorpusStrategyMap",
-    "cockpit": "MatterCockpitOverview",
-    "intake": "AiMatterIntake",
-    "artifacts": "MatterArtifactIntake",
-    "elements": "EssentialElementsMatrix",
-    "recommendation": "RankedRecommendationDetail",
-    "strategy": "StrategyAuthorityOverlay",
-    "challenge": "AgentChallengeTeam",
-    "model-routing": "ModelRoutingEvidence",
-    "workproduct": "WorkProductAssembly",
-    "deadlines": "DeadlineActionHandoff",
-    "evidence": "SourceRunEvidence",
-    "case-log": "MatterActivityLog",
-    "failures": "CockpitFailureStates",
-    "delivery": "CockpitDeliveryMap",
+    section: contract["component"]
+    for section, contract in EXPECTED_SURFACE_CONTRACTS.items()
 }
-
-EXPECTED_API_CONTRACTS = {section: None for section in EXPECTED_SECTIONS} | {
-    "cockpit": "GET /v1/matters/{matter_id}/workspace",
-    "workproduct": "GET /v1/matters/{matter_id}/workspace",
+EXPECTED_API_CONTRACTS = {
+    section: contract["api_contract"]
+    for section, contract in EXPECTED_SURFACE_CONTRACTS.items()
 }
-
 EXPECTED_STATES = {
-    "cover": "complete",
-    "operating-model": "complete",
-    "corpus-map": "complete",
-    "cockpit": "complete",
-    "intake": "safely_unavailable",
-    "artifacts": "safely_unavailable",
-    "elements": "safely_unavailable",
-    "recommendation": "safely_unavailable",
-    "strategy": "safely_unavailable",
-    "challenge": "safely_unavailable",
-    "model-routing": "safely_unavailable",
-    "workproduct": "complete",
-    "deadlines": "safely_unavailable",
-    "evidence": "safely_unavailable",
-    "case-log": "safely_unavailable",
-    "failures": "complete",
-    "delivery": "complete",
+    section: contract["expected_state"]
+    for section, contract in EXPECTED_SURFACE_CONTRACTS.items()
 }
-
 EXPECTED_CONTRACT_STATES = {
-    "cover": "static_reviewed_contract",
-    "operating-model": "static_reviewed_contract",
-    "corpus-map": "static_reviewed_contract",
-    "cockpit": "workspace_contract_available",
-    "intake": "missing_versioned_agent_input_contract",
-    "artifacts": "missing_unified_artifact_intake_contract",
-    "elements": "missing_joined_analysis_http_contract",
-    "recommendation": "missing_typed_recommendation_contract",
-    "strategy": "missing_joined_authority_applicability_contract",
-    "challenge": "missing_challenge_proposal_http_contract",
-    "model-routing": "missing_sklegal_model_evidence_http_contract",
-    "workproduct": "workspace_contract_available_assembler_unavailable",
-    "deadlines": "missing_joined_deadline_task_action_projection",
-    "evidence": "missing_joined_agent_run_evidence_contract",
-    "case-log": "missing_joined_append_only_activity_projection",
-    "failures": "static_reviewed_contract",
-    "delivery": "static_reviewed_contract",
+    section: contract["contract_state"]
+    for section, contract in EXPECTED_SURFACE_CONTRACTS.items()
 }
 
 REQUIRED_EVIDENCE_ASSERTIONS = {

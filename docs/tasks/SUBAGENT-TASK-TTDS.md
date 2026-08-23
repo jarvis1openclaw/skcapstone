@@ -607,3 +607,12 @@ Every task begins by loading SK context, reading `AGENTS.md`, checking the SKCap
 - **Tests:** Add focused tests for zero-data recommendation state, stale and current Approval binding, section order, challenge and source-role surfaces, compact navigation disclosure, bounded responsive height, underlying-record disclosure, and consistent empty states. Run the complete web suite, lint, typecheck, production build, dependency audit, diff checks, and real Chrome expanded and compact screenshot review.
 - **Acceptance:** The repaired immutable React candidate matches the reviewed V2 hierarchy at expanded and compact sizes, never fabricates score, rank, recommendation, Approval, source-role, or execution state, preserves reconstructable records on demand, and provides implementation, evidence, screenshots, limitations, and rollback hashes for qualification.
 - **Prohibited:** No API fixture edit, live candidate mutation, deployment, protected data, credential, provider request, external action, merge, push, or unrelated cleanup.
+
+### SKL-MVP-ARCH-02F: Repair canonical V2 contract invariants
+
+- **Card:** `09c527da`
+- **Dependency:** `b417bc62`
+- **Base:** Blocked contract candidate `d03305180c050f90243a63dee866cf657612f033`.
+- **Objective:** Repair only the independently proven Claim, Approval, executable surface-manifest, and mypy evidence blockers. Enforce outer Claim identity and version equality with its LedgerClaim projection, preserve explicit status and migration mapping, and make complete operative Approval validity require an allowed capability decision outcome, current subject and scope equality, non-revocation, and non-supersession. Make the canonical ordered 18-surface manifest drive legacy fixture and React contract assertions without creating a second product truth.
+- **Tests and acceptance:** The prior 46 focused tests remain green. Exhaustive negative probes reject mismatched Claim identity, version, status, and migration mappings, plus Approval decision, subject, scope, revocation, supersession, and current-version failures. Schema, type, OpenAPI, manifest-consumer, diff, ASCII dash, and secret checks pass. The immutable candidate, tree, parent, evidence, and rollback are pinned for independent review `cf83cb57`.
+- **Prohibited:** Live cockpit or central application edits; shared-main edits; runtime, database, migration, deployment, credential, protected-content, provider, HammerTime `Inbox/`, external-action, merge, push, or cleanup work.

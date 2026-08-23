@@ -1,10 +1,16 @@
 # SKLegal V2 MVP contract freeze
 
-Status: frozen for implementation review
+Status: repaired for independent review
 
-Card: `cb60092e`
+Card: `09c527da`
 
 Base candidate: `8177c88c5fd371a487e2c206c53b24e3619c1855`
+
+Repair base: `d03305180c050f90243a63dee866cf657612f033`
+
+Source review: `b417bc62`
+
+Independent rereview: `cf83cb57`
 
 The authoritative executable contract is
 `v2-surface-manifest.v1.json`. It owns the ordered identity of all 18 V2
@@ -16,6 +22,13 @@ acceptance matrix. `legacy_fixture_section_id` exists only to reconcile that
 matrix. In particular, the canonical `agent-team` and `blind-challenge`
 surfaces remain separate even though the old fixture called their combined
 symbolic component `AgentChallengeTeam`.
+
+`surface_consumers` is the only fixture and React assertion source. It keeps
+API or data truth separate from presentation state, so a read projection can
+remain public-synthetic while its mutation controls are visibly unavailable.
+The fixture helper derives component, API, state, and contract maps from this
+object. The React contract test derives every feature-state assertion from the
+same object.
 
 ## Frozen invariants
 
@@ -39,9 +52,14 @@ symbolic component `AgentChallengeTeam`.
    `claim_id` equals that canonical identity. It cannot be created without the
    canonical Claim, cannot own a competing lifecycle, and cannot silently
    reconcile different statements or scope.
+   `validate_claim_projection` enforces identity, version, projected status,
+   and the explicit legacy `supported` to canonical `accepted` migration map.
 8. An Approval is operative only when every condition in
    `v2-approval-validity.v1.schema.json` is satisfied. Hash equality alone is
-   insufficient.
+   insufficient. `validate_approval_validity` additionally enforces exact
+   capability decision outcome, current Tenant and Matter scope, complete
+   current Work Product subject equality, non-revocation, and
+   non-supersession.
 9. Corrections append superseding records. They never rewrite event, audit,
    proposal, review, Approval, provenance, or receipt history.
 10. External actions remain simulation-only in this MVP. Recommendation

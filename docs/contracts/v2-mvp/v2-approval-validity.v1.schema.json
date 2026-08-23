@@ -4,12 +4,77 @@
   "title": "Complete Work Product Approval validity",
   "type": "object",
   "additionalProperties": false,
-  "required": ["approval_id", "tenant_id", "matter_id", "status", "subject", "reviewer_principal_id", "decided_at", "rationale", "validation_id", "validation_status", "policy_revision", "capability_decision_id", "capability", "purpose", "revoker_principal_id", "revoked_at", "revocation_rationale", "operative", "inoperative_reasons"],
+  "required": [
+    "approval_id",
+    "tenant_id",
+    "matter_id",
+    "status",
+    "subject",
+    "current_scope",
+    "current_subject",
+    "reviewer_principal_id",
+    "decided_at",
+    "rationale",
+    "validation_id",
+    "validation_status",
+    "policy_revision",
+    "capability_decision",
+    "capability",
+    "purpose",
+    "revoker_principal_id",
+    "revoked_at",
+    "revocation_rationale",
+    "superseded_by_approval_id",
+    "superseded_at",
+    "operative",
+    "inoperative_reasons"
+  ],
   "properties": {
     "approval_id": {"type": "string", "format": "uuid"},
     "tenant_id": {"type": "string", "format": "uuid"},
     "matter_id": {"type": "string", "format": "uuid"},
     "status": {"enum": ["pending", "approved", "rejected", "revoked"]},
+    "subject": {"$ref": "#/$defs/subject"},
+    "current_scope": {"$ref": "#/$defs/scope"},
+    "current_subject": {"$ref": "#/$defs/subject"},
+    "reviewer_principal_id": {"type": ["string", "null"], "format": "uuid"},
+    "decided_at": {"type": ["string", "null"], "format": "date-time"},
+    "rationale": {"type": ["string", "null"]},
+    "validation_id": {"type": ["string", "null"], "format": "uuid"},
+    "validation_status": {"enum": ["passed", "failed", "missing", "superseded"]},
+    "policy_revision": {"type": ["string", "null"], "pattern": "^[0-9a-f]{64}$"},
+    "capability_decision": {"$ref": "#/$defs/capability_decision"},
+    "capability": {"const": "work_product.approve"},
+    "purpose": {"const": "human_approval"},
+    "revoker_principal_id": {"type": ["string", "null"], "format": "uuid"},
+    "revoked_at": {"type": ["string", "null"], "format": "date-time"},
+    "revocation_rationale": {"type": ["string", "null"]},
+    "superseded_by_approval_id": {"type": ["string", "null"], "format": "uuid"},
+    "superseded_at": {"type": ["string", "null"], "format": "date-time"},
+    "operative": {"type": "boolean"},
+    "inoperative_reasons": {
+      "type": "array",
+      "items": {
+        "enum": [
+          "not_approved",
+          "subject_mismatch",
+          "reviewer_missing",
+          "decision_time_missing",
+          "rationale_missing",
+          "validation_missing",
+          "validation_failed",
+          "policy_revision_missing",
+          "capability_evidence_missing",
+          "capability_denied",
+          "revoked",
+          "superseded",
+          "scope_mismatch"
+        ]
+      },
+      "uniqueItems": true
+    }
+  },
+  "$defs": {
     "subject": {
       "type": "object",
       "additionalProperties": false,
@@ -21,25 +86,28 @@
         "content_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"}
       }
     },
-    "reviewer_principal_id": {"type": ["string", "null"], "format": "uuid"},
-    "decided_at": {"type": ["string", "null"], "format": "date-time"},
-    "rationale": {"type": ["string", "null"]},
-    "validation_id": {"type": ["string", "null"], "format": "uuid"},
-    "validation_status": {"enum": ["passed", "failed", "missing", "superseded"]},
-    "policy_revision": {"type": ["string", "null"], "pattern": "^[0-9a-f]{64}$"},
-    "capability_decision_id": {"type": ["string", "null"], "format": "uuid"},
-    "capability": {"const": "work_product.approve"},
-    "purpose": {"const": "human_approval"},
-    "revoker_principal_id": {"type": ["string", "null"], "format": "uuid"},
-    "revoked_at": {"type": ["string", "null"], "format": "date-time"},
-    "revocation_rationale": {"type": ["string", "null"]},
-    "operative": {"type": "boolean"},
-    "inoperative_reasons": {
-      "type": "array",
-      "items": {
-        "enum": ["not_approved", "subject_mismatch", "reviewer_missing", "decision_time_missing", "rationale_missing", "validation_missing", "validation_failed", "policy_revision_missing", "capability_evidence_missing", "revoked", "superseded", "scope_mismatch"]
-      },
-      "uniqueItems": true
+    "scope": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["tenant_id", "matter_id"],
+      "properties": {
+        "tenant_id": {"type": "string", "format": "uuid"},
+        "matter_id": {"type": "string", "format": "uuid"}
+      }
+    },
+    "capability_decision": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["decision_id", "outcome", "tenant_id", "matter_id", "subject", "capability", "purpose"],
+      "properties": {
+        "decision_id": {"type": "string", "format": "uuid"},
+        "outcome": {"enum": ["allowed", "denied"]},
+        "tenant_id": {"type": "string", "format": "uuid"},
+        "matter_id": {"type": "string", "format": "uuid"},
+        "subject": {"$ref": "#/$defs/subject"},
+        "capability": {"const": "work_product.approve"},
+        "purpose": {"const": "human_approval"}
+      }
     }
   },
   "allOf": [
@@ -54,11 +122,65 @@
           "validation_id": {"type": "string", "format": "uuid"},
           "validation_status": {"const": "passed"},
           "policy_revision": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
-          "capability_decision_id": {"type": "string", "format": "uuid"},
+          "capability_decision": {
+            "allOf": [
+              {"$ref": "#/$defs/capability_decision"},
+              {"properties": {"outcome": {"const": "allowed"}}}
+            ]
+          },
           "revoker_principal_id": {"type": "null"},
           "revoked_at": {"type": "null"},
           "revocation_rationale": {"type": "null"},
+          "superseded_by_approval_id": {"type": "null"},
+          "superseded_at": {"type": "null"},
           "inoperative_reasons": {"maxItems": 0}
+        }
+      }
+    },
+    {
+      "if": {"properties": {"status": {"const": "revoked"}}, "required": ["status"]},
+      "then": {
+        "properties": {
+          "revoker_principal_id": {"type": "string", "format": "uuid"},
+          "revoked_at": {"type": "string", "format": "date-time"},
+          "revocation_rationale": {"type": "string", "minLength": 1},
+          "operative": {"const": false},
+          "inoperative_reasons": {"contains": {"const": "revoked"}}
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {"superseded_by_approval_id": {"type": "string"}},
+        "required": ["superseded_by_approval_id"]
+      },
+      "then": {
+        "properties": {
+          "superseded_at": {"type": "string", "format": "date-time"},
+          "operative": {"const": false},
+          "inoperative_reasons": {"contains": {"const": "superseded"}}
+        }
+      },
+      "else": {"properties": {"superseded_at": {"type": "null"}}}
+    },
+    {
+      "if": {"properties": {"operative": {"const": false}}, "required": ["operative"]},
+      "then": {"properties": {"inoperative_reasons": {"minItems": 1}}}
+    },
+    {
+      "if": {
+        "properties": {
+          "capability_decision": {
+            "properties": {"outcome": {"const": "denied"}},
+            "required": ["outcome"]
+          }
+        },
+        "required": ["capability_decision"]
+      },
+      "then": {
+        "properties": {
+          "operative": {"const": false},
+          "inoperative_reasons": {"contains": {"const": "capability_denied"}}
         }
       }
     }

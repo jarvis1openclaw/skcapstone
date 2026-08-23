@@ -4,14 +4,17 @@
   "title": "SKLegal V2 canonical surface manifest",
   "type": "object",
   "additionalProperties": false,
-  "required": ["contract_id", "contract_version", "status", "base_commit", "base_tree", "card_id", "source_paths", "shared_schemas", "truth_boundary", "claim_identity", "approval_validity", "mutation_invariants", "operation_envelope_contract", "closed_error_codes", "consumer_contract", "current_openapi_bindings", "lanes", "surfaces", "operations", "integration_owners"],
+  "required": ["contract_id", "contract_version", "status", "base_commit", "base_tree", "card_id", "repair_base_commit", "source_review_card", "independent_rereview_card", "source_paths", "shared_schemas", "truth_boundary", "claim_identity", "approval_validity", "mutation_invariants", "operation_envelope_contract", "closed_error_codes", "consumer_contract", "surface_consumers", "current_openapi_bindings", "lanes", "surfaces", "operations", "integration_owners"],
   "properties": {
     "contract_id": {"const": "sklegal-v2-mvp-joined-contract"},
-    "contract_version": {"const": "1.0.0"},
-    "status": {"const": "frozen_for_independent_review"},
+    "contract_version": {"const": "1.0.1"},
+    "status": {"const": "repaired_for_independent_review"},
     "base_commit": {"type": "string", "pattern": "^[0-9a-f]{40}$"},
     "base_tree": {"type": "string", "pattern": "^[0-9a-f]{40}$"},
-    "card_id": {"const": "cb60092e"},
+    "card_id": {"const": "09c527da"},
+    "repair_base_commit": {"const": "d03305180c050f90243a63dee866cf657612f033"},
+    "source_review_card": {"const": "b417bc62"},
+    "independent_rereview_card": {"const": "cf83cb57"},
     "source_paths": {"type": "object"},
     "shared_schemas": {"type": "object"},
     "truth_boundary": {"type": "object"},
@@ -34,6 +37,24 @@
     },
     "closed_error_codes": {"type": "array", "minItems": 10, "uniqueItems": true},
     "consumer_contract": {"type": "object"},
+    "surface_consumers": {
+      "type": "object",
+      "minProperties": 18,
+      "maxProperties": 18,
+      "additionalProperties": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["legacy_fixture_section_id", "component", "api_contract", "legacy_expected_state", "legacy_contract_state", "react_feature_state"],
+        "properties": {
+          "legacy_fixture_section_id": {"type": ["string", "null"]},
+          "component": {"type": "string", "minLength": 1},
+          "api_contract": {"type": ["string", "null"]},
+          "legacy_expected_state": {"enum": ["complete", "safely_unavailable"]},
+          "legacy_contract_state": {"type": "string", "minLength": 1},
+          "react_feature_state": {"enum": ["available", "proposal", "safely-unavailable"]}
+        }
+      }
+    },
     "current_openapi_bindings": {"type": "array", "minItems": 4},
     "lanes": {
       "type": "array",
