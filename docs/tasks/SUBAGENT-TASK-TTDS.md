@@ -549,6 +549,18 @@ Every task begins by loading SK context, reading `AGENTS.md`, checking the SKCap
 - **Rollback:** Stop only the final synthesis instance through its recorded launcher state, verify its exact PIDs and loopback ports close, reset only that instance, and revert to `ca60896554fbe36a64e08d6b81a1aa92e717a0df`. No persistent data migration exists.
 - **Prohibited:** No merge, push, persistent deployment, protected data, credential, provider request, external action, unrelated service mutation, or cleanup.
 
+### SKL-MVP-03E: Repair compact exact-version identifier presentation
+
+- **Card:** `b68e3337`
+- **Agent:** `codex-skl-mvp-compact-id-repair`
+- **Base:** Exact final V2 MVP candidate `236eb6a794adf59c67119cd0e3807254aee1e6fc`, tree `b29e231d9827598be2097db5fb559723441d4411`.
+- **Objective:** Repair only the real-Chrome 390x844 clipping of exact hashes and other provenance identifiers while preserving the expanded V2 cockpit and every public-synthetic authorization and evidence boundary.
+- **Implementation:** Apply a narrowly scoped responsive presentation rule so long exact identifiers wrap inside their owning surface or use explicitly labeled bounded horizontal access. Preserve identifier bytes, selectability, copyability, labels, desktop layout, document width, and all existing semantics. Do not alter records, API contracts, session behavior, workflow state, or unrelated visual design.
+- **Tests:** Add focused component or style-contract coverage for exact 64-character hashes and provenance identifiers. Run the complete web tests, typecheck, lint, production build, dependency audit, diff and ASCII-dash checks. In real Google Chrome, capture 390x844 and 1440x1000 evidence, verify no global horizontal overflow, exact identifier visibility and selection, keyboard behavior, and axe WCAG 2A, 2AA, 2.1A, and 2.1AA with zero violations.
+- **Acceptance:** At 390x844 every exact 64-character hash and other provenance identifier is fully available without clipping, document scroll width equals client width, keyboard and selection behavior remains usable, and desktop presentation is materially unchanged. Seal immutable implementation and evidence commits, trees, screenshot hashes, exact results, limitations, and rollback for independent rereview `da66ab30`.
+- **Rollback:** Revert only this repair candidate to `236eb6a794adf59c67119cd0e3807254aee1e6fc`. No data, service, deployment, or host rollback exists.
+- **Prohibited:** Do not modify the live owner preview, deploy, merge, push, access protected content or credentials, make a provider request, advance an external action, edit unrelated product behavior, or clean another worktree.
+
 ### SKL-MVP-SUPPORT-07: Populate the live V2 public-synthetic API composition
 
 - **Card:** `0457ea71`
