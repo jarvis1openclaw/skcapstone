@@ -19,6 +19,7 @@ import type {
 } from "../api/types";
 import { StatusBadge } from "../components/StatusBadge";
 import { WorkProductDraftingSection } from "../components/WorkProductDrafting";
+import { MatterCockpit, v2CockpitSections } from "./MatterCockpit";
 import {
   communicationStatus,
   evidenceItemStatus,
@@ -58,6 +59,11 @@ export function MatterWorkspaceNav() {
   return (
     <nav aria-label="Matter workspace" className="sl-matter-nav">
       <ul>
+        {v2CockpitSections.map((section) => (
+          <li key={section.id}>
+            <a href={`#${section.id}`}>{section.label}</a>
+          </li>
+        ))}
         {matterWorkspaceSections.map((section) => (
           <li key={section.id}>
             <a href={`#${section.id}`}>{section.label}</a>
@@ -732,28 +738,46 @@ export function MatterWorkspaceView(props: {
           <StatusBadge status={matterStatus[workspace.matter.status]} />
         </p>
       </header>
-      <MatterWorkspaceNav />
-      <OverviewSection workspace={workspace} />
-      <PartiesSection workspace={workspace} />
-      <TimelineSection workspace={workspace} />
-      <FactsAndTensionsSection workspace={workspace} />
-      <EvidenceSection workspace={workspace} />
-      <IssuesAndClaimsSection ledger={props.claimLedger ?? null} />
-      <AuthoritiesSection ledger={props.claimLedger ?? null} />
-      <CommunicationsSection workspace={workspace} />
-      <SafeUnavailableSection
-        sectionId="deadlines-and-tasks"
-        label="Deadlines and tasks"
-        reason="no reviewed Task and Deadline mutation contract is mounted in the immutable API composition"
-      />
-      <WorkProductDraftingSection workProducts={workspace.workProducts} />
-      <SafeUnavailableSection
-        sectionId="actions-and-receipts"
-        label="Actions and receipts"
-        reason="external actions remain limited to recorded negative state; dispatch is not authorized"
-      />
-      <AuditSection workspace={workspace} />
-      <FeatureMatrixSection matterId={workspace.matter.matterId} />
+      <div className="sl-v2-layout">
+        <MatterWorkspaceNav />
+        <div className="sl-v2-main-column">
+          <MatterCockpit
+            workspace={workspace}
+            claimLedger={props.claimLedger ?? null}
+          />
+          <div className="sl-v2-records" aria-label="Authorized Matter records">
+            <header className="sl-v2-records-head">
+              <p className="sl-v2-eyebrow">Authorized API record</p>
+              <h2>Underlying Matter workspace</h2>
+              <p>
+                The AI-first cockpit does not replace source records. These
+                existing read surfaces remain the reconstructable record.
+              </p>
+            </header>
+            <OverviewSection workspace={workspace} />
+            <PartiesSection workspace={workspace} />
+            <TimelineSection workspace={workspace} />
+            <FactsAndTensionsSection workspace={workspace} />
+            <EvidenceSection workspace={workspace} />
+            <IssuesAndClaimsSection ledger={props.claimLedger ?? null} />
+            <AuthoritiesSection ledger={props.claimLedger ?? null} />
+            <CommunicationsSection workspace={workspace} />
+            <SafeUnavailableSection
+              sectionId="deadlines-and-tasks"
+              label="Deadlines and tasks"
+              reason="no reviewed Task and Deadline mutation contract is mounted in the immutable API composition"
+            />
+            <WorkProductDraftingSection workProducts={workspace.workProducts} />
+            <SafeUnavailableSection
+              sectionId="actions-and-receipts"
+              label="Actions and receipts"
+              reason="external actions remain limited to recorded negative state; dispatch is not authorized"
+            />
+            <AuditSection workspace={workspace} />
+            <FeatureMatrixSection matterId={workspace.matter.matterId} />
+          </div>
+        </div>
+      </div>
     </article>
   );
 }
