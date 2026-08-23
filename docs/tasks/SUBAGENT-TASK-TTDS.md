@@ -524,3 +524,15 @@ Every task begins by loading SK context, reading `AGENTS.md`, checking the SKCap
 - **Acceptance:** One command starts the exact public-synthetic API and web build on loopback, one command stops only its recorded processes, all required probes pass, exact files and hashes are sealed, and the stopped rollback state is proven for downstream V2 browser work.
 - **Rollback:** Stop the named instance through the launcher, verify its recorded PIDs and ports are gone, then revert only this candidate to `cc20a130fc1f61ad34ca0f12ceb62f1fea08b35a`. No persistent host or data rollback exists.
 - **Prohibited:** No V2 UI file edit owned by `b18fed11`, protected data, credential, provider request, external action, persistent deployment, merge, push, or unrelated cleanup.
+
+### SKL-MVP-03B: Integrate enriched V2 API fixture into the working cockpit
+
+- **Card:** `b69f0c97`
+- **Agent:** `codex-skl-mvp-v2-api-integration`
+- **Base:** Exact V2 React candidate `48502082fe3be7c115b88937ab222844a4f6f5ff` with exact enriched API fixture implementation `ead05bcc44c589a82a6e1556b68a9726d31b16c7`, synthesized in a fresh isolated worktree.
+- **Objective:** Produce one immutable candidate whose explicitly flagged loopback preview bootstraps in real Chrome and renders coherent non-empty reviewed public-synthetic Client, Matter, Claim, Evidence Item, Authority, corpus, Work Product, audit, provenance, and simulated execution data.
+- **Implementation:** Preserve the exact V2 React UI and launcher boundaries. Integrate the reviewed fixture, exact routed capabilities, fixture hash guard, and API composition without weakening browser session, CSRF, Tenant, Matter, audit, provenance, persistence, simulation, or external-action boundaries. Keep absent contracts explicit and safely unavailable.
+- **Tests:** Run all b18 and 0457 focused tests, web unit tests, typecheck, lint, production build, API boundary tests, Ruff, format, dependency audits, diff, ASCII dash, leakage, reset, teardown, and a separate loopback real Chrome bootstrap and navigation proof. Confirm the existing b18 instance and card `9212ef10` remain untouched.
+- **Acceptance:** Real Chrome reaches the exact Client and Matter through reviewed APIs and displays non-empty enriched data for every available contract, while missing contracts remain explicit. Seal commit, tree, fixture, build, browser, test, evidence, and rollback hashes.
+- **Rollback:** Stop only the synthesis card's named launcher instance, prove its loopback ports closed, and revert only this candidate to `48502082fe3be7c115b88937ab222844a4f6f5ff`. No persistent data migration exists.
+- **Prohibited:** No disturbance of the live b18 instance or `9212ef10`, protected data, credential, provider request, external action, persistent deployment, merge, push, or unrelated cleanup.
