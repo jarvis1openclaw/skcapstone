@@ -536,3 +536,27 @@ Every task begins by loading SK context, reading `AGENTS.md`, checking the SKCap
 - **Acceptance:** Real Chrome reaches the exact Client and Matter through reviewed APIs and displays non-empty enriched data for every available contract, while missing contracts remain explicit. Seal commit, tree, fixture, build, browser, test, evidence, and rollback hashes.
 - **Rollback:** Stop only the synthesis card's named launcher instance, prove its loopback ports closed, and revert only this candidate to `48502082fe3be7c115b88937ab222844a4f6f5ff`. No persistent data migration exists.
 - **Prohibited:** No disturbance of the live b18 instance or `9212ef10`, protected data, credential, provider request, external action, persistent deployment, merge, push, or unrelated cleanup.
+
+### SKL-MVP-SUPPORT-07: Populate the live V2 public-synthetic API composition
+
+- **Card:** `0457ea71`
+- **Agent:** `codex-skl-mvp-v2-api-fixture`
+- **Base:** Exact sealed launcher evidence handoff `4777de8b91914bac4ebe70cae260e7ee241ce98e` in a fresh isolated worktree, with only the required acceptance bindings from fixture candidate `196cb7e35098a89dcfec895a1b9d077023b6e878`.
+- **Objective:** Populate only the loopback preview composition with coherent non-empty public-synthetic records for every existing reviewed V2 read contract and explicit safely-unavailable states for absent contracts.
+- **Implementation:** Bind one deterministic Client and Matter across Matter Events, provenance, Evidence Items, Fact Assertions and tensions, Issues and Claims with support and counter-support, Authority, corpus results, Work Product versions and Approval state, simulated Execution Event and receipt state, audit replay, uncertainty, contradiction, and model or run attribution. Preserve exact cross-record identifiers and source hashes. Do not invent a Task or Deadline API when the reviewed router has none.
+- **Tests:** Cover authenticated navigation and repeatable reads, cross-Tenant and cross-Matter denial, unauthenticated denial before lookup, audit and persistence outage, deterministic reset and replay, fixture-to-contract bindings, non-empty V2 sections, exact source and audit linkage, safe unavailable states, external-action ceiling, leakage, Ruff, format, diff, and Unicode dash checks.
+- **Acceptance:** The immutable fixture candidate is ready for launcher and V2 UI synthesis, all existing read APIs return coherent public-synthetic data, absent APIs remain explicit and fail closed, no unbound or cross-Tenant record exists, and exact evidence and rollback are linked.
+- **Rollback:** Revert only this candidate to `4777de8b91914bac4ebe70cae260e7ee241ce98e`. The preview fixture is process-local, so launcher teardown discards it without data migration.
+- **Prohibited:** No file under `apps/web`, protected data, credential, provider request, external action, persistent deployment, merge, push, or unrelated cleanup.
+
+### SKL-MVP-SUPPORT-05: Build the V2 cockpit fixture and acceptance matrix
+
+- **Card:** `7e244214`
+- **Agent:** `codex-skl-mvp-v2-fixtures`
+- **Base:** Reviewed public-synthetic fixture handoff `f676aabe9ca52bebf154fc625f4f2c9a99d80d5d`; parallel React implementation card `b18fed11` owns its application files.
+- **Objective:** Create an additive deterministic public-synthetic V2 cockpit fixture and executable acceptance matrix derived from `docs/planning/wireframes/index-v2.html` and `docs/planning/wireframes/COMPONENT-API-MAP-V2.md` without editing the parallel React implementation.
+- **Implementation:** Extend the reviewed V1 fixture through a distinct V2 fixture and schema-aware acceptance contract. Map every V2 navigation section to an exact React component name, API contract, fixture identity, complete or safely-unavailable state, accessibility expectation, and evidence assertion. Preserve legal-domain vocabulary, typed-proposal ownership, source-lane separation, immutable provenance, Tenant and Matter scope, and simulation-only external actions.
+- **Tests:** Execute deterministic fixture and matrix validation. Reject missing or extra navigation sections, invented or cross-Tenant records, contract drift, unbound source or audit state, non-simulated external-action progression, duplicate identities, broken references, missing accessibility expectations, and unsupported completion claims. Run the reviewed V1 fixture tests plus focused V2 tests, formatting, JSON, diff, ASCII dash, and scoped leakage scans.
+- **Acceptance:** Every V2 navigation section has a public-synthetic fixture binding or an explicit safely-unavailable state and an executable assertion. Produce immutable candidate, tree, parent, fixture, matrix, validator, tests, evidence, and rollback hashes suitable for direct consumption by `b18fed11` without modifying its files.
+- **Rollback:** Revert only the additive V2 fixture, matrix, validator, tests, evidence, and this TDD to base `f676aabe9ca52bebf154fc625f4f2c9a99d80d5d`. The reviewed V1 fixture and all application, service, database, and runtime state remain unchanged.
+- **Prohibited:** Do not edit files owned by `b18fed11`; deploy or start a live service; use protected Matter data; make a provider request; advance an external action; read credentials; merge; push; or clean another worktree.

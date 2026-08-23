@@ -1,0 +1,280 @@
+{
+  "meta": {
+    "matrixId": "public-synthetic-sklegal-mvp-v2-acceptance",
+    "schemaVersion": 1,
+    "publicSynthetic": true,
+    "classification": "public",
+    "simulationOnly": true,
+    "wireframePath": "docs/planning/wireframes/index-v2.html",
+    "wireframeSha256": "4365a536119836f8d9e76ee0aeb222b4c2c68c11fc01c2a68026a46abd79e765",
+    "componentMapPath": "docs/planning/wireframes/COMPONENT-API-MAP-V2.md",
+    "componentMapSha256": "8e139a1374f894c787aa758cb56ec3af3a711141ac73df223b5f04133f3dd1cd",
+    "baseFixturePath": "tests/fixtures/mvp/public-synthetic-mvp-v1.json",
+    "baseFixtureSha256": "4b14516539289255daca9065dd28060a9e96aea365faec9ecbd1a679bdb47742",
+    "cockpitFixturePath": "tests/fixtures/mvp/public-synthetic-mvp-v2-cockpit.json"
+  },
+  "navigationOrder": [
+    "cover",
+    "operating-model",
+    "corpus-map",
+    "cockpit",
+    "intake",
+    "artifacts",
+    "elements",
+    "recommendation",
+    "strategy",
+    "challenge",
+    "model-routing",
+    "workproduct",
+    "deadlines",
+    "evidence",
+    "case-log",
+    "failures",
+    "delivery"
+  ],
+  "executablePaths": [
+    {
+      "pathId": "authenticated-session",
+      "interface": "browser:session",
+      "fixtureRefs": ["public-synthetic-session-primary"],
+      "expected": "authenticated_fixture"
+    },
+    {
+      "pathId": "client-navigation",
+      "interface": "GET /v1/clients",
+      "fixtureRefs": ["public-synthetic-client-primary"],
+      "expected": "200_scoped_records"
+    },
+    {
+      "pathId": "matter-cockpit",
+      "interface": "GET /v1/matters/{matter_id}/workspace",
+      "fixtureRefs": ["public-synthetic-matter-primary"],
+      "expected": "200_scoped_workspace"
+    },
+    {
+      "pathId": "claim-ledger",
+      "interface": "GET /v1/matters/{matter_id}/claims",
+      "fixtureRefs": ["public-synthetic-support-1"],
+      "expected": "200_scoped_claim_ledger"
+    },
+    {
+      "pathId": "cross-matter-denial",
+      "interface": "GET /v1/matters/{matter_id}/workspace",
+      "fixtureRefs": ["public-synthetic-matter-nonmember", "public-synthetic-v2-failure-cross-matter"],
+      "expected": "403_without_record_detail"
+    },
+    {
+      "pathId": "cross-tenant-denial",
+      "interface": "GET /v1/matters/{matter_id}/workspace",
+      "fixtureRefs": ["public-synthetic-matter-foreign-tenant", "public-synthetic-v2-failure-cross-tenant"],
+      "expected": "403_without_record_detail"
+    },
+    {
+      "pathId": "workspace-outage",
+      "interface": "GET /v1/matters/{matter_id}/workspace",
+      "fixtureRefs": ["public-synthetic-v2-failure-workspace-unavailable"],
+      "expected": "503_sanitized_fail_closed"
+    },
+    {
+      "pathId": "claim-outage",
+      "interface": "GET /v1/matters/{matter_id}/claims",
+      "fixtureRefs": ["public-synthetic-v2-failure-claim-unavailable"],
+      "expected": "503_sanitized_fail_closed"
+    },
+    {
+      "pathId": "unauthenticated-browser",
+      "interface": "browser:session",
+      "fixtureRefs": ["public-synthetic-v2-failure-unauthenticated"],
+      "expected": "401_sanitized_fail_closed"
+    }
+  ],
+  "sections": [
+    {
+      "sectionId": "cover",
+      "navigationLabel": "Decision",
+      "component": "V2DecisionOverview",
+      "apiContract": null,
+      "contractState": "static_reviewed_contract",
+      "expectedState": "complete",
+      "fixtureRefs": ["public-synthetic-v2-surface-cover"],
+      "accessibility": {"landmark": "region", "accessibleName": "Decision", "keyboard": "navigation_and_content_reachable", "liveRegion": "off"},
+      "evidenceAssertions": ["wireframe-source-bound", "component-contract-bound", "fixture-reference-bound", "tenant-matter-scope-bound", "audit-state-explicit", "external-effect-state-explicit"]
+    },
+    {
+      "sectionId": "operating-model",
+      "navigationLabel": "AI operating model",
+      "component": "AiOperatingModel",
+      "apiContract": null,
+      "contractState": "static_reviewed_contract",
+      "expectedState": "complete",
+      "fixtureRefs": ["public-synthetic-v2-surface-operating-model"],
+      "accessibility": {"landmark": "region", "accessibleName": "AI operating model", "keyboard": "navigation_and_content_reachable", "liveRegion": "off"},
+      "evidenceAssertions": ["wireframe-source-bound", "component-contract-bound", "fixture-reference-bound", "tenant-matter-scope-bound", "audit-state-explicit", "external-effect-state-explicit"]
+    },
+    {
+      "sectionId": "corpus-map",
+      "navigationLabel": "Corpus map",
+      "component": "CorpusStrategyMap",
+      "apiContract": null,
+      "contractState": "static_reviewed_contract",
+      "expectedState": "complete",
+      "fixtureRefs": ["public-synthetic-v2-surface-corpus-map", "public-synthetic-v2-lane-course"],
+      "accessibility": {"landmark": "region", "accessibleName": "Corpus map", "keyboard": "navigation_and_content_reachable", "liveRegion": "off"},
+      "evidenceAssertions": ["wireframe-source-bound", "component-contract-bound", "fixture-reference-bound", "tenant-matter-scope-bound", "audit-state-explicit", "external-effect-state-explicit"]
+    },
+    {
+      "sectionId": "cockpit",
+      "navigationLabel": "Matter cockpit",
+      "component": "MatterCockpitOverview",
+      "apiContract": "GET /v1/matters/{matter_id}/workspace",
+      "contractState": "workspace_contract_available",
+      "expectedState": "complete",
+      "fixtureRefs": ["public-synthetic-v2-surface-cockpit", "public-synthetic-matter-primary", "public-synthetic-v2-lane-matter"],
+      "accessibility": {"landmark": "region", "accessibleName": "Matter cockpit", "keyboard": "navigation_and_content_reachable", "liveRegion": "off"},
+      "evidenceAssertions": ["wireframe-source-bound", "component-contract-bound", "fixture-reference-bound", "tenant-matter-scope-bound", "audit-state-explicit", "external-effect-state-explicit"]
+    },
+    {
+      "sectionId": "intake",
+      "navigationLabel": "AI intake",
+      "component": "AiMatterIntake",
+      "apiContract": null,
+      "contractState": "missing_versioned_agent_input_contract",
+      "expectedState": "safely_unavailable",
+      "fixtureRefs": ["public-synthetic-v2-surface-intake"],
+      "accessibility": {"landmark": "region", "accessibleName": "AI intake", "keyboard": "navigation_and_content_reachable", "liveRegion": "polite"},
+      "evidenceAssertions": ["wireframe-source-bound", "component-contract-bound", "fixture-reference-bound", "tenant-matter-scope-bound", "audit-state-explicit", "external-effect-state-explicit"]
+    },
+    {
+      "sectionId": "artifacts",
+      "navigationLabel": "Artifacts",
+      "component": "MatterArtifactIntake",
+      "apiContract": null,
+      "contractState": "missing_unified_artifact_intake_contract",
+      "expectedState": "safely_unavailable",
+      "fixtureRefs": ["public-synthetic-v2-surface-artifacts", "public-synthetic-matter-primary"],
+      "accessibility": {"landmark": "region", "accessibleName": "Artifacts", "keyboard": "navigation_and_content_reachable", "liveRegion": "polite"},
+      "evidenceAssertions": ["wireframe-source-bound", "component-contract-bound", "fixture-reference-bound", "tenant-matter-scope-bound", "audit-state-explicit", "external-effect-state-explicit"]
+    },
+    {
+      "sectionId": "elements",
+      "navigationLabel": "Element matrix",
+      "component": "EssentialElementsMatrix",
+      "apiContract": null,
+      "contractState": "missing_joined_analysis_http_contract",
+      "expectedState": "safely_unavailable",
+      "fixtureRefs": ["public-synthetic-v2-surface-elements", "public-synthetic-support-1"],
+      "accessibility": {"landmark": "region", "accessibleName": "Element matrix", "keyboard": "navigation_and_content_reachable", "liveRegion": "polite"},
+      "evidenceAssertions": ["wireframe-source-bound", "component-contract-bound", "fixture-reference-bound", "tenant-matter-scope-bound", "audit-state-explicit", "external-effect-state-explicit"]
+    },
+    {
+      "sectionId": "recommendation",
+      "navigationLabel": "Recommendation",
+      "component": "RankedRecommendationDetail",
+      "apiContract": null,
+      "contractState": "missing_typed_recommendation_contract",
+      "expectedState": "safely_unavailable",
+      "fixtureRefs": ["public-synthetic-v2-surface-recommendation", "public-synthetic-v2-lane-model"],
+      "accessibility": {"landmark": "region", "accessibleName": "Recommendation", "keyboard": "navigation_and_content_reachable", "liveRegion": "polite"},
+      "evidenceAssertions": ["wireframe-source-bound", "component-contract-bound", "fixture-reference-bound", "tenant-matter-scope-bound", "audit-state-explicit", "external-effect-state-explicit"]
+    },
+    {
+      "sectionId": "strategy",
+      "navigationLabel": "Strategy and Authority",
+      "component": "StrategyAuthorityOverlay",
+      "apiContract": null,
+      "contractState": "missing_joined_authority_applicability_contract",
+      "expectedState": "safely_unavailable",
+      "fixtureRefs": ["public-synthetic-v2-surface-strategy", "public-synthetic-authority-primary", "public-synthetic-v2-lane-authority"],
+      "accessibility": {"landmark": "region", "accessibleName": "Strategy and Authority", "keyboard": "navigation_and_content_reachable", "liveRegion": "polite"},
+      "evidenceAssertions": ["wireframe-source-bound", "component-contract-bound", "fixture-reference-bound", "tenant-matter-scope-bound", "audit-state-explicit", "external-effect-state-explicit"]
+    },
+    {
+      "sectionId": "challenge",
+      "navigationLabel": "Agent team",
+      "component": "AgentChallengeTeam",
+      "apiContract": null,
+      "contractState": "missing_challenge_proposal_http_contract",
+      "expectedState": "safely_unavailable",
+      "fixtureRefs": ["public-synthetic-v2-surface-challenge"],
+      "accessibility": {"landmark": "region", "accessibleName": "Agent team", "keyboard": "navigation_and_content_reachable", "liveRegion": "polite"},
+      "evidenceAssertions": ["wireframe-source-bound", "component-contract-bound", "fixture-reference-bound", "tenant-matter-scope-bound", "audit-state-explicit", "external-effect-state-explicit"]
+    },
+    {
+      "sectionId": "model-routing",
+      "navigationLabel": "Model routing",
+      "component": "ModelRoutingEvidence",
+      "apiContract": null,
+      "contractState": "missing_sklegal_model_evidence_http_contract",
+      "expectedState": "safely_unavailable",
+      "fixtureRefs": ["public-synthetic-v2-surface-model-routing"],
+      "accessibility": {"landmark": "region", "accessibleName": "Model routing", "keyboard": "navigation_and_content_reachable", "liveRegion": "polite"},
+      "evidenceAssertions": ["wireframe-source-bound", "component-contract-bound", "fixture-reference-bound", "tenant-matter-scope-bound", "audit-state-explicit", "external-effect-state-explicit"]
+    },
+    {
+      "sectionId": "workproduct",
+      "navigationLabel": "Work Product",
+      "component": "WorkProductAssembly",
+      "apiContract": "GET /v1/matters/{matter_id}/workspace",
+      "contractState": "workspace_contract_available_assembler_unavailable",
+      "expectedState": "complete",
+      "fixtureRefs": ["public-synthetic-v2-surface-workproduct", "public-synthetic-approval-primary", "public-synthetic-matter-primary", "public-synthetic-v2-lane-human"],
+      "accessibility": {"landmark": "region", "accessibleName": "Work Product", "keyboard": "navigation_and_content_reachable", "liveRegion": "off"},
+      "evidenceAssertions": ["wireframe-source-bound", "component-contract-bound", "fixture-reference-bound", "tenant-matter-scope-bound", "audit-state-explicit", "external-effect-state-explicit"]
+    },
+    {
+      "sectionId": "deadlines",
+      "navigationLabel": "Deadlines and actions",
+      "component": "DeadlineActionHandoff",
+      "apiContract": null,
+      "contractState": "missing_joined_deadline_task_action_projection",
+      "expectedState": "safely_unavailable",
+      "fixtureRefs": ["public-synthetic-v2-surface-deadlines", "public-synthetic-deadline-primary", "public-synthetic-task-primary", "public-synthetic-v2-external-action-boundary"],
+      "accessibility": {"landmark": "region", "accessibleName": "Deadlines and actions", "keyboard": "navigation_and_content_reachable", "liveRegion": "polite"},
+      "evidenceAssertions": ["wireframe-source-bound", "component-contract-bound", "fixture-reference-bound", "tenant-matter-scope-bound", "audit-state-explicit", "external-effect-state-explicit"]
+    },
+    {
+      "sectionId": "evidence",
+      "navigationLabel": "Source and run evidence",
+      "component": "SourceRunEvidence",
+      "apiContract": null,
+      "contractState": "missing_joined_agent_run_evidence_contract",
+      "expectedState": "safely_unavailable",
+      "fixtureRefs": ["public-synthetic-v2-surface-evidence", "public-synthetic-matter-primary"],
+      "accessibility": {"landmark": "region", "accessibleName": "Source and run evidence", "keyboard": "navigation_and_content_reachable", "liveRegion": "polite"},
+      "evidenceAssertions": ["wireframe-source-bound", "component-contract-bound", "fixture-reference-bound", "tenant-matter-scope-bound", "audit-state-explicit", "external-effect-state-explicit"]
+    },
+    {
+      "sectionId": "case-log",
+      "navigationLabel": "Case log",
+      "component": "MatterActivityLog",
+      "apiContract": null,
+      "contractState": "missing_joined_append_only_activity_projection",
+      "expectedState": "safely_unavailable",
+      "fixtureRefs": ["public-synthetic-v2-surface-case-log", "public-synthetic-audit-work-product-approved"],
+      "accessibility": {"landmark": "region", "accessibleName": "Case log", "keyboard": "navigation_and_content_reachable", "liveRegion": "polite"},
+      "evidenceAssertions": ["wireframe-source-bound", "component-contract-bound", "fixture-reference-bound", "tenant-matter-scope-bound", "audit-state-explicit", "external-effect-state-explicit"]
+    },
+    {
+      "sectionId": "failures",
+      "navigationLabel": "Failure states",
+      "component": "CockpitFailureStates",
+      "apiContract": null,
+      "contractState": "static_reviewed_contract",
+      "expectedState": "complete",
+      "fixtureRefs": ["public-synthetic-v2-surface-failures", "public-synthetic-v2-failure-unauthenticated", "public-synthetic-v2-failure-cross-matter", "public-synthetic-v2-failure-cross-tenant", "public-synthetic-v2-failure-workspace-unavailable", "public-synthetic-v2-failure-claim-unavailable"],
+      "accessibility": {"landmark": "region", "accessibleName": "Failure states", "keyboard": "navigation_and_content_reachable", "liveRegion": "polite"},
+      "evidenceAssertions": ["wireframe-source-bound", "component-contract-bound", "fixture-reference-bound", "tenant-matter-scope-bound", "audit-state-explicit", "external-effect-state-explicit"]
+    },
+    {
+      "sectionId": "delivery",
+      "navigationLabel": "Delivery map",
+      "component": "CockpitDeliveryMap",
+      "apiContract": null,
+      "contractState": "static_reviewed_contract",
+      "expectedState": "complete",
+      "fixtureRefs": ["public-synthetic-v2-surface-delivery"],
+      "accessibility": {"landmark": "region", "accessibleName": "Delivery map", "keyboard": "navigation_and_content_reachable", "liveRegion": "off"},
+      "evidenceAssertions": ["wireframe-source-bound", "component-contract-bound", "fixture-reference-bound", "tenant-matter-scope-bound", "audit-state-explicit", "external-effect-state-explicit"]
+    }
+  ]
+}

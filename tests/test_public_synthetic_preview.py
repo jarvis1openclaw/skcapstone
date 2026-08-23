@@ -12,9 +12,18 @@ import urllib.request
 from pathlib import Path
 
 import pytest
+import sklegal_api.public_synthetic_preview as preview_composition
 from fastapi.testclient import TestClient
 from sklegal_api.browser_sessions import PUBLIC_SYNTHETIC_CREDENTIAL_REFERENCE
-from sklegal_api.public_synthetic_preview import CLIENT_ID, MATTER_ID, TENANT_ID, app
+from sklegal_api.public_synthetic_preview import (
+    CLIENT_ID,
+    CORPUS_QUERY,
+    CORPUS_SOURCE_ID,
+    MATTER_ID,
+    TENANT_ID,
+    app,
+    build_public_synthetic_preview_app,
+)
 
 from scripts import mvp_preview
 
@@ -56,7 +65,131 @@ def test_preview_api_bootstrap_and_repeatable_client_matter_reads() -> None:
             assert workspace.status_code == 200
             assert workspace.json()["matter"]["matterId"] == str(MATTER_ID)
             assert claims.status_code == 200
-            assert claims.json() == {"matterId": str(MATTER_ID), "claims": []}
+            assert claims.json()["matterId"] == str(MATTER_ID)
+            assert claims.json()["claims"][0]["claimId"] == (
+                "99999999-9999-4999-8999-999999999991"
+            )
+
+
+def _bootstrap(client: TestClient) -> str:
+    response = client.post(
+        "/v1/session/bootstrap",
+        json={
+            "credentialReference": PUBLIC_SYNTHETIC_CREDENTIAL_REFERENCE,
+            "tenantId": str(TENANT_ID),
+        },
+        headers={"Origin": "https://testserver"},
+    )
+    assert response.status_code == 200
+    return str(response.json()["csrfToken"])
+
+
+def test_v2_fixture_exposes_coherent_nonempty_reviewed_contracts() -> None:
+    candidate = build_public_synthetic_preview_app()
+    with TestClient(candidate, base_url="https://testserver") as client:
+        csrf = _bootstrap(client)
+        headers = {"X-SKLegal-Tenant": str(TENANT_ID)}
+        workspace = client.get(f"/v1/matters/{MATTER_ID}/workspace", headers=headers)
+        claims = client.get(f"/v1/matters/{MATTER_ID}/claims", headers=headers)
+        corpus = client.post(
+            f"/v1/matters/{MATTER_ID}/corpus/search",
+            headers=headers | {"X-CSRF-Token": csrf},
+            json={"query": CORPUS_QUERY},
+        )
+        span = client.get(
+            f"/v1/matters/{MATTER_ID}/corpus/sources/{CORPUS_SOURCE_ID}/span",
+            headers=headers,
+        )
+        assert workspace.status_code == claims.status_code == 200
+        assert corpus.status_code == span.status_code == 200
+        view = workspace.json()
+        ledger = claims.json()
+        result = corpus.json()
+        assert view["facts"] and view["evidence"] and view["workProducts"]
+        assert view["audit"] and view["provenance"]["sourceFiles"]
+        assert view["executionStates"]
+        assert (
+            ledger["claims"][0]["claimId"]
+            == view["workProducts"][0]["currentVersion"]["sentences"][0]["claimId"]
+        )
+        assert ledger["claims"][0]["applicability"][0]["subjectId"]
+        assert result["results"][0]["sourceId"] == CORPUS_SOURCE_ID
+        assert span.json()["sourceId"] == CORPUS_SOURCE_ID
+        assert span.json()["classification"] == "public"
+
+
+def test_v2_fixture_failures_are_sanitized_and_reset_is_deterministic() -> None:
+    first = build_public_synthetic_preview_app()
+    second = build_public_synthetic_preview_app()
+    with TestClient(first, base_url="https://testserver") as client:
+        unauthenticated = client.get(f"/v1/matters/{MATTER_ID}/workspace")
+        assert unauthenticated.status_code == 401
+        assert str(MATTER_ID) not in unauthenticated.text
+        _bootstrap(client)
+        headers = {"X-SKLegal-Tenant": str(TENANT_ID)}
+        baseline = client.get(
+            f"/v1/matters/{MATTER_ID}/workspace", headers=headers
+        ).json()
+        first.state.public_synthetic_workspace_store.available = False
+        unavailable = client.get(f"/v1/matters/{MATTER_ID}/workspace", headers=headers)
+        assert unavailable.status_code == 503
+        assert unavailable.json() == {"detail": {"code": "workspace_unavailable"}}
+    with TestClient(second, base_url="https://testserver") as client:
+        _bootstrap(client)
+        replayed = client.get(
+            f"/v1/matters/{MATTER_ID}/workspace",
+            headers={"X-SKLegal-Tenant": str(TENANT_ID)},
+        )
+        assert replayed.status_code == 200
+        assert replayed.json() == baseline
+
+
+def test_v2_fixture_claim_and_corpus_outages_fail_closed() -> None:
+    candidate = build_public_synthetic_preview_app()
+    with TestClient(candidate, base_url="https://testserver") as client:
+        csrf = _bootstrap(client)
+        headers = {"X-SKLegal-Tenant": str(TENANT_ID)}
+        candidate.state.public_synthetic_claim_store.available = False
+        claim = client.get(f"/v1/matters/{MATTER_ID}/claims", headers=headers)
+        candidate.state.public_synthetic_corpus_store.available = False
+        corpus = client.post(
+            f"/v1/matters/{MATTER_ID}/corpus/search",
+            headers=headers | {"X-CSRF-Token": csrf},
+            json={"query": CORPUS_QUERY},
+        )
+        assert claim.status_code == 503
+        assert claim.json() == {"detail": {"code": "claim_ledger_unavailable"}}
+        assert corpus.status_code == 503
+        assert corpus.json() == {"detail": {"code": "corpus_unavailable"}}
+
+
+def test_v2_fixture_cross_scope_requests_disclose_no_record_detail() -> None:
+    candidate = build_public_synthetic_preview_app()
+    with TestClient(candidate, base_url="https://testserver") as client:
+        _bootstrap(client)
+        other_matter = "44444444-4444-4444-8444-444444444442"
+        denied_matter = client.get(
+            f"/v1/matters/{other_matter}/workspace",
+            headers={"X-SKLegal-Tenant": str(TENANT_ID)},
+        )
+        denied_tenant = client.get(
+            f"/v1/matters/{MATTER_ID}/workspace",
+            headers={"X-SKLegal-Tenant": "11111111-1111-4111-8111-111111111112"},
+        )
+        assert denied_matter.status_code == denied_tenant.status_code == 403
+        for response in (denied_matter, denied_tenant):
+            assert "Public Synthetic Supply Agreement Review" not in response.text
+            assert "invented delivery date" not in response.text
+
+
+def test_v2_fixture_hash_drift_fails_before_app_composition(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    drifted = tmp_path / "fixture.json"
+    drifted.write_text("{}\n", encoding="utf-8")
+    monkeypatch.setattr(preview_composition, "FIXTURE_PATH", drifted)
+    with pytest.raises(RuntimeError, match="fixture hash mismatch"):
+        build_public_synthetic_preview_app()
 
 
 def test_preview_api_is_explicitly_synthetic_and_contains_no_secret_values() -> None:

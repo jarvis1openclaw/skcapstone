@@ -2,9 +2,11 @@
 
 from __future__ import annotations
 
+import hashlib
+import json
 from contextlib import AbstractContextManager
 from dataclasses import replace
-from datetime import UTC, datetime
+from pathlib import Path
 from typing import Any, cast
 from uuid import UUID
 
@@ -43,21 +45,52 @@ from .browser_sessions import (
     InMemoryPublicSyntheticSessionBackend,
 )
 from .claims import ClaimLedgerRead, InMemoryClaimLedgerStore
-from .corpus import InMemoryCorpusResearchStore
+from .corpus import (
+    CorpusResultRead,
+    CorpusScopeOptionRead,
+    CorpusSearchResponseRead,
+    CorpusSpanAvailableRead,
+    CorpusTraceRead,
+    InMemoryCorpusResearchStore,
+)
 from .workspace import (
     ClientSummaryRead,
     InMemoryWorkspaceReadStore,
     MatterDetailRead,
     MatterWorkspaceRead,
-    WorkspaceMatterRead,
-    WorkspaceProvenanceRead,
 )
 
-TENANT_ID = UUID("10000000-0000-4000-8000-000000000001")
-PRINCIPAL_ID = UUID("30000000-0000-4000-8000-000000000001")
-CLIENT_ID = UUID("40000000-0000-4000-8000-000000000101")
-MATTER_ID = UUID("20000000-0000-4000-8000-000000000101")
-OBSERVED_AT = datetime(2026, 8, 23, 9, 0, tzinfo=UTC)
+TENANT_ID = UUID("11111111-1111-4111-8111-111111111111")
+PRINCIPAL_ID = UUID("22222222-2222-4222-8222-222222222221")
+CLIENT_ID = UUID("33333333-3333-4333-8333-333333333331")
+MATTER_ID = UUID("44444444-4444-4444-8444-444444444441")
+FIXTURE_PATH = (
+    Path(__file__).resolve().parents[4]
+    / "tests/fixtures/mvp/public-synthetic-mvp-v1.json"
+)
+FIXTURE_SHA256 = "4b14516539289255daca9065dd28060a9e96aea365faec9ecbd1a679bdb47742"
+CORPUS_QUERY = "invented delivery date"
+CORPUS_SOURCE_ID = "public-synthetic-authority-primary"
+
+
+def _load_fixture() -> dict[str, Any]:
+    raw = FIXTURE_PATH.read_bytes()
+    if hashlib.sha256(raw).hexdigest() != FIXTURE_SHA256:
+        raise RuntimeError("public synthetic preview fixture hash mismatch")
+    fixture = json.loads(raw)
+    meta = fixture.get("meta", {})
+    identifiers = fixture.get("identifiers", {})
+    if (
+        meta.get("publicSynthetic") is not True
+        or meta.get("classification") != "public"
+        or meta.get("simulationOnly") is not True
+        or identifiers.get("tenantId") != str(TENANT_ID)
+        or identifiers.get("principalId") != str(PRINCIPAL_ID)
+        or identifiers.get("clientId") != str(CLIENT_ID)
+        or identifiers.get("matterId") != str(MATTER_ID)
+    ):
+        raise RuntimeError("public synthetic preview fixture boundary mismatch")
+    return fixture
 
 
 class _SyntheticSigner:
@@ -104,6 +137,18 @@ class _RefreshingPreviewSessions(InMemoryPublicSyntheticSessionBackend):
                 Purpose.CLAIM_REVIEW,
                 MATTER_ID,
             ),
+            (
+                f"/v1/matters/{MATTER_ID}/corpus/search",
+                Capability.CORPUS_SEARCH,
+                Purpose.LEGAL_RESEARCH,
+                MATTER_ID,
+            ),
+            (
+                f"/v1/matters/{MATTER_ID}/corpus/sources/{CORPUS_SOURCE_ID}/span",
+                Capability.CORPUS_ARTIFACT_READ,
+                Purpose.LEGAL_RESEARCH,
+                MATTER_ID,
+            ),
         )
         targets = {
             "/v1/clients": "api:workspace.clients.list",
@@ -112,9 +157,14 @@ class _RefreshingPreviewSessions(InMemoryPublicSyntheticSessionBackend):
             f"/v1/matters/{MATTER_ID}": "api:workspace.matters.get",
             f"/v1/matters/{MATTER_ID}/workspace": "api:workspace.matters.workspace",
             f"/v1/matters/{MATTER_ID}/claims": "api:claims.ledger",
+            f"/v1/matters/{MATTER_ID}/corpus/search": "api:corpus.search",
+            f"/v1/matters/{MATTER_ID}/corpus/sources/{CORPUS_SOURCE_ID}/span": "api:corpus.span",
         }
         return {
-            ("GET", path): self._issuer.issue_root(
+            (
+                "POST" if path.endswith("/corpus/search") else "GET",
+                path,
+            ): self._issuer.issue_root(
                 principal=self._principal,
                 grant=CapabilityGrant(
                     audience=Audience.API,
@@ -172,55 +222,115 @@ def build_public_synthetic_preview_app():
         signature_cache=SignatureVerificationCache(),
     )
     issuer = CapabilityIssuer(_SyntheticSigner())
+    fixture = _load_fixture()
     workspace = InMemoryWorkspaceReadStore()
     workspace.add_client(
         TENANT_ID,
-        ClientSummaryRead(
-            id=CLIENT_ID,
-            tenant_id=TENANT_ID,
-            display_name="Public Synthetic Client",
-            matter_count=1,
-        ),
+        ClientSummaryRead.model_validate(fixture["clients"][0]),
     )
     workspace.add_matter(
         TENANT_ID,
-        MatterDetailRead(
-            id=MATTER_ID,
-            tenant_id=TENANT_ID,
-            client_id=CLIENT_ID,
-            client_display_name="Public Synthetic Client",
-            title="Public Synthetic Matter",
-            status="open",
-            summary="Synthetic demonstration records only.",
-            opened_on="2026-08-23",
-        ),
+        MatterDetailRead.model_validate(fixture["matters"][0]),
     )
     workspace.add_workspace(
         TENANT_ID,
-        MatterWorkspaceRead(
-            matter=WorkspaceMatterRead(
-                matter_id=MATTER_ID,
-                client_id=CLIENT_ID,
-                client_display_name="Public Synthetic Client",
-                title="Public Synthetic Matter",
-                summary="Synthetic demonstration records only.",
-                status="open",
-                opened_at=OBSERVED_AT,
-            ),
-            provenance=WorkspaceProvenanceRead(
-                source_snapshot="public-synthetic-preview-v1",
-                current_source_snapshot="public-synthetic-preview-v1",
-                adapter_version="public-synthetic-preview/v1",
-                observed_at=OBSERVED_AT,
-                stale=False,
-                source_files=(),
-            ),
-        ),
+        MatterWorkspaceRead.model_validate(fixture["workspace"]),
     )
     workspace.set_matter_members(TENANT_ID, MATTER_ID, frozenset({PRINCIPAL_ID}))
     claims = InMemoryClaimLedgerStore()
-    claims.add_ledger(TENANT_ID, MATTER_ID, ClaimLedgerRead(matter_id=MATTER_ID))
+    claims.add_ledger(
+        TENANT_ID,
+        MATTER_ID,
+        ClaimLedgerRead.model_validate(fixture["claimLedger"]),
+    )
     claims.set_matter_members(TENANT_ID, MATTER_ID, frozenset({PRINCIPAL_ID}))
+    authority = fixture["authorities"][0]
+    corpus = InMemoryCorpusResearchStore()
+    corpus.add_search(
+        TENANT_ID,
+        MATTER_ID,
+        CORPUS_QUERY,
+        CorpusSearchResponseRead(
+            matter_id=MATTER_ID,
+            query=CORPUS_QUERY,
+            scope_options=(
+                CorpusScopeOptionRead(scope="this_matter", state="active"),
+                CorpusScopeOptionRead(
+                    scope="tenant_corpus",
+                    state="unavailable",
+                    reason="Public synthetic preview is Matter scoped.",
+                ),
+                CorpusScopeOptionRead(
+                    scope="official_sources",
+                    state="unavailable",
+                    reason="No external source retrieval is enabled.",
+                ),
+            ),
+            results=(
+                CorpusResultRead(
+                    rank=1,
+                    score=1.0,
+                    snippet="Invented fixture authority for the invented delivery date.",
+                    source_id=CORPUS_SOURCE_ID,
+                    title=authority["title"],
+                    citation=authority["citation"],
+                    classification="public",
+                    origin="matter_corpus",
+                    verification_state=authority["verificationState"],
+                    source_version=authority["sourceVersion"],
+                    source_sha256=authority["contentSha256"],
+                    document_id="public-synthetic-authority-document",
+                    chunk_id="public-synthetic-authority-chunk-1",
+                    chunk_sha256=authority["contentSha256"],
+                    source_locator="fixture:authority:1",
+                    span_kind="text_offset",
+                    span_start=0,
+                    span_end=67,
+                    supersession_status="current",
+                ),
+            ),
+            trace=CorpusTraceRead(
+                scope_kind="this_matter",
+                tenant_id=TENANT_ID,
+                matter_id=MATTER_ID,
+                release_id="public-synthetic-release-v1",
+                projection_generation=1,
+                current_projection_generation=1,
+                projection_stale=False,
+                backend_watermark=1,
+                lag_events=0,
+                lag_seconds=0.0,
+                query_template_id="public-synthetic-query",
+                query_template_version="v1",
+                query_template_sha256="f" * 64,
+                rank_path=("fixture_rank",),
+                retrieval_adapter_version="public-synthetic-fixture-v1",
+                source_ids=(CORPUS_SOURCE_ID,),
+                source_hashes=(authority["contentSha256"],),
+            ),
+        ),
+    )
+    corpus.add_span(
+        TENANT_ID,
+        MATTER_ID,
+        CorpusSpanAvailableRead(
+            source_id=CORPUS_SOURCE_ID,
+            source_version=authority["sourceVersion"],
+            source_sha256=authority["contentSha256"],
+            document_id="public-synthetic-authority-document",
+            citation=authority["citation"],
+            title=authority["title"],
+            classification="public",
+            source_locator="fixture:authority:1",
+            span_kind="text_offset",
+            span_start=0,
+            span_end=67,
+            span_text="Invented fixture authority for the invented delivery date only.",
+            supersession_status="current",
+            jurisdiction=authority["jurisdiction"],
+        ),
+    )
+    corpus.set_matter_members(TENANT_ID, MATTER_ID, frozenset({PRINCIPAL_ID}))
     sessions = _RefreshingPreviewSessions(
         issuer=issuer,
         principal=principal,
@@ -245,7 +355,7 @@ def build_public_synthetic_preview_app():
     composition = MvpApiComposition(
         workspace_store=workspace,
         claim_store=claims,
-        corpus_store=InMemoryCorpusResearchStore(),
+        corpus_store=corpus,
         governance_service=cast(PolicyGovernanceService, object()),
         authorizer=authorizer,
         principal_resolver=principal_resolver,
@@ -260,6 +370,9 @@ def build_public_synthetic_preview_app():
     )
     app = create_mvp_app(composition)
     app.state.public_synthetic_preview = True
+    app.state.public_synthetic_workspace_store = workspace
+    app.state.public_synthetic_claim_store = claims
+    app.state.public_synthetic_corpus_store = corpus
     app.state.signing_stub = stub
     return app
 
