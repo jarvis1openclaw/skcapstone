@@ -19,14 +19,14 @@ relations, functions, and types, must be owned by the exact non-superuser,
 | `sklegal_workflow` | Opaque workflow and policy decision references |
 | `sklegal_audit` | Append-only audit chain, transactional outbox, delivery receipts, and projection watermarks |
 
-The legal schema covers all 36 entities in the approved `SKL-S1-01` domain
+The legal schema covers all 37 entities in the approved `SKL-S1-01` domain
 contract plus the `SKL-S3-05A` claim ledger entities (LedgerClaim and
 ClaimSupport) and the `SKL-S4-04A` work product drafting entities
 (WorkProductTemplate, WorkProductTemplateVersion, and WorkProductUnknown).
 `tests/fixtures/persistence/domain-table-parity.json` is the reviewed
 entity-to-table and required-column matrix. The reusable, driver-neutral
 `sklegal_persistence.mapping` adapter declares scalar, value-object, and
-normalized-relation mappings for all 36 public `DomainEntity` types. It
+normalized-relation mappings for all 37 public `DomainEntity` types. It
 decomposes canonical instances into closed scalar and relation rows, restores
 those rows with strict Pydantic validation, and rejects missing joins, unknown
 columns, undeclared persistence metadata, over-cardinality, and ambiguous
@@ -200,7 +200,7 @@ contract and its production limitations.
 
 ## Migration, provisioning, and rollback
 
-Eighteen digest-pinned migrations create the foundation, identity, legal
+Nineteen digest-pinned migrations create the foundation, identity, legal
 records, integration and workflow references, audit target, RLS policies,
 legal information-barrier records, the CapAuth state, snapshot, and grant
 surface, the work product drafting surface, the claim ledger, and the
@@ -310,7 +310,14 @@ to only one exact policy invocation across workers. Expired rows are pruned in
 the same transaction, PUBLIC execution is revoked, and only
 `sklegal_runtime` receives execute authority.
 
-The down sections run in reverse order. The 0018 down drops only its controlled
+Migration 0019 adds append-only, matter-scoped `sentence_groundings`. Each row
+binds one sentence digest to one exact Work Product Version triple and one
+LedgerClaim identity. Composite foreign keys preserve the Tenant and Matter
+boundary, forced RLS applies to reads and inserts, and the runtime provisioner
+grants only the insert authority required by the declared persistence writer.
+
+The down sections run in reverse order. The 0019 down drops only the
+SentenceGrounding index, policies, triggers, and table. The 0018 down drops only its controlled
 function, policies, and reservation table. The 0017 down drops only the
 SKGateway authorization snapshot function. The 0016 down drops the pilot import
 staging tables in reverse dependency order. The 0015 down drops the claim
@@ -373,7 +380,7 @@ and removes the container automatically.
 The suite verifies migration owner preflight and ownership, up/down/up,
 migration failure rollback, exact runtime grants, forced RLS, unfiltered tenant
 and matter isolation, same-tenant unassigned and cross-tenant mutation denial,
-role-bypass resistance, scoped UUID reuse, 31-entity table parity, source and
+role-bypass resistance, scoped UUID reuse, 37-entity table parity, source and
 legacy provenance, encryption completeness, append-only and bitemporal
 behavior, state validity, optimistic concurrency, monotonic update time,
 controlled artifact and execution transitions, live identity status and
@@ -390,8 +397,8 @@ schema isolation,
 ordinary rollback, and service cleanup.
 
 Bidirectional qualification has two independent halves. The reverse path reads
-all 31 normalized records, strictly reconstructs them, and compares canonical
-snapshots. The write-first path starts with 31 canonical instances, calls the
+all 37 normalized records, strictly reconstructs them, and compares canonical
+snapshots. The write-first path starts with 37 canonical instances, calls the
 production decomposer before any corresponding insert, writes in dependency
 order, reads, strictly reconstructs, and compares canonical state plus retained
 persistence metadata. Tenant, Client, Engagement, and Matter use the explicit

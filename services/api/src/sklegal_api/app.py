@@ -17,6 +17,7 @@ from sklegal_policies import PolicyGovernanceService
 
 from .browser_sessions import (
     SESSION_COOKIE,
+    BrowserSessionAuditSink,
     BrowserSessionBackend,
     BrowserSessionBackendUnavailable,
     build_browser_session_router,
@@ -82,6 +83,7 @@ class MvpApiComposition:
     probes: tuple[DependencyProbe, ...]
     mode: RuntimeMode = "production"
     browser_sessions: BrowserSessionBackend | None = None
+    browser_session_audit: BrowserSessionAuditSink | None = None
 
 
 def _probe_map(composition: MvpApiComposition) -> dict[str, DependencyProbe]:
@@ -123,6 +125,18 @@ def _probe_map(composition: MvpApiComposition) -> dict[str, DependencyProbe]:
     ):
         raise MvpCompositionUnavailable(
             "synthetic browser sessions are forbidden in production mode"
+        )
+    if (composition.browser_sessions is None) != (
+        composition.browser_session_audit is None
+    ):
+        raise MvpCompositionUnavailable(
+            "browser sessions and their audit boundary must be composed together"
+        )
+    if composition.mode == "production" and getattr(
+        composition.browser_session_audit, "synthetic", False
+    ):
+        raise MvpCompositionUnavailable(
+            "synthetic browser session audit is forbidden in production mode"
         )
     return probes
 
@@ -289,7 +303,12 @@ def create_mvp_app(composition: MvpApiComposition) -> FastAPI:
         )
 
     if composition.browser_sessions is not None:
-        app.include_router(build_browser_session_router(composition.browser_sessions))
+        assert composition.browser_session_audit is not None
+        app.include_router(
+            build_browser_session_router(
+                composition.browser_sessions, composition.browser_session_audit
+            )
+        )
 
     app.include_router(
         build_workspace_router(

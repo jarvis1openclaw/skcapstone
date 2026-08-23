@@ -7,17 +7,24 @@ import secrets
 from collections.abc import Callable
 from dataclasses import dataclass, replace
 from datetime import UTC, datetime, timedelta
-from typing import Protocol
-from uuid import UUID
+from typing import Literal, Protocol, TypeVar
+from uuid import UUID, uuid4
 
 from fastapi import APIRouter, HTTPException, Request, Response, status
 from pydantic import BaseModel, ConfigDict
 from pydantic.alias_generators import to_camel
-from sklegal_capauth import PresentedCapability, PrincipalContext, parse_authorization_bearer
+from sklegal_capauth import (
+    PresentedCapability,
+    PrincipalContext,
+    parse_authorization_bearer,
+)
 
 SESSION_COOKIE = "__Host-sklegal_session"
 SESSION_TTL = timedelta(minutes=30)
 PUBLIC_SYNTHETIC_CREDENTIAL_REFERENCE = "development:public-synthetic:mvp"
+SessionOperation = Literal["bootstrap", "refresh", "tenant_switch", "revoke"]
+SessionOutcome = Literal["success", "deny"]
+MutationResult = TypeVar("MutationResult")
 
 
 class BrowserSessionModel(BaseModel):
@@ -97,6 +104,63 @@ class BrowserSessionBackendUnavailable(RuntimeError):
     """The trusted session backend cannot provide a current answer."""
 
 
+@dataclass(frozen=True, slots=True)
+class BrowserSessionAuditEvent:
+    """Bounded security event with no cookie, CSRF, or capability material."""
+
+    event_id: UUID
+    correlation_id: UUID
+    operation: SessionOperation
+    outcome: SessionOutcome
+    tenant_id: UUID
+    principal_id: UUID | None
+    session_sha256: str | None
+    reason_code: str
+    occurred_at: datetime
+    provenance_revision: str = "sklegal-browser-session/v1"
+
+
+class BrowserSessionAuditSink(Protocol):
+    """Atomically append one outcome with its associated session mutation."""
+
+    synthetic: bool
+
+    def execute(
+        self,
+        event_factory: Callable[[SessionOutcome, str], BrowserSessionAuditEvent],
+        mutation: Callable[[], MutationResult],
+    ) -> MutationResult: ...
+
+
+class InMemoryPublicSyntheticSessionAuditSink:
+    """Append-only atomic audit sink for the public-synthetic composition."""
+
+    synthetic = True
+
+    def __init__(self) -> None:
+        self._events: list[BrowserSessionAuditEvent] = []
+        self.available = True
+
+    @property
+    def events(self) -> tuple[BrowserSessionAuditEvent, ...]:
+        return tuple(self._events)
+
+    def execute(
+        self,
+        event_factory: Callable[[SessionOutcome, str], BrowserSessionAuditEvent],
+        mutation: Callable[[], MutationResult],
+    ) -> MutationResult:
+        if not self.available:
+            raise BrowserSessionBackendUnavailable("session audit unavailable")
+        try:
+            result = mutation()
+        except Exception:
+            self._events.append(event_factory("deny", "session_operation_denied"))
+            raise
+        self._events.append(event_factory("success", "session_operation_succeeded"))
+        return result
+
+
 def _digest(value: str) -> str:
     return hashlib.sha256(value.encode("ascii")).hexdigest()
 
@@ -123,6 +187,10 @@ class InMemoryPublicSyntheticSessionBackend:
         self._capabilities_by_request = dict(capabilities_by_request)
         self._clock = clock
         self._sessions: dict[str, BrowserSessionAuthentication] = {}
+
+    @property
+    def active_session_count(self) -> int:
+        return len(self._sessions)
 
     def _new(self, tenant_id: UUID) -> BrowserSessionAuthentication:
         if self._principal.tenant_id != tenant_id:
@@ -248,15 +316,62 @@ def require_csrf(request: Request, session: BrowserSessionAuthentication) -> Non
         )
 
 
-def build_browser_session_router(backend: BrowserSessionBackend) -> APIRouter:
+def build_browser_session_router(
+    backend: BrowserSessionBackend, audit: BrowserSessionAuditSink
+) -> APIRouter:
     router = APIRouter()
+
+    def execute_audited(
+        request: Request,
+        operation: SessionOperation,
+        tenant_id: UUID,
+        principal_id: UUID | None,
+        session_id: str | None,
+        mutation: Callable[[], MutationResult],
+    ) -> MutationResult:
+        correlation_id = request.state.correlation_id
+
+        def event(
+            outcome: SessionOutcome, reason_code: str
+        ) -> BrowserSessionAuditEvent:
+            return BrowserSessionAuditEvent(
+                event_id=uuid4(),
+                correlation_id=correlation_id,
+                operation=operation,
+                outcome=outcome,
+                tenant_id=tenant_id,
+                principal_id=principal_id,
+                session_sha256=(
+                    hashlib.sha256(session_id.encode("ascii")).hexdigest()
+                    if session_id is not None
+                    else None
+                ),
+                reason_code=reason_code,
+                occurred_at=datetime.now(UTC),
+            )
+
+        return audit.execute(event, mutation)
 
     @router.post("/v1/session/bootstrap", operation_id="session_bootstrap")
     async def bootstrap(
-        payload: BootstrapRequest, response: Response
+        payload: BootstrapRequest, request: Request, response: Response
     ) -> BrowserSessionView:
         try:
-            session = backend.bootstrap(payload.credential_reference, payload.tenant_id)
+            session = execute_audited(
+                request,
+                "bootstrap",
+                payload.tenant_id,
+                None,
+                None,
+                lambda: backend.bootstrap(
+                    payload.credential_reference, payload.tenant_id
+                ),
+            )
+        except BrowserSessionBackendUnavailable:
+            raise HTTPException(
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                detail={"code": "session_audit_unavailable"},
+            ) from None
         except Exception:
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
@@ -276,7 +391,19 @@ def build_browser_session_router(backend: BrowserSessionBackend) -> APIRouter:
         session = require_browser_session(request)
         require_csrf(request, session)
         try:
-            replacement = backend.rotate(session)
+            replacement = execute_audited(
+                request,
+                "refresh",
+                session.active_tenant_id,
+                session.principal.principal_id,
+                session.session_id,
+                lambda: backend.rotate(session),
+            )
+        except BrowserSessionBackendUnavailable:
+            raise HTTPException(
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                detail={"code": "session_audit_unavailable"},
+            ) from None
         except Exception:
             backend.revoke(session.session_id)
             _clear_cookie(response)
@@ -295,7 +422,19 @@ def build_browser_session_router(backend: BrowserSessionBackend) -> APIRouter:
         session = require_browser_session(request)
         require_csrf(request, session)
         try:
-            replacement = backend.switch_tenant(session, payload.tenant_id)
+            replacement = execute_audited(
+                request,
+                "tenant_switch",
+                payload.tenant_id,
+                session.principal.principal_id,
+                session.session_id,
+                lambda: backend.switch_tenant(session, payload.tenant_id),
+            )
+        except BrowserSessionBackendUnavailable:
+            raise HTTPException(
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                detail={"code": "session_audit_unavailable"},
+            ) from None
         except Exception:
             backend.revoke(session.session_id)
             _clear_cookie(response)
@@ -311,7 +450,20 @@ def build_browser_session_router(backend: BrowserSessionBackend) -> APIRouter:
     async def revoke(request: Request, response: Response) -> None:
         session = require_browser_session(request)
         require_csrf(request, session)
-        backend.revoke(session.session_id)
+        try:
+            execute_audited(
+                request,
+                "revoke",
+                session.active_tenant_id,
+                session.principal.principal_id,
+                session.session_id,
+                lambda: backend.revoke(session.session_id),
+            )
+        except BrowserSessionBackendUnavailable:
+            raise HTTPException(
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                detail={"code": "session_audit_unavailable"},
+            ) from None
         _clear_cookie(response)
 
     return router

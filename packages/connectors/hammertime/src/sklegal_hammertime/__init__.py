@@ -16,16 +16,16 @@ from .bridge import (
     SubmissionPlan,
     SubmissionResult,
 )
+from .candidate_inspection import (
+    OfficialDraftingCandidateInspector,
+    OfficialDraftingCandidateReport,
+)
 from .candidate_release import (
     CandidateBuildBlocker,
     CandidateBuildBlockerCode,
     OfficialDraftingCandidateBuildRequest,
     OfficialDraftingCandidatePlan,
     OfficialDraftingCandidateReleaseBuilder,
-)
-from .candidate_inspection import (
-    OfficialDraftingCandidateInspector,
-    OfficialDraftingCandidateReport,
 )
 from .errors import (
     AdapterUnavailableError,

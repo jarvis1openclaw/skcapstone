@@ -109,4 +109,14 @@ WORK_PRODUCT_MAPPINGS: tuple[EntityMapping, ...] = (
         ),
         composites=(_VERSION_BINDING,),
     ),
+    _m(
+        "SentenceGrounding",
+        "sklegal_legal.sentence_groundings",
+        SCOPED
+        + (
+            ("sentence_key", "sentence_key"),
+            ("claim_id", "claim_id"),
+        ),
+        composites=(_VERSION_BINDING,),
+    ),
 )

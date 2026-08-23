@@ -82,7 +82,7 @@ class PersistenceContract08CanonicalParityTests(PersistenceContractBase):
             )
         )
         self.assertEqual(set(MAPPINGS) - {"ExecutionReceipt"}, set(payloads))
-        self.assertEqual(35, len(payloads))
+        self.assertEqual(36, len(payloads))
 
         tenant = str(contract.tenant_id)
         principal = str(contract.principal_id)
@@ -139,6 +139,7 @@ class PersistenceContract08CanonicalParityTests(PersistenceContractBase):
             "Communication",
             "WorkProduct",
             "WorkProductVersion",
+            "SentenceGrounding",
             "WorkProductTemplate",
             "WorkProductTemplateVersion",
             "WorkProductUnknown",
@@ -346,12 +347,12 @@ class PersistenceContract08CanonicalParityTests(PersistenceContractBase):
             """,
         )
         self.assertEqual(set(MAPPINGS), set(payloads))
-        self.assertEqual(36, len(payloads))
+        self.assertEqual(37, len(payloads))
 
         write_authority = {
             name: payload.write_contract.authority for name, payload in payloads.items()
         }
-        self.assertEqual(36, len(write_authority))
+        self.assertEqual(37, len(write_authority))
         self.assertEqual("administrative_bootstrap", write_authority["Tenant"])
         self.assertEqual("controlled_writer", write_authority["ExecutionEvent"])
         self.assertEqual("controlled_writer", write_authority["ExecutionReceipt"])
@@ -431,7 +432,7 @@ class PersistenceContract08CanonicalParityTests(PersistenceContractBase):
             restored[entity_name] = reconstruction.entity
             retained[entity_name] = reconstruction.metadata
         self.assertEqual(set(MAPPINGS), set(restored))
-        self.assertEqual(36, len(retained))
+        self.assertEqual(37, len(retained))
         restored_execution = restored["Execution"]
         self.assertEqual(
             tuple(range(1, 6)),
@@ -445,6 +446,38 @@ class PersistenceContract08CanonicalParityTests(PersistenceContractBase):
 
     def test_11_every_domain_entity_round_trips_through_rls(self) -> None:
         role = "sklegal_test_alpha_one"
+        self._psql(
+            role,
+            """
+            INSERT INTO sklegal_legal.sentence_groundings (
+                id, tenant_id, matter_id, work_product_version_id,
+                work_product_version_number, work_product_content_sha256,
+                sentence_key, claim_id, classification, completeness,
+                version, created_at, updated_at
+            )
+            SELECT
+                'e1000000-0000-4000-8000-000000000001'::uuid,
+                version.tenant_id,
+                version.matter_id,
+                version.id,
+                version.version_number,
+                version.content_sha256,
+                repeat('e', 64)::sklegal_legal.sha256_digest,
+                claim.id,
+                version.classification,
+                version.completeness,
+                1,
+                clock_timestamp(),
+                clock_timestamp()
+            FROM sklegal_legal.work_product_versions AS version
+            JOIN sklegal_legal.ledger_claim_identities AS claim
+              ON claim.tenant_id = version.tenant_id
+             AND claim.matter_id = version.matter_id
+            ORDER BY version.id, claim.id
+            LIMIT 1
+            ON CONFLICT DO NOTHING;
+            """,
+        )
         restored: dict[str, DomainEntity] = {}
         retained_metadata: dict[str, PersistenceMetadata] = {}
         decomposed_count = 0
@@ -478,7 +511,7 @@ class PersistenceContract08CanonicalParityTests(PersistenceContractBase):
             restored[entity_name] = entity
             retained_metadata[entity_name] = reconstruction.metadata
         self.assertEqual(set(MAPPINGS), set(restored))
-        self.assertEqual(36, decomposed_count)
+        self.assertEqual(37, decomposed_count)
 
         self.assertIn(
             "import_batch_id", retained_metadata["Matter"].relations["aliases"][0]

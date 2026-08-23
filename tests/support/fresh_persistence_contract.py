@@ -79,6 +79,7 @@ def build_fresh_contract() -> FreshPersistenceContract:
     unknown = _uid(43)
     ledger_claim = _uid(44)
     claim_support = _uid(45)
+    sentence_grounding = _uid(46)
     digest = "a" * 64
     destination_digest = "b" * 64
 
@@ -419,6 +420,12 @@ def build_fresh_contract() -> FreshPersistenceContract:
             "resolved_by_principal_id": principal,
             "resolved_at": iso[4],
             "status": "resolved",
+        },
+        "SentenceGrounding": {
+            **scoped(sentence_grounding),
+            "version_binding": subject,
+            "sentence_key": "f" * 64,
+            "claim_id": ledger_claim,
         },
         "ValidationResult": validation_payload,
         "Approval": approval_payload,

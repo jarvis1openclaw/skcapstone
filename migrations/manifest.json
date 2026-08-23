@@ -72,6 +72,10 @@
     {
       "file": "0018_policy_authorization_use.sql",
       "sha256": "877ca73f682bbec2f3d0b4f33300ca5c18f5a1a3e0615b55d13ab3cf8da227b5"
+    },
+    {
+      "file": "0019_sentence_groundings.sql",
+      "sha256": "734ee0e00b76778f1e0a3098e77c729d6f9ec5ee803abcb3f77c2acdc8958376"
     }
   ]
 }

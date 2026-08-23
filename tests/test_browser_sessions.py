@@ -3,15 +3,23 @@
 from __future__ import annotations
 
 import unittest
+from dataclasses import replace
 from typing import cast
 from uuid import UUID
 
 from fastapi import Request
 from fastapi.testclient import TestClient
-from sklegal_api.app import REQUIRED_DEPENDENCIES, DependencyProbe, MvpApiComposition, create_mvp_app
+from sklegal_api.app import (
+    REQUIRED_DEPENDENCIES,
+    DependencyProbe,
+    MvpApiComposition,
+    MvpCompositionUnavailable,
+    create_mvp_app,
+)
 from sklegal_api.browser_sessions import (
     PUBLIC_SYNTHETIC_CREDENTIAL_REFERENCE,
     BrowserTenant,
+    InMemoryPublicSyntheticSessionAuditSink,
     InMemoryPublicSyntheticSessionBackend,
 )
 from sklegal_api.claims import InMemoryClaimLedgerStore
@@ -54,12 +62,15 @@ class BrowserSessionIntegrationTest(unittest.TestCase):
             capability_names=("tenant.read", "client.read", "matter.read"),
             capabilities_by_request={("GET", "/v1/clients"): raw_capability},
         )
+        self.session_audit = InMemoryPublicSyntheticSessionAuditSink()
 
         def principal_resolver(request: Request) -> PrincipalContext:
             return request.state.browser_session.principal
 
         def scope_resolver(request: Request) -> BoundaryScope:
-            return BoundaryScope(tenant_id=request.state.browser_session.active_tenant_id)
+            return BoundaryScope(
+                tenant_id=request.state.browser_session.active_tenant_id
+            )
 
         composition = MvpApiComposition(
             workspace_store=self.workspace,
@@ -75,8 +86,12 @@ class BrowserSessionIntegrationTest(unittest.TestCase):
             ),
             mode="development",
             browser_sessions=self.sessions,
+            browser_session_audit=self.session_audit,
         )
-        self.client = TestClient(create_mvp_app(composition), base_url="https://testserver")
+        self.composition = composition
+        self.client = TestClient(
+            create_mvp_app(composition), base_url="https://testserver"
+        )
 
     def tearDown(self) -> None:
         self.client.close()
@@ -110,10 +125,18 @@ class BrowserSessionIntegrationTest(unittest.TestCase):
         self.assertEqual("Public Synthetic Client", clients.json()[0]["displayName"])
         UUID(clients.headers["X-Correlation-ID"])
 
-        signed_out = self.client.delete(
-            "/v1/session", headers={"X-CSRF-Token": csrf}
-        )
+        signed_out = self.client.delete("/v1/session", headers={"X-CSRF-Token": csrf})
         self.assertEqual(204, signed_out.status_code)
+        self.assertEqual(
+            ["bootstrap", "revoke"],
+            [event.operation for event in self.session_audit.events],
+        )
+        self.assertTrue(
+            all(event.outcome == "success" for event in self.session_audit.events)
+        )
+        serialized = repr(self.session_audit.events)
+        self.assertNotIn(csrf, serialized)
+        self.assertNotIn(PUBLIC_SYNTHETIC_CREDENTIAL_REFERENCE, serialized)
         denied = self.client.get("/v1/clients")
         self.assertIn(denied.status_code, {401, 403, 503})
 
@@ -138,7 +161,7 @@ class BrowserSessionIntegrationTest(unittest.TestCase):
         expired = self.client.get("/v1/session")
         self.assertEqual(401, expired.status_code)
 
-        renewed = self.bootstrap()
+        self.bootstrap()
         session_id = self.client.cookies.get("__Host-sklegal_session")
         assert session_id is not None
         self.sessions.revoke(session_id)
@@ -154,6 +177,21 @@ class BrowserSessionIntegrationTest(unittest.TestCase):
         )
         self.assertEqual(403, switched.status_code)
         self.assertEqual("tenant_switch_denied", switched.json()["detail"]["code"])
+        self.assertEqual("deny", self.session_audit.events[-1].outcome)
+
+    def test_audit_outage_denies_before_session_mutation(self) -> None:
+        self.session_audit.available = False
+        denied = self.bootstrap()
+        self.assertEqual(503, denied.status_code)
+        self.assertEqual("session_audit_unavailable", denied.json()["detail"]["code"])
+        self.assertEqual(0, self.sessions.active_session_count)
+        self.assertEqual((), self.session_audit.events)
+
+    def test_composition_requires_paired_nonsynthetic_audit_in_production(self) -> None:
+        with self.assertRaises(MvpCompositionUnavailable):
+            create_mvp_app(replace(self.composition, browser_session_audit=None))
+        with self.assertRaises(MvpCompositionUnavailable):
+            create_mvp_app(replace(self.composition, mode="production"))
 
     def test_cors_is_deny_by_default_and_security_headers_are_present(self) -> None:
         denied = self.client.post(

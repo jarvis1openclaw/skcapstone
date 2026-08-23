@@ -54,6 +54,7 @@ INSERT_TABLES = {
     "sklegal_legal.work_product_templates",
     "sklegal_legal.work_product_template_versions",
     "sklegal_legal.work_product_unknowns",
+    "sklegal_legal.sentence_groundings",
     "sklegal_legal.validations",
     "sklegal_legal.validation_checks",
     "sklegal_legal.approvals",
@@ -346,6 +347,7 @@ def provision(
                 'sklegal_legal.work_product_templates, '
                 'sklegal_legal.work_product_template_versions, '
                 'sklegal_legal.work_product_unknowns, '
+                'sklegal_legal.sentence_groundings, '
                 'sklegal_legal.validations, sklegal_legal.validation_checks, '
                 'sklegal_legal.approvals, sklegal_legal.executions, '
                 'sklegal_integrations.external_references, '

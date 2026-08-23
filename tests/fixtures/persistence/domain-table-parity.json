@@ -570,6 +570,24 @@
                 "updated_at"
             ]
         },
+        "SentenceGrounding": {
+            "table": "sklegal_legal.sentence_groundings",
+            "columns": [
+                "id",
+                "tenant_id",
+                "matter_id",
+                "classification",
+                "completeness",
+                "work_product_version_id",
+                "work_product_version_number",
+                "work_product_content_sha256",
+                "sentence_key",
+                "claim_id",
+                "version",
+                "created_at",
+                "updated_at"
+            ]
+        },
         "WorkProductTemplate": {
             "table": "sklegal_legal.work_product_templates",
             "columns": [
