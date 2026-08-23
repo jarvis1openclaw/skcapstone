@@ -537,6 +537,18 @@ Every task begins by loading SK context, reading `AGENTS.md`, checking the SKCap
 - **Rollback:** Stop only the synthesis card's named launcher instance, prove its loopback ports closed, and revert only this candidate to `48502082fe3be7c115b88937ab222844a4f6f5ff`. No persistent data migration exists.
 - **Prohibited:** No disturbance of the live b18 instance or `9212ef10`, protected data, credential, provider request, external action, persistent deployment, merge, push, or unrelated cleanup.
 
+### SKL-MVP-03D: Synthesize the final working V2 MVP candidate
+
+- **Card:** `6417165c`
+- **Agent:** `codex-skl-mvp-v2-final-synthesis`
+- **Base:** Exact enriched API candidate `ca60896554fbe36a64e08d6b81a1aa92e717a0df`, exact session reload and CSP evidence candidate `498a22747944afaa5b7cea3c88fbde20f4a1117f`, and exact truthful UX candidate `334b0b1c156761d66776675a2a8f22f48364b422` in a fresh isolated worktree.
+- **Objective:** Produce one clean immutable final candidate that preserves every reviewed API, session hydration, CSP, truthful UX, accessibility, launcher, and browser qualification boundary without adding product scope.
+- **Implementation:** Integrate only the pinned candidate ranges and resolve only direct integration conflicts. Preserve exact public synthetic identities, process-local fixture state, fail-closed authorization, session reload, script-free CSP, truthful unavailable states, accessible responsive groups, and reversible loopback launcher ownership.
+- **Tests:** Run the complete combined web, API, browser session, persistence, audit, fixture, launcher, type, lint, production build, dependency audit, diff, ASCII dash, leakage, reset, teardown, rollback, and committed Node Chrome reload and CSP harness gates. Prove the exact enriched Client, Matter, Claims, Evidence Items, Authority, corpus, Work Product, audit, provenance, simulated execution, reload, responsive, and accessibility states in real Chrome.
+- **Acceptance:** Seal the exact commit, tree, archive, locks, fixture, distribution, browser, test, evidence, and rollback hashes. Leave one exact loopback-only final preview live with its recorded stop command and no unexpected browser, network, storage, accessibility, CSP, or truthfulness failure.
+- **Rollback:** Stop only the final synthesis instance through its recorded launcher state, verify its exact PIDs and loopback ports close, reset only that instance, and revert to `ca60896554fbe36a64e08d6b81a1aa92e717a0df`. No persistent data migration exists.
+- **Prohibited:** No merge, push, persistent deployment, protected data, credential, provider request, external action, unrelated service mutation, or cleanup.
+
 ### SKL-MVP-SUPPORT-07: Populate the live V2 public-synthetic API composition
 
 - **Card:** `0457ea71`
