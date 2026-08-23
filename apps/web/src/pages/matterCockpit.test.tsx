@@ -114,6 +114,24 @@ describe("V2 AI-first Matter cockpit", () => {
     );
   });
 
+  it("wraps and keyboard-selects exact identifiers for compact copying", () => {
+    const html = render();
+    const stylesPath = fileURLToPath(new URL("../styles.css", import.meta.url));
+    const styles = readFileSync(stylesPath, "utf8");
+    const workProduct = syntheticWorkspace.workProducts[0]!;
+    const currentHash = workProduct.currentVersion.contentSha256;
+
+    expect(currentHash).toHaveLength(64);
+    expect(html).toContain(`aria-label="${workProduct.title} content hash"`);
+    expect(html).toMatch(
+      new RegExp(`class="sl-hash" tabindex="0"[^>]*>${currentHash}</code>`),
+    );
+    expect(html.match(/<code(?![^>]*class="sl-hash")/g)).toBeNull();
+    expect(styles).toMatch(
+      /\.sl-hash\s*\{[^}]*word-break:\s*break-all;[^}]*user-select:\s*all;/s,
+    );
+  });
+
   it("renders explicit empty Evidence Item and activity states", () => {
     const emptyWorkspace = {
       ...syntheticWorkspace,

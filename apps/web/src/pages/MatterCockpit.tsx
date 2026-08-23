@@ -3,7 +3,7 @@ import type {
   MatterWorkspace,
   WorkspaceWorkProduct,
 } from "../api/types";
-import type { ReactNode } from "react";
+import type { FocusEvent, ReactNode } from "react";
 
 type CockpitProps = {
   workspace: MatterWorkspace;
@@ -30,6 +30,28 @@ function Pill(props: { children: string; tone?: string }) {
     <span className={`sl-v2-pill sl-v2-pill-${props.tone ?? "neutral"}`}>
       {props.children}
     </span>
+  );
+}
+
+function ExactIdentifier(props: { children: string; label: string }) {
+  function selectForKeyboardCopy(event: FocusEvent<HTMLElement>) {
+    const selection = window.getSelection();
+    if (selection === null) return;
+    const range = document.createRange();
+    range.selectNodeContents(event.currentTarget);
+    selection.removeAllRanges();
+    selection.addRange(range);
+  }
+
+  return (
+    <code
+      className="sl-hash"
+      tabIndex={0}
+      aria-label={props.label}
+      onFocus={selectForKeyboardCopy}
+    >
+      {props.children}
+    </code>
   );
 }
 
@@ -203,9 +225,15 @@ export function MatterCockpit(props: CockpitProps) {
         </div>
       </div>
       <p className="sl-v2-context">
-        Snapshot <code>{workspace.provenance.sourceSnapshot}</code> | adapter{" "}
-        <code>{workspace.provenance.adapterVersion}</code> | observed{" "}
-        {workspace.provenance.observedAt}
+        Snapshot{" "}
+        <ExactIdentifier label="Source snapshot identifier">
+          {workspace.provenance.sourceSnapshot}
+        </ExactIdentifier>{" "}
+        | adapter{" "}
+        <ExactIdentifier label="Adapter version identifier">
+          {workspace.provenance.adapterVersion}
+        </ExactIdentifier>{" "}
+        | observed {workspace.provenance.observedAt}
       </p>
       <div className="sl-v2-composer" data-feature-state="safely-unavailable">
         <div>
@@ -471,7 +499,9 @@ export function MatterCockpit(props: CockpitProps) {
                     <th scope="row">{item.title}</th>
                     <td>{item.mediaType}</td>
                     <td>
-                      <code>{item.contentSha256}</code>
+                      <ExactIdentifier label={`${item.title} content hash`}>
+                        {item.contentSha256}
+                      </ExactIdentifier>
                     </td>
                     <td>{item.status}</td>
                   </tr>
@@ -734,7 +764,11 @@ export function MatterCockpit(props: CockpitProps) {
                   <dd>{workProduct.currentVersion.versionNumber}</dd>
                   <dt>Hash</dt>
                   <dd>
-                    <code>{workProduct.currentVersion.contentSha256}</code>
+                    <ExactIdentifier
+                      label={`${workProduct.title} content hash`}
+                    >
+                      {workProduct.currentVersion.contentSha256}
+                    </ExactIdentifier>
                   </dd>
                   <dt>Approval</dt>
                   <dd>
@@ -825,7 +859,9 @@ export function MatterCockpit(props: CockpitProps) {
             <dl>
               <dt>Snapshot</dt>
               <dd>
-                <code>{workspace.provenance.sourceSnapshot}</code>
+                <ExactIdentifier label="Source evidence snapshot identifier">
+                  {workspace.provenance.sourceSnapshot}
+                </ExactIdentifier>
               </dd>
               <dt>Source files</dt>
               <dd>{workspace.provenance.sourceFiles.length}</dd>
