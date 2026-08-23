@@ -32,11 +32,34 @@ export function HomePage(props: { session: Session | null }) {
   );
 }
 
-export function PlaceholderPage(props: { title: string; card: string }) {
+export function FeatureAvailabilityPage(props: {
+  title: string;
+  state: "safely-unavailable" | "post-mvp";
+  reason: string;
+  alternativeTo?: "/matters" | "/corpus";
+  alternativeLabel?: string;
+}) {
   return (
-    <section aria-labelledby="sl-placeholder-heading">
-      <h1 id="sl-placeholder-heading">{props.title}</h1>
-      <p>This workbench area is delivered by card {props.card}.</p>
+    <section
+      aria-labelledby="sl-feature-heading"
+      data-feature-state={props.state}
+    >
+      <h1 id="sl-feature-heading">{props.title}</h1>
+      <p>
+        <strong>{props.state}</strong>
+      </p>
+      <p>{props.reason}</p>
+      {props.alternativeTo !== undefined && (
+        <p>
+          <Link to={props.alternativeTo}>
+            {props.alternativeLabel ?? "Open available workbench"}
+          </Link>
+        </p>
+      )}
+      <p className="sl-record-meta">
+        No record, Approval, Execution Event, receipt, or external effect was
+        created.
+      </p>
     </section>
   );
 }

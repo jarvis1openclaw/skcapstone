@@ -11,6 +11,7 @@
  */
 
 import type {
+  ClaimLedger,
   MatterWorkspace,
   WorkspaceFactAssertion,
   WorkspaceGap,
@@ -50,16 +51,8 @@ export const matterWorkspaceSections = [
   { id: "work-products", label: "Work products" },
   { id: "actions-and-receipts", label: "Actions and receipts" },
   { id: "audit", label: "Audit" },
+  { id: "feature-matrix", label: "Feature matrix" },
 ] as const;
-
-/** Sections delivered by later cards render an explicit pending note. */
-const pendingSectionCards: Readonly<Record<string, string>> = {
-  "issues-and-claims": "SKL-S4-03",
-  authorities: "SKL-S4-03",
-  "deadlines-and-tasks": "SKL-S4-05",
-  "work-products": "SKL-S4-04",
-  "actions-and-receipts": "SKL-S4-06",
-};
 
 export function MatterWorkspaceNav() {
   return (
@@ -480,6 +473,174 @@ function CommunicationsSection(props: { workspace: MatterWorkspace }) {
   );
 }
 
+function IssuesAndClaimsSection(props: { ledger: ClaimLedger | null }) {
+  return (
+    <section
+      id="issues-and-claims"
+      aria-label="Issues and claims"
+      tabIndex={-1}
+    >
+      <h2>Issues and claims</h2>
+      {props.ledger === null ? (
+        <p className="sl-record-meta">
+          Safely unavailable: the claim ledger did not return an authorized
+          answer. No Issue or Claim state was inferred.
+        </p>
+      ) : props.ledger.claims.length === 0 ? (
+        <p>No Claims are recorded for this Matter.</p>
+      ) : (
+        <ul className="sl-record-list">
+          {props.ledger.claims.map((claim) => (
+            <li key={claim.claimId} id={`claim-${claim.claimId}`}>
+              <strong>{claim.statement}</strong>
+              <span className="sl-record-meta">
+                Claim status {claim.status}; version {claim.version}; policy{" "}
+                {claim.policyRevision}
+              </span>
+              <span className="sl-record-meta">
+                Support {claim.support.length}; counter-support{" "}
+                {claim.counterSupport.length}; verification{" "}
+                {claim.supportVerificationState}
+              </span>
+              <span className="sl-record-meta">
+                Gate {claim.gate?.outcome ?? "not evaluated"}; human reviews{" "}
+                {claim.reviewHistory.length}
+              </span>
+              <RecordLink
+                anchor={`claim-${claim.claimId}`}
+                label={`Claim ${claim.statement}`}
+              />
+            </li>
+          ))}
+        </ul>
+      )}
+    </section>
+  );
+}
+
+function AuthoritiesSection(props: { ledger: ClaimLedger | null }) {
+  const records =
+    props.ledger?.claims.flatMap((claim) =>
+      [...claim.support, ...claim.counterSupport].map((support) => ({
+        claim,
+        support,
+      })),
+    ) ?? [];
+  return (
+    <section id="authorities" aria-label="Authorities" tabIndex={-1}>
+      <h2>Authorities</h2>
+      <p className="sl-record-meta">
+        Source-linked support is a research record. It is not silently treated
+        as controlling Authority.
+      </p>
+      {records.length === 0 ? (
+        <p>No source-linked Authority support is recorded for this Matter.</p>
+      ) : (
+        <ul className="sl-record-list">
+          {records.map(({ claim, support }) => (
+            <li key={support.supportId} id={`authority-${support.supportId}`}>
+              <span>
+                {support.kind === "counter_support"
+                  ? "Counter-support"
+                  : "Support"}{" "}
+                for {claim.statement}
+              </span>
+              <span className="sl-record-meta">
+                {support.sourceSystem}; version {support.sourceVersion};{" "}
+                {support.sourceLocator}
+              </span>
+              <code className="sl-hash">{support.contentSha256}</code>
+              <span className="sl-record-meta">
+                Applicability checks {claim.applicability.length}
+              </span>
+              <RecordLink
+                anchor={`authority-${support.supportId}`}
+                label={`Authority support ${support.supportId}`}
+              />
+            </li>
+          ))}
+        </ul>
+      )}
+    </section>
+  );
+}
+
+function SafeUnavailableSection(props: {
+  sectionId: string;
+  label: string;
+  reason: string;
+}) {
+  return (
+    <section
+      id={props.sectionId}
+      aria-label={props.label}
+      tabIndex={-1}
+      data-feature-state="safely-unavailable"
+    >
+      <h2>{props.label}</h2>
+      <p className="sl-record-meta">
+        Safely unavailable in this internal MVP: {props.reason}
+      </p>
+    </section>
+  );
+}
+
+export const matterWorkbenchFeatureMatrix = [
+  { feature: "Client and Matter navigation", state: "mvp-complete" },
+  { feature: "Matter activity and provenance", state: "mvp-complete" },
+  {
+    feature: "Evidence Items, Fact Assertions, and tensions",
+    state: "mvp-complete",
+  },
+  {
+    feature: "Issues, Claims, and source-linked Authority support",
+    state: "mvp-complete",
+  },
+  { feature: "Corpus search and exact source spans", state: "mvp-complete" },
+  {
+    feature: "Work Products and exact-version Approval state",
+    state: "mvp-complete",
+  },
+  { feature: "Task and Deadline mutation", state: "safely-unavailable" },
+  { feature: "External action dispatch", state: "post-mvp" },
+] as const;
+
+function FeatureMatrixSection(props: { matterId: string }) {
+  return (
+    <section id="feature-matrix" aria-label="Feature matrix" tabIndex={-1}>
+      <h2>MVP feature matrix</h2>
+      <table>
+        <caption>
+          Internal public-synthetic Matter workbench delivery state
+        </caption>
+        <thead>
+          <tr>
+            <th scope="col">Feature</th>
+            <th scope="col">State</th>
+          </tr>
+        </thead>
+        <tbody>
+          {matterWorkbenchFeatureMatrix.map((row) => (
+            <tr key={row.feature}>
+              <th scope="row">{row.feature}</th>
+              <td>{row.state}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+      <p>
+        <a href={`/corpus?matterId=${encodeURIComponent(props.matterId)}`}>
+          Open governed corpus research for this Matter
+        </a>
+      </p>
+      <p className="sl-record-meta">
+        Deterministic public-synthetic state resets when the development
+        composition restarts.
+      </p>
+    </section>
+  );
+}
+
 function AuditSection(props: { workspace: MatterWorkspace }) {
   const { audit, provenance, versionLineage } = props.workspace;
   return (
@@ -557,19 +718,10 @@ function AuditSection(props: { workspace: MatterWorkspace }) {
   );
 }
 
-function PendingSection(props: { sectionId: string; label: string }) {
-  return (
-    <section id={props.sectionId} aria-label={props.label} tabIndex={-1}>
-      <h2>{props.label}</h2>
-      <p className="sl-record-meta">
-        This workspace section is delivered by card{" "}
-        {pendingSectionCards[props.sectionId] ?? "to be scheduled"}.
-      </p>
-    </section>
-  );
-}
-
-export function MatterWorkspaceView(props: { workspace: MatterWorkspace }) {
+export function MatterWorkspaceView(props: {
+  workspace: MatterWorkspace;
+  claimLedger?: ClaimLedger | null;
+}) {
   const { workspace } = props;
   return (
     <article aria-labelledby="sl-matter-heading">
@@ -586,19 +738,22 @@ export function MatterWorkspaceView(props: { workspace: MatterWorkspace }) {
       <TimelineSection workspace={workspace} />
       <FactsAndTensionsSection workspace={workspace} />
       <EvidenceSection workspace={workspace} />
-      <PendingSection sectionId="issues-and-claims" label="Issues and claims" />
-      <PendingSection sectionId="authorities" label="Authorities" />
+      <IssuesAndClaimsSection ledger={props.claimLedger ?? null} />
+      <AuthoritiesSection ledger={props.claimLedger ?? null} />
       <CommunicationsSection workspace={workspace} />
-      <PendingSection
+      <SafeUnavailableSection
         sectionId="deadlines-and-tasks"
         label="Deadlines and tasks"
+        reason="no reviewed Task and Deadline mutation contract is mounted in the immutable API composition"
       />
       <WorkProductDraftingSection workProducts={workspace.workProducts} />
-      <PendingSection
+      <SafeUnavailableSection
         sectionId="actions-and-receipts"
         label="Actions and receipts"
+        reason="external actions remain limited to recorded negative state; dispatch is not authorized"
       />
       <AuditSection workspace={workspace} />
+      <FeatureMatrixSection matterId={workspace.matter.matterId} />
     </article>
   );
 }

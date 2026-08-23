@@ -14,13 +14,29 @@ export { matterWorkspaceSections, MatterWorkspaceNav } from "./MatterWorkspace";
  */
 export function MatterDetailPage(props: { matterId: string }) {
   const api = useApiClient();
-  const query = useQuery({
+  const workspaceQuery = useQuery({
     queryKey: ["matters", props.matterId, "workspace"],
     queryFn: () => api.getMatterWorkspace(props.matterId),
   });
+  const claimQuery = useQuery({
+    queryKey: ["matters", props.matterId, "claims"],
+    queryFn: () => api.getClaimLedger(props.matterId),
+  });
   return (
-    <QueryBoundary query={query} loadingLabel="Loading matter workspace">
-      {(result) => <MatterWorkspaceView workspace={result.data} />}
+    <QueryBoundary
+      query={workspaceQuery}
+      loadingLabel="Loading matter workspace"
+    >
+      {(workspaceResult) => (
+        <QueryBoundary query={claimQuery} loadingLabel="Loading Claim ledger">
+          {(claimResult) => (
+            <MatterWorkspaceView
+              workspace={workspaceResult.data}
+              claimLedger={claimResult.data}
+            />
+          )}
+        </QueryBoundary>
+      )}
     </QueryBoundary>
   );
 }

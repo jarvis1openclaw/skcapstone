@@ -41,11 +41,12 @@ import { ClientList } from "./pages/ClientsPage";
 import { ClientDetailView } from "./pages/ClientDetailPage";
 import { MatterList } from "./pages/MattersPage";
 import { MatterWorkspaceView } from "./pages/MatterWorkspace";
+import { syntheticClaimLedger } from "./testing/claims";
 import { syntheticWorkspace } from "./testing/workspace";
 import { ErrorState } from "./components/ErrorState";
 import { StatusBadge } from "./components/StatusBadge";
 import { ForbiddenPage, NotFoundPage } from "./pages/StatusPages";
-import { HomePage, PlaceholderPage } from "./pages/HomePage";
+import { FeatureAvailabilityPage, HomePage } from "./pages/HomePage";
 
 const FIXED_ID = "00000000-0000-4000-8000-000000000000";
 
@@ -158,7 +159,12 @@ describe("visual regression snapshots", () => {
     ).toMatchSnapshot();
     expect(
       snap(
-        renderStatic(<MatterWorkspaceView workspace={syntheticWorkspace} />),
+        renderStatic(
+          <MatterWorkspaceView
+            workspace={syntheticWorkspace}
+            claimLedger={syntheticClaimLedger()}
+          />,
+        ),
       ),
     ).toMatchSnapshot();
   });
@@ -192,7 +198,17 @@ describe("visual regression snapshots", () => {
     ).toMatchSnapshot();
     expect(snap(renderStatic(<NotFoundPage />))).toMatchSnapshot();
     expect(
-      snap(renderStatic(<PlaceholderPage title="Calendar" card="SKL-S4-05" />)),
+      snap(
+        renderStatic(
+          <FeatureAvailabilityPage
+            title="Calendar"
+            state="safely-unavailable"
+            reason="The immutable MVP API has no reviewed Deadline calendar contract."
+            alternativeTo="/matters"
+            alternativeLabel="Open Matters"
+          />,
+        ),
+      ),
     ).toMatchSnapshot();
   });
 });
