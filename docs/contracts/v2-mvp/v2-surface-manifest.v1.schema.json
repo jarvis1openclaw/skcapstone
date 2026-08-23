@@ -4,7 +4,7 @@
   "title": "SKLegal V2 canonical surface manifest",
   "type": "object",
   "additionalProperties": false,
-  "required": ["contract_id", "contract_version", "status", "base_commit", "base_tree", "card_id", "source_paths", "shared_schemas", "truth_boundary", "claim_identity", "approval_validity", "mutation_invariants", "closed_error_codes", "consumer_contract", "current_openapi_bindings", "lanes", "surfaces", "operations", "integration_owners"],
+  "required": ["contract_id", "contract_version", "status", "base_commit", "base_tree", "card_id", "source_paths", "shared_schemas", "truth_boundary", "claim_identity", "approval_validity", "mutation_invariants", "operation_envelope_contract", "closed_error_codes", "consumer_contract", "current_openapi_bindings", "lanes", "surfaces", "operations", "integration_owners"],
   "properties": {
     "contract_id": {"const": "sklegal-v2-mvp-joined-contract"},
     "contract_version": {"const": "1.0.0"},
@@ -18,6 +18,20 @@
     "claim_identity": {"type": "object"},
     "approval_validity": {"type": "object"},
     "mutation_invariants": {"type": "array", "minItems": 10, "uniqueItems": true},
+    "operation_envelope_contract": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["request_context_required", "mutation_request_additional_required", "response_context_required", "mutation_response_additional_required", "scope_rule", "atomicity_rule", "model_authority_rule"],
+      "properties": {
+        "request_context_required": {"type": "array", "minItems": 8, "uniqueItems": true},
+        "mutation_request_additional_required": {"type": "array", "minItems": 3, "uniqueItems": true},
+        "response_context_required": {"type": "array", "minItems": 7, "uniqueItems": true},
+        "mutation_response_additional_required": {"type": "array", "minItems": 5, "uniqueItems": true},
+        "scope_rule": {"type": "string", "minLength": 1},
+        "atomicity_rule": {"type": "string", "minLength": 1},
+        "model_authority_rule": {"type": "string", "minLength": 1}
+      }
+    },
     "closed_error_codes": {"type": "array", "minItems": 10, "uniqueItems": true},
     "consumer_contract": {"type": "object"},
     "current_openapi_bindings": {"type": "array", "minItems": 4},

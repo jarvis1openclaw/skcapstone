@@ -101,6 +101,19 @@ def test_manifest_schema_and_all_cross_references_are_closed() -> None:
     validate_manifest_invariants(manifest)
     assert manifest["base_commit"] == "8177c88c5fd371a487e2c206c53b24e3619c1855"
     assert manifest["base_tree"] == "a23e08dc6edfde8397298b3d1ee0b354434c3bcd"
+    envelopes = manifest["operation_envelope_contract"]
+    assert {"tenant_id", "matter_id", "resource_id", "capability", "purpose"}.issubset(
+        envelopes["request_context_required"]
+    )
+    assert {"idempotency_key", "request_sha256", "expected_resource_version"}.issubset(
+        envelopes["mutation_request_additional_required"]
+    )
+    assert {"tenant_id", "matter_id", "resource_id", "provenance"}.issubset(
+        envelopes["response_context_required"]
+    )
+    assert {"audit_id", "outbox_id", "resource_version"}.issubset(
+        envelopes["mutation_response_additional_required"]
+    )
 
 
 def test_canonical_manifest_matches_the_exact_18_react_surfaces() -> None:

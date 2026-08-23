@@ -47,6 +47,15 @@
     "operative_all_required": ["status_approved", "tenant_match", "matter_match", "work_product_match", "version_id_match", "version_number_match", "content_sha256_match", "reviewer_attributed", "decision_time_recorded", "rationale_recorded", "validation_passed", "policy_revision_pinned", "capability_decision_allowed", "not_revoked", "not_superseded"]
   },
   "mutation_invariants": ["authenticated_principal", "server_derived_scope", "capability_allowed", "purpose_allowed", "policy_allowed", "idempotency_key_required", "request_sha256_bound", "optimistic_version_checked", "state_audit_outbox_atomic", "provenance_appended", "no_model_mutation_authority"],
+  "operation_envelope_contract": {
+    "request_context_required": ["authenticated_principal_id", "tenant_id", "matter_id", "resource_id", "capability", "purpose", "policy_decision_id", "correlation_id"],
+    "mutation_request_additional_required": ["idempotency_key", "request_sha256", "expected_resource_version"],
+    "response_context_required": ["tenant_id", "matter_id", "resource_id", "correlation_id", "schema_revision", "projection_revision", "provenance"],
+    "mutation_response_additional_required": ["idempotency_key", "request_sha256", "resource_version", "audit_id", "outbox_id"],
+    "scope_rule": "The server derives Tenant Matter and resource scope from authenticated authorization context and rejects a conflicting body header query or path binding.",
+    "atomicity_rule": "A durable mutation commits state immutable audit provenance idempotency result and outbox record atomically or commits none.",
+    "model_authority_rule": "A model may populate a typed proposal response only and never receives canonical mutation Approval or dispatch authority."
+  },
   "closed_error_codes": ["authentication_required", "access_denied", "resource_unavailable", "validation_failed", "precondition_failed", "idempotency_conflict", "version_conflict", "policy_unavailable", "dependency_unavailable", "rate_limited", "internal_error"],
   "consumer_contract": {
     "react_sections": "apps/web/src/pages/MatterCockpit.tsx:v2CockpitSections",
