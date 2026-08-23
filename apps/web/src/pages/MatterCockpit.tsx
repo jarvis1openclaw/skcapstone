@@ -191,7 +191,11 @@ export function MatterCockpit(props: CockpitProps) {
           <h2>{workspace.matter.title}</h2>
           <p>{workspace.matter.summary}</p>
         </div>
-        <div className="sl-v2-pills" aria-label="Matter scope status">
+        <div
+          className="sl-v2-pills"
+          role="group"
+          aria-label="Matter scope status"
+        >
           <Pill tone="good">Matter member</Pill>
           <Pill>{workspace.matter.status}</Pill>
           <Pill tone="info">source grounded</Pill>
@@ -218,7 +222,11 @@ export function MatterCockpit(props: CockpitProps) {
           Analyze Matter
         </button>
       </div>
-      <div className="sl-v2-ribbon" aria-label="Continuous analysis workflow">
+      <div
+        className="sl-v2-ribbon"
+        role="group"
+        aria-label="Continuous analysis workflow"
+      >
         <Pill tone="good">scope passed</Pill>
         <Pill tone="good">snapshot pinned</Pill>
         <Pill tone="good">Issues mapped</Pill>
@@ -298,7 +306,11 @@ export function MatterCockpit(props: CockpitProps) {
           </div>
         </div>
         <h3>Non-negotiable evidence equation</h3>
-        <div className="sl-v2-source-roles" aria-label="Proposal source roles">
+        <div
+          className="sl-v2-source-roles"
+          role="group"
+          aria-label="Proposal source roles"
+        >
           <Pill tone="course">Course instruction</Pill>
           <Pill tone="warn">Current Authority</Pill>
           <Pill tone="info">Matter record</Pill>
@@ -431,6 +443,7 @@ export function MatterCockpit(props: CockpitProps) {
       >
         <div
           className="sl-v2-table-wrap"
+          role="region"
           tabIndex={0}
           aria-label="Scrollable Evidence Item inventory"
         >
@@ -481,6 +494,7 @@ export function MatterCockpit(props: CockpitProps) {
       >
         <div
           className="sl-v2-table-wrap"
+          role="region"
           tabIndex={0}
           aria-label="Scrollable public-synthetic proof map"
         >
@@ -556,6 +570,7 @@ export function MatterCockpit(props: CockpitProps) {
         </div>
         <div
           className="sl-v2-source-roles"
+          role="group"
           aria-label="Recommendation source-role availability"
         >
           <Pill tone="course">Course instruction: not evaluated</Pill>
@@ -647,7 +662,11 @@ export function MatterCockpit(props: CockpitProps) {
         eyebrow="Logical routes, never private hosts"
         state="safely-unavailable"
       >
-        <div className="sl-v2-flow" aria-label="Model routing evidence flow">
+        <div
+          className="sl-v2-flow"
+          role="group"
+          aria-label="Model routing evidence flow"
+        >
           <span>Agent specification</span>
           <b>to</b>
           <span>logical route</span>
@@ -775,7 +794,11 @@ export function MatterCockpit(props: CockpitProps) {
             </p>
           </article>
         </div>
-        <div className="sl-v2-flow" aria-label="External action state machine">
+        <div
+          className="sl-v2-flow"
+          role="group"
+          aria-label="External action state machine"
+        >
           <span>draft</span>
           <b>to</b>
           <span>validated</span>
@@ -858,6 +881,7 @@ export function MatterCockpit(props: CockpitProps) {
       >
         <div
           className="sl-v2-table-wrap"
+          role="region"
           tabIndex={0}
           aria-label="Scrollable failure and incomplete-state table"
         >
