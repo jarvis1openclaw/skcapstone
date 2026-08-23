@@ -192,6 +192,8 @@ def test_web_route_fallback_and_bounded_api_outage(tmp_path: Path) -> None:
         server.shutdown()
         server.server_close()
         thread.join(timeout=2)
+    restarted = mvp_preview._web_server(dist, web_port, api_port)
+    restarted.server_close()
 
 
 def test_state_is_mode_restricted_and_value_free(tmp_path: Path) -> None:

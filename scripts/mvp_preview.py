@@ -351,6 +351,10 @@ class _PreviewHandler(http.server.SimpleHTTPRequestHandler):
         self._proxy() if self.path.startswith("/api/") else self.send_error(405)
 
 
+class _ReusableLoopbackServer(http.server.ThreadingHTTPServer):
+    allow_reuse_address = True
+
+
 def _web_server(
     dist: Path, web_port: int, api_port: int
 ) -> http.server.ThreadingHTTPServer:
@@ -359,7 +363,7 @@ def _web_server(
     handler = lambda *args, **kwargs: _PreviewHandler(  # noqa: E731
         *args, directory=str(dist), **kwargs
     )
-    server = http.server.ThreadingHTTPServer((LOOPBACK, web_port), handler)
+    server = _ReusableLoopbackServer((LOOPBACK, web_port), handler)
     server.api_port = api_port  # type: ignore[attr-defined]
     return server
 
