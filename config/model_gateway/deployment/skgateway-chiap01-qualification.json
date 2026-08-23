@@ -1,15 +1,25 @@
 {
   "schema": "sklegal-skgateway-chiap01-qualification/v1",
-  "card": "72df1b66",
+  "card": "60cb0c9a",
   "mode": "synthetic-qualification-only",
   "activation": false,
   "protected_traffic": false,
   "source": {
     "repository_reference": "SKLEGAL_SKGATEWAY_SOURCE_REPOSITORY",
     "install_path_reference": "SKLEGAL_SKGATEWAY_INSTALL_PATH",
-    "commit": "b4b4115df9a6d5c9c4621d98207a1074e2737ef5",
-    "package_sha256": "544000121048cd3054542fee8e30e70f2282122510788f40e35e85491ffd4656",
+    "commit": "3cf16fe6ca1a6e5ec92e5f090fc798dfd6404596",
+    "package_sha256": "152544873a5f0405a5665dabef53f83f5c09b998282d908f265e8e809cde1fbc",
     "lockfile_sha256": "60374ebcde47a0af9561d1f02f20b7d37022bc660f7fd85cbd828767d297a647"
+  },
+  "composition": {
+    "sklegal_commit": "c653cae62cb0dd4c51022836e231bac1b36733fa",
+    "revision": "sklegal-skgateway-authz-production-composition/v1",
+    "source_sha256": "98b09722eca21e1bb0592cc3daca8aa618eb39af5b687994c16867087713e16f",
+    "deployment_sha256": "7f3a8b2a4b65026d765b8c4601e9b925520c251fc90be7af51c5b7e686f1a42e",
+    "endpoint_path": "/v1/authz/decide",
+    "bind_host": "127.0.0.1",
+    "transport": "authenticated-local-http",
+    "profile_enabled": false
   },
   "runtime": {
     "host": "chiap01",

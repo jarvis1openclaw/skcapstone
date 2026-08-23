@@ -1,4 +1,4 @@
-# SKL-S3-10A synthetic denial configuration only.
+# SKL-S3-10C synthetic denial configuration only.
 # This file has no protected route, provider credential, or live backend.
 
 server:
@@ -29,13 +29,13 @@ dashboard:
 
 metrics:
   enabled: false
-  db_path: /tmp/skl-s3-10a-synthetic-metrics.db
+  db_path: /tmp/skl-s3-10c-synthetic-metrics.db
 
 siem:
   enabled: true
   outputs:
     - type: file
-      path: /tmp/skl-s3-10a-synthetic-audit.jsonl
+      path: /tmp/skl-s3-10c-synthetic-audit.jsonl
 
 discovery:
   enabled: false

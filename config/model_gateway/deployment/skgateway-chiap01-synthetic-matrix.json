@@ -1,0 +1,123 @@
+{
+  "schema": "sklegal-skgateway-chiap01-synthetic-matrix/v1",
+  "card": "60cb0c9a",
+  "fixture_only": true,
+  "activation_permitted": false,
+  "protected_traffic": false,
+  "source_commit": "3cf16fe6ca1a6e5ec92e5f090fc798dfd6404596",
+  "composition_revision": "sklegal-skgateway-authz-production-composition/v1",
+  "endpoint_binding": "127.0.0.1:/v1/authz/decide",
+  "service_identity": "capauth:sklegal-model-gateway@chiap01.skworld",
+  "policy_revision": "synthetic-policy-revision-v1",
+  "audit_revision": "synthetic-audit-revision-v1",
+  "controls": {
+    "dashboard": "disabled",
+    "metrics": "disabled",
+    "discovery": "disabled-no-force-refresh",
+    "internal_bypass": "disabled",
+    "allow_cache": "disabled"
+  },
+  "scenarios": [
+    {
+      "id": "canonical_allow",
+      "expected_status": 200,
+      "expected_allow": true,
+      "decision_id": "synthetic-decision-allow-001",
+      "evidence": ["upstream:tests/authz-enforce-integration.test.mjs", "sklegal:tests/test_skgateway_authz_adapter.py"]
+    },
+    {
+      "id": "canonical_deny",
+      "expected_status": 403,
+      "expected_allow": false,
+      "decision_id": "synthetic-decision-deny-001",
+      "evidence": ["upstream:tests/authz-enforce-integration.test.mjs", "sklegal:tests/test_skgateway_policy_evaluator.py"]
+    },
+    {
+      "id": "pdp_unavailable",
+      "expected_status": 503,
+      "expected_allow": false,
+      "decision_id": null,
+      "evidence": ["upstream:tests/sklegal-authz-wire.test.mjs", "sklegal:tests/test_skgateway_authz_composition.py"]
+    },
+    {
+      "id": "audit_unavailable",
+      "expected_status": 503,
+      "expected_allow": false,
+      "decision_id": "synthetic-decision-audit-001",
+      "evidence": ["sklegal:tests/test_skgateway_authz_adapter.py", "sklegal:tests/test_skgateway_authz_composition.py"]
+    },
+    {
+      "id": "malformed_request",
+      "expected_status": 422,
+      "expected_allow": false,
+      "decision_id": null,
+      "evidence": ["sklegal:tests/test_skgateway_authz_adapter.py"]
+    },
+    {
+      "id": "oversized_request",
+      "expected_status": 422,
+      "expected_allow": false,
+      "decision_id": null,
+      "evidence": ["sklegal:tests/test_skgateway_authz_adapter.py", "upstream:tests/sanitizer.test.mjs"]
+    },
+    {
+      "id": "exact_scope_mismatch",
+      "expected_status": 403,
+      "expected_allow": false,
+      "decision_id": null,
+      "evidence": ["upstream:tests/sklegal-authz-wire.test.mjs", "sklegal:tests/test_skgateway_authz_adapter.py"]
+    },
+    {
+      "id": "saturation_ninth_request",
+      "expected_status": 503,
+      "expected_allow": false,
+      "decision_id": null,
+      "evidence": ["upstream:tests/qwen-capacity-domain.test.mjs", "sklegal:tests/test_model_gateway_skgateway_seam.py"]
+    },
+    {
+      "id": "restart_recovery",
+      "expected_status": 200,
+      "expected_allow": true,
+      "decision_id": "synthetic-decision-restart-001",
+      "evidence": ["upstream:tests/startup-disablement.test.mjs", "sklegal:tests/test_skgateway_authz_composition.py"]
+    },
+    {
+      "id": "sanitizer_leakage",
+      "expected_status": 403,
+      "expected_allow": false,
+      "decision_id": null,
+      "prohibited_fields": ["prompt", "matter_content", "source_span", "bearer_token", "private_key", "raw_capability"],
+      "evidence": ["upstream:tests/sklegal-authz-wire.test.mjs", "upstream:tests/sanitizer.test.mjs", "sklegal:tests/test_skgateway_authz_adapter.py"]
+    },
+    {
+      "id": "audit_attribution",
+      "expected_status": 200,
+      "expected_allow": true,
+      "decision_id": "synthetic-decision-audit-attribution-001",
+      "required_fields": ["decision_id", "policy_revision", "correlation_id", "service_identity"],
+      "evidence": ["sklegal:tests/test_skgateway_authz_adapter.py"]
+    },
+    {
+      "id": "direct_qwen_parity",
+      "expected_status": 200,
+      "expected_allow": true,
+      "decision_id": "synthetic-decision-parity-001",
+      "proposal_fixture_sha256": "e600586709e9a4af4605f86b38abc63a5fcd8bd73732ea22bde1ea7858b1e35e",
+      "evidence": ["sklegal:tests/test_model_gateway_skgateway_seam.py"]
+    },
+    {
+      "id": "rollback_direct_qwen",
+      "expected_status": 200,
+      "expected_allow": true,
+      "decision_id": "synthetic-decision-rollback-001",
+      "gateway_profile_state": "disabled",
+      "direct_profile_state": "enabled",
+      "evidence": ["sklegal:tests/test_model_gateway_skgateway_seam.py", "sklegal:tests/test_skgateway_authz_composition.py"]
+    }
+  ],
+  "limitations": [
+    "The matrix is synthetic and does not prove an installed chiap01 service.",
+    "Synthetic decision, policy, and audit identifiers are not live runtime identifiers.",
+    "Protected traffic remains denied and the SKLegal gateway profile remains disabled."
+  ]
+}
