@@ -50,6 +50,48 @@ The adapter remains disabled until its trusted-facts resolver and canonical
 SKLegal policy evaluator use durable current state and the live-path report is
 approved.
 
+Also run the source compatibility preflight against the exact promoted tree:
+
+```bash
+python3 scripts/qualify_skgateway_chiap01.py \
+  --source-dir /opt/skgateway \
+  --require-pass
+```
+
+The contract is
+`config/model_gateway/deployment/skgateway-chiap01-qualification.json`. The
+preflight reads public source and dependency metadata only. It must not read
+runtime environment values. It rejects a single-credential authorization
+client, missing exact Tenant and Matter selectors, dashboard or metrics disable
+flags that the live source ignores, an unexpected source change, or any source
+and lockfile hash mismatch. A successful source preflight is not a live-path
+report. Every live control remains unqualified until runtime evidence proves
+it on the exact production entrypoint.
+
+## Synthetic denial smoke test
+
+`skgateway.synthetic-deny.yaml` is an explicit qualification-only fixture. It
+binds the proxy to loopback, enables strict authorization, disables the
+internal-peer bypass and allow cache, adds no live backend, and supplies no
+credential. The upstream deep merge still retains its default backend catalog,
+so the authorization denial must occur before dispatch. Start it only
+ephemerally with `SK_STANDALONE=1` so the test does not register a service or
+publish an alert:
+
+```bash
+SK_STANDALONE=1 \
+SKGATEWAY_CONFIG=/path/to/skgateway.synthetic-deny.yaml \
+SKGATEWAY_AUTHZ_ENFORCE=1 \
+SKGATEWAY_AUTHZ_TRUST_INTERNAL=0 \
+timeout --signal=TERM --kill-after=2s 20s node src/index.mjs
+```
+
+The expected result is public health `200` and synthetic Chat Completions
+`403` before body parsing or upstream dispatch. Hash and inspect the sanitized
+response and audit line, then delete only the temporary fixture and output.
+This proves deterministic denial only. It does not prove an allow, canonical
+policy composition, or a qualified live path.
+
 ## Activation and rollback
 
 Activation requires a complete live-path report and explicit human approval.

@@ -1,0 +1,49 @@
+# SKL-S3-10A synthetic denial configuration only.
+# This file has no protected route, provider credential, or live backend.
+
+server:
+  port: 28780
+  dashboard_port: 28781
+  bind: 127.0.0.1
+
+backends:
+  synthetic-unavailable:
+    url: http://127.0.0.1:9/v1
+    auth_type: none
+    models: [sklegal-synthetic-deny]
+    priority: 1
+
+authz:
+  enforce: true
+  trust_internal: false
+  cache_ttl_ms: 0
+  timeout_ms: 500
+
+identity:
+  enabled: false
+  allow_anonymous: false
+  require_agent_id: false
+
+dashboard:
+  enabled: false
+
+metrics:
+  enabled: false
+  db_path: /tmp/skl-s3-10a-synthetic-metrics.db
+
+siem:
+  enabled: true
+  outputs:
+    - type: file
+      path: /tmp/skl-s3-10a-synthetic-audit.jsonl
+
+discovery:
+  enabled: false
+
+classification:
+  enabled: false
+
+pooling:
+  default_max_concurrent: 1
+  default_max_queue: 0
+  queue_timeout_ms: 500

@@ -1,0 +1,70 @@
+{
+  "schema": "sklegal-skgateway-chiap01-qualification/v1",
+  "card": "72df1b66",
+  "mode": "synthetic-qualification-only",
+  "activation": false,
+  "protected_traffic": false,
+  "source": {
+    "repository_reference": "SKLEGAL_SKGATEWAY_SOURCE_REPOSITORY",
+    "install_path_reference": "SKLEGAL_SKGATEWAY_INSTALL_PATH",
+    "commit": "b4b4115df9a6d5c9c4621d98207a1074e2737ef5",
+    "package_sha256": "544000121048cd3054542fee8e30e70f2282122510788f40e35e85491ffd4656",
+    "lockfile_sha256": "60374ebcde47a0af9561d1f02f20b7d37022bc660f7fd85cbd828767d297a647"
+  },
+  "runtime": {
+    "host": "chiap01",
+    "service_identity": "capauth:sklegal-model-gateway@chiap01.skworld",
+    "proxy_bind": "loopback-only",
+    "dashboard": "disabled",
+    "metrics": "disabled",
+    "gateway_endpoint_reference": "SKLEGAL_SKGATEWAY_ENDPOINT",
+    "qwen_endpoint_reference": "SKLEGAL_QWEN_DIRECT_ENDPOINT",
+    "authz_endpoint_reference": "SKLEGAL_CAPAUTH_AUTHZ_ENDPOINT",
+    "authz_enforcement": true,
+    "trust_internal_peers": false,
+    "allow_cache": false,
+    "standalone_integration": true
+  },
+  "authorization": {
+    "service_header": "X-SKLegal-Service-Authorization",
+    "service_secret_reference": "vault:sklegal/skgateway/authz-service-token",
+    "request_capauth_header": "Authorization",
+    "capability": "skgateway.infer",
+    "resource_fields": [
+      "tenant_id",
+      "matter_id",
+      "material_id",
+      "material_version",
+      "route_id"
+    ],
+    "context_fields": [
+      "purpose",
+      "classification",
+      "privilege",
+      "ethical_wall"
+    ]
+  },
+  "live_path": {
+    "gate_revision": "skgateway-live-path-gate/v1",
+    "controls": [
+      "capauth_identity",
+      "capauth_capability",
+      "sklegal_policy_decision",
+      "classification_egress",
+      "body_and_system_limits",
+      "secret_handling",
+      "tool_budget_stripping",
+      "rate_limits",
+      "shared_capacity_domain",
+      "attributable_audit",
+      "no_prompt_or_secret_leak",
+      "deterministic_denial"
+    ]
+  },
+  "rollback": {
+    "gateway_profile": "chiap08.skgateway-chat.v1",
+    "gateway_profile_required_state": "disabled",
+    "direct_profile": "chiap08.direct-qwen.v1",
+    "direct_profile_required_state": "enabled"
+  }
+}
