@@ -22,6 +22,10 @@ from typing import Any
 
 LOOPBACK = "127.0.0.1"
 MODE = "public-synthetic"
+CONTENT_SECURITY_POLICY = (
+    "default-src 'self'; base-uri 'none'; frame-ancestors 'none'; "
+    "form-action 'self'; object-src 'none'"
+)
 MAX_BODY_BYTES = 1_048_576
 MAX_PROXY_RESPONSE_BYTES = 16_777_216
 MAX_LOG_BYTES = 1_048_576
@@ -253,6 +257,13 @@ def _stop_state(path: Path) -> dict[str, str]:
 
 class _PreviewHandler(http.server.SimpleHTTPRequestHandler):
     server_version = "SKLegalPublicSyntheticPreview/1"
+
+    def end_headers(self) -> None:
+        self.send_header("Content-Security-Policy", CONTENT_SECURITY_POLICY)
+        self.send_header("Referrer-Policy", "no-referrer")
+        self.send_header("X-Content-Type-Options", "nosniff")
+        self.send_header("Cache-Control", "no-store")
+        super().end_headers()
 
     def log_message(self, format: str, *args: object) -> None:
         return

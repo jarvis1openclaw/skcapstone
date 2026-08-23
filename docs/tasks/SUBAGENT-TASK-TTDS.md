@@ -572,3 +572,15 @@ Every task begins by loading SK context, reading `AGENTS.md`, checking the SKCap
 - **Acceptance:** Every V2 navigation section has a public-synthetic fixture binding or an explicit safely-unavailable state and an executable assertion. Produce immutable candidate, tree, parent, fixture, matrix, validator, tests, evidence, and rollback hashes suitable for direct consumption by `b18fed11` without modifying its files.
 - **Rollback:** Revert only the additive V2 fixture, matrix, validator, tests, evidence, and this TDD to base `f676aabe9ca52bebf154fc625f4f2c9a99d80d5d`. The reviewed V1 fixture and all application, service, database, and runtime state remain unchanged.
 - **Prohibited:** Do not edit files owned by `b18fed11`; deploy or start a live service; use protected Matter data; make a provider request; advance an external action; read credentials; merge; push; or clean another worktree.
+
+### SKL-MVP-02A: Preserve browser session reload and deliver preview CSP correctly
+
+- **Card:** `cc214fff`
+- **Agent:** Browser session and preview response engineering
+- **Size:** M
+- **Dependencies:** Exact V2 React candidate `48502082fe3be7c115b88937ab222844a4f6f5ff`
+- **Objective:** Repair the direct-route reload and CSP delivery defects reproduced by real-browser qualification without broadening authentication, routing, or preview authority.
+- **Implementation:** Hydrate the current same-origin server session before the protected router first evaluates. A valid current session initializes the in-memory usability guard, while missing, expired, revoked, malformed, denied, or unavailable session state initializes no client authorization and routes fail closed. Remove the unsupported `frame-ancestors` meta delivery and make the loopback preview server add the complete CSP as an HTTP response header for every static asset and history fallback. Preserve HttpOnly cookie custody, CSRF handling, server-side authorization, exact public-synthetic opt-in, and production denial.
+- **Tests:** Valid bootstrap and direct Matter reload, missing and expired session, malformed response, API outage, cross-Tenant and cross-Matter denial, cleared session, no browser-storage secret, exact CSP on index, asset, direct-route fallback, HEAD and error responses, no CSP console warning, web and launcher regressions, typecheck, lint, build, audit, diff, ASCII dash, leakage, teardown, and rollback.
+- **Acceptance:** Real Chrome stays on the exact authorized Matter after reload, every denial remains sanitized and fail closed, browser storage contains no credential or capability, and all static responses deliver the reviewed CSP by HTTP header including `frame-ancestors 'none'`.
+- **Prohibited:** No protected Matter content, HammerTime `Inbox/`, credential read or persistence, provider request, external action, production deployment, unrelated UI change, merge, push, or cleanup outside the named preview instance.

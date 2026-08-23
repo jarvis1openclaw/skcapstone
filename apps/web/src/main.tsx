@@ -5,6 +5,7 @@ import { RouterProvider } from "@tanstack/react-router";
 
 import { ApiProvider } from "./api/ApiContext";
 import { SessionClient } from "./auth/sessionClient";
+import { hydrateSessionBeforeRouter } from "./auth/sessionBootstrap";
 import { SessionProvider } from "./auth/SessionProvider";
 import { createAppRouter } from "./router";
 import "./styles.css";
@@ -26,9 +27,10 @@ const queryClient = new QueryClient({
   },
 });
 
-const router = createAppRouter();
 const apiBase = import.meta.env.VITE_SKLEGAL_API_BASE || "/api";
 const sessionClient = new SessionClient(apiBase);
+await hydrateSessionBeforeRouter(sessionClient);
+const router = createAppRouter();
 
 createRoot(root).render(
   <StrictMode>

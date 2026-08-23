@@ -329,6 +329,20 @@ def test_web_route_fallback_and_bounded_api_outage(tmp_path: Path) -> None:
             f"http://127.0.0.1:{web_port}/matters/{MATTER_ID}", timeout=1
         ) as response:
             assert b"public synthetic" in response.read()
+            assert (
+                response.headers["Content-Security-Policy"]
+                == mvp_preview.CONTENT_SECURITY_POLICY
+            )
+            assert response.headers["Referrer-Policy"] == "no-referrer"
+            assert response.headers["X-Content-Type-Options"] == "nosniff"
+        request = urllib.request.Request(
+            f"http://127.0.0.1:{web_port}/assets/app.js", method="HEAD"
+        )
+        with urllib.request.urlopen(request, timeout=1) as response:
+            assert (
+                response.headers["Content-Security-Policy"]
+                == mvp_preview.CONTENT_SECURITY_POLICY
+            )
         with pytest.raises(urllib.error.HTTPError) as caught:
             urllib.request.urlopen(
                 f"http://127.0.0.1:{web_port}/api/healthz", timeout=1
