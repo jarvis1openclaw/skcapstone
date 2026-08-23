@@ -5,13 +5,22 @@ import { useSession } from "../auth/SessionProvider";
 import { PUBLIC_SYNTHETIC_CREDENTIAL_REFERENCE } from "../auth/sessionClient";
 
 const PUBLIC_SYNTHETIC_TENANT_ID = "10000000-0000-4000-8000-000000000001";
+export const PUBLIC_SYNTHETIC_MATTER_ID =
+  "10000000-0000-4000-8000-000000000301";
+export const PUBLIC_SYNTHETIC_MATTER_PATH = `/matters/${PUBLIC_SYNTHETIC_MATTER_ID}`;
+
+export function publicSyntheticPreviewEnabled(value: unknown): boolean {
+  return value === "1";
+}
+
+const PUBLIC_SYNTHETIC_PREVIEW_ENABLED =
+  import.meta.env.VITE_SKLEGAL_PUBLIC_SYNTHETIC_PREVIEW === "1";
 
 export function SignInPage() {
   const [failed, setFailed] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const { signIn } = useSession();
   const navigate = useNavigate();
-  const dev = import.meta.env.DEV;
 
   const submit = async (event: FormEvent) => {
     event.preventDefault();
@@ -22,7 +31,10 @@ export function SignInPage() {
         PUBLIC_SYNTHETIC_CREDENTIAL_REFERENCE,
         PUBLIC_SYNTHETIC_TENANT_ID,
       );
-      await navigate({ to: "/" });
+      await navigate({
+        to: "/matters/$matterId",
+        params: { matterId: PUBLIC_SYNTHETIC_MATTER_ID },
+      });
     } catch {
       setFailed(true);
     } finally {
@@ -37,8 +49,8 @@ export function SignInPage() {
         Sign-in establishes a bounded server session. Browser route guards are
         usability controls only; the API authorizes every request again.
       </p>
-      {dev ? (
-        <form onSubmit={submit}>
+      {PUBLIC_SYNTHETIC_PREVIEW_ENABLED ? (
+        <form onSubmit={submit} data-public-synthetic-preview="enabled">
           <button type="submit" className="sl-button" disabled={submitting}>
             {submitting ? "Starting session" : "Start public-synthetic session"}
           </button>
