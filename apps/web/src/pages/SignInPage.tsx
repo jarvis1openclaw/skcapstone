@@ -6,7 +6,7 @@ import { PUBLIC_SYNTHETIC_CREDENTIAL_REFERENCE } from "../auth/sessionClient";
 
 const PUBLIC_SYNTHETIC_TENANT_ID = "10000000-0000-4000-8000-000000000001";
 export const PUBLIC_SYNTHETIC_MATTER_ID =
-  "10000000-0000-4000-8000-000000000301";
+  "20000000-0000-4000-8000-000000000101";
 export const PUBLIC_SYNTHETIC_MATTER_PATH = `/matters/${PUBLIC_SYNTHETIC_MATTER_ID}`;
 
 export function publicSyntheticPreviewEnabled(value: unknown): boolean {

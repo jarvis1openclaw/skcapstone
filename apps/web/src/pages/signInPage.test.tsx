@@ -19,7 +19,7 @@ describe("public-synthetic preview bootstrap", () => {
 
   it("targets the known public-synthetic V2 Matter route after bootstrap", () => {
     expect(PUBLIC_SYNTHETIC_MATTER_PATH).toBe(
-      "/matters/10000000-0000-4000-8000-000000000301",
+      "/matters/20000000-0000-4000-8000-000000000101",
     );
   });
 });
