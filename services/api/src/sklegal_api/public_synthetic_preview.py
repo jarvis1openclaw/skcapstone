@@ -42,7 +42,7 @@ from .browser_sessions import (
     InMemoryPublicSyntheticSessionAuditSink,
     InMemoryPublicSyntheticSessionBackend,
 )
-from .claims import InMemoryClaimLedgerStore
+from .claims import ClaimLedgerRead, InMemoryClaimLedgerStore
 from .corpus import InMemoryCorpusResearchStore
 from .workspace import (
     ClientSummaryRead,
@@ -98,6 +98,12 @@ class _RefreshingPreviewSessions(InMemoryPublicSyntheticSessionBackend):
                 Purpose.MATTER_MANAGEMENT,
                 MATTER_ID,
             ),
+            (
+                f"/v1/matters/{MATTER_ID}/claims",
+                Capability.CLAIM_REVIEW,
+                Purpose.CLAIM_REVIEW,
+                MATTER_ID,
+            ),
         )
         targets = {
             "/v1/clients": "api:workspace.clients.list",
@@ -105,6 +111,7 @@ class _RefreshingPreviewSessions(InMemoryPublicSyntheticSessionBackend):
             "/v1/matters": "api:workspace.matters.list",
             f"/v1/matters/{MATTER_ID}": "api:workspace.matters.get",
             f"/v1/matters/{MATTER_ID}/workspace": "api:workspace.matters.workspace",
+            f"/v1/matters/{MATTER_ID}/claims": "api:claims.ledger",
         }
         return {
             ("GET", path): self._issuer.issue_root(
@@ -211,6 +218,9 @@ def build_public_synthetic_preview_app():
         ),
     )
     workspace.set_matter_members(TENANT_ID, MATTER_ID, frozenset({PRINCIPAL_ID}))
+    claims = InMemoryClaimLedgerStore()
+    claims.add_ledger(TENANT_ID, MATTER_ID, ClaimLedgerRead(matter_id=MATTER_ID))
+    claims.set_matter_members(TENANT_ID, MATTER_ID, frozenset({PRINCIPAL_ID}))
     sessions = _RefreshingPreviewSessions(
         issuer=issuer,
         principal=principal,
@@ -234,7 +244,7 @@ def build_public_synthetic_preview_app():
 
     composition = MvpApiComposition(
         workspace_store=workspace,
-        claim_store=InMemoryClaimLedgerStore(),
+        claim_store=claims,
         corpus_store=InMemoryCorpusResearchStore(),
         governance_service=cast(PolicyGovernanceService, object()),
         authorizer=authorizer,

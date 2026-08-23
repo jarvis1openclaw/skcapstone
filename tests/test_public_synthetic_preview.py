@@ -45,12 +45,18 @@ def test_preview_api_bootstrap_and_repeatable_client_matter_reads() -> None:
                 f"/v1/matters/{MATTER_ID}/workspace",
                 headers={"X-SKLegal-Tenant": str(TENANT_ID)},
             )
+            claims = client.get(
+                f"/v1/matters/{MATTER_ID}/claims",
+                headers={"X-SKLegal-Tenant": str(TENANT_ID)},
+            )
             assert clients.status_code == 200
             assert clients.json()[0]["id"] == str(CLIENT_ID)
             assert matters.status_code == 200
             assert matter.status_code == 200
             assert workspace.status_code == 200
             assert workspace.json()["matter"]["matterId"] == str(MATTER_ID)
+            assert claims.status_code == 200
+            assert claims.json() == {"matterId": str(MATTER_ID), "claims": []}
 
 
 def test_preview_api_is_explicitly_synthetic_and_contains_no_secret_values() -> None:
