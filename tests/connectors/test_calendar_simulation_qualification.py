@@ -22,6 +22,7 @@ from sklegal_connectors.base import (
     ApprovalBinding,
     ConnectorInvariantError,
     SimulationRegistry,
+    replay_action_audit,
 )
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
@@ -142,6 +143,9 @@ def test_end_to_end_simulation_reaches_receipt_verified() -> None:
     )
     assert write_receipt.simulation_receipt.idempotency_key == result.idempotency_key
     assert registry.receipt_count == 1
+    replay = replay_action_audit(result)
+    assert replay.simulation_receipt_verified is True
+    assert replay.final_status is ActionStatus.RECEIPT_VERIFIED
 
 
 def test_exact_version_approval_is_enforced() -> None:

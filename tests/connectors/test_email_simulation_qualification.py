@@ -19,6 +19,7 @@ from sklegal_connectors import (
     ApprovalBinding,
     ConnectorInvariantError,
     SimulationRegistry,
+    replay_action_audit,
 )
 from sklegal_email import (
     EmailAction,
@@ -139,6 +140,9 @@ def test_end_to_end_simulation_reaches_receipt_verified() -> None:
         dispatched.action.idempotency_key
     )
     assert simulation.dispatch_count == 1
+    replay = replay_action_audit(verified.action)
+    assert replay.simulation_receipt_verified is True
+    assert replay.final_status is ActionStatus.RECEIPT_VERIFIED
 
 
 def test_exact_version_approval_binds_artifact_version_and_digest() -> None:

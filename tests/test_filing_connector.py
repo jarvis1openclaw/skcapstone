@@ -14,6 +14,7 @@ from sklegal_connectors import (
     ActionStatus,
     ApprovalBinding,
     ConnectorInvariantError,
+    replay_action_audit,
 )
 from sklegal_filing import (
     CourtFilingConnector,
@@ -97,6 +98,9 @@ class ReceiptMatrixTests(unittest.TestCase):
         )
         self.assertTrue(connector.reconcile_receipt(action, plan(), receipt))
         self.assertEqual(1, connector.dispatch_count)
+        replay = replay_action_audit(action)
+        self.assertTrue(replay.simulation_receipt_verified)
+        self.assertIs(ActionStatus.RECEIPT_VERIFIED, replay.final_status)
 
     def test_partial_filing_fails_closed(self):
         connector = CourtFilingConnector()

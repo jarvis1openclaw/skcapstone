@@ -10,6 +10,7 @@ from sklegal_connectors import (
     ConnectorInvariantError,
     SimulationRegistry,
     canonical_idempotency_key,
+    replay_action_audit,
 )
 
 ARTIFACT = hashlib.sha256(b"artifact").hexdigest()
@@ -50,6 +51,9 @@ class ConnectorBaseTests(unittest.TestCase):
         current = current.verify_receipt(receipt)
         self.assertEqual(ActionStatus.RECEIPT_VERIFIED, current.status)
         self.assertEqual(5, len(current.events))
+        replay = replay_action_audit(current)
+        self.assertTrue(replay.simulation_receipt_verified)
+        self.assertEqual(current.events, replay.events)
 
     def test_repeated_simulation_dispatch_returns_one_immutable_receipt(self) -> None:
         current = (

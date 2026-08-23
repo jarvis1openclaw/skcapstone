@@ -15,6 +15,7 @@ from sklegal_connectors import (
     ActionStatus,
     ApprovalBinding,
     ConnectorInvariantError,
+    replay_action_audit,
 )
 from sklegal_service import (
     ServiceAction,
@@ -109,6 +110,9 @@ class ReceiptMatrixTests(unittest.TestCase):
             receipt.simulation_receipt.idempotency_key, action.idempotency_key
         )
         self.assertEqual(1, connector.dispatch_count)
+        replay = replay_action_audit(action)
+        self.assertTrue(replay.simulation_receipt_verified)
+        self.assertIs(ActionStatus.RECEIPT_VERIFIED, replay.final_status)
 
     def test_missing_receipt_fails_closed_without_simulation_dispatch(self):
         connector = ServiceMailingConnector()
