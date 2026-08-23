@@ -60,6 +60,7 @@ import {
   claimRecordGaps,
   ClaimLedgerView,
   CorpusResearchView,
+  CorpusSearchForm,
   CorpusSpanView,
   reviewStepIndexForKey,
 } from "./CorpusPage";
@@ -78,6 +79,19 @@ function render(
 }
 
 describe("corpus research structure and accessibility", () => {
+  it("renders an actionable search form before the first query", () => {
+    const html = renderStatic(
+      <CorpusSearchForm
+        queryDraft=""
+        onQueryDraftChange={() => undefined}
+        onSubmitQuery={() => undefined}
+      />,
+    );
+    expect(html).toContain('role="search"');
+    expect(html).toContain('id="corpus-search-input"');
+    expect(html).toContain("Search the matter corpus");
+  });
+
   it("renders the heading, search landmark, and labelled input", () => {
     const html = render();
     expect(html).toContain("<h1");
