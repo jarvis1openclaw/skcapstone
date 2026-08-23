@@ -1,0 +1,66 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:sklegal:v2-mvp:approval-validity:v1",
+  "title": "Complete Work Product Approval validity",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["approval_id", "tenant_id", "matter_id", "status", "subject", "reviewer_principal_id", "decided_at", "rationale", "validation_id", "validation_status", "policy_revision", "capability_decision_id", "capability", "purpose", "revoker_principal_id", "revoked_at", "revocation_rationale", "operative", "inoperative_reasons"],
+  "properties": {
+    "approval_id": {"type": "string", "format": "uuid"},
+    "tenant_id": {"type": "string", "format": "uuid"},
+    "matter_id": {"type": "string", "format": "uuid"},
+    "status": {"enum": ["pending", "approved", "rejected", "revoked"]},
+    "subject": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["work_product_id", "version_id", "version_number", "content_sha256"],
+      "properties": {
+        "work_product_id": {"type": "string", "format": "uuid"},
+        "version_id": {"type": "string", "format": "uuid"},
+        "version_number": {"type": "integer", "minimum": 1},
+        "content_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"}
+      }
+    },
+    "reviewer_principal_id": {"type": ["string", "null"], "format": "uuid"},
+    "decided_at": {"type": ["string", "null"], "format": "date-time"},
+    "rationale": {"type": ["string", "null"]},
+    "validation_id": {"type": ["string", "null"], "format": "uuid"},
+    "validation_status": {"enum": ["passed", "failed", "missing", "superseded"]},
+    "policy_revision": {"type": ["string", "null"], "pattern": "^[0-9a-f]{64}$"},
+    "capability_decision_id": {"type": ["string", "null"], "format": "uuid"},
+    "capability": {"const": "work_product.approve"},
+    "purpose": {"const": "human_approval"},
+    "revoker_principal_id": {"type": ["string", "null"], "format": "uuid"},
+    "revoked_at": {"type": ["string", "null"], "format": "date-time"},
+    "revocation_rationale": {"type": ["string", "null"]},
+    "operative": {"type": "boolean"},
+    "inoperative_reasons": {
+      "type": "array",
+      "items": {
+        "enum": ["not_approved", "subject_mismatch", "reviewer_missing", "decision_time_missing", "rationale_missing", "validation_missing", "validation_failed", "policy_revision_missing", "capability_evidence_missing", "revoked", "superseded", "scope_mismatch"]
+      },
+      "uniqueItems": true
+    }
+  },
+  "allOf": [
+    {
+      "if": {"properties": {"operative": {"const": true}}, "required": ["operative"]},
+      "then": {
+        "properties": {
+          "status": {"const": "approved"},
+          "reviewer_principal_id": {"type": "string", "format": "uuid"},
+          "decided_at": {"type": "string", "format": "date-time"},
+          "rationale": {"type": "string", "minLength": 1},
+          "validation_id": {"type": "string", "format": "uuid"},
+          "validation_status": {"const": "passed"},
+          "policy_revision": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+          "capability_decision_id": {"type": "string", "format": "uuid"},
+          "revoker_principal_id": {"type": "null"},
+          "revoked_at": {"type": "null"},
+          "revocation_rationale": {"type": "null"},
+          "inoperative_reasons": {"maxItems": 0}
+        }
+      }
+    }
+  ]
+}

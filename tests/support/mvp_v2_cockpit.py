@@ -8,30 +8,14 @@ from html.parser import HTMLParser
 from pathlib import Path
 from typing import Any
 
+from tests.support.v2_contract_manifest import legacy_fixture_surface_ids
+
 REPO_ROOT = Path(__file__).resolve().parents[2]
 V1_FIXTURE_PATH = REPO_ROOT / "tests/fixtures/mvp/public-synthetic-mvp-v1.json"
 V2_FIXTURE_PATH = REPO_ROOT / "tests/fixtures/mvp/public-synthetic-mvp-v2-cockpit.json"
 MATRIX_PATH = REPO_ROOT / "tests/fixtures/mvp/public-synthetic-mvp-v2-acceptance.json"
 
-EXPECTED_SECTIONS = (
-    "cover",
-    "operating-model",
-    "corpus-map",
-    "cockpit",
-    "intake",
-    "artifacts",
-    "elements",
-    "recommendation",
-    "strategy",
-    "challenge",
-    "model-routing",
-    "workproduct",
-    "deadlines",
-    "evidence",
-    "case-log",
-    "failures",
-    "delivery",
-)
+EXPECTED_SECTIONS = legacy_fixture_surface_ids()
 
 EXPECTED_COMPONENTS = {
     "cover": "V2DecisionOverview",

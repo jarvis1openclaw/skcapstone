@@ -1,0 +1,94 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:sklegal:v2-mvp:common-envelope:v1",
+  "title": "SKLegal V2 common HTTP and event envelopes",
+  "$defs": {
+    "scope": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["tenant_id", "matter_id"],
+      "properties": {
+        "tenant_id": {"type": "string", "format": "uuid"},
+        "matter_id": {"type": ["string", "null"], "format": "uuid"}
+      }
+    },
+    "audit_event": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["audit_id", "tenant_id", "matter_id", "occurred_at", "actor_principal_id", "action", "outcome", "reason_code", "correlation_id", "request_sha256", "policy_revision"],
+      "properties": {
+        "audit_id": {"type": "string", "format": "uuid"},
+        "tenant_id": {"type": "string", "format": "uuid"},
+        "matter_id": {"type": ["string", "null"], "format": "uuid"},
+        "occurred_at": {"type": "string", "format": "date-time"},
+        "actor_principal_id": {"type": "string", "format": "uuid"},
+        "action": {"type": "string", "minLength": 1},
+        "outcome": {"enum": ["allowed", "denied", "failed"]},
+        "reason_code": {"type": "string", "minLength": 1},
+        "correlation_id": {"type": "string", "format": "uuid"},
+        "request_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+        "policy_revision": {"type": "string", "pattern": "^[0-9a-f]{64}$"}
+      }
+    },
+    "provenance": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["recorded_at", "source_record_ids", "source_hashes", "schema_revision", "projection_revision"],
+      "properties": {
+        "recorded_at": {"type": "string", "format": "date-time"},
+        "source_record_ids": {"type": "array", "items": {"type": "string", "minLength": 1}, "uniqueItems": true},
+        "source_hashes": {"type": "array", "items": {"type": "string", "pattern": "^[0-9a-f]{64}$"}, "uniqueItems": true},
+        "schema_revision": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+        "projection_revision": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+        "supersedes_record_id": {"type": ["string", "null"]}
+      }
+    },
+    "mutation_receipt": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["operation_id", "idempotency_key", "request_sha256", "resource_id", "resource_version", "audit_id", "outbox_id", "correlation_id"],
+      "properties": {
+        "operation_id": {"type": "string", "minLength": 1},
+        "idempotency_key": {"type": "string", "minLength": 16, "maxLength": 200},
+        "request_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+        "resource_id": {"type": "string", "format": "uuid"},
+        "resource_version": {"type": "integer", "minimum": 1},
+        "audit_id": {"type": "string", "format": "uuid"},
+        "outbox_id": {"type": "string", "format": "uuid"},
+        "correlation_id": {"type": "string", "format": "uuid"}
+      }
+    },
+    "error": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["detail"],
+      "properties": {
+        "detail": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["code", "message", "correlation_id", "retryable"],
+          "properties": {
+            "code": {
+              "enum": ["authentication_required", "access_denied", "resource_unavailable", "validation_failed", "precondition_failed", "idempotency_conflict", "version_conflict", "policy_unavailable", "dependency_unavailable", "rate_limited", "internal_error"]
+            },
+            "message": {"type": "string", "minLength": 1},
+            "correlation_id": {"type": "string", "format": "uuid"},
+            "retryable": {"type": "boolean"},
+            "field_errors": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": ["field", "code"],
+                "properties": {
+                  "field": {"type": "string", "minLength": 1},
+                  "code": {"type": "string", "minLength": 1}
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

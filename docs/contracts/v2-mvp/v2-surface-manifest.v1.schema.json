@@ -1,0 +1,87 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:sklegal:v2-mvp:surface-manifest:v1",
+  "title": "SKLegal V2 canonical surface manifest",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["contract_id", "contract_version", "status", "base_commit", "base_tree", "card_id", "source_paths", "shared_schemas", "truth_boundary", "claim_identity", "approval_validity", "mutation_invariants", "closed_error_codes", "consumer_contract", "current_openapi_bindings", "lanes", "surfaces", "operations", "integration_owners"],
+  "properties": {
+    "contract_id": {"const": "sklegal-v2-mvp-joined-contract"},
+    "contract_version": {"const": "1.0.0"},
+    "status": {"const": "frozen_for_independent_review"},
+    "base_commit": {"type": "string", "pattern": "^[0-9a-f]{40}$"},
+    "base_tree": {"type": "string", "pattern": "^[0-9a-f]{40}$"},
+    "card_id": {"const": "cb60092e"},
+    "source_paths": {"type": "object"},
+    "shared_schemas": {"type": "object"},
+    "truth_boundary": {"type": "object"},
+    "claim_identity": {"type": "object"},
+    "approval_validity": {"type": "object"},
+    "mutation_invariants": {"type": "array", "minItems": 10, "uniqueItems": true},
+    "closed_error_codes": {"type": "array", "minItems": 10, "uniqueItems": true},
+    "consumer_contract": {"type": "object"},
+    "current_openapi_bindings": {"type": "array", "minItems": 4},
+    "lanes": {
+      "type": "array",
+      "minItems": 7,
+      "maxItems": 7,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["lane_id", "card_id", "owns", "publishes", "must_not_edit"],
+        "properties": {
+          "lane_id": {"type": "string", "minLength": 1},
+          "card_id": {"type": "string", "pattern": "^[0-9a-f]{8}$"},
+          "owns": {"type": "array", "minItems": 1, "uniqueItems": true},
+          "publishes": {"type": "array", "minItems": 1, "uniqueItems": true},
+          "must_not_edit": {"type": "array", "minItems": 4, "uniqueItems": true}
+        }
+      }
+    },
+    "surfaces": {
+      "type": "array",
+      "minItems": 18,
+      "maxItems": 18,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["order", "section_id", "legacy_fixture_section_id", "label", "lane_id", "current_truth", "durable_target", "operation_refs"],
+        "properties": {
+          "order": {"type": "integer", "minimum": 1, "maximum": 18},
+          "section_id": {"type": "string", "pattern": "^[a-z][a-z0-9-]+$"},
+          "legacy_fixture_section_id": {"type": ["string", "null"]},
+          "label": {"type": "string", "minLength": 1},
+          "lane_id": {"type": ["string", "null"]},
+          "current_truth": {"enum": ["static_reviewed", "public_synthetic_read", "safely_unavailable"]},
+          "durable_target": {"enum": ["static_reviewed", "durable_target"]},
+          "operation_refs": {"type": "array", "uniqueItems": true}
+        }
+      }
+    },
+    "operations": {
+      "type": "array",
+      "minItems": 20,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["operation_id", "method", "path", "lane_id", "capability", "purpose", "scope", "resource_scope", "mutation_authority", "idempotency", "success_audit_event", "provenance_required", "errors"],
+        "properties": {
+          "operation_id": {"type": "string", "pattern": "^[a-z][a-z0-9_]+$"},
+          "method": {"enum": ["GET", "POST", "PUT", "PATCH", "DELETE"]},
+          "path": {"type": "string", "pattern": "^/v1/"},
+          "lane_id": {"type": "string", "minLength": 1},
+          "capability": {"type": "string", "minLength": 1},
+          "purpose": {"type": "string", "minLength": 1},
+          "scope": {"const": "tenant_matter"},
+          "resource_scope": {"type": "string", "minLength": 1},
+          "mutation_authority": {"type": "string", "minLength": 1},
+          "idempotency": {"enum": ["required", "not_applicable"]},
+          "success_audit_event": {"type": "string", "minLength": 1},
+          "provenance_required": {"type": "array", "minItems": 3, "uniqueItems": true},
+          "errors": {"type": "array", "minItems": 3, "uniqueItems": true}
+        }
+      }
+    },
+    "integration_owners": {"type": "object"}
+  }
+}
