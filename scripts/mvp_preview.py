@@ -147,7 +147,7 @@ def _port_available(port: int) -> bool:
         raise PreviewError("preview ports must be between 1024 and 65535")
     probe = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     try:
-        probe.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 0)
+        probe.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         probe.bind((LOOPBACK, port))
     except OSError:
         return False
