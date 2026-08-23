@@ -133,7 +133,13 @@ async function main() {
     const page = await waitForPage(args["debug-port"]);
     const cdp = await new Cdp(page.webSocketDebuggerUrl).open();
     try {
-      for (const method of ["Page.enable", "Runtime.enable", "Log.enable"]) {
+      for (const method of [
+        "Page.enable",
+        "Runtime.enable",
+        "Log.enable",
+        "Network.enable",
+        "Accessibility.enable",
+      ]) {
         await cdp.call(method);
       }
       await cdp.call("Page.navigate", {
@@ -147,15 +153,36 @@ async function main() {
       await poll(cdp, "location.pathname", matterPath);
       await poll(
         cdp,
-        'document.querySelector("h2")?.textContent?.trim()',
+        'document.querySelector("#ai-cockpit h2")?.textContent?.trim()',
         "AI Matter cockpit",
       );
+      const requiredMatterText = [
+        "Public Synthetic Supply Agreement Review",
+        "Public Synthetic Client",
+        "The invented delivery date is 2099-02-01.",
+        "Public Synthetic Invented Agreement",
+        "Public Synthetic Review Memorandum",
+        "work_product.approved",
+        "public-synthetic-snapshot-v1",
+        "receipt_verified",
+        "No typed recommendation or scoring-policy response is mounted",
+        "No model request is sent",
+      ];
+      const missingMatterText = await cdp.evaluate(
+        `${JSON.stringify(requiredMatterText)}.filter((value) => !document.body.innerText.includes(value))`,
+      );
+      if (missingMatterText.length) {
+        throw new QualificationError(
+          `enriched or truthful Matter text missing: ${missingMatterText.join(", ")}`,
+        );
+      }
+      cdp.events = [];
       await cdp.call("Page.reload", { ignoreCache: true });
       await poll(cdp, "document.readyState", "complete");
       await poll(cdp, "location.pathname", matterPath);
       await poll(
         cdp,
-        'document.querySelector("h2")?.textContent?.trim()',
+        'document.querySelector("#ai-cockpit h2")?.textContent?.trim()',
         "AI Matter cockpit",
       );
       const storage = await cdp.evaluate(
@@ -168,6 +195,90 @@ async function main() {
       ) {
         throw new QualificationError(
           "script-readable browser state is not empty",
+        );
+      }
+      const accessibility = await cdp.call("Accessibility.getFullAXTree");
+      const namedGroups = accessibility.nodes.filter(
+        (node) =>
+          node.role?.value === "group" &&
+          typeof node.name?.value === "string" &&
+          node.name.value.length > 0,
+      ).length;
+      if (namedGroups < 2) {
+        throw new QualificationError(
+          "truthful cockpit groups are absent from the accessibility tree",
+        );
+      }
+      await cdp.call("Emulation.setDeviceMetricsOverride", {
+        width: 390,
+        height: 844,
+        deviceScaleFactor: 1,
+        mobile: true,
+      });
+      const compactLayout = await cdp.evaluate(
+        "({width: document.documentElement.clientWidth, pageOverflow: document.documentElement.scrollWidth > document.documentElement.clientWidth, labelledScrollRegions: document.querySelectorAll('[role=region][aria-label]').length})",
+      );
+      await cdp.call("Emulation.clearDeviceMetricsOverride");
+      if (
+        compactLayout.width !== 390 ||
+        compactLayout.pageOverflow ||
+        compactLayout.labelledScrollRegions < 1
+      ) {
+        throw new QualificationError(
+          "compact layout or labelled scroll-region contract failed",
+        );
+      }
+      await cdp.evaluate(
+        `history.pushState({}, "", "/corpus?matterId=${args["matter-id"]}"); dispatchEvent(new PopStateEvent("popstate"))`,
+      );
+      await poll(
+        cdp,
+        'document.querySelector("#corpus-search-input") !== null',
+        true,
+      );
+      await cdp.evaluate(
+        `(() => {
+          const input = document.querySelector("#corpus-search-input");
+          const setter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value").set;
+          setter.call(input, "invented delivery date");
+          input.dispatchEvent(new Event("input", { bubbles: true }));
+          input.form.requestSubmit();
+        })()`,
+      );
+      await poll(
+        cdp,
+        'document.body.innerText.includes("Public Synthetic Widget Rule")',
+        true,
+      );
+      await poll(
+        cdp,
+        'document.body.innerText.includes("Invented fixture authority for the invented delivery date only.")',
+        true,
+      );
+      const requiredCorpusText = [
+        "The invented delivery date is 2099-02-01.",
+        "Public Synthetic Widget Rule",
+        "PUB-SYN 1:1",
+        "Invented fixture authority for the invented delivery date only.",
+        "official_sources",
+        "Unavailable",
+      ];
+      const missingCorpusText = await cdp.evaluate(
+        `${JSON.stringify(requiredCorpusText)}.filter((value) => !document.body.innerText.includes(value))`,
+      );
+      if (missingCorpusText.length) {
+        throw new QualificationError(
+          `governed corpus text missing: ${missingCorpusText.join(", ")}`,
+        );
+      }
+      const networkFailures = cdp.events.filter(
+        (event) =>
+          event.method === "Network.responseReceived" &&
+          event.params.response.status >= 400,
+      );
+      if (networkFailures.length) {
+        throw new QualificationError(
+          "reload or governed corpus journey produced a failed network response",
         );
       }
       const cspEvents = cdp.events.filter(
@@ -186,9 +297,15 @@ async function main() {
           {
             status: "PASS",
             matterPath,
-            reloadPath: await cdp.evaluate("location.pathname"),
+            reloadPath: matterPath,
+            corpusPath: await cdp.evaluate(
+              "location.pathname + location.search",
+            ),
             csp: expectedCsp,
             storage,
+            networkFailures: 0,
+            namedAccessibilityGroups: namedGroups,
+            compactLayout,
             cspConsoleEvents: 0,
           },
           null,
@@ -201,7 +318,12 @@ async function main() {
   } finally {
     chrome.kill("SIGTERM");
     await new Promise((resolve) => chrome.once("exit", resolve));
-    await rm(profile, { recursive: true, force: true });
+    await rm(profile, {
+      recursive: true,
+      force: true,
+      maxRetries: 10,
+      retryDelay: 100,
+    });
   }
 }
 
