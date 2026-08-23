@@ -695,3 +695,23 @@ Every task begins by loading SK context, reading `AGENTS.md`, checking the SKCap
 - **Tests and acceptance:** Reproduce both failures before repair. Make focused and repository mypy and Ruff gates pass. Run the affected contract, CapAuth import, web fixture, API, diff, ASCII dash, secret, dependency, and rollback checks. Pin exact candidate and evidence commits, trees, hashes, results, limitations, and rollback for independent review `0040b661`.
 - **Rollback:** Revert only the two named static repairs, this TDD, and its evidence to exact base `bfd1a973510d327c26f05096350a38a3d0cedaf1`.
 - **Prohibited:** No central integration, migration, runtime, preview, shared main, database, credential, protected content, provider, HammerTime `Inbox/`, external action, merge, push, or cleanup work.
+
+### SKL-MVP-BASE-01F3: Reconcile repository secret-scan baseline
+
+- **Card:** `622b3e61`
+- **Agent:** `codex-mvp-base-secret-reconcile`
+- **Base:** Immutable BASE commit `bfd1a973510d327c26f05096350a38a3d0cedaf1`, tree `f75fde4cdcb747278a122f473f5717af826aed74`.
+- **Dependency:** independent BASE review `855ef00a`.
+- **Objective:** Reconcile only the official repository-wide secret-scanner failure. Classify all 248 unreviewed findings into unchanged historical debt, candidate-introduced legitimate immutable hashes or synthetic fixture markers, candidate-introduced real secret material, or unresolved material. Produce a deterministic green scan only for findings proven nonsecret without weakening detection.
+- **Implementation:** Inventory every finding by path, line, detector, opaque finding identity, classification, disposition, reviewer state, source commit, source blob or file hash, and introduction boundary. Never record or print the detected value. Compare exact BASE findings with its parent and reviewed source lineage. Update only the existing official baseline or narrowly scoped scanner configuration for individually reviewed nonsecret artifacts. Do not use path-wide, detector-wide, entropy-threshold, or credential-pattern exclusions. Any real or unresolved secret fails closed for a separate incident and rotation authority.
+- **Tests and acceptance:** All 248 initial findings receive a complete classification and no finding disappears without a recorded disposition. Repository-wide and changed-file scans pass against the reviewed baseline. Historical-diff, fixture, immutable-hash, baseline-integrity, dependency, JSON, diff, ASCII dash, and leakage checks pass. Planted AWS, GitHub, bearer, private-key, password, and high-entropy controls remain detected and make the gate fail. The baseline contains no secret values beyond the official scanner's required opaque fingerprints. Seal candidate, evidence, limitations, and rollback, then link independent review `ebf37535`.
+- **Rollback:** Revert only this exact TDD section, reviewed scanner baseline or configuration delta, tests, and evidence to BASE `bfd1a973510d327c26f05096350a38a3d0cedaf1`. No runtime, data, credential, or deployment rollback exists.
+- **Prohibited:** No deletion or concealment of findings, broad exclusion, detector disablement, threshold weakening, secret-value output, product behavior, shared main, live preview, runtime, deployment, database, credential access, protected content, provider, HammerTime `Inbox/`, external action, merge, push, or cleanup.
+
+### SKL-MVP-BASE-01F3R: Independently review secret-baseline reconciliation
+
+- **Card:** `ebf37535`
+- **Dependencies:** `622b3e61`
+- **Objective:** Independently recompute every secret-finding classification, source hash, introduction boundary, baseline entry, repository scan, changed-file scan, negative control, rollback, and safe state without repair or secret-value exposure.
+- **Tests and acceptance:** Read this exact TDD before review. Confirm every baseline entry is individually attributable and nonsecret, all 248 initial findings have dispositions, no broad exclusion or detector weakening exists, the exact repository scan is green, and every planted real-secret pattern still fails. Return PASS or BLOCKED.
+- **Prohibited:** No repair, finding deletion, secret-value output, scanner weakening, source change, runtime, preview, deployment, database, credential access, protected content, provider, HammerTime `Inbox/`, external action, merge, push, or cleanup.

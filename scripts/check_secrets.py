@@ -43,6 +43,24 @@ def _findings(payload: dict[str, Any]) -> set[tuple[str, str, str]]:
     return normalized
 
 
+def _validate_reviewed_baseline(payload: dict[str, Any]) -> None:
+    """Reject baseline entries that were not explicitly reviewed nonsecret."""
+    results = payload.get("results", {})
+    if not isinstance(results, dict):
+        raise ValueError("secret baseline results must be an object")
+    for filename, entries in results.items():
+        if not isinstance(filename, str) or not isinstance(entries, list):
+            raise ValueError("secret baseline result entry is malformed")
+        for entry in entries:
+            if not isinstance(entry, dict):
+                raise ValueError("secret baseline finding is malformed")
+            if entry.get("is_secret") is not False:
+                finding_type = str(entry.get("type", "unknown detector"))
+                raise ValueError(
+                    f"unreviewed baseline finding: {filename}: {finding_type}"
+                )
+
+
 def scan(
     baseline_path: Path = DEFAULT_BASELINE,
     *,
@@ -53,6 +71,7 @@ def scan(
     if executable is None:
         raise RuntimeError("detect-secrets is not installed in the active environment")
     baseline = json.loads(baseline_path.read_text(encoding="utf-8"))
+    _validate_reviewed_baseline(baseline)
     process = subprocess.run(
         [
             executable,
