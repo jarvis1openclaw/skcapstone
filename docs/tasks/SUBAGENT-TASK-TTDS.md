@@ -584,3 +584,14 @@ Every task begins by loading SK context, reading `AGENTS.md`, checking the SKCap
 - **Tests:** Valid bootstrap and direct Matter reload, missing and expired session, malformed response, API outage, cross-Tenant and cross-Matter denial, cleared session, no browser-storage secret, exact CSP on index, asset, direct-route fallback, HEAD and error responses, no CSP console warning, web and launcher regressions, typecheck, lint, build, audit, diff, ASCII dash, leakage, teardown, and rollback.
 - **Acceptance:** Real Chrome stays on the exact authorized Matter after reload, every denial remains sanitized and fail closed, browser storage contains no credential or capability, and all static responses deliver the reviewed CSP by HTTP header including `frame-ancestors 'none'`.
 - **Prohibited:** No protected Matter content, HammerTime `Inbox/`, credential read or persistence, provider request, external action, production deployment, unrelated UI change, merge, push, or cleanup outside the named preview instance.
+
+### SKL-MVP-03A-R1: Repair V2 cockpit UX fidelity and state integrity
+
+- **Card:** `4d960572`
+- **Agent:** `codex-skl-mvp-v2-ux-repair`
+- **Base:** Exact V2 implementation `48502082fe3be7c115b88937ab222844a4f6f5ff` in isolated worktree `/tmp/sklegal-swarm-20260823/4d960572`.
+- **Objective:** Repair every P0 and P1 finding and the bounded P2 findings recorded by independent review `ca896fb0`, without inventing legal or workflow state or changing the public-synthetic API composition.
+- **Implementation:** Remove client-derived ranking and proof scoring until their typed contracts exist. Reuse exact-version Approval validation. Make compact navigation bounded and keyboard operable. Add the missing Decision and blind-challenge regions, complete source-role and model-evidence unavailable treatments, consistent empty states, and a collapsed underlying-record disclosure. Preserve all server authorization, provenance, safe-state, and external-action boundaries.
+- **Tests:** Add focused tests for zero-data recommendation state, stale and current Approval binding, section order, challenge and source-role surfaces, compact navigation disclosure, bounded responsive height, underlying-record disclosure, and consistent empty states. Run the complete web suite, lint, typecheck, production build, dependency audit, diff checks, and real Chrome expanded and compact screenshot review.
+- **Acceptance:** The repaired immutable React candidate matches the reviewed V2 hierarchy at expanded and compact sizes, never fabricates score, rank, recommendation, Approval, source-role, or execution state, preserves reconstructable records on demand, and provides implementation, evidence, screenshots, limitations, and rollback hashes for qualification.
+- **Prohibited:** No API fixture edit, live candidate mutation, deployment, protected data, credential, provider request, external action, merge, push, or unrelated cleanup.
