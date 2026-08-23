@@ -23,11 +23,14 @@ const envelope = {
 
 describe("SessionClient", () => {
   it("bootstraps with a credential reference and same-origin cookies only", async () => {
-    const fetchImpl = vi.fn(async () =>
-      new Response(JSON.stringify(envelope), { status: 200 }),
+    const fetchImpl = vi.fn(
+      async () => new Response(JSON.stringify(envelope), { status: 200 }),
     ) as unknown as typeof fetch;
     const client = new SessionClient("/api/", fetchImpl);
-    await client.bootstrap("development:public-synthetic:mvp", envelope.activeTenantId);
+    await client.bootstrap(
+      "development:public-synthetic:mvp",
+      envelope.activeTenantId,
+    );
     const [url, init] = (fetchImpl as unknown as ReturnType<typeof vi.fn>).mock
       .calls[0] as [string, RequestInit];
     expect(url).toBe("/api/v1/session/bootstrap");
@@ -39,19 +42,30 @@ describe("SessionClient", () => {
   it("uses CSRF for state changes and clears it after denial", async () => {
     const fetchImpl = vi
       .fn()
-      .mockResolvedValueOnce(new Response(JSON.stringify(envelope), { status: 200 }))
+      .mockResolvedValueOnce(
+        new Response(JSON.stringify(envelope), { status: 200 }),
+      )
       .mockResolvedValueOnce(new Response(null, { status: 403 }))
-      .mockResolvedValueOnce(new Response(null, { status: 403 })) as unknown as typeof fetch;
+      .mockResolvedValueOnce(
+        new Response(null, { status: 403 }),
+      ) as unknown as typeof fetch;
     const client = new SessionClient("/api", fetchImpl);
-    await client.bootstrap("development:public-synthetic:mvp", envelope.activeTenantId);
+    await client.bootstrap(
+      "development:public-synthetic:mvp",
+      envelope.activeTenantId,
+    );
     await expect(client.refresh()).rejects.toBeInstanceOf(ApiError);
-    const second = (fetchImpl as unknown as ReturnType<typeof vi.fn>).mock.calls[1]?.[1] as RequestInit;
+    const second = (fetchImpl as unknown as ReturnType<typeof vi.fn>).mock
+      .calls[1]?.[1] as RequestInit;
     expect((second.headers as Record<string, string>)["X-CSRF-Token"]).toBe(
       "csrf-public-synthetic",
     );
     await expect(client.refresh()).rejects.toBeInstanceOf(ApiError);
-    const third = (fetchImpl as unknown as ReturnType<typeof vi.fn>).mock.calls[2]?.[1] as RequestInit;
-    expect((third.headers as Record<string, string>)["X-CSRF-Token"]).toBeUndefined();
+    const third = (fetchImpl as unknown as ReturnType<typeof vi.fn>).mock
+      .calls[2]?.[1] as RequestInit;
+    expect(
+      (third.headers as Record<string, string>)["X-CSRF-Token"],
+    ).toBeUndefined();
   });
 
   it("rejects expired current-session responses", async () => {

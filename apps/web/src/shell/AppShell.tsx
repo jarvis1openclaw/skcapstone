@@ -25,7 +25,11 @@ function SignOutControl() {
   const { session, clearSession } = useSession();
   if (session === null) return null;
   return (
-    <button type="button" className="sl-button" onClick={() => void clearSession()}>
+    <button
+      type="button"
+      className="sl-button"
+      onClick={() => void clearSession()}
+    >
       Sign out
     </button>
   );

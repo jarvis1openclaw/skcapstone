@@ -18,7 +18,9 @@ export function ApiProvider(props: { baseUrl: string; children: ReactNode }) {
       }),
     [csrfToken, invalidate, props.baseUrl],
   );
-  return <ApiContext.Provider value={client}>{props.children}</ApiContext.Provider>;
+  return (
+    <ApiContext.Provider value={client}>{props.children}</ApiContext.Provider>
+  );
 }
 
 export function useApiClient(): ApiClient {

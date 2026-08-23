@@ -37,7 +37,8 @@ export class ApiClient {
     this.baseUrl = options.baseUrl.replace(/\/$/, "");
     this.tenantId = options.tenantId;
     this.csrfToken = options.csrfToken ?? (() => null);
-    this.onAuthenticationFailure = options.onAuthenticationFailure ?? (() => {});
+    this.onAuthenticationFailure =
+      options.onAuthenticationFailure ?? (() => {});
     this.fetchImpl = options.fetchImpl ?? globalThis.fetch.bind(globalThis);
   }
 
@@ -49,7 +50,11 @@ export class ApiClient {
     const correlationId = newCorrelationId();
     const tenantId = this.tenantId();
     if (!tenantId) {
-      throw new ApiError({ kind: "unauthenticated", status: 401, correlationId });
+      throw new ApiError({
+        kind: "unauthenticated",
+        status: 401,
+        correlationId,
+      });
     }
     const headers: Record<string, string> = {
       Accept: "application/json",
@@ -88,7 +93,10 @@ export class ApiClient {
       throw apiErrorFromStatus(response.status, responseCorrelation);
     }
     try {
-      return { data: (await response.json()) as T, correlationId: responseCorrelation };
+      return {
+        data: (await response.json()) as T,
+        correlationId: responseCorrelation,
+      };
     } catch (cause) {
       throw apiErrorFromCause(cause, responseCorrelation);
     }
@@ -119,7 +127,9 @@ export class ApiClient {
   }
 
   getMatterWorkspace(matterId: string): Promise<ApiResult<MatterWorkspace>> {
-    return this.request(`/v1/matters/${encodeURIComponent(matterId)}/workspace`);
+    return this.request(
+      `/v1/matters/${encodeURIComponent(matterId)}/workspace`,
+    );
   }
 
   searchCorpus(

@@ -43,7 +43,9 @@ export function SessionProvider(props: {
     () => props.queryClient ?? new QueryClient(),
     [props.queryClient],
   );
-  const [session, setSessionState] = useState<Session | null>(() => getSession());
+  const [session, setSessionState] = useState<Session | null>(() =>
+    getSession(),
+  );
   const [csrfToken, setCsrfToken] = useState<string | null>(null);
   const [ready, setReady] = useState(false);
 
@@ -159,7 +161,9 @@ export function SessionProvider(props: {
   );
 
   return (
-    <SessionContext.Provider value={value}>{props.children}</SessionContext.Provider>
+    <SessionContext.Provider value={value}>
+      {props.children}
+    </SessionContext.Provider>
   );
 }
 
