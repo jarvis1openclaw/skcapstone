@@ -211,3 +211,24 @@ def test_state_is_mode_restricted_and_value_free(tmp_path: Path) -> None:
     text = state_path.read_text(encoding="utf-8")
     for marker in ("credential", "Bearer", "cookie", "csrf", "protected"):
         assert marker not in text
+
+
+def test_built_bundle_must_enable_bootstrap_and_remove_disabled_branch(
+    tmp_path: Path,
+) -> None:
+    dist = tmp_path / "dist"
+    assets = dist / "assets"
+    assets.mkdir(parents=True)
+    bundle = assets / "index.js"
+    bundle.write_text("Start public-synthetic session", encoding="utf-8")
+    mvp_preview._assert_preview_bundle(dist)
+    bundle.write_text(
+        "Start public-synthetic session;"
+        "Internal authentication is unavailable in this build",
+        encoding="utf-8",
+    )
+    with pytest.raises(mvp_preview.PreviewError, match="disabled authentication"):
+        mvp_preview._assert_preview_bundle(dist)
+    bundle.write_text("no bootstrap", encoding="utf-8")
+    with pytest.raises(mvp_preview.PreviewError, match="does not enable"):
+        mvp_preview._assert_preview_bundle(dist)

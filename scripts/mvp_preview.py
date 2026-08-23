@@ -51,10 +51,22 @@ def _tree_sha256(root: Path) -> str:
     return digest.hexdigest()
 
 
-def _run(root: Path, *command: str) -> str:
+def _assert_preview_bundle(dist: Path) -> None:
+    assets = tuple(sorted((dist / "assets").glob("*.js")))
+    if not assets:
+        raise PreviewError("web production bundle has no JavaScript assets")
+    rendered = b"".join(path.read_bytes() for path in assets)
+    if b"Start public-synthetic session" not in rendered:
+        raise PreviewError("web bundle does not enable public-synthetic bootstrap")
+    if b"Internal authentication is unavailable in this build" in rendered:
+        raise PreviewError("web bundle retains the disabled authentication branch")
+
+
+def _run(root: Path, *command: str, env: dict[str, str] | None = None) -> str:
     result = subprocess.run(
         command,
         cwd=root,
+        env=env,
         text=True,
         capture_output=True,
         check=False,
@@ -377,9 +389,27 @@ def _start(args: argparse.Namespace) -> int:
         raise PreviewError(
             "candidate virtual environment is absent; run bootstrap first"
         )
-    _run(root, "npm", "run", "build", "--workspace", "@sklegal/web")
+    build_environment = dict(os.environ)
+    build_environment.update(
+        {
+            "NODE_ENV": "development",
+            "VITE_SKLEGAL_API_BASE": "/api",
+            "VITE_SKLEGAL_PUBLIC_SYNTHETIC_PREVIEW": "1",
+        }
+    )
+    _run(
+        root,
+        "npm",
+        "run",
+        "build",
+        "--workspace",
+        "@sklegal/web",
+        env=build_environment,
+    )
     dist = root / "apps/web/dist"
+    _assert_preview_bundle(dist)
     identity["web_dist_sha256"] = _tree_sha256(dist)
+    identity["browser_bootstrap"] = "enabled-public-synthetic-only"
     api = _start_process(
         [
             str(python),
