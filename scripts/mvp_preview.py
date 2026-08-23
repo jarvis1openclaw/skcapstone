@@ -396,7 +396,6 @@ def _start(args: argparse.Namespace) -> int:
     build_environment = dict(os.environ)
     build_environment.update(
         {
-            "NODE_ENV": "development",
             "VITE_SKLEGAL_API_BASE": "/api",
             "VITE_SKLEGAL_PUBLIC_SYNTHETIC_PREVIEW": "1",
         }
