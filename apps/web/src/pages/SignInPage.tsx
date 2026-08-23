@@ -1,63 +1,53 @@
 import { useState, type FormEvent } from "react";
+import { useNavigate } from "@tanstack/react-router";
 
-import { setSession } from "../auth/sessionStore";
-import type { Session } from "../auth/session";
+import { useSession } from "../auth/SessionProvider";
+import { PUBLIC_SYNTHETIC_CREDENTIAL_REFERENCE } from "../auth/sessionClient";
 
-/**
- * Sign-in placeholder.
- *
- * Production authentication is handled by the deployment boundary and
- * CapAuth before the shell loads; this page exists so route guards have
- * somewhere to send unauthenticated users. A development demo session is
- * available only in dev builds and never persists beyond session storage.
- */
+const PUBLIC_SYNTHETIC_TENANT_ID = "10000000-0000-4000-8000-000000000001";
+
 export function SignInPage() {
-  const [started, setStarted] = useState(false);
+  const [failed, setFailed] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+  const { signIn } = useSession();
+  const navigate = useNavigate();
   const dev = import.meta.env.DEV;
 
-  const startDemoSession = (event: FormEvent) => {
+  const submit = async (event: FormEvent) => {
     event.preventDefault();
-    const demo: Session = {
-      principal: {
-        id: "dev-principal",
-        displayName: "Development User",
-        capabilities: [
-          "tenant.read",
-          "client.read",
-          "matter.read",
-          "calendar.read",
-          "task.read",
-          "corpus.read",
-          "agentrun.read",
-          "approval.read",
-        ],
-        tenantIds: ["dev-tenant"],
-      },
-      tenants: [{ id: "dev-tenant", displayName: "Development Tenant" }],
-      activeTenantId: "dev-tenant",
-    };
-    setSession(demo);
-    setStarted(true);
+    setFailed(false);
+    setSubmitting(true);
+    try {
+      await signIn(
+        PUBLIC_SYNTHETIC_CREDENTIAL_REFERENCE,
+        PUBLIC_SYNTHETIC_TENANT_ID,
+      );
+      await navigate({ to: "/" });
+    } catch {
+      setFailed(true);
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   return (
     <section aria-labelledby="sl-sign-in-heading">
       <h1 id="sl-sign-in-heading">Sign in</h1>
       <p>
-        SKLegal sign-in is provided by the deployment authentication boundary.
-        If you see this page in production, your session was not recognized.
+        Sign-in establishes a bounded server session. Browser route guards are
+        usability controls only; the API authorizes every request again.
       </p>
-      {dev && !started ? (
-        <form onSubmit={startDemoSession}>
-          <button type="submit" className="sl-button">
-            Start development demo session
+      {dev ? (
+        <form onSubmit={submit}>
+          <button type="submit" className="sl-button" disabled={submitting}>
+            {submitting ? "Starting session" : "Start public-synthetic session"}
           </button>
         </form>
-      ) : null}
-      {started ? (
-        <p role="status">
-          Development session started. Return home to continue.
-        </p>
+      ) : (
+        <p>Internal authentication is unavailable in this build.</p>
+      )}
+      {failed ? (
+        <p role="alert">Sign-in failed. No session was retained.</p>
       ) : null}
     </section>
   );

@@ -180,8 +180,16 @@ class ProtectedRouteDependency:
             return self._boundary.authorize(
                 principal=principal,
                 scope=scope,
-                correlation_id=uuid4(),
-                presented=presented,
+                correlation_id=getattr(request.state, "correlation_id", uuid4()),
+                presented=(
+                    presented
+                    if presented is not None
+                    else getattr(request.state, "browser_session", None).presented_for(
+                        request
+                    )
+                    if getattr(request.state, "browser_session", None) is not None
+                    else None
+                ),
             )
         except AuthorizationDenied as exc:
             raise HTTPException(

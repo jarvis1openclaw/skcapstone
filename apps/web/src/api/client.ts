@@ -1,13 +1,5 @@
-/**
- * SKLegal API client for the application shell.
- *
- * Every request is tenant-scoped, carries the session credential, and is
- * stamped with a fresh X-Correlation-ID for end-to-end traceability.
- * Responses are mapped fail closed: unexpected statuses become a generic
- * ApiError and no response body detail is surfaced to the user.
- */
+/** Same-origin SKLegal API client backed by a server-verifiable browser session. */
 
-import type { SessionCredentialStore } from "./credentials";
 import { newCorrelationId } from "./correlation";
 import { ApiError, apiErrorFromStatus, apiErrorFromCause } from "./errors";
 import type {
@@ -23,8 +15,9 @@ import type {
 
 export interface ApiClientOptions {
   baseUrl: string;
-  credentials: SessionCredentialStore;
   tenantId: () => string;
+  csrfToken?: () => string | null;
+  onAuthenticationFailure?: () => void;
   fetchImpl?: typeof fetch;
 }
 
@@ -35,79 +28,78 @@ export interface ApiResult<T> {
 
 export class ApiClient {
   private readonly baseUrl: string;
-  private readonly credentials: SessionCredentialStore;
   private readonly tenantId: () => string;
+  private readonly csrfToken: () => string | null;
+  private readonly onAuthenticationFailure: () => void;
   private readonly fetchImpl: typeof fetch;
 
   constructor(options: ApiClientOptions) {
     this.baseUrl = options.baseUrl.replace(/\/$/, "");
-    this.credentials = options.credentials;
     this.tenantId = options.tenantId;
+    this.csrfToken = options.csrfToken ?? (() => null);
+    this.onAuthenticationFailure = options.onAuthenticationFailure ?? (() => {});
     this.fetchImpl = options.fetchImpl ?? globalThis.fetch.bind(globalThis);
   }
 
-  private async request<T>(path: string): Promise<ApiResult<T>> {
-    const correlationId = newCorrelationId();
-    const credential = this.credentials.loadActive();
-    const headers: Record<string, string> = {
-      Accept: "application/json",
-      "X-Correlation-ID": correlationId,
-      "X-SKLegal-Tenant": this.tenantId(),
-    };
-    if (credential !== null) {
-      headers.Authorization = `Bearer ${credential.token}`;
-    }
-    let response: Response;
-    try {
-      response = await this.fetchImpl(`${this.baseUrl}${path}`, { headers });
-    } catch (cause) {
-      throw apiErrorFromCause(cause, correlationId);
-    }
-    if (!response.ok) {
-      throw apiErrorFromStatus(response.status, correlationId);
-    }
-    try {
-      const data = (await response.json()) as T;
-      return { data, correlationId };
-    } catch (cause) {
-      throw apiErrorFromCause(cause, correlationId);
-    }
-  }
-
-  private async postJson<T>(
+  private async execute<T>(
     path: string,
-    body: unknown,
+    method: "GET" | "POST",
+    body?: unknown,
   ): Promise<ApiResult<T>> {
     const correlationId = newCorrelationId();
-    const credential = this.credentials.loadActive();
+    const tenantId = this.tenantId();
+    if (!tenantId) {
+      throw new ApiError({ kind: "unauthenticated", status: 401, correlationId });
+    }
     const headers: Record<string, string> = {
       Accept: "application/json",
-      "Content-Type": "application/json",
       "X-Correlation-ID": correlationId,
-      "X-SKLegal-Tenant": this.tenantId(),
+      "X-SKLegal-Tenant": tenantId,
     };
-    if (credential !== null) {
-      headers.Authorization = `Bearer ${credential.token}`;
+    if (method === "POST") {
+      const csrfToken = this.csrfToken();
+      if (!csrfToken) {
+        throw new ApiError({
+          kind: "unauthenticated",
+          status: 401,
+          correlationId,
+        });
+      }
+      headers["Content-Type"] = "application/json";
+      headers["X-CSRF-Token"] = csrfToken;
     }
     let response: Response;
     try {
       response = await this.fetchImpl(`${this.baseUrl}${path}`, {
-        method: "POST",
+        method,
         headers,
-        body: JSON.stringify(body),
+        body: body === undefined ? undefined : JSON.stringify(body),
+        credentials: "same-origin",
       });
     } catch (cause) {
       throw apiErrorFromCause(cause, correlationId);
     }
+    const responseCorrelation =
+      response.headers.get("X-Correlation-ID") ?? correlationId;
     if (!response.ok) {
-      throw apiErrorFromStatus(response.status, correlationId);
+      if (response.status === 401) {
+        this.onAuthenticationFailure();
+      }
+      throw apiErrorFromStatus(response.status, responseCorrelation);
     }
     try {
-      const data = (await response.json()) as T;
-      return { data, correlationId };
+      return { data: (await response.json()) as T, correlationId: responseCorrelation };
     } catch (cause) {
-      throw apiErrorFromCause(cause, correlationId);
+      throw apiErrorFromCause(cause, responseCorrelation);
     }
+  }
+
+  private request<T>(path: string): Promise<ApiResult<T>> {
+    return this.execute(path, "GET");
+  }
+
+  private postJson<T>(path: string, body: unknown): Promise<ApiResult<T>> {
+    return this.execute(path, "POST", body);
   }
 
   listClients(): Promise<ApiResult<readonly ClientSummary[]>> {
@@ -127,9 +119,7 @@ export class ApiClient {
   }
 
   getMatterWorkspace(matterId: string): Promise<ApiResult<MatterWorkspace>> {
-    return this.request(
-      `/v1/matters/${encodeURIComponent(matterId)}/workspace`,
-    );
+    return this.request(`/v1/matters/${encodeURIComponent(matterId)}/workspace`);
   }
 
   searchCorpus(

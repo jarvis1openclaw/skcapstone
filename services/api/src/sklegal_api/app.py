@@ -15,6 +15,13 @@ from fastapi.responses import JSONResponse
 from sklegal_capauth import CapabilityAuthorizer
 from sklegal_policies import PolicyGovernanceService
 
+from .browser_sessions import (
+    SESSION_COOKIE,
+    BrowserSessionBackend,
+    BrowserSessionBackendUnavailable,
+    build_browser_session_router,
+    require_csrf,
+)
 from .capauth import PrincipalResolver, ScopeResolver
 from .claims import (
     ClaimLedgerStore,
@@ -74,6 +81,7 @@ class MvpApiComposition:
     scope_resolver: ScopeResolver
     probes: tuple[DependencyProbe, ...]
     mode: RuntimeMode = "production"
+    browser_sessions: BrowserSessionBackend | None = None
 
 
 def _probe_map(composition: MvpApiComposition) -> dict[str, DependencyProbe]:
@@ -109,6 +117,12 @@ def _probe_map(composition: MvpApiComposition) -> dict[str, DependencyProbe]:
     ):
         raise MvpCompositionUnavailable(
             "in-memory corpus storage is forbidden in production mode"
+        )
+    if composition.mode == "production" and getattr(
+        composition.browser_sessions, "synthetic", False
+    ):
+        raise MvpCompositionUnavailable(
+            "synthetic browser sessions are forbidden in production mode"
         )
     return probes
 
@@ -149,7 +163,7 @@ def create_mvp_app(composition: MvpApiComposition) -> FastAPI:
     app.state.mvp_composition = composition
 
     @app.middleware("http")
-    async def correlation_boundary(
+    async def browser_security_boundary(
         request: Request, call_next: Callable[[Request], Awaitable[Response]]
     ) -> Response:
         try:
@@ -163,14 +177,84 @@ def create_mvp_app(composition: MvpApiComposition) -> FastAPI:
             invalid_response.headers["X-Correlation-ID"] = str(correlation_id)
             return invalid_response
         request.state.correlation_id = correlation_id
-        try:
-            response = await call_next(request)
-        except Exception:
+
+        origin = request.headers.get("Origin")
+        expected_origin = f"{request.url.scheme}://{request.url.netloc}"
+        if origin is not None and origin != expected_origin:
             response = JSONResponse(
-                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-                content={"detail": {"code": "application_unavailable"}},
+                status_code=status.HTTP_403_FORBIDDEN,
+                content={"detail": {"code": "origin_denied"}},
             )
+        else:
+            backend = composition.browser_sessions
+            session_id = request.cookies.get(SESSION_COOKIE)
+            if (
+                backend is not None
+                and session_id
+                and request.url.path != "/v1/session/bootstrap"
+            ):
+                try:
+                    session = backend.resolve(session_id)
+                except BrowserSessionBackendUnavailable:
+                    session = None
+                    response = JSONResponse(
+                        status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                        content={"detail": {"code": "session_backend_unavailable"}},
+                    )
+                else:
+                    response = None
+                if session is None and response is None:
+                    response = JSONResponse(
+                        status_code=status.HTTP_401_UNAUTHORIZED,
+                        content={"detail": {"code": "session_invalid"}},
+                    )
+                if session is not None:
+                    request.state.browser_session = session
+                    tenant_header = request.headers.get("X-SKLegal-Tenant")
+                    if tenant_header and tenant_header != str(session.active_tenant_id):
+                        response = JSONResponse(
+                            status_code=status.HTTP_403_FORBIDDEN,
+                            content={"detail": {"code": "tenant_context_denied"}},
+                        )
+                    elif (
+                        request.method not in {"GET", "HEAD", "OPTIONS"}
+                        and request.url.path != "/v1/session/bootstrap"
+                    ):
+                        try:
+                            require_csrf(request, session)
+                        except Exception:
+                            response = JSONResponse(
+                                status_code=status.HTTP_403_FORBIDDEN,
+                                content={"detail": {"code": "csrf_denied"}},
+                            )
+            elif backend is not None and request.url.path not in {
+                "/healthz",
+                "/v1/session/bootstrap",
+            }:
+                response = JSONResponse(
+                    status_code=status.HTTP_401_UNAUTHORIZED,
+                    content={"detail": {"code": "authentication_required"}},
+                )
+            else:
+                response = None
+
+            if response is None:
+                try:
+                    response = await call_next(request)
+                except Exception:
+                    response = JSONResponse(
+                        status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                        content={"detail": {"code": "application_unavailable"}},
+                    )
+
         response.headers["X-Correlation-ID"] = str(correlation_id)
+        response.headers["Cache-Control"] = "no-store"
+        response.headers["Content-Security-Policy"] = (
+            "default-src 'self'; base-uri 'none'; frame-ancestors 'none'; "
+            "form-action 'self'; object-src 'none'"
+        )
+        response.headers["Referrer-Policy"] = "no-referrer"
+        response.headers["X-Content-Type-Options"] = "nosniff"
         return response
 
     @app.get("/healthz", operation_id="mvp_health", include_in_schema=True)
@@ -203,6 +287,9 @@ def create_mvp_app(composition: MvpApiComposition) -> FastAPI:
                 "elapsedMs": elapsed_ms,
             },
         )
+
+    if composition.browser_sessions is not None:
+        app.include_router(build_browser_session_router(composition.browser_sessions))
 
     app.include_router(
         build_workspace_router(

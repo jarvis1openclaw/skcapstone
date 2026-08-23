@@ -1,34 +1,24 @@
-/**
- * Provides the ApiClient to the React tree. The client is rebuilt when
- * the active tenant changes so every request carries the current tenant
- * scope; the server still authorizes each request independently.
- */
-
 import { createContext, useContext, useMemo, type ReactNode } from "react";
 
 import { ApiClient } from "./client";
-import type { SessionCredentialStore } from "./credentials";
 import { getSession } from "../auth/sessionStore";
+import { useSession } from "../auth/SessionProvider";
 
 const ApiContext = createContext<ApiClient | null>(null);
 
-export function ApiProvider(props: {
-  baseUrl: string;
-  credentials: SessionCredentialStore;
-  children: ReactNode;
-}) {
+export function ApiProvider(props: { baseUrl: string; children: ReactNode }) {
+  const { csrfToken, invalidate } = useSession();
   const client = useMemo(
     () =>
       new ApiClient({
         baseUrl: props.baseUrl,
-        credentials: props.credentials,
         tenantId: () => getSession()?.activeTenantId ?? "",
+        csrfToken: () => csrfToken,
+        onAuthenticationFailure: invalidate,
       }),
-    [props.baseUrl, props.credentials],
+    [csrfToken, invalidate, props.baseUrl],
   );
-  return (
-    <ApiContext.Provider value={client}>{props.children}</ApiContext.Provider>
-  );
+  return <ApiContext.Provider value={client}>{props.children}</ApiContext.Provider>;
 }
 
 export function useApiClient(): ApiClient {
