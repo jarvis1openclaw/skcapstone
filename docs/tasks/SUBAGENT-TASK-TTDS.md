@@ -636,3 +636,20 @@ Every task begins by loading SK context, reading `AGENTS.md`, checking the SKCap
 - **Objective:** Independently recompute every HANDOFF-02 owner receipt, immutable commit and tree, include or exclude decision, migration namespace reservation, scoped board projection, rollback, and safe state. Return PASS only if BASE-01 can consume a complete immutable allowlist without importing disputed or unowned bytes.
 - **Tests and acceptance:** Read this exact TDD before review. Recompute hashes, Git objects, ownership, section boundaries, exclusions, migration reservations, dependency closure, duplicate scope, and scoped board consistency. Return PASS or BLOCKED without repair.
 - **Prohibited:** No repair, foreign source or migration edit, runtime, database, deployment, merge, push, cleanup, credential, protected data, provider, HammerTime `Inbox/`, or external action.
+
+### SKL-MVP-BASE-01: Reconcile reviewed V2 candidate with current main
+
+- **Card:** `91988c9e`
+- **Dependencies:** `b417bc62`, `539344d7`, `7c2c9e20`, `cf83cb57`, `21349dd8`
+- **Objective:** Produce one clean isolated integration base from current origin/main, the reviewed V2 lineage, and every approved immutable owner handoff.
+- **Ownership:** Isolated integration worktree, conflict ledger, lock and migration reconciliation, test evidence, and rollback. Do not mutate the shared main worktree.
+- **Tests and acceptance:** Full repository, API, web, migrations, persistence, policy, audit, browser, lint, type, build, dependency audit, diff, dash, and secret gates. Record included and excluded work exactly.
+- **Prohibited:** In-place main edit, push, deployment, cleanup, protected content, provider, credential, HammerTime `Inbox/`, or external action.
+
+### SKL-MVP-BASE-01R: Independently review reconciled MVP base
+
+- **Card:** `855ef00a`
+- **Dependencies:** `91988c9e`
+- **Objective:** Review the immutable reconciled base and collision ownership map without repair.
+- **Tests and acceptance:** Recompute lineage, conflicts, handoffs, feature ownership, all regression gates, rollback, and exclusions. PASS only if seven feature lanes can edit without central-file collision.
+- **Prohibited:** Repair, main mutation, merge, push, cleanup, deployment, protected content, provider, credential, or external action.
