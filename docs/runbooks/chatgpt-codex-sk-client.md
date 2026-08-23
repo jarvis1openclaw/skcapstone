@@ -445,20 +445,19 @@ This pass creates or repairs the global `AGENTS.md` and
 `bin/load-sk-agent-context.sh` under the active `CODEX_HOME`. It also registers
 package skills in the compatibility location used by current SK releases.
 
-Codex's current user skill location is `$HOME/.agents/skills`. Preserve any
-existing real skill directory; otherwise link the SK compatibility skill into
-the current location:
+Codex's current user skill location is `$HOME/.agents/skills`. Registration
+links every installed SKSkill into this canonical root and into detected
+framework-specific roots. It preserves existing real skill directories and
+keeps the legacy `$HOME/.codex/skills` links for older clients. Run:
 
 ```bash
 mkdir -p "$HOME/.agents/skills"
-for skill in skcapstone skmemory skchat skcomms capauth sksecurity; do
-  source_skill="$HOME/.codex/skills/$skill"
-  target_skill="$HOME/.agents/skills/$skill"
-  if [[ -d "$source_skill" && ! -e "$target_skill" ]]; then
-    ln -s "$source_skill" "$target_skill"
-  fi
-done
+skcapstone register --env codex
 ```
+
+The same registration pass maps detected Claude Code, Cursor, OpenCode, and
+Pi roots. Use `skcapstone register --env codex --dry-run` to inspect planned
+changes without mutating any skill root.
 
 Codex supports symlinked skill folders. If a real directory already exists at
 the target, inspect and update it deliberately instead of overwriting it.
@@ -735,10 +734,9 @@ Known implementation gaps:
 1. `skcapstone register --env codex` currently repairs global bootstrap and
    compatibility skills but does not write Codex MCP entries. Card `8b9ee8b3`
    owns the built-in idempotent fix.
-2. SKCapstone's registration path still creates compatibility skills under
-   `$HOME/.codex/skills`; current Codex user skills belong under
-   `$HOME/.agents/skills`. This SOP bridges with non-destructive symlinks until
-   registration writes the current location directly.
+2. Older releases created compatibility skills only under `$HOME/.codex/skills`.
+   Current registration writes `$HOME/.agents/skills` and retains the legacy
+   links for compatibility.
 3. The canonical MCP topology specifies two default MCP servers, while the
    accepted desktop compatibility profile exposes four. Resolve that drift by
    ownership/delegation policy before declaring four servers the fleet-wide
