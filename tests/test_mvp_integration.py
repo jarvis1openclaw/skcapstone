@@ -4,7 +4,6 @@ import pytest
 from fastapi import APIRouter, FastAPI, Request
 from fastapi.routing import APIRoute
 from fastapi.testclient import TestClient
-
 from sklegal_api.mvp_integration import (
     MvpRouteCompositionError,
     canonical_operation_ids,
