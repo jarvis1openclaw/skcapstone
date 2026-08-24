@@ -200,11 +200,11 @@ contract and its production limitations.
 
 ## Migration, provisioning, and rollback
 
-Nineteen digest-pinned migrations create the foundation, identity, legal
+Twenty-eight digest-pinned migrations create the foundation, identity, legal
 records, integration and workflow references, audit target, RLS policies,
 legal information-barrier records, the CapAuth state, snapshot, and grant
-surface, the work product drafting surface, the claim ledger, and the
-isolated pilot import staging surface. Each file
+surface, the work product drafting surface, the claim ledger, the isolated
+pilot import staging surface, and the durable V2 feature surfaces. Each file
 contains explicit up and down sections.
 Migrations 0001 through 0004 create the six prefixed schemas, shared domains
 and helper functions (0001), tenants, principals, database-role bindings, and
@@ -316,6 +316,28 @@ LedgerClaim identity. Composite foreign keys preserve the Tenant and Matter
 boundary, forced RLS applies to reads and inserts, and the runtime provisioner
 grants only the insert authority required by the declared persistence writer.
 
+Migration 0020 is a fail-closed CapAuth compatibility marker. Its up and down
+paths assert the reviewed CapAuth trigger and least-privilege function ACL
+state without mutating application objects. Migration 0021 adds the
+tenant- and Matter-scoped SKGateway qualification scope with its local-Qwen
+route and workflow binding checks. Migration 0022 adds immutable joined
+analysis snapshots that pin the Matter, Claim, Authority, and projection
+digests used for a joined result.
+
+Migration 0023 adds the public-synthetic governed Agent Run identity,
+request, proposal, challenge, and disposal records. Migration 0024 adds the
+artifact intake schema for original and derived artifacts, custody hashes,
+classification, privilege, retention, legal holds, and policy decisions.
+Migration 0025 adds the Work Product feature-lane identity, version,
+idempotency, and review records. Migration 0026 adds versioned Tasks and
+Deadlines with policy, actor, calculation, and reconciliation evidence.
+
+Migration 0027 adds the append-only Matter Activity projection over audit,
+workflow, model, tool, human, and connector events. Migration 0028 adds the
+governed corpus projection registry, source versions, release metadata, exact
+spans, rights, and retrieval records. These migrations remain one contiguous
+reviewed prefix and their manifest digests are authoritative.
+
 The down sections run in reverse order. The 0019 down drops only the
 SentenceGrounding index, policies, triggers, and table. The 0018 down drops only its controlled
 function, policies, and reservation table. The 0017 down drops only the
@@ -328,7 +350,9 @@ blocker, then drops the drafting functions and tables. The 0013 down
 drops the prune function and restores the 0008-era `reserve_capability`, the
 0010 down restores the 0009-era snapshot function after dropping the subject
 column, and the 0008 down drops the three functions, their policies, and both
-CapAuth state tables.
+CapAuth state tables. The 0028 through 0021 downs drop only the objects owned by
+their corresponding V2 feature migrations in reverse dependency order. The
+0020 down re-runs the same compatibility assertions and performs no mutation.
 
 Three PostgreSQL role classes exist:
 
