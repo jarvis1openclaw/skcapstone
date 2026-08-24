@@ -10,7 +10,7 @@ from time import monotonic
 from typing import Literal
 from uuid import UUID, uuid4
 
-from fastapi import FastAPI, Request, Response, status
+from fastapi import APIRouter, FastAPI, Request, Response, status
 from fastapi.responses import JSONResponse
 from sklegal_capauth import CapabilityAuthorizer
 from sklegal_policies import PolicyGovernanceService
@@ -35,6 +35,7 @@ from .corpus import (
     build_corpus_research_router,
 )
 from .governance import build_governance_router
+from .mvp_integration import compose_v2_feature_router, rename_operation_ids
 from .workspace import (
     InMemoryWorkspaceReadStore,
     WorkspaceReadStore,
@@ -84,6 +85,7 @@ class MvpApiComposition:
     mode: RuntimeMode = "production"
     browser_sessions: BrowserSessionBackend | None = None
     browser_session_audit: BrowserSessionAuditSink | None = None
+    feature_routers: tuple[APIRouter, ...] = ()
 
 
 def _probe_map(composition: MvpApiComposition) -> dict[str, DependencyProbe]:
@@ -310,30 +312,40 @@ def create_mvp_app(composition: MvpApiComposition) -> FastAPI:
             )
         )
 
-    app.include_router(
-        build_workspace_router(
-            store=composition.workspace_store,
-            authorizer=composition.authorizer,
-            principal_resolver=composition.principal_resolver,
-            scope_resolver=composition.scope_resolver,
-        )
+    workspace_router = build_workspace_router(
+        store=composition.workspace_store,
+        authorizer=composition.authorizer,
+        principal_resolver=composition.principal_resolver,
+        scope_resolver=composition.scope_resolver,
     )
-    app.include_router(
-        build_claim_ledger_router(
-            store=composition.claim_store,
-            authorizer=composition.authorizer,
-            principal_resolver=composition.principal_resolver,
-            scope_resolver=composition.scope_resolver,
-        )
+    claims_router = build_claim_ledger_router(
+        store=composition.claim_store,
+        authorizer=composition.authorizer,
+        principal_resolver=composition.principal_resolver,
+        scope_resolver=composition.scope_resolver,
     )
-    app.include_router(
-        build_corpus_research_router(
-            store=composition.corpus_store,
-            authorizer=composition.authorizer,
-            principal_resolver=composition.principal_resolver,
-            scope_resolver=composition.scope_resolver,
+    if composition.feature_routers:
+        app.include_router(
+            rename_operation_ids(
+                workspace_router,
+                {"workspace_matters_workspace": "get_workspace"},
+            )
         )
+        app.include_router(
+            rename_operation_ids(claims_router, {"claims_ledger": "get_claim_ledger"})
+        )
+    else:
+        app.include_router(workspace_router)
+        app.include_router(claims_router)
+
+    corpus_router = build_corpus_research_router(
+        store=composition.corpus_store,
+        authorizer=composition.authorizer,
+        principal_resolver=composition.principal_resolver,
+        scope_resolver=composition.scope_resolver,
     )
+    if not composition.feature_routers:
+        app.include_router(corpus_router)
     app.include_router(
         build_governance_router(
             service=composition.governance_service,
@@ -342,4 +354,11 @@ def create_mvp_app(composition: MvpApiComposition) -> FastAPI:
             scope_resolver=composition.scope_resolver,
         )
     )
+    if composition.feature_routers:
+        app.include_router(
+            compose_v2_feature_router(
+                composition.feature_routers,
+                existing_operation_ids={"get_workspace", "get_claim_ledger"},
+            )
+        )
     return app

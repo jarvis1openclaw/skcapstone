@@ -1,0 +1,103 @@
+{
+  "version": "sklegal-matter-activity-fixture/v1",
+  "classification": "public",
+  "tenantId": "10000000-0000-4000-8000-000000000001",
+  "matterId": "20000000-0000-4000-8000-000000000001",
+  "projection": "matter_activity.v1",
+  "sourceKinds": [
+    "audit_event",
+    "matter_event",
+    "workflow_reference",
+    "agent_run",
+    "tool_call",
+    "source_reference",
+    "work_product_version",
+    "approval",
+    "execution_event",
+    "receipt",
+    "correction"
+  ],
+  "chronology": [
+    {
+      "eventSequence": 1,
+      "sourceKind": "audit_event",
+      "sourceVersion": 1,
+      "status": "recorded"
+    },
+    {
+      "eventSequence": 2,
+      "sourceKind": "matter_event",
+      "sourceVersion": 1,
+      "status": "recorded"
+    },
+    {
+      "eventSequence": 3,
+      "sourceKind": "workflow_reference",
+      "sourceVersion": 1,
+      "status": "recorded"
+    },
+    {
+      "eventSequence": 4,
+      "sourceKind": "agent_run",
+      "sourceVersion": 1,
+      "status": "recorded"
+    },
+    {
+      "eventSequence": 5,
+      "sourceKind": "tool_call",
+      "sourceVersion": 1,
+      "status": "recorded"
+    },
+    {
+      "eventSequence": 6,
+      "sourceKind": "source_reference",
+      "sourceVersion": 1,
+      "status": "recorded"
+    },
+    {
+      "eventSequence": 7,
+      "sourceKind": "work_product_version",
+      "sourceVersion": 1,
+      "status": "recorded"
+    },
+    {
+      "eventSequence": 8,
+      "sourceKind": "approval",
+      "sourceVersion": 1,
+      "status": "recorded"
+    },
+    {
+      "eventSequence": 9,
+      "sourceKind": "execution_event",
+      "sourceVersion": 2,
+      "status": "superseded",
+      "supersededByEventSequence": 12,
+      "supersededBySourceVersion": 3
+    },
+    {
+      "eventSequence": 10,
+      "sourceKind": "receipt",
+      "sourceVersion": 1,
+      "status": "recorded"
+    },
+    {
+      "eventSequence": 11,
+      "sourceKind": "correction",
+      "sourceVersion": 1,
+      "status": "recorded",
+      "correctsEventSequence": 7
+    },
+    {
+      "eventSequence": 12,
+      "sourceKind": "execution_event",
+      "sourceVersion": 3,
+      "status": "recorded"
+    }
+  ],
+  "unrelatedTenantChainEvent": {
+    "eventSequence": 13,
+    "matterId": "20000000-0000-4000-8000-000000000002",
+    "visibleInMatterProjection": false
+  },
+  "externalEffects": false
+}

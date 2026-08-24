@@ -1,0 +1,176 @@
+{
+  "schemaVersion": "sklegal.task-deadline-fragment/v1",
+  "tenantId": "10000000-0000-4000-8000-000000000001",
+  "matterId": "30000000-0000-4000-8000-000000000001",
+  "tasks": [
+    {
+      "schemaVersion": "sklegal.task/v1",
+      "tenantId": "10000000-0000-4000-8000-000000000001",
+      "matterId": "30000000-0000-4000-8000-000000000001",
+      "taskId": "41000000-0000-4000-8000-000000000001",
+      "version": 2,
+      "title": "Prepare public-synthetic response",
+      "description": "Review the synthetic response Work Product against the operative Deadline.",
+      "status": "in_progress",
+      "assignedPrincipalId": "20000000-0000-4000-8000-000000000001",
+      "deadlineId": "42000000-0000-4000-8000-000000000001",
+      "dueAt": "2026-08-25T15:00:00Z",
+      "blockedReason": null,
+      "completedAt": null,
+      "cancelledAt": null,
+      "cancellationReason": null,
+      "failureCode": null,
+      "retryOfVersion": null,
+      "reconciliationOfVersion": null,
+      "proposalId": null,
+      "decisionId": null,
+      "policyDecisionId": "43000000-0000-4000-8000-000000000001",
+      "policyRevision": "4444444444444444444444444444444444444444444444444444444444444444",
+      "createdByPrincipalId": "20000000-0000-4000-8000-000000000001",
+      "updatedByPrincipalId": "20000000-0000-4000-8000-000000000001",
+      "createdAt": "2026-08-23T18:00:00Z",
+      "updatedAt": "2026-08-23T18:01:00Z",
+      "auditId": "44000000-0000-4000-8000-000000000001",
+      "outboxId": "45000000-0000-4000-8000-000000000001",
+      "provenance": [
+        {
+          "provenanceId": "45100000-0000-4000-8000-000000000001",
+          "sourceKind": "human_command",
+          "sourceId": "45200000-0000-4000-8000-000000000001",
+          "sourceVersion": 1,
+          "sourceSha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "recordedAt": "2026-08-23T18:00:00Z"
+        }
+      ]
+    }
+  ],
+  "deadlines": [
+    {
+      "schemaVersion": "sklegal.deadline/v1",
+      "tenantId": "10000000-0000-4000-8000-000000000001",
+      "matterId": "30000000-0000-4000-8000-000000000001",
+      "deadlineId": "42000000-0000-4000-8000-000000000001",
+      "version": 2,
+      "title": "Public-synthetic response Deadline",
+      "state": "operative",
+      "reviewState": "accepted",
+      "trigger": {
+        "state": "confirmed",
+        "triggerEventId": "46000000-0000-4000-8000-000000000001",
+        "factAssertionId": "47000000-0000-4000-8000-000000000001",
+        "occurredAt": "2026-08-21T15:00:00Z",
+        "evidenceSha256": "1111111111111111111111111111111111111111111111111111111111111111"
+      },
+      "rule": {
+        "state": "current",
+        "ruleId": "illinois.response.v1",
+        "ruleVersion": "2026.1",
+        "ruleSha256": "2222222222222222222222222222222222222222222222222222222222222222",
+        "authorityId": "48000000-0000-4000-8000-000000000001",
+        "authorityVersion": "2026-08-01",
+        "authorityContentSha256": "3333333333333333333333333333333333333333333333333333333333333333",
+        "authoritySpanSha256": "5555555555555555555555555555555555555555555555555555555555555555",
+        "verifiedAt": "2026-08-22T18:00:00Z",
+        "validUntil": "2026-09-22T18:00:00Z",
+        "intervalDays": 1,
+        "convention": "business_days",
+        "includeTriggerDay": false
+      },
+      "calendar": {
+        "state": "current",
+        "calendarId": "illinois.state.2026",
+        "revision": "6666666666666666666666666666666666666666666666666666666666666666",
+        "timeZone": "America/Chicago",
+        "holidays": ["2026-08-24"]
+      },
+      "candidateDueAt": "2026-08-25T15:00:00Z",
+      "operativeDueAt": "2026-08-25T15:00:00Z",
+      "calculationSha256": "7777777777777777777777777777777777777777777777777777777777777777",
+      "uncertaintyCodes": [],
+      "reminders": [
+        {
+          "reminderId": "49000000-0000-4000-8000-000000000001",
+          "scheduledFor": "2026-08-24T15:00:00Z",
+          "offsetDays": 1,
+          "channel": "internal",
+          "state": "proposed",
+          "externalEffect": false
+        }
+      ],
+      "reviewedByPrincipalId": "20000000-0000-4000-8000-000000000001",
+      "reviewedAt": "2026-08-23T18:02:00Z",
+      "reviewRationale": "Trigger, rule, Authority span, calendar, and timezone reviewed.",
+      "cancelledAt": null,
+      "cancellationReason": null,
+      "failureCode": null,
+      "retryOfVersion": null,
+      "reconciliationOfVersion": null,
+      "supersedesDeadlineId": null,
+      "policyDecisionId": "43000000-0000-4000-8000-000000000001",
+      "policyRevision": "4444444444444444444444444444444444444444444444444444444444444444",
+      "createdByPrincipalId": "20000000-0000-4000-8000-000000000001",
+      "updatedByPrincipalId": "20000000-0000-4000-8000-000000000001",
+      "createdAt": "2026-08-23T18:00:00Z",
+      "updatedAt": "2026-08-23T18:02:00Z",
+      "auditId": "4a000000-0000-4000-8000-000000000001",
+      "outboxId": "4b000000-0000-4000-8000-000000000001",
+      "provenance": [
+        {
+          "provenanceId": "4a100000-0000-4000-8000-000000000001",
+          "sourceKind": "deterministic_calculation",
+          "sourceId": "4a200000-0000-4000-8000-000000000001",
+          "sourceVersion": 1,
+          "sourceSha256": "7777777777777777777777777777777777777777777777777777777777777777",
+          "recordedAt": "2026-08-23T18:00:00Z"
+        },
+        {
+          "provenanceId": "4a300000-0000-4000-8000-000000000001",
+          "sourceKind": "human_review",
+          "sourceId": "4a400000-0000-4000-8000-000000000001",
+          "sourceVersion": 2,
+          "sourceSha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+          "recordedAt": "2026-08-23T18:02:00Z"
+        }
+      ]
+    }
+  ],
+  "simulations": [
+    {
+      "schemaVersion": "sklegal.action-simulation/v1",
+      "tenantId": "10000000-0000-4000-8000-000000000001",
+      "matterId": "30000000-0000-4000-8000-000000000001",
+      "receiptId": "4c000000-0000-4000-8000-000000000001",
+      "taskId": "41000000-0000-4000-8000-000000000001",
+      "deadlineId": "42000000-0000-4000-8000-000000000001",
+      "state": "simulated",
+      "outcome": "succeeded",
+      "externalEffect": false,
+      "connectorInvoked": false,
+      "dispatchAttempted": false,
+      "workProductId": "4d000000-0000-4000-8000-000000000000",
+      "workProductVersionId": "4d000000-0000-4000-8000-000000000001",
+      "workProductVersionNumber": 2,
+      "workProductContentSha256": "7777777777777777777777777777777777777777777777777777777777777777",
+      "approvalId": "4e000000-0000-4000-8000-000000000001",
+      "approvalSnapshotSha256": "8888888888888888888888888888888888888888888888888888888888888888",
+      "destinationSha256": "9999999999999999999999999999999999999999999999999999999999999999",
+      "actionKind": "email",
+      "policyDecisionId": "43000000-0000-4000-8000-000000000001",
+      "policyRevision": "4444444444444444444444444444444444444444444444444444444444444444",
+      "actorPrincipalId": "20000000-0000-4000-8000-000000000001",
+      "createdAt": "2026-08-23T18:03:00Z",
+      "auditId": "4f000000-0000-4000-8000-000000000001",
+      "outboxId": "50000000-0000-4000-8000-000000000001",
+      "provenance": [
+        {
+          "provenanceId": "50100000-0000-4000-8000-000000000001",
+          "sourceKind": "simulation",
+          "sourceId": "50200000-0000-4000-8000-000000000001",
+          "sourceVersion": 1,
+          "sourceSha256": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+          "recordedAt": "2026-08-23T18:03:00Z"
+        }
+      ]
+    }
+  ]
+}

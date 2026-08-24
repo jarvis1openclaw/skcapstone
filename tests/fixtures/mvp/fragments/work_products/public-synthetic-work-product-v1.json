@@ -1,0 +1,132 @@
+{
+  "schemaVersion": "sklegal.work-product-aggregate/v1",
+  "tenantId": "10000000-0000-4000-8000-000000000001",
+  "matterId": "20000000-0000-4000-8000-000000000001",
+  "workProductId": "50000000-0000-4000-8000-000000000001",
+  "aggregateVersion": 5,
+  "title": "Public synthetic memorandum",
+  "workProductKind": "memo",
+  "status": "approved",
+  "currentVersionId": "50000000-0000-4000-8000-000000000002",
+  "versions": [
+    {
+      "versionId": "50000000-0000-4000-8000-000000000002",
+      "versionNumber": 1,
+      "content": "The public synthetic fact is grounded.",
+      "contentSha256": "\u0062\u0036\u0065\u0034\u0061\u0036\u0061\u0037\u0030\u0062\u0064\u0038\u0061\u0064\u0035\u0062\u0031\u0064\u0064\u0034\u0034\u0034\u0032\u0063\u0035\u0039\u0033\u0039\u0033\u0034\u0035\u0037\u0039\u0062\u0038\u0066\u0039\u0032\u0031\u0036\u0061\u0032\u0033\u0032\u0031\u0034\u0037\u0038\u0039\u0034\u0030\u0065\u0031\u0036\u0063\u0035\u0033\u0037\u0039\u0064\u0066\u0032\u0030\u0032",
+      "source": {
+        "sourceArtifactId": "50000000-0000-4000-8000-000000000700",
+        "sourceArtifactVersion": 1,
+        "sourceContentSha256": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+        "sourceLocator": "public-synthetic://wp-01/source-1"
+      },
+      "createdByPrincipalId": "30000000-0000-4000-8000-000000000001",
+      "status": "active",
+      "createdAt": "2026-08-23T18:00:00Z",
+      "supersededAt": null
+    }
+  ],
+  "groundings": [
+    {
+      "groundingId": "50000000-0000-4000-8000-000000000003",
+      "binding": {
+        "workProductVersionId": "50000000-0000-4000-8000-000000000002",
+        "versionNumber": 1,
+        "contentSha256": "\u0062\u0036\u0065\u0034\u0061\u0036\u0061\u0037\u0030\u0062\u0064\u0038\u0061\u0064\u0035\u0062\u0031\u0064\u0064\u0034\u0034\u0034\u0032\u0063\u0035\u0039\u0033\u0039\u0033\u0034\u0035\u0037\u0039\u0062\u0038\u0066\u0039\u0032\u0031\u0036\u0061\u0032\u0033\u0032\u0031\u0034\u0037\u0038\u0039\u0034\u0030\u0065\u0031\u0036\u0063\u0035\u0033\u0037\u0039\u0064\u0066\u0032\u0030\u0032"
+      },
+      "sentenceKey": "\u0062\u0036\u0065\u0034\u0061\u0036\u0061\u0037\u0030\u0062\u0064\u0038\u0061\u0064\u0035\u0062\u0031\u0064\u0064\u0034\u0034\u0034\u0032\u0063\u0035\u0039\u0033\u0039\u0033\u0034\u0035\u0037\u0039\u0062\u0038\u0066\u0039\u0032\u0031\u0036\u0061\u0032\u0033\u0032\u0031\u0034\u0037\u0038\u0039\u0034\u0030\u0065\u0031\u0036\u0063\u0035\u0033\u0037\u0039\u0064\u0066\u0032\u0030\u0032",
+      "claimId": "40000000-0000-4000-8000-000000000001",
+      "sourceSpanStart": 0,
+      "sourceSpanEnd": 38,
+      "groundedByPrincipalId": "30000000-0000-4000-8000-000000000001",
+      "groundedAt": "2026-08-23T18:00:00Z"
+    }
+  ],
+  "validations": [
+    {
+      "validationId": "50000000-0000-4000-8000-000000000004",
+      "binding": {
+        "workProductVersionId": "50000000-0000-4000-8000-000000000002",
+        "versionNumber": 1,
+        "contentSha256": "\u0062\u0036\u0065\u0034\u0061\u0036\u0061\u0037\u0030\u0062\u0064\u0038\u0061\u0064\u0035\u0062\u0031\u0064\u0064\u0034\u0034\u0034\u0032\u0063\u0035\u0039\u0033\u0039\u0033\u0034\u0035\u0037\u0039\u0062\u0038\u0066\u0039\u0032\u0031\u0036\u0061\u0032\u0033\u0032\u0031\u0034\u0037\u0038\u0039\u0034\u0030\u0065\u0031\u0036\u0063\u0035\u0033\u0037\u0039\u0064\u0066\u0032\u0030\u0032"
+      },
+      "outcome": "passed",
+      "checkIds": ["content_hash", "sentence_grounding", "source_lineage"],
+      "missingSentenceKeys": [],
+      "validatorPrincipalId": "30000000-0000-4000-8000-000000000001",
+      "validatedAt": "2026-08-23T18:00:01Z",
+      "rationale": "Exact public synthetic checks completed.",
+      "policyRevision": "sklegal-authz/v1",
+      "authorization": {
+        "tenantId": "10000000-0000-4000-8000-000000000001",
+        "matterId": "20000000-0000-4000-8000-000000000001",
+        "decisionId": "50000000-0000-4000-8000-000000000801",
+        "principalId": "30000000-0000-4000-8000-000000000001",
+        "capability": "work_product.draft",
+        "purpose": "work_product_preparation",
+        "policyRevision": "sklegal-authz/v1",
+        "revocationRevision": "\u0034\u0066\u0035\u0033\u0063\u0064\u0061\u0031\u0038\u0063\u0032\u0062\u0061\u0061\u0030\u0063\u0030\u0033\u0035\u0034\u0062\u0062\u0035\u0066\u0039\u0061\u0033\u0065\u0063\u0062\u0065\u0035\u0065\u0064\u0031\u0032\u0061\u0062\u0034\u0064\u0038\u0065\u0031\u0031\u0062\u0061\u0038\u0037\u0033\u0063\u0032\u0066\u0031\u0031\u0031\u0036\u0031\u0032\u0030\u0032\u0062\u0039\u0034\u0035",
+        "credentialDigest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "ancestorCredentialDigests": [],
+        "authorizedAt": "2026-08-23T17:59:59Z",
+        "expiresAt": "2026-08-23T19:00:00Z"
+      }
+    }
+  ],
+  "approvals": [
+    {
+      "approvalId": "50000000-0000-4000-8000-000000000005",
+      "binding": {
+        "workProductVersionId": "50000000-0000-4000-8000-000000000002",
+        "versionNumber": 1,
+        "contentSha256": "\u0062\u0036\u0065\u0034\u0061\u0036\u0061\u0037\u0030\u0062\u0064\u0038\u0061\u0064\u0035\u0062\u0031\u0064\u0064\u0034\u0034\u0034\u0032\u0063\u0035\u0039\u0033\u0039\u0033\u0034\u0035\u0037\u0039\u0062\u0038\u0066\u0039\u0032\u0031\u0036\u0061\u0032\u0033\u0032\u0031\u0034\u0037\u0038\u0039\u0034\u0030\u0065\u0031\u0036\u0063\u0035\u0033\u0037\u0039\u0064\u0066\u0032\u0030\u0032"
+      },
+      "validationId": "50000000-0000-4000-8000-000000000004",
+      "status": "approved",
+      "requestedByPrincipalId": "30000000-0000-4000-8000-000000000001",
+      "requestedAt": "2026-08-23T18:00:01Z",
+      "requestPolicyRevision": "sklegal-authz/v1",
+      "requestAuthorization": {
+        "tenantId": "10000000-0000-4000-8000-000000000001",
+        "matterId": "20000000-0000-4000-8000-000000000001",
+        "decisionId": "50000000-0000-4000-8000-000000000801",
+        "principalId": "30000000-0000-4000-8000-000000000001",
+        "capability": "work_product.draft",
+        "purpose": "work_product_preparation",
+        "policyRevision": "sklegal-authz/v1",
+        "revocationRevision": "\u0034\u0066\u0035\u0033\u0063\u0064\u0061\u0031\u0038\u0063\u0032\u0062\u0061\u0061\u0030\u0063\u0030\u0033\u0035\u0034\u0062\u0062\u0035\u0066\u0039\u0061\u0033\u0065\u0063\u0062\u0065\u0035\u0065\u0064\u0031\u0032\u0061\u0062\u0034\u0064\u0038\u0065\u0031\u0031\u0062\u0061\u0038\u0037\u0033\u0063\u0032\u0066\u0031\u0031\u0031\u0036\u0031\u0032\u0030\u0032\u0062\u0039\u0034\u0035",
+        "credentialDigest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "ancestorCredentialDigests": [],
+        "authorizedAt": "2026-08-23T17:59:59Z",
+        "expiresAt": "2026-08-23T19:00:00Z"
+      },
+      "reviewerPrincipalId": "30000000-0000-4000-8000-000000000002",
+      "decidedAt": "2026-08-23T18:00:02Z",
+      "rationale": "Reviewed exact public synthetic bytes.",
+      "decisionPolicyRevision": "sklegal-authz/v1",
+      "decisionAuthorization": {
+        "tenantId": "10000000-0000-4000-8000-000000000001",
+        "matterId": "20000000-0000-4000-8000-000000000001",
+        "decisionId": "50000000-0000-4000-8000-000000000802",
+        "principalId": "30000000-0000-4000-8000-000000000002",
+        "capability": "work_product.approve",
+        "purpose": "human_approval",
+        "policyRevision": "sklegal-authz/v1",
+        "revocationRevision": "\u0034\u0066\u0035\u0033\u0063\u0064\u0061\u0031\u0038\u0063\u0032\u0062\u0061\u0061\u0030\u0063\u0030\u0033\u0035\u0034\u0062\u0062\u0035\u0066\u0039\u0061\u0033\u0065\u0063\u0062\u0065\u0035\u0065\u0064\u0031\u0032\u0061\u0062\u0034\u0064\u0038\u0065\u0031\u0031\u0062\u0061\u0038\u0037\u0033\u0063\u0032\u0066\u0031\u0031\u0031\u0036\u0031\u0032\u0030\u0032\u0062\u0039\u0034\u0035",
+        "credentialDigest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "ancestorCredentialDigests": [],
+        "authorizedAt": "2026-08-23T17:59:59Z",
+        "expiresAt": "2026-08-23T19:00:00Z"
+      },
+      "revokerPrincipalId": null,
+      "revokedAt": null,
+      "revocationRationale": null,
+      "revocationAuthorization": null,
+      "supersededAt": null,
+      "supersededByApprovalId": null,
+      "supersedingVersionId": null
+    }
+  ],
+  "createdAt": "2026-08-23T18:00:00Z",
+  "updatedAt": "2026-08-23T18:00:02Z"
+}

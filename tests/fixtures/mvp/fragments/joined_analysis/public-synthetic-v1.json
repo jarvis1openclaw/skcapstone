@@ -1,0 +1,335 @@
+{
+  "schema_revision": "sklegal-matter-analysis/v1",
+  "tenant_id": "91000000-0000-4000-8000-000000000001",
+  "matter_id": "91000000-0000-4000-8000-000000000002",
+  "snapshot": {
+    "snapshot_id": "91000000-0000-4000-8000-000000000003",
+    "version": 1,
+    "observed_at": "2026-08-23T12:00:00Z",
+    "matter_snapshot_sha256": "0000000000000000000000000000000000000000000000000000000000000000",
+    "claim_projection_revision": "0000000000000000000000000000000000000000000000000000000000000000",
+    "authority_snapshot": "0000000000000000000000000000000000000000000000000000000000000000",
+    "projection_revision": "0000000000000000000000000000000000000000000000000000000000000000",
+    "projection_sha256": "0000000000000000000000000000000000000000000000000000000000000000"
+  },
+  "classification": {
+    "value": "public",
+    "purpose": "claim_review",
+    "egress": "local_only",
+    "source_rights": "public_synthetic"
+  },
+  "forum": {
+    "forum_id": "91000000-0000-4000-8000-000000000010",
+    "name": "Synthetic County Civil Court",
+    "jurisdiction": "Synthetic State",
+    "forum_kind": "court",
+    "source_reference_id": "91000000-0000-4000-8000-000000000020"
+  },
+  "proceedings": [
+    {
+      "proceeding_id": "91000000-0000-4000-8000-000000000011",
+      "title": "Public Synthetic Contract Proceeding",
+      "forum_id": "91000000-0000-4000-8000-000000000010",
+      "docket_number": "SYN-2026-001",
+      "status": "active",
+      "version": 1
+    }
+  ],
+  "issues": [
+    {
+      "issue_id": "91000000-0000-4000-8000-000000000030",
+      "question": "Did the public synthetic delivery satisfy the recorded term?",
+      "status": "under_review",
+      "version": 1,
+      "theory_ids": [
+        "91000000-0000-4000-8000-000000000031",
+        "91000000-0000-4000-8000-000000000032"
+      ]
+    }
+  ],
+  "theories": [
+    {
+      "theory_id": "91000000-0000-4000-8000-000000000031",
+      "theory_kind": "claim",
+      "issue_id": "91000000-0000-4000-8000-000000000030",
+      "label": "Synthetic performance Claim",
+      "statement": "The public synthetic record supports timely performance.",
+      "version": 2,
+      "status": "accepted",
+      "element_ids": ["91000000-0000-4000-8000-000000000040"],
+      "fact_assertion_ids": ["91000000-0000-4000-8000-000000000050"],
+      "evidence": [
+        {
+          "evidence_item_id": "91000000-0000-4000-8000-000000000060",
+          "role": "support",
+          "source": {
+            "source_reference_id": "91000000-0000-4000-8000-000000000020",
+            "source_system": "public-synthetic-fixture",
+            "source_version": "v1",
+            "source_locator": "fixture://joined-analysis/agreement#delivery",
+            "content_sha256": "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
+            "span_start": 10,
+            "span_end": 42,
+            "excerpt_sha256": "2222222222222222222222222222222222222222222222222222222222222222",
+            "origin": "matter_record"
+          }
+        },
+        {
+          "evidence_item_id": "91000000-0000-4000-8000-000000000061",
+          "role": "counter_support",
+          "source": {
+            "source_reference_id": "91000000-0000-4000-8000-000000000021",
+            "source_system": "public-synthetic-fixture",
+            "source_version": "v1",
+            "source_locator": "fixture://joined-analysis/notice#timing",
+            "content_sha256": "1111111111111111111111111111111111111111111111111111111111111111",
+            "span_start": 3,
+            "span_end": 31,
+            "excerpt_sha256": "3333333333333333333333333333333333333333333333333333333333333333",
+            "origin": "matter_record"
+          }
+        }
+      ],
+      "authorities": [
+        {
+          "authority_id": "91000000-0000-4000-8000-000000000070",
+          "role": "support",
+          "applicability": "applicable",
+          "reasons": []
+        },
+        {
+          "authority_id": "91000000-0000-4000-8000-000000000071",
+          "role": "contrary_authority",
+          "applicability": "disputed",
+          "reasons": ["The synthetic procedural posture differs."]
+        }
+      ],
+      "gaps": [
+        {
+          "gap_id": "91000000-0000-4000-8000-000000000080",
+          "kind": "missing_fact",
+          "description": "The synthetic receipt time remains disputed.",
+          "blocking": true
+        }
+      ],
+      "challenges": [
+        {
+          "challenge_id": "91000000-0000-4000-8000-000000000081",
+          "status": "not_run",
+          "description": "Blind challenge is unavailable in this public fixture.",
+          "source": "public_synthetic"
+        }
+      ],
+      "ledger_projection": {
+        "tenant_id": "91000000-0000-4000-8000-000000000001",
+        "matter_id": "91000000-0000-4000-8000-000000000002",
+        "claim_id": "91000000-0000-4000-8000-000000000031",
+        "projected_claim_version": 2,
+        "projected_claim_status": "accepted",
+        "legacy_migration": {
+          "legacy_ledger_claim_id": "91000000-0000-4000-8000-000000000033",
+          "legacy_status": "supported",
+          "mapped_claim_status": "accepted",
+          "mapping_revision": "ledger-claim-to-claim-v1"
+        },
+        "policy_revision": "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+        "projection_state": "current"
+      }
+    },
+    {
+      "theory_id": "91000000-0000-4000-8000-000000000032",
+      "theory_kind": "defense",
+      "issue_id": "91000000-0000-4000-8000-000000000030",
+      "label": "Synthetic notice Defense",
+      "statement": "The public synthetic notice may defeat timeliness.",
+      "version": 1,
+      "status": "proposed",
+      "element_ids": ["91000000-0000-4000-8000-000000000041"],
+      "fact_assertion_ids": ["91000000-0000-4000-8000-000000000051"],
+      "evidence": [
+        {
+          "evidence_item_id": "91000000-0000-4000-8000-000000000061",
+          "role": "support",
+          "source": {
+            "source_reference_id": "91000000-0000-4000-8000-000000000021",
+            "source_system": "public-synthetic-fixture",
+            "source_version": "v1",
+            "source_locator": "fixture://joined-analysis/notice#timing",
+            "content_sha256": "1111111111111111111111111111111111111111111111111111111111111111",
+            "span_start": 3,
+            "span_end": 31,
+            "excerpt_sha256": "3333333333333333333333333333333333333333333333333333333333333333",
+            "origin": "matter_record"
+          }
+        }
+      ],
+      "authorities": [],
+      "gaps": [
+        {
+          "gap_id": "91000000-0000-4000-8000-000000000082",
+          "kind": "missing_authority",
+          "description": "Controlling Authority has not been verified.",
+          "blocking": true
+        }
+      ],
+      "challenges": [],
+      "ledger_projection": null
+    }
+  ],
+  "elements": [
+    {
+      "element_id": "91000000-0000-4000-8000-000000000040",
+      "theory_id": "91000000-0000-4000-8000-000000000031",
+      "theory_kind": "claim",
+      "description": "Performance of the recorded delivery obligation.",
+      "status": "supported",
+      "version": 1,
+      "burden": {
+        "allocation": "claimant",
+        "standard": "Public synthetic preponderance standard",
+        "authority_id": "91000000-0000-4000-8000-000000000070",
+        "verification_state": "recorded"
+      },
+      "evidence_item_ids": ["91000000-0000-4000-8000-000000000060"],
+      "fact_assertion_ids": ["91000000-0000-4000-8000-000000000050"]
+    },
+    {
+      "element_id": "91000000-0000-4000-8000-000000000041",
+      "theory_id": "91000000-0000-4000-8000-000000000032",
+      "theory_kind": "defense",
+      "description": "Timely synthetic notice to the claimant.",
+      "status": "disputed",
+      "version": 1,
+      "burden": {
+        "allocation": "respondent",
+        "standard": "Public synthetic preponderance standard",
+        "authority_id": null,
+        "verification_state": "needs_authority"
+      },
+      "evidence_item_ids": ["91000000-0000-4000-8000-000000000061"],
+      "fact_assertion_ids": ["91000000-0000-4000-8000-000000000051"]
+    }
+  ],
+  "fact_assertions": [
+    {
+      "fact_assertion_id": "91000000-0000-4000-8000-000000000050",
+      "subject_ref": "91000000-0000-4000-8000-000000000031",
+      "predicate": "delivery_recorded",
+      "asserted_value": true,
+      "status": "source_asserted",
+      "version": 1,
+      "source": {
+        "source_reference_id": "91000000-0000-4000-8000-000000000020",
+        "source_system": "public-synthetic-fixture",
+        "source_version": "v1",
+        "source_locator": "fixture://joined-analysis/agreement#delivery",
+        "content_sha256": "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
+        "span_start": 10,
+        "span_end": 42,
+        "excerpt_sha256": "2222222222222222222222222222222222222222222222222222222222222222",
+        "origin": "matter_record"
+      }
+    },
+    {
+      "fact_assertion_id": "91000000-0000-4000-8000-000000000051",
+      "subject_ref": "91000000-0000-4000-8000-000000000032",
+      "predicate": "notice_timely",
+      "asserted_value": false,
+      "status": "ambiguous",
+      "version": 1,
+      "source": {
+        "source_reference_id": "91000000-0000-4000-8000-000000000021",
+        "source_system": "public-synthetic-fixture",
+        "source_version": "v1",
+        "source_locator": "fixture://joined-analysis/notice#timing",
+        "content_sha256": "1111111111111111111111111111111111111111111111111111111111111111",
+        "span_start": 3,
+        "span_end": 31,
+        "excerpt_sha256": "3333333333333333333333333333333333333333333333333333333333333333",
+        "origin": "matter_record"
+      }
+    }
+  ],
+  "evidence_items": [
+    {
+      "evidence_item_id": "91000000-0000-4000-8000-000000000060",
+      "title": "Public synthetic delivery receipt",
+      "media_type": "text/plain",
+      "content_sha256": "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
+      "status": "collected",
+      "version": 1,
+      "source": {
+        "source_reference_id": "91000000-0000-4000-8000-000000000020",
+        "source_system": "public-synthetic-fixture",
+        "source_version": "v1",
+        "source_locator": "fixture://joined-analysis/agreement#delivery",
+        "content_sha256": "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
+        "span_start": 10,
+        "span_end": 42,
+        "excerpt_sha256": "2222222222222222222222222222222222222222222222222222222222222222",
+        "origin": "matter_record"
+      }
+    },
+    {
+      "evidence_item_id": "91000000-0000-4000-8000-000000000061",
+      "title": "Public synthetic notice",
+      "media_type": "text/plain",
+      "content_sha256": "1111111111111111111111111111111111111111111111111111111111111111",
+      "status": "challenged",
+      "version": 1,
+      "source": {
+        "source_reference_id": "91000000-0000-4000-8000-000000000021",
+        "source_system": "public-synthetic-fixture",
+        "source_version": "v1",
+        "source_locator": "fixture://joined-analysis/notice#timing",
+        "content_sha256": "1111111111111111111111111111111111111111111111111111111111111111",
+        "span_start": 3,
+        "span_end": 31,
+        "excerpt_sha256": "3333333333333333333333333333333333333333333333333333333333333333",
+        "origin": "matter_record"
+      }
+    }
+  ],
+  "authorities": [
+    {
+      "authority_id": "91000000-0000-4000-8000-000000000070",
+      "title": "Public Synthetic Performance Act",
+      "citation": "Synthetic Code section 10",
+      "jurisdiction": "Synthetic State",
+      "authority_kind": "statute",
+      "status": "verified",
+      "version": 1,
+      "source": {
+        "source_reference_id": "91000000-0000-4000-8000-000000000022",
+        "source_system": "public-synthetic-official",
+        "source_version": "2026-08-23",
+        "source_locator": "fixture://joined-analysis/authority/support",
+        "content_sha256": "4444444444444444444444444444444444444444444444444444444444444444",
+        "span_start": 1,
+        "span_end": 50,
+        "excerpt_sha256": "5555555555555555555555555555555555555555555555555555555555555555",
+        "origin": "current_official_authority"
+      }
+    },
+    {
+      "authority_id": "91000000-0000-4000-8000-000000000071",
+      "title": "Public Synthetic Contrary Decision",
+      "citation": "1 Synthetic Reporter 2",
+      "jurisdiction": "Synthetic State",
+      "authority_kind": "case",
+      "status": "challenged",
+      "version": 1,
+      "source": {
+        "source_reference_id": "91000000-0000-4000-8000-000000000023",
+        "source_system": "public-synthetic-official",
+        "source_version": "2026-08-23",
+        "source_locator": "fixture://joined-analysis/authority/contrary",
+        "content_sha256": "6666666666666666666666666666666666666666666666666666666666666666",
+        "span_start": 2,
+        "span_end": 60,
+        "excerpt_sha256": "7777777777777777777777777777777777777777777777777777777777777777",
+        "origin": "current_official_authority"
+      }
+    }
+  ]
+}

@@ -10,6 +10,8 @@ and versions follow Semantic Versioning.
 - Standards-compliant repository documentation and reusable documentation/CI gates.
 - Archived byte-exact hammerTimeOS proposal as superseded design provenance.
 - Signed trusted-issuer policy deployment artifacts for the dedicated SKLegal issuer.
+- Split governed corpus canonical custody from the rebuildable PostgreSQL full-text
+  and pgvector retrieval projection.
 
 ## [0.1.0] - 2026-08-21
 

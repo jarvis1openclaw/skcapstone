@@ -1,0 +1,34 @@
+.skl-governed-corpus {
+  min-width: 0;
+}
+
+.skl-corpus-kicker {
+  font-size: 0.8rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.skl-corpus-evidence {
+  display: grid;
+  gap: 0.5rem;
+  min-width: 0;
+}
+
+.skl-corpus-evidence-row {
+  display: grid;
+  gap: 0.25rem;
+  grid-template-columns: minmax(8rem, 0.35fr) minmax(0, 1fr);
+}
+
+.skl-corpus-identifier {
+  min-width: 0;
+  overflow-wrap: anywhere;
+  user-select: text;
+}
+
+@media (max-width: 30rem) {
+  .skl-corpus-evidence-row {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}

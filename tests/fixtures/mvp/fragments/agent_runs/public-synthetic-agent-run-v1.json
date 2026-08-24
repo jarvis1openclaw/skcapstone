@@ -1,0 +1,187 @@
+{
+  "schemaVersion": "sklegal.agent-run/v1",
+  "runId": "10000000-0000-4000-8000-000000000030",
+  "version": 1,
+  "tenantId": "10000000-0000-4000-8000-000000000001",
+  "matterId": "30000000-0000-4000-8000-000000000001",
+  "request": {
+    "schemaVersion": "sklegal.agent-analysis-request/v1",
+    "tenantId": "10000000-0000-4000-8000-000000000001",
+    "matterId": "30000000-0000-4000-8000-000000000001",
+    "principalId": "20000000-0000-4000-8000-000000000001",
+    "requestId": "10000000-0000-4000-8000-000000000031",
+    "idempotencyKey": "10000000-0000-4000-8000-000000000032",
+    "analysisKind": "matter_analysis",
+    "purpose": "claim_development",
+    "classification": "public",
+    "publicSynthetic": true,
+    "promptTemplateId": "sklegal.matter-analysis",
+    "promptTemplateSha256": "1111111111111111111111111111111111111111111111111111111111111111",
+    "outputSchemaId": "sklegal.agent-recommendations/v1",
+    "outputSchemaSha256": "2222222222222222222222222222222222222222222222222222222222222222",
+    "scoringPolicyId": "sklegal.recommendation-score/v1",
+    "scoringPolicySha256": "3333333333333333333333333333333333333333333333333333333333333333",
+    "retryOfRunId": null,
+    "snapshots": {
+      "matterSnapshotSha256": "4444444444444444444444444444444444444444444444444444444444444444",
+      "corpusReleaseId": "public-synthetic-corpus-r1",
+      "corpusSnapshotSha256": "5555555555555555555555555555555555555555555555555555555555555555",
+      "authoritySnapshotSha256": "6666666666666666666666666666666666666666666666666666666666666666",
+      "policySnapshotSha256": "7777777777777777777777777777777777777777777777777777777777777777"
+    },
+    "agentSpecification": {
+      "specId": "sklegal.public-matter-analyst",
+      "specVersion": 1,
+      "specSha256": "8888888888888888888888888888888888888888888888888888888888888888",
+      "deploymentRevision": "public-synthetic-r1",
+      "deploymentSha256": "9999999999999999999999999999999999999999999999999999999999999999"
+    },
+    "requestedLogicalRouteId": "sklegal.corpus-analysis"
+  },
+  "status": "completed",
+  "workflowId": "matter-analysis",
+  "workflowRevision": "sklegal.agent-run-workflow/v1",
+  "authorization": {
+    "decisionId": "10000000-0000-4000-8000-000000000033",
+    "correlationId": "10000000-0000-4000-8000-000000000034",
+    "principalId": "20000000-0000-4000-8000-000000000001",
+    "capability": "claim.propose",
+    "purpose": "claim_development",
+    "verifierPolicyVersion": "sklegal-authz/v1",
+    "revocationRevision": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "credentialDigest": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+    "allowed": true
+  },
+  "route": {
+    "logicalRouteId": "sklegal.corpus-analysis",
+    "transportProfileRevision": "public-synthetic-transport-r1",
+    "transportProfileSha256": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+    "gatewayRevision": "public-synthetic-gateway-r1",
+    "gatewayConfigSha256": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+    "catalogRevision": "public-synthetic-catalog-r1",
+    "routePolicyRevision": "public-synthetic-policy-r1",
+    "gatewayRequestId": "public-synthetic-request-1",
+    "backend": "fixture",
+    "capacityDomain": "public-synthetic",
+    "requestedModelOrBucket": "sk-qwen",
+    "bucketMember": "qwen38",
+    "servedModelName": "qwen3.8-public-synthetic",
+    "servedModelRevision": "fixture-r1",
+    "retryCount": 0,
+    "failoverCount": 0,
+    "saturated": false,
+    "promptTokens": 120,
+    "completionTokens": 90,
+    "latencyMs": 25
+  },
+  "attempts": [
+    {
+      "attemptId": "10000000-0000-4000-8000-000000000035",
+      "attemptNumber": 1,
+      "startedAt": "2026-08-23T12:00:00Z",
+      "completedAt": "2026-08-23T12:00:01Z",
+      "outcome": "completed",
+      "errorCode": null,
+      "retryable": false
+    }
+  ],
+  "toolCalls": [
+    {
+      "toolCallId": "10000000-0000-4000-8000-000000000036",
+      "sequence": 1,
+      "toolId": "matter.snapshot.read",
+      "capabilityDecisionId": "10000000-0000-4000-8000-000000000037",
+      "argumentsSha256": "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+      "resultSha256": "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
+      "startedAt": "2026-08-23T12:00:00Z",
+      "completedAt": "2026-08-23T12:00:00.250Z",
+      "outcome": "completed",
+      "errorCode": null
+    }
+  ],
+  "recommendations": [
+    {
+      "recommendationId": "10000000-0000-4000-8000-000000000038",
+      "version": 1,
+      "targetKind": "issue",
+      "targetId": "10000000-0000-4000-8000-000000000039",
+      "proceedingPhase": "public synthetic review",
+      "proposedOutput": "task",
+      "reason": "Review the exact public-synthetic Evidence Item against the recorded Authority before any downstream proposal.",
+      "urgency": "medium",
+      "prerequisites": ["Confirm the public-synthetic source snapshot"],
+      "prohibitedSequencing": ["Do not create a Task before human disposition"],
+      "scoreDimensions": [
+        {
+          "dimension": "evidentiary_support",
+          "value": 80,
+          "rationaleSha256": "0101010101010101010101010101010101010101010101010101010101010101"
+        },
+        {
+          "dimension": "procedural_fit",
+          "value": 70,
+          "rationaleSha256": "0202020202020202020202020202020202020202020202020202020202020202"
+        },
+        {
+          "dimension": "urgency",
+          "value": 60,
+          "rationaleSha256": "0303030303030303030303030303030303030303030303030303030303030303"
+        },
+        {
+          "dimension": "readiness",
+          "value": 90,
+          "rationaleSha256": "0404040404040404040404040404040404040404040404040404040404040404"
+        }
+      ],
+      "scoreTotal": 75,
+      "confidenceBasisPoints": 7500,
+      "evidence": [
+        {
+          "sourceRole": "course_instruction",
+          "sourceId": "public-course-source",
+          "sourceVersion": "1",
+          "sourceSha256": "0505050505050505050505050505050505050505050505050505050505050505",
+          "exactLocator": "public-synthetic://course/1#span-1",
+          "retrievalTraceSha256": "0606060606060606060606060606060606060606060606060606060606060606",
+          "verificationState": "source_derived"
+        },
+        {
+          "sourceRole": "matter_record",
+          "sourceId": "public-evidence-item",
+          "sourceVersion": "1",
+          "sourceSha256": "0707070707070707070707070707070707070707070707070707070707070707",
+          "exactLocator": "public-synthetic://matter/evidence/1#span-1",
+          "retrievalTraceSha256": "0808080808080808080808080808080808080808080808080808080808080808",
+          "verificationState": "matter_recorded"
+        },
+        {
+          "sourceRole": "current_authority",
+          "sourceId": "public-authority",
+          "sourceVersion": "2026-08-23",
+          "sourceSha256": "0909090909090909090909090909090909090909090909090909090909090909",
+          "exactLocator": "public-synthetic://authority/1#paragraph-1",
+          "retrievalTraceSha256": "1010101010101010101010101010101010101010101010101010101010101010",
+          "verificationState": "official_verified"
+        },
+        {
+          "sourceRole": "model_inference",
+          "sourceId": "public-agent-run-inference",
+          "sourceVersion": "1",
+          "sourceSha256": "1212121212121212121212121212121212121212121212121212121212121212",
+          "exactLocator": "public-synthetic://agent-run/1#recommendation-1",
+          "retrievalTraceSha256": "1313131313131313131313131313131313131313131313131313131313131313",
+          "verificationState": "model_proposed"
+        }
+      ],
+      "requiredCapability": "claim.review",
+      "downstreamHumanGate": "independent_challenge_then_human_disposition",
+      "reviewState": "pending"
+    }
+  ],
+  "challenges": [],
+  "dispositions": [],
+  "proposalPayloadSha256": "1414141414141414141414141414141414141414141414141414141414141414",
+  "auditEventIds": ["10000000-0000-4000-8000-000000000040"],
+  "createdAt": "2026-08-23T12:00:00Z",
+  "updatedAt": "2026-08-23T12:00:01Z"
+}

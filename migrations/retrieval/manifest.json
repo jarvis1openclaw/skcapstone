@@ -1,0 +1,9 @@
+{
+  "schema_version": 1,
+  "migrations": [
+    {
+      "file": "0001_governed_corpus_projection.sql",
+      "sha256": "\u0032afde5cf2d67bd0713cdafbdb8b8dbdbed35d9f2c5f3162aba201e893850e537"
+    }
+  ]
+}
