@@ -67,9 +67,9 @@ skipped.
 
 ## Rollback
 
-Revert the c1-owned commits `c9b893d`, `7d93a0b`, `139eab7`, `5377448`,
-`2fbb1ee`, `ae7b942`, and `8b9553b` to accepted base `0a293dd`. This removes
-only the integration adapter, reviewed lane copies, contiguous migration
-copies, compatibility tests, fixture pin repair, and this evidence. No
-database, service, runtime, credential, provider, protected-content, or
-external state was changed.
+Revert the c1-owned commits after accepted base `0a293dd`, including the
+integration implementation, compatibility repairs, and evidence-only commits,
+to return to that base. This removes only the integration adapter, reviewed
+lane copies, contiguous migration copies, compatibility tests, fixture pin
+repair, and this evidence. No database, service, runtime, credential, provider,
+protected-content, or external state was changed.
