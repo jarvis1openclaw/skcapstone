@@ -291,7 +291,20 @@ def postgres() -> Iterator[str]:
         manifest = json.loads(
             (ROOT / "migrations" / "manifest.json").read_text(encoding="utf-8")
         )
+        deferred_v2_migrations: list[dict[str, str]] = []
         for entry in manifest["migrations"]:
+            if entry["file"].split("_", 1)[0] >= "0020":
+                if entry["file"] == MIGRATION.name:
+                    break
+                if entry["file"].startswith("0020_"):
+                    _psql(
+                        container,
+                        "sklegal_migrator",
+                        _up(ROOT / "migrations" / str(entry["file"])),
+                    )
+                    continue
+                deferred_v2_migrations.append(entry)
+                continue
             _psql(
                 container,
                 "sklegal_migrator",
@@ -342,6 +355,12 @@ def postgres() -> Iterator[str]:
             "--principal-id",
             str(PRINCIPAL),
         )
+        for entry in deferred_v2_migrations:
+            _psql(
+                container,
+                "sklegal_migrator",
+                _up(ROOT / "migrations" / str(entry["file"])),
+            )
         _psql(container, "sklegal_migrator", _up(MIGRATION))
         yield container
         _psql(container, "sklegal_migrator", _down(MIGRATION))

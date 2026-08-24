@@ -110,6 +110,11 @@ def _migration_up(path: Path) -> str:
     return up.removeprefix("-- sklegal:up")
 
 
+def _migration_down(path: Path) -> str:
+    _, down = path.read_text(encoding="utf-8").split("-- sklegal:down", 1)
+    return down
+
+
 @pytest.fixture(scope="module")
 def postgres() -> Iterator[str]:
     available = subprocess.run(
@@ -235,6 +240,7 @@ def postgres() -> Iterator[str]:
                 (database_role, tenant_id, principal_id)
             VALUES ('{RUNTIME}', '{TENANT}', '{RUNTIME_PRINCIPAL}');
             SET ROLE sklegal_migrator;
+            {_migration_down(FEATURE_MIGRATION)}
             {_migration_up(FEATURE_MIGRATION)}
             RESET ROLE;
             """,

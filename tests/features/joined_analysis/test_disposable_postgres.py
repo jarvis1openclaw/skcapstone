@@ -232,9 +232,8 @@ def postgres() -> Iterator[DisposablePostgres]:
             )
             if migrated.returncode != 0:
                 pytest.fail(f"base migrations failed: {migrated.stderr.strip()}")
-        up_sql = MIGRATION.read_text(encoding="utf-8").split("-- sklegal:down", 1)[0]
-        database.psql("sklegal_migrator", up_sql)
-        down_sql = MIGRATION.read_text(encoding="utf-8").split("-- sklegal:down", 1)[1]
+        migration_text = MIGRATION.read_text(encoding="utf-8")
+        up_sql, down_sql = migration_text.split("-- sklegal:down", 1)
         database.psql("sklegal_migrator", down_sql)
         absent = database.psql(
             "sklegal_migrator",

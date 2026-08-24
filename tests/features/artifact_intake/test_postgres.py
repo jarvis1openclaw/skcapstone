@@ -208,7 +208,9 @@ class TestArtifactPostgres:
             );
             """,
         )
-        up = MIGRATION.read_text(encoding="utf-8").split("-- sklegal:down", 1)[0]
+        migration_text = MIGRATION.read_text(encoding="utf-8")
+        up, down = migration_text.split("-- sklegal:down", 1)
+        base._psql("sklegal_migrator", down)
         base._psql("sklegal_migrator", up.replace("-- sklegal:up", "", 1))
 
     @classmethod

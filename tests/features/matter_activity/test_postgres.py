@@ -334,7 +334,19 @@ class TestMatterActivityPostgres:
         manifest = json.loads(
             (ROOT / "migrations" / "manifest.json").read_text(encoding="utf-8")
         )
+        deferred_v2_migrations: list[dict[str, str]] = []
         for entry in manifest["migrations"]:
+            if entry["file"].split("_", 1)[0] >= "0020":
+                if entry["file"] == MIGRATION.name:
+                    break
+                if entry["file"].startswith("0020_"):
+                    cls.psql(
+                        "sklegal_migrator",
+                        _up(ROOT / "migrations" / str(entry["file"])),
+                    )
+                    continue
+                deferred_v2_migrations.append(entry)
+                continue
             cls.psql(
                 "sklegal_migrator",
                 _up(ROOT / "migrations" / str(entry["file"])),
@@ -400,6 +412,11 @@ class TestMatterActivityPostgres:
         )
         if source_provisioned.returncode != 0:
             raise AssertionError(source_provisioned.stderr.strip())
+        for entry in deferred_v2_migrations:
+            cls.psql(
+                "sklegal_migrator",
+                _up(ROOT / "migrations" / str(entry["file"])),
+            )
         cls.psql("sklegal_migrator", _up(MIGRATION))
         for role in (SECOND_RUNTIME_ROLE, OTHER_TENANT_RUNTIME_ROLE):
             cls.psql(
