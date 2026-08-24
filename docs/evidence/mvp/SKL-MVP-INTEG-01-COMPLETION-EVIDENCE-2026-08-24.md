@@ -43,16 +43,18 @@ Verdict: PASS for isolated implementation and disposable public-synthetic gates;
 - Migration preflight: `7 passed, 9 subtests passed`.
 - Deterministic PostgreSQL adapters: `30 passed`.
 - Foundation and development contracts: `24 passed, 60 subtests passed`.
+- Load-saturation smoke qualification: `24 passed`.
 - Web Vitest: `24 files, 257 tests passed`.
 - Web ESLint, TypeScript build, Prettier check, and Vite production build: PASS.
 - Ruff, Python compilation, and `git diff --check`: PASS.
 
 The initial broad non-integration Python run recorded `2269 passed, 24
 failed, 944 subtests passed`. Three c1 contract failures were repaired and
-then passed in the focused `37 passed` rerun. The remaining rechecked failures
-are environment-only: the worktree-local locked `uv` environment lacks
-`uvicorn`, `pydantic`, and `temporalio`, and the approved external HammerTime
-style source locator is absent. Those gates were not weakened or skipped.
+then passed in the focused `37 passed` rerun. Load-saturation was rerun after
+locking the complete workspace environment and passed all 24 tests. The only
+remaining rechecked failure is environment-only: the approved external
+HammerTime style source locator is absent. That gate was not weakened or
+skipped.
 
 ## Known limitations
 
