@@ -9,6 +9,19 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ### Changed
 
+- **Card e1d24370: add a byte-reproducible package build procedure.** The
+  task-owned entry point derives a fixed source epoch and exact setuptools-scm
+  version from a clean commit, then normalizes source-archive metadata so
+  differently timed builds produce identical wheel and sdist bytes. It uses only
+  existing build requirements and adds no runtime dependency.
+
+- **Card db5ce143: require `skcoord>=0.1.39` for acceptance-criteria parity.**
+  The released SKCoord fold now presents the latest append-only criteria amendment
+  through the default CardStore lane and every supported rollback selector (`1`,
+  `dual`, `0`, `off`, `false`, and `no`). Malformed fold state fails closed instead
+  of presenting stale immutable birth criteria, and the registry contract gate pins
+  the exact qualifying SKCoord wheel before any source overlay.
+
 - The operator-plane standard and migration plan are marked RATIFIED. They had
   stayed `Status: PROPOSED` while the board card said "doing" and commit messages
   already called the standard ratified: three sources disagreeing about whether the
