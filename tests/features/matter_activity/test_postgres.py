@@ -45,7 +45,7 @@ from sklegal_persistence.features.matter_activity.repository import (
 from tests.support.capauth_contract import CapabilityTestRig, raw_leaf
 
 ROOT = Path(__file__).resolve().parents[3]
-MIGRATION = ROOT / "migrations" / "0070_matter_activity_projection.sql"
+MIGRATION = ROOT / "migrations" / "0027_matter_activity_projection.sql"
 IMAGE = (
     "postgres:17.7-alpine@sha256:"
     "a6d31f85"

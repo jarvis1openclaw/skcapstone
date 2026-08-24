@@ -20,7 +20,7 @@ IMAGE = (
     "0499747e"
     "6e02c126"
 )
-MIGRATION = Path("migrations/0050_work_product_feature_lane.sql")
+MIGRATION = Path("migrations/0025_work_product_feature_lane.sql")
 TENANT = "10000000-0000-4000-8000-000000000001"
 OTHER_TENANT = "10000000-0000-4000-8000-000000000002"
 MATTER = "20000000-0000-4000-8000-000000000001"

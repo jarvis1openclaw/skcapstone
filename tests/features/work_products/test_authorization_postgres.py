@@ -35,7 +35,7 @@ ROOT = Path(__file__).resolve().parents[3]
 MIGRATIONS = ROOT / "migrations"
 MIGRATION_RUNNER = ROOT / "scripts/manage_migrations.py"
 RUNTIME_PROVISIONER = ROOT / "scripts/provision_postgres_runtime.py"
-FEATURE_MIGRATION = MIGRATIONS / "0050_work_product_feature_lane.sql"
+FEATURE_MIGRATION = MIGRATIONS / "0025_work_product_feature_lane.sql"
 IMAGE = (
     "postgres:17.7-alpine@sha256:"
     "a6d31f853205ce20d399df4e33a0b4c715672f232f4ee7440499747e6e02c126"  # pragma: allowlist secret

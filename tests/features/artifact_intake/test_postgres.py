@@ -53,7 +53,7 @@ from tests.integration.persistence_contract_support import (
 )
 from tests.support.capauth_contract import CapabilityTestRig, raw_leaf
 
-MIGRATION = Path("migrations/0040_artifact_intake.sql")
+MIGRATION = Path("migrations/0024_artifact_intake.sql")
 RETENTION_ID = UUID("f0000000-0000-4000-8000-000000000001")
 T0 = datetime(2026, 8, 23, 12, 0, tzinfo=UTC)
 

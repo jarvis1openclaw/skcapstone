@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-MIGRATION = Path(__file__).parents[3] / "migrations" / "0060_task_deadlines.sql"
+MIGRATION = Path(__file__).parents[3] / "migrations" / "0026_task_deadlines.sql"
 
 
 def test_task_deadline_migration_is_additive_scoped_and_reversible() -> None:

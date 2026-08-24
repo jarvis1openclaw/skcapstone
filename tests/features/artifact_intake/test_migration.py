@@ -3,7 +3,7 @@ from __future__ import annotations
 import re
 from pathlib import Path
 
-MIGRATION = Path("migrations/0040_artifact_intake.sql")
+MIGRATION = Path("migrations/0024_artifact_intake.sql")
 
 TABLES = (
     "artifacts",
@@ -122,4 +122,4 @@ def test_review_attribution_and_outbox_are_consistently_append_only() -> None:
 
 def test_no_unreserved_migration_or_manifest_edit_is_present() -> None:
     owned = sorted(Path("migrations").glob("004[0-9]*"))
-    assert owned == [MIGRATION]
+    assert owned == []

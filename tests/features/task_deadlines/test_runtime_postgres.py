@@ -39,7 +39,7 @@ from tests.support.capauth_contract import CapabilityTestRig, raw_leaf
 from .helpers import HASH_D, MATTER, OTHER_MATTER, PRINCIPAL, TENANT
 
 ROOT = Path(__file__).resolve().parents[3]
-MIGRATION = ROOT / "migrations" / "0060_task_deadlines.sql"
+MIGRATION = ROOT / "migrations" / "0026_task_deadlines.sql"
 RUNTIME = "sklegal_runtime"
 CLIENT = UUID("11000000-0000-4000-8000-000000000001")
 ENGAGEMENT = UUID("12000000-0000-4000-8000-000000000001")

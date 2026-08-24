@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-MIGRATION = Path(__file__).parents[3] / "migrations/0030_governed_agent_runs.sql"
+MIGRATION = Path(__file__).parents[3] / "migrations/0023_governed_agent_runs.sql"
 TABLES = (
     "agent_run_identities",
     "agent_runs",

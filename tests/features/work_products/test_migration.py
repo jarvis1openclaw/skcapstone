@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-MIGRATION = Path("migrations/0050_work_product_feature_lane.sql")
+MIGRATION = Path("migrations/0025_work_product_feature_lane.sql")
 
 
 def sql_parts() -> tuple[str, str]:
@@ -65,6 +65,6 @@ def test_atomic_evidence_has_exact_foreign_keys() -> None:
 
 
 def test_migration_does_not_modify_shared_manifest() -> None:
-    assert MIGRATION.name.startswith("0050_")
+    assert MIGRATION.name.startswith("0025_")
     manifest = Path("migrations/manifest.json").read_text(encoding="utf-8")
-    assert MIGRATION.name not in manifest
+    assert MIGRATION.name in manifest

@@ -1,6 +1,6 @@
 from pathlib import Path
 
-MIGRATION = Path("migrations/0070_matter_activity_projection.sql")
+MIGRATION = Path("migrations/0027_matter_activity_projection.sql")
 
 
 def test_migration_is_reversible_forced_rls_and_least_privilege() -> None:
