@@ -42,6 +42,11 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ### Fixed
 
+- `skcapstone coord claim --force` now retains its compatibility spelling but
+  cannot bypass incomplete, unknown, review, or human dependency gates. The
+  CLI returns a concise nonzero refusal listing every blocking ID (card
+  54cd56f2).
+
 - **Card 504d0046: the 10 lying ATLAS Eyes lane conflicts, root-caused and
   fixed; `atlas eyes` now reports zero CONFLICT rows.** ATLAS Eyes' first real
   run (PR #178) found the cli lane and the in-process seat lane disagreeing on
