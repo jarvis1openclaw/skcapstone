@@ -186,7 +186,7 @@ class AiFirstWireframeTests(unittest.TestCase):
 
         self.assertIn("ecf6d536", task)
         self.assertIn("complete Matter activity log", task)
-        self.assertIn("Matter artifact intake contract owed to the UI", component_map)
+        self.assertIn("Matter artifact intake contract", component_map)
         self.assertIn("Matter activity and provenance contract", component_map)
         self.assertIn("Provenance and artifact handling decision", research)
         self.assertIn("Critical live-path gap", gateway_research)

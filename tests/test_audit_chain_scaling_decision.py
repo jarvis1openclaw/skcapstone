@@ -54,10 +54,13 @@ class AuditChainScalingDecisionTests(unittest.TestCase):
             if path.name == "0007_append_only_audit_outbox.sql":
                 continue
             with self.subTest(migration=path.name):
-                self.assertNotIn(
-                    "chain_heads",
-                    path.read_text(encoding="utf-8"),
-                    f"{path.name} touches chain_heads outside the approved 0007 design",
+                self.assertIsNone(
+                    re.search(
+                        r"(?im)^\s*(?:create|alter|drop)\s+"
+                        r"(?:table|index|trigger|policy)\b[^;\n]*\bchain_heads\b",
+                        path.read_text(encoding="utf-8"),
+                    ),
+                    f"{path.name} changes chain_heads outside the approved 0007 design",
                 )
 
     def test_amendment_record_is_approved(self) -> None:

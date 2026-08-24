@@ -8,7 +8,7 @@
     "wireframePath": "docs/planning/wireframes/index-v2.html",
     "wireframeSha256": "4365a536119836f8d9e76ee0aeb222b4c2c68c11fc01c2a68026a46abd79e765",
     "componentMapPath": "docs/planning/wireframes/COMPONENT-API-MAP-V2.md",
-    "componentMapSha256": "8e139a1374f894c787aa758cb56ec3af3a711141ac73df223b5f04133f3dd1cd",
+    "componentMapSha256": "a632d9b2c9a1ac436c5cba165e543d2c1bc7ea8c509e6d8920261cbf88136d63",
     "baseFixturePath": "tests/fixtures/mvp/public-synthetic-mvp-v1.json",
     "baseFixtureSha256": "4b14516539289255daca9065dd28060a9e96aea365faec9ecbd1a679bdb47742",
     "cockpitFixturePath": "tests/fixtures/mvp/public-synthetic-mvp-v2-cockpit.json"
