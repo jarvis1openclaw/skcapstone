@@ -147,19 +147,22 @@ async def _handle_coord_describe(args: dict) -> list[TextContent]:
 
     home = _shared_root()
     agent = args.get("agent", "") or ""
-    CardEventLog(home).append(
-        CardEvent(
-            card_id=task_id,
-            action="describe",
-            title=title,
-            description=description,
-            writer=agent,
+    try:
+        CardEventLog(home).append(
+            CardEvent(
+                card_id=task_id,
+                action="describe",
+                title=title,
+                description=description,
+                writer=agent,
+            )
         )
-    )
-    from ..card_store import card_store_write_enabled, mirror_coord_describe
+        from ..card_store import card_store_write_enabled, mirror_coord_describe
 
-    if card_store_write_enabled():
-        mirror_coord_describe(home, task_id, agent, title=title, description=description)
+        if card_store_write_enabled():
+            mirror_coord_describe(home, task_id, agent, title=title, description=description)
+    except ValueError as exc:
+        return _error_response(str(exc))
     changed = [k for k, v in (("title", title), ("description", description)) if v is not None]
     return _json_response({"described": True, "task_id": task_id, "changed": changed})
 
@@ -191,15 +194,18 @@ async def _handle_coord_link(args: dict) -> list[TextContent]:
     if not task_id or not key or not value:
         return _error_response("task_id, key, and value are required")
 
-    CardEventLog(_shared_root()).append(
-        CardEvent(
-            card_id=task_id,
-            action="link",
-            link_key=key,
-            link_value=value,
-            writer=args.get("agent", "") or "",
+    try:
+        CardEventLog(_shared_root()).append(
+            CardEvent(
+                card_id=task_id,
+                action="link",
+                link_key=key,
+                link_value=value,
+                writer=args.get("agent", "") or "",
+            )
         )
-    )
+    except ValueError as exc:
+        return _error_response(str(exc))
     return _json_response({"linked": True, "task_id": task_id, "key": key, "value": value})
 
 
@@ -228,12 +234,16 @@ async def _handle_coord_amend_criteria(args: dict) -> list[TextContent]:
         return _error_response("task_id and at least one criterion are required")
 
     home = _shared_root()
-    amend_criteria(home, task_id, list(criteria), args.get("agent", "") or "")
+    try:
+        amend_criteria(home, task_id, list(criteria), args.get("agent", "") or "")
+        folded = current_acceptance_criteria(home, task_id)
+    except ValueError as exc:
+        return _error_response(str(exc))
     return _json_response(
         {
             "amended": True,
             "task_id": task_id,
-            "acceptance_criteria": current_acceptance_criteria(home, task_id),
+            "acceptance_criteria": folded,
         }
     )
 

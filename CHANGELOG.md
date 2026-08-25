@@ -28,6 +28,12 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ### Changed
 
+- **Card 0146e817: require `skcoord>=0.1.44` for CardStore path and core
+  guards.** Coordination commands now reject a `coordination/` subdirectory as
+  the shared home and reject describe, link, or acceptance-criteria mutations
+  when the target has no foldable immutable core. CLI and MCP callers receive
+  explicit errors, and no orphan overlay or CardStore event is written.
+
 - **Card e1d24370: add a byte-reproducible package build procedure.** The
   task-owned entry point derives a fixed source epoch and exact setuptools-scm
   version from a clean commit, then normalizes source-archive metadata so
