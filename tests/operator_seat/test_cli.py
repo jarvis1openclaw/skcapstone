@@ -25,14 +25,50 @@ def _enroll(tmp_path, monkeypatch):
     return paths
 
 
+def test_status_is_unprovisioned_before_any_human_write(tmp_path, monkeypatch):
+    """Negative test (fails against current code before the change, coord
+    card 3925d012 / SKW-AUTONOMY-E2): a fresh estate with no freeze store
+    must render as UNPROVISIONED. Rendering it as "active" is exactly the
+    bug (missing-file and provisioned-off both used to read as "active
+    (freeze off)"), so this asserts both the presence of the new state and
+    the absence of the old, misleading one."""
+    _enroll(tmp_path, monkeypatch)
+    out = CliRunner().invoke(cli.operator, ["status"]).output
+    assert "UNPROVISIONED" in out
+    assert "active" not in out
+
+
 def test_status_and_freeze_cycle(tmp_path, monkeypatch):
     _enroll(tmp_path, monkeypatch)
     r = CliRunner()
+    assert "UNPROVISIONED" in r.invoke(cli.operator, ["status"]).output
+    assert r.invoke(cli.operator, ["provision"]).exit_code == 0
     assert "active" in r.invoke(cli.operator, ["status"]).output
     assert r.invoke(cli.operator, ["freeze", "--reason", "drill"]).exit_code == 0
     assert "FROZEN" in r.invoke(cli.operator, ["status"]).output
     assert r.invoke(cli.operator, ["unfreeze"]).exit_code == 0
     assert "active" in r.invoke(cli.operator, ["status"]).output
+
+
+def test_provision_is_idempotent(tmp_path, monkeypatch):
+    _enroll(tmp_path, monkeypatch)
+    r = CliRunner()
+    first = r.invoke(cli.operator, ["provision"])
+    assert first.exit_code == 0 and "provisioned" in first.output
+    second = r.invoke(cli.operator, ["provision"])
+    assert second.exit_code == 0 and "already provisioned" in second.output
+
+
+def test_provision_via_unfreeze_also_satisfies_readiness(tmp_path, monkeypatch):
+    # unfreeze writes through the same human-only set_frozen path, so it is
+    # an equally valid way to provision a fresh estate.
+    from skcapstone.fleet.paths import FleetPaths
+
+    paths = FleetPaths(root=tmp_path / "fleet")
+    _enroll(tmp_path, monkeypatch)
+    assert store.actuation_ready(paths) is False
+    assert CliRunner().invoke(cli.operator, ["unfreeze"]).exit_code == 0
+    assert store.actuation_ready(paths) is True
 
 
 def test_pending_and_decide(tmp_path, monkeypatch):

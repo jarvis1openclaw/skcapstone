@@ -1,6 +1,8 @@
 """sknoded actuation: the 30s converge pass (spec section 6, steps 2-4).
 
-Gate order is the whole point: tree readable, then freeze, then per-node
+Gate order is the whole point: tree readable, then freeze, then whether the
+freeze store is even human-provisioned yet (AUTONOMY_ARCHITECTURE.md section
+3.6: a node with no provisioned freeze store does not heal), then per-node
 opt-in, then per-service spec validity and pause, and only then verbs
 under bounded backoff. Anything unreadable degrades to "touch nothing".
 """
@@ -144,7 +146,16 @@ def _heal(
     runner: actuation.Runner,
     now: float,
 ) -> None:
-    """One bounded heal attempt (start or restart) with logs-on-failure."""
+    """One bounded heal attempt (start or restart) with logs-on-failure.
+
+    Refuses regardless of caller when `store.check_actuation_gate` is not
+    allowed (belt-and-suspenders: `converge_once`'s `mode` computation
+    already keeps `may_heal` false in that case, but this is one of the
+    two surfaces AUTONOMY_ARCHITECTURE.md section 3.6 names explicitly, so
+    it does not rely solely on an upstream caller getting the gate right).
+    """
+    if not store.check_actuation_gate(paths).allowed:
+        return
     if state.state == "failed":
         logs = actuation.failure_logs(spec, runner=runner)
         events.emit(
@@ -334,13 +345,15 @@ def converge_service(
     else:
         ready = _cond("Ready", False, "UnitDown", f"unit state {state.state}", now_iso)
     if mode != "actuate":
-        prog = _cond(
-            "Progressing",
-            False,
-            "Frozen" if mode == "frozen" else "ReportOnly",
-            "actuation halted" if mode == "frozen" else "node not opted in",
-            now_iso,
-        )
+        _prog_reason = {
+            "frozen": "Frozen",
+            "unprovisioned": "Unprovisioned",
+        }.get(mode, "ReportOnly")
+        _prog_message = {
+            "frozen": "actuation halted: frozen",
+            "unprovisioned": "actuation halted: freeze store not provisioned",
+        }.get(mode, "node not opted in")
+        prog = _cond("Progressing", False, _prog_reason, _prog_message, now_iso)
     elif spec["paused"]:
         prog = _cond("Progressing", False, "Paused", "spec.paused is true", now_iso)
     else:
@@ -412,8 +425,11 @@ def converge_once(
         verifier = signing.capauth_verifier()
     role = ""
     try:
-        if not store.actuation_allowed(paths):
+        gate = store.check_actuation_gate(paths)
+        if gate.reason == store.REASON_FROZEN:
             mode = "frozen"
+        elif gate.reason == store.REASON_UNPROVISIONED:
+            mode = "unprovisioned"
         elif actuation_enabled(paths, node):
             mode = "actuate"
         else:
