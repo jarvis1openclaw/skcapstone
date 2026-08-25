@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import sys
 from pathlib import Path
 from typing import Any, Dict
 
@@ -13,13 +14,87 @@ from skcapstone.blueprints.schema import (
     BlueprintManifest,
     ProviderType,
 )
+from skcapstone.fleet import store as fleet_store
+from skcapstone.fleet.paths import FleetPaths
 from skcapstone.team_engine import (
     AgentStatus,
     ProviderBackend,
     TeamDeployment,
     TeamEngine,
 )
+from skcapstone.trustee_actuation import (
+    REASON_CHANGE_NOT_APPROVED,
+    REASON_FROZEN,
+    REASON_UNPROVISIONED,
+    ActuationRefusedError,
+)
 from skcapstone.trustee_ops import TrusteeOps
+
+# ---------------------------------------------------------------------------
+# Actuation gate helpers (card e51a3e7e / SKW-AUTONOMY-E4)
+#
+# restart_agent/scale_agent/rotate_agent now refuse unless BOTH the freeze
+# store is human-provisioned and off, and a capauth PDP allow is granted.
+# These two helpers give the existing fixtures a "just let it through" path
+# so tests below this line keep exercising restart/scale/rotate mechanics
+# rather than the gate itself; the gate's own behavior is covered by
+# TestActuationGate further down and by tests/test_trustee_actuation.py.
+# ---------------------------------------------------------------------------
+
+
+class _AllowDecision:
+    """Fake capauth Decision: always allow."""
+
+    def __init__(self) -> None:
+        self.allow = True
+        self.reason = "test fixture: always allow"
+
+
+def _allow_decide(subject, capability, **kw):  # noqa: ANN001, ANN201 - test fake
+    return _AllowDecision()
+
+
+class _DenyDecision:
+    """Fake capauth Decision: always deny."""
+
+    def __init__(self) -> None:
+        self.allow = False
+        self.reason = "test fixture: always deny"
+
+
+def _deny_decide(subject, capability, **kw):  # noqa: ANN001, ANN201 - test fake
+    return _DenyDecision()
+
+
+def _provision_gate(home: Path) -> FleetPaths:
+    """Human-provision the freeze store off under home/fleet (mirrors
+    operator_seat/test_actuator.py's _provision) so the readiness half of
+    the gate allows."""
+    paths = FleetPaths(root=home / "fleet")
+    writer = fleet_store.Writer(role="operator", node="test-node", identity="test")
+    fleet_store.set_frozen(paths, False, writer=writer, reason="test fixture provisioning")
+    return paths
+
+
+def _gated_ops_kwargs() -> dict:
+    """TrusteeOps kwargs that make the capauth PDP half of the gate allow."""
+    return {"subject": "test-fingerprint", "decide_fn": _allow_decide}
+
+
+def _approved_change(home: Path, title: str = "rotate for test") -> str:
+    """Propose and CAB-approve an ITIL change under `home`, return its id.
+
+    `rotate_agent`'s gate additionally requires an approved change; this is
+    the narrowest way to produce one (mirrors tests/test_cm_p12_change_mgmt.py's
+    own `_approve` helper).
+    """
+    from skcapstone.itil import ITILManager
+
+    mgr = ITILManager(home)
+    change = mgr.propose_change(title=title, managed_by="atlas")
+    mgr.submit_cab_vote(change.id, agent="human", decision="approved")
+    return change.id
+
 
 # ---------------------------------------------------------------------------
 # Fixtures
@@ -112,8 +187,9 @@ def engine(home: Path, provider: MockProvider) -> TeamEngine:
 
 @pytest.fixture
 def ops(engine: TeamEngine, home: Path) -> TrusteeOps:
-    """Create TrusteeOps instance."""
-    return TrusteeOps(engine=engine, home=home)
+    """Create TrusteeOps instance, gate provisioned open (see helpers above)."""
+    _provision_gate(home)
+    return TrusteeOps(engine=engine, home=home, **_gated_ops_kwargs())
 
 
 @pytest.fixture
@@ -265,10 +341,12 @@ class TestRotate:
         self,
         ops: TrusteeOps,
         deployment: TeamDeployment,
+        home: Path,
     ) -> None:
-        """Rotate snapshots and redeploys an agent."""
+        """Rotate snapshots and redeploys an agent, given an approved change."""
         agent_name = list(deployment.agents.keys())[0]
-        result = ops.rotate_agent(deployment.deployment_id, agent_name)
+        change_id = _approved_change(home)
+        result = ops.rotate_agent(deployment.deployment_id, agent_name, change_id=change_id)
         assert "snapshot_path" in result
 
     def test_rotate_nonexistent_deployment(self, ops: TrusteeOps) -> None:
@@ -502,3 +580,122 @@ class TestLogs:
         """Logs for nonexistent agent raises ValueError."""
         with pytest.raises(ValueError):
             ops.get_logs(deployment.deployment_id, agent_name="ghost")
+
+
+# ---------------------------------------------------------------------------
+# Actuation gate (card e51a3e7e / SKW-AUTONOMY-E4)
+#
+# restart_agent/scale_agent/rotate_agent refuse unless trustee_actuation.guard
+# allows: actuation-readiness/freeze, then a capauth PDP allow (fail closed if
+# unreachable), and rotate_agent additionally an approved ITIL change. These
+# are the negative tests the coord card calls out explicitly; every one of
+# them fails against pre-gate code (there was no gate to fail against).
+# ---------------------------------------------------------------------------
+
+
+class TestActuationGate:
+    """restart/scale/rotate refuse unless the actuation gate allows."""
+
+    def test_restart_refuses_when_unprovisioned(
+        self, engine: TeamEngine, home: Path, deployment: TeamDeployment
+    ) -> None:
+        """No freeze store at all: refuses with reason 'unprovisioned'."""
+        ops = TrusteeOps(engine=engine, home=home, **_gated_ops_kwargs())
+        agent_name = list(deployment.agents.keys())[0]
+        with pytest.raises(ActuationRefusedError) as exc_info:
+            ops.restart_agent(deployment.deployment_id, agent_name)
+        assert exc_info.value.reason == "unprovisioned" == REASON_UNPROVISIONED
+
+    def test_restart_refuses_when_frozen(
+        self, engine: TeamEngine, home: Path, deployment: TeamDeployment
+    ) -> None:
+        """A human-provisioned but frozen estate refuses with reason 'frozen'."""
+        paths = _provision_gate(home)
+        writer = fleet_store.Writer(role="operator", node="test-node", identity="test")
+        fleet_store.set_frozen(paths, True, writer=writer, reason="drill")
+        ops = TrusteeOps(engine=engine, home=home, **_gated_ops_kwargs())
+        agent_name = list(deployment.agents.keys())[0]
+        with pytest.raises(ActuationRefusedError) as exc_info:
+            ops.restart_agent(deployment.deployment_id, agent_name)
+        assert exc_info.value.reason == "frozen" == REASON_FROZEN
+
+    def test_scale_refuses_when_unprovisioned(
+        self, engine: TeamEngine, home: Path, deployment: TeamDeployment
+    ) -> None:
+        ops = TrusteeOps(engine=engine, home=home, **_gated_ops_kwargs())
+        agent_key = list(deployment.agents.values())[0].agent_spec_key
+        with pytest.raises(ActuationRefusedError) as exc_info:
+            ops.scale_agent(deployment.deployment_id, agent_key, 2)
+        assert exc_info.value.reason == REASON_UNPROVISIONED
+
+    def test_rotate_refuses_when_unprovisioned(
+        self, engine: TeamEngine, home: Path, deployment: TeamDeployment
+    ) -> None:
+        """Unprovisioned wins even with an approved change in hand."""
+        ops = TrusteeOps(engine=engine, home=home, **_gated_ops_kwargs())
+        agent_name = list(deployment.agents.keys())[0]
+        change_id = _approved_change(home)
+        with pytest.raises(ActuationRefusedError) as exc_info:
+            ops.rotate_agent(deployment.deployment_id, agent_name, change_id=change_id)
+        assert exc_info.value.reason == REASON_UNPROVISIONED
+
+    def test_rotate_refuses_without_approved_change(
+        self, ops: TrusteeOps, deployment: TeamDeployment
+    ) -> None:
+        """Gate is provisioned+open+authorized (the `ops` fixture); rotate
+        still refuses with no change_id supplied at all."""
+        agent_name = list(deployment.agents.keys())[0]
+        with pytest.raises(ActuationRefusedError) as exc_info:
+            ops.rotate_agent(deployment.deployment_id, agent_name)
+        assert exc_info.value.reason == "change_not_approved" == REASON_CHANGE_NOT_APPROVED
+
+    def test_rotate_refuses_with_unapproved_change_id(
+        self, ops: TrusteeOps, deployment: TeamDeployment, home: Path
+    ) -> None:
+        """A real change id that has NOT been CAB-approved still refuses."""
+        from skcapstone.itil import ITILManager
+
+        mgr = ITILManager(home)
+        change = mgr.propose_change(title="never approved", managed_by="atlas")
+        agent_name = list(deployment.agents.keys())[0]
+        with pytest.raises(ActuationRefusedError) as exc_info:
+            ops.rotate_agent(deployment.deployment_id, agent_name, change_id=change.id)
+        assert exc_info.value.reason == REASON_CHANGE_NOT_APPROVED
+
+    def test_restart_refuses_when_capauth_denies(
+        self, engine: TeamEngine, home: Path, deployment: TeamDeployment
+    ) -> None:
+        """Gate is provisioned+open; capauth PDP denies: refuses with
+        reason 'capability_denied'."""
+        _provision_gate(home)
+        ops = TrusteeOps(
+            engine=engine, home=home, subject="test-fingerprint", decide_fn=_deny_decide
+        )
+        agent_name = list(deployment.agents.keys())[0]
+        with pytest.raises(ActuationRefusedError) as exc_info:
+            ops.restart_agent(deployment.deployment_id, agent_name)
+        assert exc_info.value.reason == "capability_denied"
+
+    def test_restart_refuses_when_capauth_unreachable(
+        self,
+        engine: TeamEngine,
+        home: Path,
+        deployment: TeamDeployment,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """The negative test the coord card flags as most likely to be got
+        wrong: an unreachable capauth PDP must DENY, never silently allow.
+
+        Simulated by poisoning sys.modules so `from capauth import decide`
+        raises ImportError inside trustee_actuation.authorize -- the exact
+        branch that must fail closed -- with no decide_fn override, so the
+        real import is what fails, not a stand-in.
+        """
+        _provision_gate(home)
+        monkeypatch.setitem(sys.modules, "capauth", None)
+        ops = TrusteeOps(engine=engine, home=home, subject="test-fingerprint")
+        agent_name = list(deployment.agents.keys())[0]
+        with pytest.raises(ActuationRefusedError) as exc_info:
+            ops.restart_agent(deployment.deployment_id, agent_name)
+        assert exc_info.value.reason == "capability_denied"
+        assert "capauth unavailable" in str(exc_info.value)

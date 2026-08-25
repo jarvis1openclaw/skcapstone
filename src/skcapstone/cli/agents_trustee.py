@@ -9,6 +9,7 @@ import click
 from rich.panel import Panel
 from rich.table import Table
 
+from ..trustee_actuation import ActuationRefusedError
 from ._common import AGENT_HOME, console
 
 
@@ -119,6 +120,9 @@ def register_agents_trustee_commands(agents: click.Group) -> None:
         except ValueError as exc:
             console.print(f"\n  [red]{exc}[/]\n")
             return
+        except ActuationRefusedError as exc:
+            console.print(f"\n  [red]Refused ({exc.reason}): {exc}[/]\n")
+            return
 
         table = Table(show_header=True, header_style="bold", box=None, padding=(0, 2))
         table.add_column("Agent", style="cyan")
@@ -158,6 +162,9 @@ def register_agents_trustee_commands(agents: click.Group) -> None:
         except ValueError as exc:
             console.print(f"\n  [red]{exc}[/]\n")
             return
+        except ActuationRefusedError as exc:
+            console.print(f"\n  [red]Refused ({exc.reason}): {exc}[/]\n")
+            return
 
         added = result["added"]
         removed = result["removed"]
@@ -183,8 +190,18 @@ def register_agents_trustee_commands(agents: click.Group) -> None:
     @agents.command("rotate")
     @click.argument("deployment_id")
     @click.option("--agent", "agent_name", required=True, help="Agent instance to rotate.")
+    @click.option(
+        "--change-id",
+        "change_id",
+        default=None,
+        help=(
+            "ITIL change id authorizing this rotation. Rotation is credential-adjacent "
+            "and never routine: it refuses without a change id that currently folds to "
+            "APPROVED status."
+        ),
+    )
     @click.option("--home", default=AGENT_HOME, type=click.Path())
-    def agents_rotate(deployment_id: str, agent_name: str, home: str):
+    def agents_rotate(deployment_id: str, agent_name: str, change_id: Optional[str], home: str):
         """Snapshot context, destroy, and redeploy an agent fresh.
 
         Use when an agent shows context degradation. Memory is snapshotted
@@ -192,7 +209,8 @@ def register_agents_trustee_commands(agents: click.Group) -> None:
 
         \b
         Example:
-            skcapstone agents rotate myteam-1740000000 --agent myteam-thread-weaver
+            skcapstone agents rotate myteam-1740000000 --agent myteam-thread-weaver \\
+                --change-id chg-abc12345
         """
         from ..team_engine import TeamEngine
         from ..trustee_ops import TrusteeOps
@@ -203,9 +221,12 @@ def register_agents_trustee_commands(agents: click.Group) -> None:
 
         try:
             with console.status("[bold cyan]Rotating agent...[/]"):
-                result = ops.rotate_agent(deployment_id, agent_name)
+                result = ops.rotate_agent(deployment_id, agent_name, change_id=change_id)
         except ValueError as exc:
             console.print(f"\n  [red]{exc}[/]\n")
+            return
+        except ActuationRefusedError as exc:
+            console.print(f"\n  [red]Refused ({exc.reason}): {exc}[/]\n")
             return
 
         status_color = "green" if result["redeployed"] else "yellow"

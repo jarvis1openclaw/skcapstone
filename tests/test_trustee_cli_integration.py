@@ -97,17 +97,26 @@ class TestCLIRestart:
         assert result.exit_code == 0
         assert "not found" in result.output
 
-    def test_restart_valid_deployment(self, tmp_home: Path) -> None:
-        """CLI restart command succeeds for a valid deployment."""
+    def test_restart_valid_deployment_refuses_on_an_ungoverned_home(self, tmp_home: Path) -> None:
+        """Card e51a3e7e: restart/scale/rotate now refuse unless the freeze
+        store is human-provisioned AND a capauth PDP allow is granted. A
+        bare `--home` with neither (this fixture, and every real fresh
+        estate before someone runs the provisioning ceremony) refuses with
+        reason "unprovisioned" -- the CLI has no way to inject a fake
+        capauth grant the way TrusteeOps' unit tests do (test_trustee_cli.py),
+        so this is the true end-to-end default. See
+        tests/test_trustee_ops.py::TestActuationGate for the gate's
+        allow/deny paths exercised directly against TrusteeOps.
+        """
         engine = TeamEngine(home=tmp_home)
         engine._save_deployment(_make_deployment())
 
         result = _invoke("agents", "restart", "test-team-1000", "--home", str(tmp_home))
         assert result.exit_code == 0
-        assert "test-team-alpha" in result.output
+        assert "Refused (unprovisioned)" in result.output
 
-    def test_restart_single_agent_flag(self, tmp_home: Path) -> None:
-        """--agent flag restricts restart to one agent."""
+    def test_restart_single_agent_flag_refuses_on_an_ungoverned_home(self, tmp_home: Path) -> None:
+        """Same refusal as above; --agent does not bypass the gate."""
         engine = TeamEngine(home=tmp_home)
         engine._save_deployment(_make_deployment())
 
@@ -121,7 +130,7 @@ class TestCLIRestart:
             str(tmp_home),
         )
         assert result.exit_code == 0
-        assert "test-team-alpha" in result.output
+        assert "Refused (unprovisioned)" in result.output
 
     def test_restart_unknown_agent_shows_error(self, tmp_home: Path) -> None:
         """--agent with unknown name shows error."""
@@ -149,8 +158,9 @@ class TestCLIRestart:
 class TestCLIScale:
     """CLI tests for `skcapstone agents scale`."""
 
-    def test_scale_up_shows_added(self, tmp_home: Path) -> None:
-        """CLI scale up shows added agents."""
+    def test_scale_up_refuses_on_an_ungoverned_home(self, tmp_home: Path) -> None:
+        """Card e51a3e7e: same "unprovisioned" refusal as restart (see its
+        test above for why the CLI cannot bypass the gate)."""
         engine = TeamEngine(home=tmp_home)
         engine._save_deployment(_make_deployment())
 
@@ -166,7 +176,7 @@ class TestCLIScale:
             str(tmp_home),
         )
         assert result.exit_code == 0
-        assert "alpha" in result.output
+        assert "Refused (unprovisioned)" in result.output
 
     def test_scale_unknown_deployment_shows_error(self, tmp_home: Path) -> None:
         """CLI scale shows error for unknown deployment."""
@@ -219,8 +229,10 @@ class TestCLIScale:
 class TestCLIRotate:
     """CLI tests for `skcapstone agents rotate`."""
 
-    def test_rotate_shows_snapshot(self, tmp_home: Path) -> None:
-        """CLI rotate shows snapshot path."""
+    def test_rotate_refuses_on_an_ungoverned_home(self, tmp_home: Path) -> None:
+        """Card e51a3e7e: same "unprovisioned" refusal as restart/scale
+        (readiness is checked before the approved-change requirement, so
+        this refuses for the same reason even without --change-id)."""
         engine = TeamEngine(home=tmp_home)
         engine._save_deployment(_make_deployment())
 
@@ -234,7 +246,7 @@ class TestCLIRotate:
             str(tmp_home),
         )
         assert result.exit_code == 0
-        assert "snapshot" in result.output.lower() or "Snapshot" in result.output
+        assert "Refused (unprovisioned)" in result.output
 
     def test_rotate_unknown_agent_shows_error(self, tmp_home: Path) -> None:
         """CLI rotate shows error for unknown agent."""

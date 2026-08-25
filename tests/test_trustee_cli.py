@@ -15,8 +15,49 @@ import pytest
 
 from skcapstone._trustee_helpers import write_audit as _write_audit
 from skcapstone.blueprints.schema import ProviderType
+from skcapstone.fleet import store as fleet_store
+from skcapstone.fleet.paths import FleetPaths
 from skcapstone.team_engine import AgentStatus, DeployedAgent, TeamDeployment, TeamEngine
 from skcapstone.trustee_ops import TrusteeOps
+
+# ---------------------------------------------------------------------------
+# Actuation gate helpers (card e51a3e7e / SKW-AUTONOMY-E4)
+#
+# restart_agent/scale_agent/rotate_agent now refuse unless BOTH the freeze
+# store is human-provisioned and off, and a capauth PDP allow is granted.
+# `tmp_home` (below) provisions the readiness half for every test in this
+# file; `_gated_ops_kwargs()` gives the capauth half. The gate's own
+# behavior is covered by tests/test_trustee_ops.py::TestActuationGate and
+# tests/test_trustee_actuation.py, not duplicated here.
+# ---------------------------------------------------------------------------
+
+
+class _AllowDecision:
+    """Fake capauth Decision: always allow."""
+
+    def __init__(self) -> None:
+        self.allow = True
+        self.reason = "test fixture: always allow"
+
+
+def _allow_decide(subject, capability, **kw):  # noqa: ANN001, ANN201 - test fake
+    return _AllowDecision()
+
+
+def _gated_ops_kwargs() -> dict:
+    """TrusteeOps kwargs that make the capauth PDP half of the gate allow."""
+    return {"subject": "test-fingerprint", "decide_fn": _allow_decide}
+
+
+def _approved_change(home: Path, title: str = "rotate for test") -> str:
+    """Propose and CAB-approve an ITIL change under `home`, return its id."""
+    from skcapstone.itil import ITILManager
+
+    mgr = ITILManager(home)
+    change = mgr.propose_change(title=title, managed_by="atlas")
+    mgr.submit_cab_vote(change.id, agent="human", decision="approved")
+    return change.id
+
 
 # ---------------------------------------------------------------------------
 # Fixtures
@@ -58,9 +99,18 @@ def _make_deployment(
 
 @pytest.fixture
 def tmp_home(tmp_path: Path) -> Path:
-    """Temporary skcapstone home directory."""
+    """Temporary skcapstone home directory, gate provisioned open.
+
+    Provisioning the freeze store here (rather than per-test) means every
+    direct `TrusteeOps(engine=engine, home=tmp_home, **_gated_ops_kwargs())`
+    construction below satisfies the readiness half of the actuation gate
+    without repeating the provisioning call at every site.
+    """
     home = tmp_path / ".skcapstone"
     home.mkdir()
+    paths = FleetPaths(root=home / "fleet")
+    writer = fleet_store.Writer(role="operator", node="test-node", identity="test")
+    fleet_store.set_frozen(paths, False, writer=writer, reason="test fixture provisioning")
     return home
 
 
@@ -75,9 +125,9 @@ def engine_with_deployment(tmp_home: Path) -> tuple[TeamEngine, TeamDeployment]:
 
 @pytest.fixture
 def ops(engine_with_deployment: tuple) -> TrusteeOps:
-    """TrusteeOps wrapping the fixture engine."""
+    """TrusteeOps wrapping the fixture engine, gate provisioned open."""
     engine, _ = engine_with_deployment
-    return TrusteeOps(engine=engine, home=engine._home)
+    return TrusteeOps(engine=engine, home=engine._home, **_gated_ops_kwargs())
 
 
 # ---------------------------------------------------------------------------
@@ -155,7 +205,7 @@ class TestRestartAgent:
     ) -> None:
         """After restart, agent status is RUNNING."""
         engine, _ = engine_with_deployment
-        ops = TrusteeOps(engine=engine, home=tmp_home)
+        ops = TrusteeOps(engine=engine, home=tmp_home, **_gated_ops_kwargs())
         ops.restart_agent("test-team-1000")
         deployment = engine.get_deployment("test-team-1000")
         assert deployment.agents["test-team-alpha"].status == AgentStatus.RUNNING
@@ -169,7 +219,7 @@ class TestRestartAgent:
         engine._provider = mock_provider
         engine._save_deployment(_make_deployment())
 
-        ops = TrusteeOps(engine=engine, home=tmp_home)
+        ops = TrusteeOps(engine=engine, home=tmp_home, **_gated_ops_kwargs())
         ops.restart_agent("test-team-1000")
 
         mock_provider.stop.assert_called_once()
@@ -183,7 +233,7 @@ class TestRestartAgent:
         engine._provider = mock_provider
         engine._save_deployment(_make_deployment())
 
-        ops = TrusteeOps(engine=engine, home=tmp_home)
+        ops = TrusteeOps(engine=engine, home=tmp_home, **_gated_ops_kwargs())
         results = ops.restart_agent("test-team-1000")
         assert "error" in results["test-team-alpha"]
 
@@ -212,7 +262,7 @@ class TestScaleAgent:
         }
         engine = TeamEngine(home=tmp_home)
         engine._save_deployment(_make_deployment(agents=agents))
-        ops = TrusteeOps(engine=engine, home=tmp_home)
+        ops = TrusteeOps(engine=engine, home=tmp_home, **_gated_ops_kwargs())
 
         result = ops.scale_agent("test-team-1000", "alpha", count=1)
         assert len(result["removed"]) == 2
@@ -237,7 +287,7 @@ class TestScaleAgent:
     def test_scale_persists_to_disk(self, engine_with_deployment: tuple, tmp_home: Path) -> None:
         """Scale operation persists new state."""
         engine, _ = engine_with_deployment
-        ops = TrusteeOps(engine=engine, home=tmp_home)
+        ops = TrusteeOps(engine=engine, home=tmp_home, **_gated_ops_kwargs())
         ops.scale_agent("test-team-1000", "alpha", count=2)
         reloaded = engine.get_deployment("test-team-1000")
         alpha_instances = [a for a in reloaded.agents.values() if a.agent_spec_key == "alpha"]
@@ -252,9 +302,10 @@ class TestScaleAgent:
 class TestRotateAgent:
     """Tests for rotate_agent method."""
 
-    def test_rotate_returns_snapshot_path(self, ops: TrusteeOps) -> None:
-        """rotate_agent returns a snapshot_path key."""
-        result = ops.rotate_agent("test-team-1000", "test-team-alpha")
+    def test_rotate_returns_snapshot_path(self, ops: TrusteeOps, tmp_home: Path) -> None:
+        """rotate_agent returns a snapshot_path key, given an approved change."""
+        change_id = _approved_change(tmp_home)
+        result = ops.rotate_agent("test-team-1000", "test-team-alpha", change_id=change_id)
         assert "snapshot_path" in result
 
     def test_rotate_resets_agent_status(
@@ -267,8 +318,9 @@ class TestRotateAgent:
         deployment.agents["test-team-alpha"].status = AgentStatus.FAILED
         engine._save_deployment(deployment)
 
-        ops = TrusteeOps(engine=engine, home=tmp_home)
-        ops.rotate_agent("test-team-1000", "test-team-alpha")
+        ops = TrusteeOps(engine=engine, home=tmp_home, **_gated_ops_kwargs())
+        change_id = _approved_change(tmp_home)
+        ops.rotate_agent("test-team-1000", "test-team-alpha", change_id=change_id)
         refreshed = engine.get_deployment("test-team-1000")
         assert refreshed.agents["test-team-alpha"].status != AgentStatus.FAILED
 
@@ -284,7 +336,8 @@ class TestRotateAgent:
 
     def test_rotate_creates_snapshot_dir(self, ops: TrusteeOps, tmp_home: Path) -> None:
         """Snapshot directory parent is created even without source data."""
-        result = ops.rotate_agent("test-team-1000", "test-team-alpha")
+        change_id = _approved_change(tmp_home)
+        result = ops.rotate_agent("test-team-1000", "test-team-alpha", change_id=change_id)
         snapshot_path = Path(result["snapshot_path"])
         assert snapshot_path.parent.exists()
 
@@ -294,7 +347,8 @@ class TestRotateAgent:
         agent_dir.mkdir(parents=True)
         (agent_dir / "memory.json").write_text('{"key": "value"}')
 
-        result = ops.rotate_agent("test-team-1000", "test-team-alpha")
+        change_id = _approved_change(tmp_home)
+        result = ops.rotate_agent("test-team-1000", "test-team-alpha", change_id=change_id)
         snapshot_path = Path(result["snapshot_path"])
         assert (snapshot_path / "memory.json").exists()
 
@@ -335,7 +389,7 @@ class TestHealthReport:
         dep.agents["test-team-alpha"].status = AgentStatus.FAILED
         engine._save_deployment(dep)
 
-        ops = TrusteeOps(engine=engine, home=tmp_home)
+        ops = TrusteeOps(engine=engine, home=tmp_home, **_gated_ops_kwargs())
         report = ops.health_report("test-team-1000")
         assert report[0]["healthy"] is False
 
@@ -352,7 +406,7 @@ class TestHealthReport:
         engine._provider = mock_provider
         engine._save_deployment(_make_deployment())
 
-        ops = TrusteeOps(engine=engine, home=tmp_home)
+        ops = TrusteeOps(engine=engine, home=tmp_home, **_gated_ops_kwargs())
         ops.health_report("test-team-1000")
         mock_provider.health_check.assert_called_once()
 
