@@ -106,6 +106,15 @@ class ActionIntent(BaseModel):
     rollback: dict[str, Any] = Field(default_factory=dict)
     authorization_ref: str | None = Field(default=None, min_length=1, max_length=1024)
     occurrence: int = Field(default=0, ge=0)
+    #: The literal observed-condition type name (e.g. "BridgeAlive"), NOT part of
+    #: dedup identity (``identity()`` below never reads it, same treatment as
+    #: ``verification``/``rollback``): a dispatcher acting later needs a way to
+    #: re-observe and verify the SAME bound condition without ever reading the
+    #: original proposal/brief (the actuator's closed input set,
+    #: AUTONOMY_ARCHITECTURE.md section 3.2). ``condition_fingerprint`` alone is
+    #: a one-way hash and cannot serve that purpose. Optional/default-None so
+    #: every pre-existing serialized intent keeps parsing unchanged.
+    condition_type: str | None = Field(default=None, max_length=128)
 
     @field_validator("schema_id")
     @classmethod
@@ -421,3 +430,32 @@ class ActionLedger:
         if not events:
             raise ValueError(f"action intent has no events: {intent_id}")
         return events[-1].state
+
+    def list_intents(self, *, state: ActionState | None = None) -> list[str]:
+        """Return every intent id on disk, optionally filtered to one folded state.
+
+        This is the ledger's QUEUE face (AUTONOMY_ARCHITECTURE.md section 3.2):
+        an intent whose current folded state is PROPOSED is durable evidence
+        that "something wants to happen", and this is how a dispatcher finds
+        those without ever needing to read the proposals/brief that created
+        them. Sorted for a deterministic iteration order; a corrupt or
+        unreadable event stream for one intent is skipped rather than raised,
+        so one bad file cannot hide every other pending intent from the
+        dispatcher (same fail-contained posture ``loop.py`` already uses per
+        proposal).
+        """
+        with self._locked():
+            if not self.intents_dir.is_dir():
+                return []
+            ids = sorted(p.stem for p in self.intents_dir.glob("ai-*.json"))
+            if state is None:
+                return ids
+            matching = []
+            for intent_id in ids:
+                try:
+                    events = self._read_events_unlocked(intent_id)
+                except ValueError:
+                    continue
+                if events and events[-1].state is state:
+                    matching.append(intent_id)
+            return matching
