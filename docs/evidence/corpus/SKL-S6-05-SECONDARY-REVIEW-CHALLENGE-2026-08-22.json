@@ -1,0 +1,59 @@
+{
+  "schema_version": "sklegal-official-drafting-secondary-review-challenge-v1",
+  "card": "0ad49216",
+  "date": "2026-08-22",
+  "status": "recorded_not_invoked",
+  "logical_route": "sklegal.local-corpus-secondary-review",
+  "candidate": {
+    "release_id": "dev-20260822-official-drafting-standards-candidate-1",
+    "release_manifest_sha256": "2ee914c26cf93e61138416c84b25d8e18dd5ee9ab7e1921b204d9b9176bbf752",
+    "release_target": "dev"
+  },
+  "evidence_pins": {
+    "style_profile_sha256": "9651ce6bdabf18cc27a39ff2bed87309b179b72fe37053c852f43cd288627959",
+    "rights_review_sha256": "e83ac258276fb022502f8ad83bbffa90af5958de9a4a4ef6e1ba529574db155e",
+    "completion_evidence_sha256": "91b3a6958f8f0d7c6e80a3d9b80fbebef6c14f85c90691fb0701d51952571179",
+    "core_principles_sha256": "66db5cb1eac1cbd9b958f96d07e29ebf7711e2902c56ddee87dd2d92852c26ed"
+  },
+  "instructions": [
+    "You are a second-pass reviewer of one bounded official drafting standards release candidate. You are not the primary corpus analyst and you do not own workflow state.",
+    "Work only from the pinned evidence: the 14-source profile matrix, the core principles guide, the rights review, and the S6-03 completion evidence. Cite rule IDs and source IDs for every verdict.",
+    "Challenge each preserved contradiction: state whether the two scoped rules can both be correct within their scopes, name the scope boundary, and flag any rule that silently harmonizes them.",
+    "Challenge each currentness decision: for every source marked presented_as_current=false or superseded=true, verify the decision is supported by the pinned profile text and not by model preference. Preserve every 'currentness review required' uncertainty verbatim.",
+    "Flag any rule whose modality escalates a recommendation ('should', 'informational') into a mandate, and any rule whose scope collapses an agency-specific rule into a general one.",
+    "Do not approve, promote, or authorize any external action. Return only the verdict schema."
+  ],
+  "propositions": [
+    {"id": "P1", "claim": "SPR-003 preserves the DOE/CA7 typography settings conflict instead of harmonizing the two document settings.", "source_ids": ["DOE-TECH-STYLE-2015", "CA7-TYPOGRAPHY"]},
+    {"id": "P2", "claim": "SPR-004 preserves the USCG subject-line capitalization rule as USCG-scoped rather than general.", "source_ids": ["USCG-CORR-2024"]},
+    {"id": "P3", "claim": "SPR-006 preserves the DOI punctuation rule and its documented GPO differences instead of collapsing them.", "source_ids": ["DOI-CORR-2014", "GPO-2016"]},
+    {"id": "P4", "claim": "WH-CORR-HIST is retained as a historical source, never current, with the 2026-08-22 human rights decision recorded.", "source_ids": ["WH-CORR-HIST"]},
+    {"id": "P5", "claim": "EPA-STYLE-2009 is treated as archived with supersession unknown, not as superseded and not as current.", "source_ids": ["EPA-STYLE-2009"]},
+    {"id": "P6", "claim": "USCG-CORR-2024 currentness 'cancels COMDTINST M5216.4D' is preserved as a supersession note without asserting the cancelled text is absent from the corpus.", "source_ids": ["USCG-CORR-2024"]},
+    {"id": "P7", "claim": "Every one of the 17 profile rules carries human_review_required status and a source locator into a pinned normalized artifact.", "source_ids": []},
+    {"id": "P8", "claim": "No rule in the matrix authorizes an external action or converts a corpus assertion into approval or workflow state.", "source_ids": []}
+  ],
+  "output_schema": {
+    "type": "object",
+    "required": ["verdicts", "overall", "uncertainties_preserved"],
+    "properties": {
+      "verdicts": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "required": ["proposition_id", "decision", "reasoning", "citations"],
+          "properties": {
+            "proposition_id": {"type": "string"},
+            "decision": {"enum": ["upheld", "challenged", "insufficient_evidence"]},
+            "reasoning": {"type": "string"},
+            "citations": {"type": "array", "items": {"type": "string"}}
+          }
+        }
+      },
+      "overall": {"enum": ["pass", "pass_with_uncertainty", "fail"]},
+      "uncertainties_preserved": {"type": "array", "items": {"type": "string"}}
+    }
+  },
+  "not_invoked_reason": "Neither HAMMERTIME_REVIEW_API_URLS nor HAMMERTIME_REVIEW_API_URL is configured for this worker, and the corpus SOP prohibits silently using the primary Qwen3.8 route as the formal secondary reviewer. The primary Qwen3.8 runtime probe passed, but no formal review report is claimed.",
+  "deterministic_note": "The prompt_sha256 of this exact file is the review evidence pin. The output_sha256 pin is the sha256 of the accompanying verdict record file, which records the not-invoked state."
+}

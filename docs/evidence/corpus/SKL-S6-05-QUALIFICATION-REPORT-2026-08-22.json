@@ -1,0 +1,290 @@
+{
+  "candidate": {
+    "release_id": "dev-20260822-official-drafting-standards-candidate-1",
+    "release_manifest_sha256": "2ee914c26cf93e61138416c84b25d8e18dd5ee9ab7e1921b204d9b9176bbf752",
+    "release_target": "dev"
+  },
+  "candidate_inspection": {
+    "decomposition_count": 14,
+    "findings": [],
+    "release_id": "dev-20260822-official-drafting-standards-candidate-1",
+    "release_manifest_sha256": "2ee914c26cf93e61138416c84b25d8e18dd5ee9ab7e1921b204d9b9176bbf752",
+    "source_count": 14,
+    "status": "qualified",
+    "verified_artifact_sha256": [
+      "14765e5df71d7ee6e4e9ad2a59df883dfe0862b86f4f440c51779fe52af6376e",
+      "b18a63741ff2f1d9448215ed0c999e3491abe52996a0f06973431d41a6627ae1",
+      "d974b6f69bb7eb4dc7a13aa75d53c191337b1e982599717a64d863d149931735",
+      "5bd31211ae8d89852a1d2e02961f6ac7ef958b679ce8a5745d3814784384bd4c",
+      "b86d7c00892715f11eb4ab8779d72caff50f01705083db205639b0db8be4a9ef",
+      "11b8c8742de53f55dfefb6b0bf038989c9c94f878575b287cff744110ab80024",
+      "faf69c1ee03dd6fbb992c4084109e47f3ae1ca4a03f3f05128c767d9d912570b",
+      "cd1dfab3fc88603449349e2712d2e9ead22fdb0ced681d263df22163c66867ba",
+      "51e132214191b1dec4b46c9134b7027ee824ac98db3e53155ec0738096f170c1",
+      "c54ebb19cd24c89102af0a3e065c4174b7e024d7edff091e35fb91844fd66f37",
+      "2cab2c85aafdebda0874f06b5286caa8c5e175637d60e4c302569421fc98c959",
+      "839eebae87a136be7338c87ccfebe9447202893ab2a34aa1e7c6261a9c09c34d",
+      "25a420e19f4d4dfc0c8df9ecfd1f16d8d65e308295e711146b2fa4b57d581a6e",
+      "828b6a2df80ed778d1d2a133e5cb28a68378d3ffc56688fe9b571cbbd8c63196",
+      "b91f2990f054fa7b76532b91b2ca76c307488eaa75ca865fc5d6ce1f8b9c82b0",
+      "13f4e69480d4eccc4ee69b31cf7dd411b7772d4ae30007b135647f46c2ee4c7c",
+      "112f9420a67ece2142068ef285acbe805cae32f660f37dd5b56123744dfa0bdf",
+      "8b1853d06099a90aa03288a62c1d001a5797aabaebce78cad8f75825d387e590",
+      "5e23693f6a7c3a9a588648ec15bb274ed2da13d13784d1d7f918defb21f15d04",
+      "364e6ac688fb511dfbc2c6c0cd01acc3525fed116b87c62eda4c9f779b4a79e7",
+      "fc6772965a4bbff509fc3355776d56d220cb5abd8e7ce73247348b21554b632a",
+      "bc866b947af3de034b14248854169df1432cb84a661f1c43d8288611affac542",
+      "90ab45b0403f522e1705f3057a221e6802beb50f8512edfe8c87f1d6d08b912e",
+      "07eb7b1b691f6e7e6f9efdec4a4c754fcf4e1e07ae9851eaae8ec8924e2e05ec",
+      "ddc2ecd76f8fe38eba084ce9a6ae3fd9c9d58645abefb8622496d6b515ef5dcf",
+      "76dd4fc180efa8a55c2e77eb6def6c5eff472430682e34538aabfe6ebbd4eef2",
+      "fdda81133b2115ebf20fa177a44c5ab40fbdcf72fbf73448727c360d181c7cd8",
+      "b7678e7c30341628a3e8b658910234f5321153ab0660e3b55f2b4a8a0cd10a67"
+    ]
+  },
+  "card": "0ad49216",
+  "evidence_pins": {
+    "completion_evidence": {
+      "path": "/mnt/cloud/onedrive/projects/DAVE-AI/hammerTime/json/intake-manifests/2026-08-21-official-government-style-manuals-completion-evidence.json",
+      "sha256": "91b3a6958f8f0d7c6e80a3d9b80fbebef6c14f85c90691fb0701d51952571179"
+    },
+    "core_principles": {
+      "path": "/mnt/cloud/onedrive/projects/DAVE-AI/sklegal/docs/drafting-styles/OFFICIAL-DRAFTING-CORE-PRINCIPLES.md",
+      "sha256": "66db5cb1eac1cbd9b958f96d07e29ebf7711e2902c56ddee87dd2d92852c26ed"
+    },
+    "release_manifest": {
+      "path": "json/releases/corpus-release-dev-20260822-official-drafting-standards-candidate-1.json",
+      "sha256": "2ee914c26cf93e61138416c84b25d8e18dd5ee9ab7e1921b204d9b9176bbf752"
+    },
+    "runtime_aliases": {
+      "dev_current_release_id": "dev-20260715-secured-transactions-practitioner-206",
+      "dev_previous_release_id": "dev-20260706-coupon-bonds-oklahoma-public-finance",
+      "path": "json/state/runtime-aliases.json",
+      "sha256": "59381d410c53f9a33f86739b39661ef468a35e4cd15140369c533a4eb9123984"
+    },
+    "scoped_retrieval_evidence": {
+      "path": "/tmp/swarm/0ad49216/docs/evidence/corpus/SKL-S6-05-SCOPED-RETRIEVAL-EVIDENCE-2026-08-22.json",
+      "sha256": "c2d183be27e2503dde57e0a58c93461229aad3bccf5bf138edb079260b9ae04c"
+    },
+    "secondary_review_challenge": {
+      "path": "/tmp/swarm/0ad49216/docs/evidence/corpus/SKL-S6-05-SECONDARY-REVIEW-CHALLENGE-2026-08-22.json",
+      "sha256": "9575d6db68d622e94c5a1d508e7229b43819381dc6ec659b3fe3e66b2adfd51d"
+    },
+    "secondary_review_verdict": {
+      "path": "/tmp/swarm/0ad49216/docs/evidence/corpus/SKL-S6-05-SECONDARY-REVIEW-VERDICT-2026-08-22.json",
+      "sha256": "ee4b92ebd19407063327736800bf16827ceb57481d19afe50d38de914985aa3e"
+    },
+    "source_rights": {
+      "path": "/mnt/cloud/onedrive/hammertime-Ingested/processed-inbox-archive/2026-08-21/2026-08-21-official-government-style-manuals/completed-inbox-sources/_imports/2026-08-21-official-government-style-manuals/source-root/manifests/rights-review.json",
+      "sha256": "e83ac258276fb022502f8ad83bbffa90af5958de9a4a4ef6e1ba529574db155e"
+    },
+    "style_profile": {
+      "path": "/mnt/cloud/onedrive/projects/DAVE-AI/sklegal/config/drafting_styles/official-drafting-style-profiles.json",
+      "sha256": "9651ce6bdabf18cc27a39ff2bed87309b179b72fe37053c852f43cd288627959"
+    }
+  },
+  "full_qualification": {
+    "aliases_sha256": "59381d410c53f9a33f86739b39661ef468a35e4cd15140369c533a4eb9123984",
+    "findings": [
+      {
+        "code": "missing_artifact",
+        "detail": "release snapshot lacks the required snapshot hash",
+        "subject": "dev-20260822-official-drafting-standards-candidate-1"
+      },
+      {
+        "code": "stale_projection",
+        "detail": "lexical, vector, or graph projection is not pinned to the candidate",
+        "subject": "dev-20260822-official-drafting-standards-candidate-1"
+      },
+      {
+        "code": "secondary_review_failed",
+        "detail": "secondary local Qwen3.8 review did not pass",
+        "subject": "dev-20260822-official-drafting-standards-candidate-1"
+      },
+      {
+        "code": "alias_drift",
+        "detail": "current or previous alias does not match promotion evidence",
+        "subject": "dev"
+      },
+      {
+        "code": "promotion_failure",
+        "detail": "guarded promotion receipt does not preserve the prior alias",
+        "subject": "dev"
+      },
+      {
+        "code": "rollback_failure",
+        "detail": "rollback receipt does not prove the candidate and prior alias swap",
+        "subject": "dev"
+      }
+    ],
+    "release_id": "dev-20260822-official-drafting-standards-candidate-1",
+    "release_manifest_sha256": "2ee914c26cf93e61138416c84b25d8e18dd5ee9ab7e1921b204d9b9176bbf752",
+    "status": "blocked",
+    "verified_artifact_sha256": [
+      "90ab45b0403f522e1705f3057a221e6802beb50f8512edfe8c87f1d6d08b912e",
+      "07eb7b1b691f6e7e6f9efdec4a4c754fcf4e1e07ae9851eaae8ec8924e2e05ec",
+      "b91f2990f054fa7b76532b91b2ca76c307488eaa75ca865fc5d6ce1f8b9c82b0",
+      "13f4e69480d4eccc4ee69b31cf7dd411b7772d4ae30007b135647f46c2ee4c7c",
+      "5e23693f6a7c3a9a588648ec15bb274ed2da13d13784d1d7f918defb21f15d04",
+      "364e6ac688fb511dfbc2c6c0cd01acc3525fed116b87c62eda4c9f779b4a79e7",
+      "25a420e19f4d4dfc0c8df9ecfd1f16d8d65e308295e711146b2fa4b57d581a6e",
+      "828b6a2df80ed778d1d2a133e5cb28a68378d3ffc56688fe9b571cbbd8c63196",
+      "ddc2ecd76f8fe38eba084ce9a6ae3fd9c9d58645abefb8622496d6b515ef5dcf",
+      "76dd4fc180efa8a55c2e77eb6def6c5eff472430682e34538aabfe6ebbd4eef2",
+      "14765e5df71d7ee6e4e9ad2a59df883dfe0862b86f4f440c51779fe52af6376e",
+      "b18a63741ff2f1d9448215ed0c999e3491abe52996a0f06973431d41a6627ae1",
+      "b86d7c00892715f11eb4ab8779d72caff50f01705083db205639b0db8be4a9ef",
+      "11b8c8742de53f55dfefb6b0bf038989c9c94f878575b287cff744110ab80024",
+      "d974b6f69bb7eb4dc7a13aa75d53c191337b1e982599717a64d863d149931735",
+      "5bd31211ae8d89852a1d2e02961f6ac7ef958b679ce8a5745d3814784384bd4c",
+      "2cab2c85aafdebda0874f06b5286caa8c5e175637d60e4c302569421fc98c959",
+      "839eebae87a136be7338c87ccfebe9447202893ab2a34aa1e7c6261a9c09c34d",
+      "112f9420a67ece2142068ef285acbe805cae32f660f37dd5b56123744dfa0bdf",
+      "8b1853d06099a90aa03288a62c1d001a5797aabaebce78cad8f75825d387e590",
+      "faf69c1ee03dd6fbb992c4084109e47f3ae1ca4a03f3f05128c767d9d912570b",
+      "cd1dfab3fc88603449349e2712d2e9ead22fdb0ced681d263df22163c66867ba",
+      "51e132214191b1dec4b46c9134b7027ee824ac98db3e53155ec0738096f170c1",
+      "c54ebb19cd24c89102af0a3e065c4174b7e024d7edff091e35fb91844fd66f37",
+      "fc6772965a4bbff509fc3355776d56d220cb5abd8e7ce73247348b21554b632a",
+      "bc866b947af3de034b14248854169df1432cb84a661f1c43d8288611affac542",
+      "fdda81133b2115ebf20fa177a44c5ab40fbdcf72fbf73448727c360d181c7cd8",
+      "b7678e7c30341628a3e8b658910234f5321153ab0660e3b55f2b4a8a0cd10a67"
+    ]
+  },
+  "generated_at": "2026-08-22T21:00:00Z",
+  "pending_gates": [
+    "shallow and deep corpus validation (OneDrive-backed corpus path)",
+    "secondary local Qwen3.8 review against the exact candidate",
+    "guarded dev promotion with current and previous alias pins",
+    "rollback and re-promotion receipts through HammerTime release tooling"
+  ],
+  "schema_version": "sklegal-official-drafting-qualification-report-v1",
+  "scoped_retrieval": {
+    "checks": [
+      {
+        "conflict_source_ids": [],
+        "expected_source_ids": [
+          "DOE-TECH-STYLE-2015",
+          "CA7-TYPOGRAPHY"
+        ],
+        "hits": [
+          {
+            "issuing_body": "U.S. Court of Appeals for the Seventh Circuit",
+            "locator": "json/decomposed/seventh-circuit-practitioners-handbook-pdf-a4ab8137c859.json#chunk-448",
+            "presented_as_current": true,
+            "scope": "Seventh Circuit briefs and other papers",
+            "source_id": "CA7-TYPOGRAPHY",
+            "source_sha256": "495bc24c2cc417b98355f42543a6d20549476cdf322b3e8e621d9bce901024ce",
+            "version": "2020 edition"
+          },
+          {
+            "issuing_body": "Department of Energy Technical Standards Program",
+            "locator": "json/decomposed/doe-technical-standards-style-guidance-2015-pdf-25bf3facfbb6.json#chunk-15",
+            "presented_as_current": true,
+            "scope": "DOE standards, handbooks, and specifications",
+            "source_id": "DOE-TECH-STYLE-2015",
+            "source_sha256": "3bbbd7c89f3cf0b67355f04385d6eac1d7d8f4f837f963f16f22e89ead007d0f",
+            "version": "May 2015"
+          }
+        ],
+        "query_id": "typography-settings-conflict"
+      },
+      {
+        "conflict_source_ids": [],
+        "expected_source_ids": [
+          "USCG-CORR-2024"
+        ],
+        "hits": [
+          {
+            "issuing_body": "U.S. Coast Guard",
+            "locator": "json/decomposed/uscg-correspondence-manual-2024-pdf-ae49066d172a.json#chunk-62",
+            "presented_as_current": true,
+            "scope": "USCG electronic and paper correspondence",
+            "source_id": "USCG-CORR-2024",
+            "source_sha256": "2410e971aebf6de25071b71b6b76668a62bbacb8da6d304db5e5519b77ace7c0",
+            "version": "February 2024"
+          }
+        ],
+        "query_id": "capitalization-subject-line-conflict"
+      },
+      {
+        "conflict_source_ids": [
+          "GPO-2016"
+        ],
+        "expected_source_ids": [
+          "DOI-CORR-2014"
+        ],
+        "hits": [
+          {
+            "issuing_body": "Department of the Interior",
+            "locator": "json/decomposed/doi-secretarial-correspondence-handbook-2014-pdf-31c1a965d9da.json#chunk-47",
+            "presented_as_current": true,
+            "scope": "DOI secretarial correspondence",
+            "source_id": "DOI-CORR-2014",
+            "source_sha256": "b35625ceaf8517eb09d4c74e1dc66a01b94e359afbedcb1c52aa1eb8ba624f68",
+            "version": "October 22, 2014"
+          },
+          {
+            "issuing_body": "U.S. Government Publishing Office",
+            "locator": "json/decomposed/gpo-style-manual-2016-pdf-c13ce4ebb563.json#chunk-28",
+            "presented_as_current": true,
+            "scope": "general federal publication and printing",
+            "source_id": "GPO-2016",
+            "source_sha256": "da9de9500079e885f54dc8dfe63f62ebbaa3535ce6398333fafbed46f5ce512f",
+            "version": "31st edition, 2016"
+          }
+        ],
+        "query_id": "punctuation-baseline-conflict"
+      },
+      {
+        "conflict_source_ids": [],
+        "expected_source_ids": [
+          "WH-CORR-HIST"
+        ],
+        "hits": [
+          {
+            "issuing_body": "White House, Ford Administration",
+            "locator": "json/decomposed/white-house-correspondence-manual-historical-ford-pdf-faed3f086198.json#chunk-1",
+            "presented_as_current": false,
+            "scope": "historical executive correspondence",
+            "source_id": "WH-CORR-HIST",
+            "source_sha256": "da509600d3c650c9ea747a1d2e1d48e935d8e638b4cdf111381302cc5346228b",
+            "version": "1975"
+          }
+        ],
+        "query_id": "historical-currentness-rejection"
+      },
+      {
+        "conflict_source_ids": [],
+        "expected_source_ids": [
+          "OFR-DDH-2018-R2.2",
+          "OFR-IBR-2023"
+        ],
+        "hits": [
+          {
+            "issuing_body": "Office of the Federal Register",
+            "locator": "json/decomposed/ofr-document-drafting-handbook-2018-r2-2-pdf-c8681fb126d7.json#chunk-0",
+            "presented_as_current": true,
+            "scope": "Federal Register rules, proposed rules, notices",
+            "source_id": "OFR-DDH-2018-R2.2",
+            "source_sha256": "23228934343294b0cd9785703bf287a86258ec716ecd62d9332ee09cb695ebc6",
+            "version": "August 2018, revision 2.2 June 2025"
+          },
+          {
+            "issuing_body": "Office of the Federal Register",
+            "locator": "json/decomposed/ofr-incorporation-by-reference-handbook-2023-pdf-223978f8d423.json#chunk-16",
+            "presented_as_current": true,
+            "scope": "incorporation by reference in the Code of Federal Regulations",
+            "source_id": "OFR-IBR-2023",
+            "source_sha256": "42f4d8dff64dea49152d3f54aa104febabc2c511e603898b800e687a9c7a53cd",
+            "version": "June 2023, revision August 28, 2023"
+          }
+        ],
+        "query_id": "federal-register-drafting-pair"
+      }
+    ],
+    "findings": [],
+    "release_id": "dev-20260822-official-drafting-standards-candidate-1",
+    "release_manifest_sha256": "2ee914c26cf93e61138416c84b25d8e18dd5ee9ab7e1921b204d9b9176bbf752"
+  }
+}

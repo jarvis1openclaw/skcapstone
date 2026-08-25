@@ -1,0 +1,91 @@
+{
+  "schema_version": "sklegal-s6-05-parent-qualification-v1",
+  "card": "0ad49216",
+  "status": "qualified",
+  "candidate": {
+    "release_id": "dev-20260824-official-drafting-standards-candidate-2",
+    "manifest_sha256": "550105e4c4b8fb33d3c4c5421e1c28b57f9048524bef7a01f2ab2a4fbf88308f",
+    "decomposed_snapshot_hash": "0c5aee1055f05ce0f7f09a9fcbf3e7e1bd49e73ddadfa7f7f2ac9f9e12f41f40",
+    "source_count": 14,
+    "decomposition_count": 14,
+    "verified_artifact_count": 28
+  },
+  "gates": {
+    "deep_health": {
+      "passed": true,
+      "command": "HAMMERTIME_ROOT=/mnt/cloud/onedrive/projects/DAVE-AI/hammerTime python /tmp/hammertime-s6-05f-bb8a59c4/scripts/validate-corpus-release.py --release-id dev-20260824-official-drafting-standards-candidate-2 --target dev --deep",
+      "issues": [],
+      "qdrant": {"ok": true, "collection": "hammertime-v3-dev", "status": "green", "points_count": 7706528, "indexed_vectors_count": 7704649},
+      "graph": {"ok": true, "graph_name": "hammertime-v4-dev", "node_count": 136168}
+    },
+    "scoped_retrieval": {
+      "passed": true,
+      "evidence": "docs/evidence/corpus/SKL-S6-05-CANDIDATE-2-SCOPED-RETRIEVAL-EVIDENCE-2026-08-24.json",
+      "evidence_sha256": "7a88dc735ec1e827dd04e1e6eea94b3030a5a1d8b053953db1db33986c4a96e1",
+      "queries": 5,
+      "findings": 0,
+      "preserved_conflicts": ["SPR-003 DOE/CA7", "SPR-006 DOI/GPO"],
+      "historical_source_not_current": "WH-CORR-HIST"
+    },
+    "secondary_qwen_review": {
+      "passed": true,
+      "qualification": "docs/evidence/corpus/SKL-S6-05-SECONDARY-REVIEW-QUALIFICATION-2026-08-24-EC199C44.json",
+      "qualification_sha256": "ab6d253607897ed500c1a10309577fa308ff2e6ab765546d432c10f0edda84e0",
+      "route": "sklegal.local-corpus-secondary-review",
+      "transport": "direct_qwen",
+      "backend": "llama.cpp-local",
+      "served_model": "qwen3.8-27b-huihui-abliterated-q4_k_m",
+      "prompt_sha256": "88daaf419feed00733341d3a67b1ee0110dc2c0e6fa56846c5ef4c46f1f3fd8b",
+      "schema_sha256": "a2e97fd1139b0043382635c36999128009dbc3592a7ea7aa4244c94efe9b6546",
+      "output_sha256": "96aee520b135131014fda0892cd3f8ddd2bdd40464b31b9a44524798d6f6aa69",
+      "propositions": 8,
+      "uncertainties_preserved": 5
+    },
+    "alias_round_trip": {
+      "passed": true,
+      "alias_sha256": "5dfdfa86acbddd951386765563a7ac0e180f7a3d6e6e657a85664eb5e06e5248",
+      "before_current": "dev-20260715-secured-transactions-practitioner-206",
+      "promoted_current": "dev-20260824-official-drafting-standards-candidate-2",
+      "rolled_back_current": "dev-20260715-secured-transactions-practitioner-206",
+      "final_current": "dev-20260824-official-drafting-standards-candidate-2",
+      "final_previous": "dev-20260715-secured-transactions-practitioner-206",
+      "promotion_receipt": "docs/evidence/corpus/bb8a59c4-promote-20260824T213206Z.json",
+      "rollback_receipt": "docs/evidence/corpus/bb8a59c4-rollback-20260824T213643Z.json",
+      "repromotion_receipt": "docs/evidence/corpus/bb8a59c4-repromote-20260824T214219Z.json"
+    },
+    "read_only_adapter": {
+      "passed": true,
+      "release_and_artifact_references": "immutable candidate manifest, 14 normalized sources, 14 decompositions",
+      "mutation_surface": "none",
+      "inbox_accessed": false
+    }
+  },
+  "focused_tests": {
+    "secondary_review": "9 passed",
+    "candidate_builder": "11 passed",
+    "parent_qualification_and_adapter": "132 passed, 7 subtests passed",
+    "combined_parent_boundary": "101 passed, 7 subtests passed",
+    "ruff": "all checks passed",
+    "style_profile_validation": "passed with temporary sibling HammerTime link to the existing non-Inbox corpus root"
+  },
+  "child_evidence": {
+    "ec199c44": "docs/evidence/corpus/SKL-S6-05R2-COMPLETION-EVIDENCE-2026-08-24.md",
+    "bb8a59c4": "docs/evidence/corpus/bb8a59c4-completion-evidence.md"
+  },
+  "safety": {
+    "hammertime_inbox_accessed": false,
+    "uat_changed": false,
+    "prod_changed": false,
+    "deployment": false,
+    "external_action": false,
+    "commit": false,
+    "push": false,
+    "merge": false
+  },
+  "limitations": [
+    "The deep validator reports live backend health for the candidate projections; its general corpus drift inventory is not used as a candidate gate.",
+    "Candidate-2 was consumed as the immutable durable child output. No new HammerTime release write or alias mutation was performed by this parent integration.",
+    "The existing style-profile validator requires a sibling HammerTime path; the validation used a temporary symlink to the existing non-Inbox corpus root and removed it after the run."
+  ],
+  "rollback": "Remove only parent evidence and integrated source files from this worktree. Candidate and HammerTime runtime state rollback remains owned by HammerTime guarded release tooling."
+}

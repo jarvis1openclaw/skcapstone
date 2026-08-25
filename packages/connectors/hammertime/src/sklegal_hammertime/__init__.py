@@ -16,16 +16,16 @@ from .bridge import (
     SubmissionPlan,
     SubmissionResult,
 )
+from .candidate_inspection import (
+    OfficialDraftingCandidateInspector,
+    OfficialDraftingCandidateReport,
+)
 from .candidate_release import (
     CandidateBuildBlocker,
     CandidateBuildBlockerCode,
     OfficialDraftingCandidateBuildRequest,
     OfficialDraftingCandidatePlan,
     OfficialDraftingCandidateReleaseBuilder,
-)
-from .candidate_inspection import (
-    OfficialDraftingCandidateInspector,
-    OfficialDraftingCandidateReport,
 )
 from .errors import (
     AdapterUnavailableError,
@@ -91,6 +91,12 @@ from .release_qualification import (
     SecondaryReviewEvidence,
     SourceRightsState,
 )
+from .scoped_retrieval import (
+    OfficialDraftingScopedRetrievalRunner,
+    RetrievalQuerySpec,
+    RetrievalSourceExpectation,
+    ScopedRetrievalBundle,
+)
 
 PACKAGE_NAME = "sklegal-hammertime"
 
@@ -138,6 +144,7 @@ __all__ = [
     "OfficialDraftingReleaseReport",
     "OfficialDraftingReleaseRequest",
     "OfficialDraftingSource",
+    "OfficialDraftingScopedRetrievalRunner",
     "OfficialDraftingCandidateBuildRequest",
     "OfficialDraftingCandidateInspector",
     "OfficialDraftingCandidatePlan",
@@ -153,12 +160,15 @@ __all__ = [
     "ReleaseManifest",
     "ReleaseSummary",
     "RetrievalHitEvidence",
+    "RetrievalQuerySpec",
+    "RetrievalSourceExpectation",
     "ResolvedRelease",
     "RuntimeAlias",
     "RuntimeAliasesSnapshot",
     "SnapshotPin",
     "SourceHashMismatchError",
     "SourceHashVerification",
+    "ScopedRetrievalBundle",
     "ScopedRetrievalEvidence",
     "SecondaryReviewEvidence",
     "SourceRightsState",

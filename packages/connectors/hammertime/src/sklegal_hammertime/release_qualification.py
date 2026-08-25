@@ -46,6 +46,7 @@ class QualificationFindingCode(StrEnum):
     SOURCE_RIGHTS_BLOCKED = "source_rights_blocked"
     SECONDARY_REVIEW_FAILED = "secondary_review_failed"
     RELEASE_MISMATCH = "release_mismatch"
+    RETRIEVAL_EVIDENCE_MISMATCH = "retrieval_evidence_mismatch"
 
 
 class QualificationStatus(StrEnum):
@@ -240,16 +241,27 @@ class OfficialDraftingReleaseQualifier:
                 request.release_id,
                 "release counts or deterministic verification do not pass",
             )
-        if (
-            manifest.decomposed_snapshot is None
-            or manifest.decomposed_snapshot.get("file_count", 0) < len(request.sources)
-            or not manifest.decomposed_snapshot.get("snapshot_hash")
-        ):
+        snapshot = manifest.decomposed_snapshot
+        if snapshot is None:
             self._add(
                 findings,
                 QualificationFindingCode.MISSING_ARTIFACT,
                 request.release_id,
-                "release does not seal every expected decomposition",
+                "release carries no decomposed snapshot",
+            )
+        elif snapshot.get("file_count", 0) < len(request.sources):
+            self._add(
+                findings,
+                QualificationFindingCode.MISSING_ARTIFACT,
+                request.release_id,
+                "release snapshot file count is below the expected source count",
+            )
+        elif not snapshot.get("snapshot_hash"):
+            self._add(
+                findings,
+                QualificationFindingCode.MISSING_ARTIFACT,
+                request.release_id,
+                "release snapshot lacks the required snapshot hash",
             )
         source_by_id = {source.source_id: source for source in request.sources}
         for source in request.sources:

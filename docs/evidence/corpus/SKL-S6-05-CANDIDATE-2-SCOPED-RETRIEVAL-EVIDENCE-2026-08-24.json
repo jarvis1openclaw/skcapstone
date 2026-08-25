@@ -1,0 +1,179 @@
+{
+  "card": "0ad49216",
+  "completion_pin": {
+    "path": "/mnt/cloud/onedrive/projects/DAVE-AI/hammerTime/json/intake-manifests/2026-08-21-official-government-style-manuals-completion-evidence.json",
+    "sha256": "91b3a6958f8f0d7c6e80a3d9b80fbebef6c14f85c90691fb0701d51952571179"
+  },
+  "currentness_decisions": {
+    "CA7-TYPOGRAPHY": {
+      "currentness": "currentness review required",
+      "presented_as_current": true,
+      "superseded": false
+    },
+    "DOE-TECH-STYLE-2015": {
+      "currentness": "current official posting",
+      "presented_as_current": true,
+      "superseded": false
+    },
+    "DOI-CORR-2014": {
+      "currentness": "currentness review required",
+      "presented_as_current": true,
+      "superseded": false
+    },
+    "EIA-STYLE-2020": {
+      "currentness": "currentness review required",
+      "presented_as_current": true,
+      "superseded": false
+    },
+    "EPA-STYLE-2009": {
+      "currentness": "archived; supersession unknown",
+      "presented_as_current": false,
+      "superseded": false
+    },
+    "GPO-2016": {
+      "currentness": "current official edition",
+      "presented_as_current": true,
+      "superseded": false
+    },
+    "HOLC-INTRO-2025": {
+      "currentness": "current",
+      "presented_as_current": true,
+      "superseded": false
+    },
+    "HOLC-STYLE-2022": {
+      "currentness": "current",
+      "presented_as_current": true,
+      "superseded": false
+    },
+    "NARA-STYLE-2024": {
+      "currentness": "current",
+      "presented_as_current": true,
+      "superseded": false
+    },
+    "NIJ-STYLE-2022": {
+      "currentness": "currentness discrepancy requires review",
+      "presented_as_current": true,
+      "superseded": false
+    },
+    "OFR-DDH-2018-R2.2": {
+      "currentness": "current revision",
+      "presented_as_current": true,
+      "superseded": false
+    },
+    "OFR-IBR-2023": {
+      "currentness": "currentness stated in routing",
+      "presented_as_current": true,
+      "superseded": false
+    },
+    "USCG-CORR-2024": {
+      "currentness": "current; cancels COMDTINST M5216.4D",
+      "presented_as_current": true,
+      "superseded": false
+    },
+    "WH-CORR-HIST": {
+      "currentness": "historical; never current",
+      "presented_as_current": false,
+      "superseded": true
+    }
+  },
+  "currentness_rationale": {
+    "CA7-TYPOGRAPHY": "Presented as current with the review requirement preserved.",
+    "DOI-CORR-2014": "Presented as current with the review requirement preserved.",
+    "EIA-STYLE-2020": "Presented as current with the review requirement preserved; review does not reject currentness.",
+    "EPA-STYLE-2009": "Archived posting: not asserted current, and supersession is recorded as unknown rather than asserted.",
+    "NIJ-STYLE-2022": "Presented as current with the identifier/date discrepancy preserved for review.",
+    "WH-CORR-HIST": "Historical source: never current. Recorded as superseded for the qualifier's superseded-as-current gate."
+  },
+  "date": "2026-08-24",
+  "expected_manifest_sha256": "550105e4c4b8fb33d3c4c5421e1c28b57f9048524bef7a01f2ab2a4fbf88308f",
+  "expected_source_count": 14,
+  "expected_target": "dev",
+  "profile_pin": {
+    "path": "/mnt/cloud/onedrive/projects/DAVE-AI/sklegal/config/drafting_styles/official-drafting-style-profiles.json",
+    "sha256": "9651ce6bdabf18cc27a39ff2bed87309b179b72fe37053c852f43cd288627959"
+  },
+  "queries": [
+    {
+      "conflict_source_ids": [],
+      "derivation": "SPR-003 (typography), preserved contradiction verbatim: 'DOE settings and CA7 settings are not interchangeable.' Both sources must remain retrievable for the shared typography-settings query instead of collapsing into one scope.",
+      "expected_source_ids": [
+        "DOE-TECH-STYLE-2015",
+        "CA7-TYPOGRAPHY"
+      ],
+      "query_id": "typography-settings-conflict",
+      "rule_id": "SPR-003",
+      "superseded_source_ids": [],
+      "terms": [
+        "spacing"
+      ]
+    },
+    {
+      "conflict_source_ids": [],
+      "derivation": "SPR-004 (capitalization), preserved contradiction verbatim: 'USCG subject lines use capitals within USCG correspondence scope.' USCG text states the subject line 'is written in capital letters' inside its own correspondence scope; the agency-specific rule must be retrievable as USCG-scoped.",
+      "expected_source_ids": [
+        "USCG-CORR-2024"
+      ],
+      "query_id": "capitalization-subject-line-conflict",
+      "rule_id": "SPR-004",
+      "superseded_source_ids": [],
+      "terms": [
+        "subject line",
+        "capital letters"
+      ]
+    },
+    {
+      "conflict_source_ids": [
+        "GPO-2016"
+      ],
+      "derivation": "SPR-006 (punctuation), preserved contradiction verbatim: 'DOI-specific punctuation may differ from GPO baseline.' DOI text states 'Punctuation should be in accordance with the GPO Style Manual published by GSA' while the handbook also records documented GPO differences, so both the agency rule and the baseline must be co-retrievable.",
+      "expected_source_ids": [
+        "DOI-CORR-2014"
+      ],
+      "query_id": "punctuation-baseline-conflict",
+      "rule_id": "SPR-006",
+      "superseded_source_ids": [],
+      "terms": [
+        "GPO",
+        "punctuation"
+      ]
+    },
+    {
+      "conflict_source_ids": [],
+      "derivation": "Profile source WH-CORR-HIST currentness verbatim: 'historical; never current.' The 1975 Ford Administration manual must be retrievable as historical material and must not be presented as current. Human source-rights decision of 2026-08-22 is recorded in the pinned rights review.",
+      "expected_source_ids": [
+        "WH-CORR-HIST"
+      ],
+      "query_id": "historical-currentness-rejection",
+      "rule_id": "profile-source-WH-CORR-HIST",
+      "superseded_source_ids": [
+        "WH-CORR-HIST"
+      ],
+      "terms": [
+        "correspondence",
+        "manual",
+        "1975"
+      ]
+    },
+    {
+      "conflict_source_ids": [],
+      "derivation": "SPR-001 (core_principles) routing scope: Office of the Federal Register drafting and incorporation-by-reference guidance. Both pinned OFR sources must be retrievable for the shared Federal Register drafting scope.",
+      "expected_source_ids": [
+        "OFR-DDH-2018-R2.2",
+        "OFR-IBR-2023"
+      ],
+      "query_id": "federal-register-drafting-pair",
+      "rule_id": "SPR-001",
+      "superseded_source_ids": [],
+      "terms": [
+        "federal register",
+        "drafting"
+      ]
+    }
+  ],
+  "release_id": "dev-20260824-official-drafting-standards-candidate-2",
+  "rights_pin": {
+    "path": "/mnt/cloud/onedrive/hammertime-Ingested/processed-inbox-archive/2026-08-21/2026-08-21-official-government-style-manuals/completed-inbox-sources/_imports/2026-08-21-official-government-style-manuals/source-root/manifests/rights-review.json",
+    "sha256": "e83ac258276fb022502f8ad83bbffa90af5958de9a4a4ef6e1ba529574db155e"
+  },
+  "schema_version": "sklegal-official-drafting-scoped-retrieval-evidence-v1"
+}

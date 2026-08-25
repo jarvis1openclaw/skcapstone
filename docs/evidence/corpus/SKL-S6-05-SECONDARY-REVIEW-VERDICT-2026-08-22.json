@@ -1,0 +1,20 @@
+{
+  "schema_version": "sklegal-official-drafting-secondary-review-verdict-v1",
+  "card": "0ad49216",
+  "date": "2026-08-22",
+  "logical_route": "sklegal.local-corpus-secondary-review",
+  "served_model": "local-qwen3.8-review-pending",
+  "candidate_release_id": "dev-20260822-official-drafting-standards-candidate-1",
+  "status": "not_invoked",
+  "passed": false,
+  "reason": "Review-dedicated Qwen3.8 endpoint is not configured (HAMMERTIME_REVIEW_API_URLS and HAMMERTIME_REVIEW_API_URL are unset). The corpus SOP prohibits silently using the primary local Qwen3.8 route as the formal secondary reviewer, so no review report is represented as passing. The primary Qwen3.8 route passed its runtime probe during S6-04 analysis, but that is primary-analysis evidence, not secondary-review evidence.",
+  "verdicts": [],
+  "overall": "pending",
+  "uncertainties_preserved": [
+    "EIA-STYLE-2020 currentness review required",
+    "NIJ-STYLE-2022 currentness discrepancy requires review",
+    "DOI-CORR-2014 currentness review required",
+    "CA7-TYPOGRAPHY currentness review required",
+    "EPA-STYLE-2009 supersession unknown"
+  ]
+}

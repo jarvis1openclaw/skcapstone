@@ -1,0 +1,196 @@
+{
+  "schema_version": "sklegal-s6-05-secondary-review-qualification-v2",
+  "card": "ec199c44",
+  "prior_card": "e9218ac4",
+  "status": "qualified",
+  "passed": true,
+  "candidate": {
+    "release_id": "dev-20260822-official-drafting-standards-candidate-1",
+    "release_manifest_sha256": "2ee914c26cf93e61138416c84b25d8e18dd5ee9ab7e1921b204d9b9176bbf752"
+  },
+  "route": {
+    "logical_route": "sklegal.local-corpus-secondary-review",
+    "transport": "direct_qwen",
+    "gateway_revision": "39f160140587e1e1e7e9e9c93e7bf5e7e74bfdc7a886cd612f0fec52fceca411",
+    "backend": "llama.cpp-local",
+    "requested_model": "qwen3.8-27b-huihui-abliterated-q4_k_m",
+    "served_model": "qwen3.8-27b-huihui-abliterated-q4_k_m"
+  },
+  "pins": {
+    "prompt_sha256": "88daaf419feed00733341d3a67b1ee0110dc2c0e6fa56846c5ef4c46f1f3fd8b",
+    "schema_sha256": "a2e97fd1139b0043382635c36999128009dbc3592a7ea7aa4244c94efe9b6546",
+    "output_sha256": "96aee520b135131014fda0892cd3f8ddd2bdd40464b31b9a44524798d6f6aa69",
+    "challenge_sha256": "9575d6db68d622e94c5a1d508e7229b43819381dc6ec659b3fe3e66b2adfd51d",
+    "route_config_sha256": "39f160140587e1e1e7e9e9c93e7bf5e7e74bfdc7a886cd612f0fec52fceca411",
+    "profile_sha256": "9651ce6bdabf18cc27a39ff2bed87309b179b72fe37053c852f43cd288627959",
+    "scoped_evidence_sha256": "c2d183be27e2503dde57e0a58c93461229aad3bccf5bf138edb079260b9ae04c",
+    "source_sha256": {
+      "GPO-2016": "da9de9500079e885f54dc8dfe63f62ebbaa3535ce6398333fafbed46f5ce512f",
+      "HOLC-STYLE-2022": "7e68eb1c2b6c2a3230ca46b48976557afde2c488ee756cf3a3bbfed7624dbafa",
+      "HOLC-INTRO-2025": "6bea8ff0940b0c0f76810fe8dfc62e0e17a985f608866fb409e8b451f6155841",
+      "OFR-DDH-2018-R2.2": "23228934343294b0cd9785703bf287a86258ec716ecd62d9332ee09cb695ebc6",
+      "OFR-IBR-2023": "42f4d8dff64dea49152d3f54aa104febabc2c511e603898b800e687a9c7a53cd",
+      "NARA-STYLE-2024": "5dc307a30e56435a1231690f6889660d544c70fa75ddb0418ed3cd324d914e46",
+      "EIA-STYLE-2020": "6d89adec71d4f02d07dba1579bde2df0278cde1fd0b64b9aea9fb27b956ff635",
+      "DOE-TECH-STYLE-2015": "3bbbd7c89f3cf0b67355f04385d6eac1d7d8f4f837f963f16f22e89ead007d0f",
+      "NIJ-STYLE-2022": "866c9200bb0edee1b2554c698ad691c251e6940c06ffac374425b72e39db08b1",
+      "DOI-CORR-2014": "b35625ceaf8517eb09d4c74e1dc66a01b94e359afbedcb1c52aa1eb8ba624f68",
+      "USCG-CORR-2024": "2410e971aebf6de25071b71b6b76668a62bbacb8da6d304db5e5519b77ace7c0",
+      "CA7-TYPOGRAPHY": "495bc24c2cc417b98355f42543a6d20549476cdf322b3e8e621d9bce901024ce",
+      "EPA-STYLE-2009": "8cfa2453421751d1c9c6a5f60c56dccc00c283d411bd51d33b9e28bc7f748df4",
+      "WH-CORR-HIST": "da509600d3c650c9ea747a1d2e1d48e935d8e638b4cdf111381302cc5346228b"
+    }
+  },
+  "review": {
+    "verdicts": [
+      {
+        "proposition_id": "P1",
+        "decision": "upheld",
+        "reasoning": "SPR-003 explicitly lists the contradiction 'DOE settings and CA7 settings are not interchangeable' and defines the scope as 'DOE technical standards and Seventh Circuit papers'. The rule text preserves the distinct requirements of both sources without harmonizing them into a single general rule, satisfying the requirement to preserve the conflict within their respective scopes.",
+        "citations": [
+          "SPR-003",
+          "DOE-TECH-STYLE-2015",
+          "CA7-TYPOGRAPHY"
+        ]
+      },
+      {
+        "proposition_id": "P2",
+        "decision": "upheld",
+        "reasoning": "SPR-004 lists the contradiction 'USCG subject lines use capitals within USCG correspondence scope' and sets the scope to 'DOE technical standards' while referencing the USCG rule as a specific exception/context. The rule text 'Use the capitalization conventions of the selected guide' ensures the USCG rule remains scoped to USCG correspondence rather than being generalized to all federal drafting, preserving the agency-specific nature of the rule.",
+        "citations": [
+          "SPR-004",
+          "USCG-CORR-2024"
+        ]
+      },
+      {
+        "proposition_id": "P3",
+        "decision": "upheld",
+        "reasoning": "SPR-006 lists the contradiction 'DOI-specific punctuation may differ from GPO baseline' and the exception 'DOI states that its preferences may differ from GPO and GSA'. The rule text instructs to 'record any agency-specific adoption of a general baseline instead of merging them', which explicitly preserves the distinction between the DOI rule and the GPO baseline rather than collapsing them.",
+        "citations": [
+          "SPR-006",
+          "DOI-CORR-2014",
+          "GPO-2016"
+        ]
+      },
+      {
+        "proposition_id": "P4",
+        "decision": "upheld",
+        "reasoning": "The source WH-CORR-HIST is marked with currentness 'historical; never current' and presented_as_current=false. The scoped retrieval evidence confirms this status and notes the human rights decision of 2026-08-22. The profile rules (e.g., SPR-011) treat it as an exception for historical reference, consistent with it never being current.",
+        "citations": [
+          "WH-CORR-HIST",
+          "SPR-011"
+        ]
+      },
+      {
+        "proposition_id": "P5",
+        "decision": "upheld",
+        "reasoning": "The source EPA-STYLE-2009 is marked with currentness 'archived; supersession unknown', presented_as_current=false, and superseded=false. This aligns with the claim that it is treated as archived with unknown supersession, distinct from being explicitly superseded or current.",
+        "citations": [
+          "EPA-STYLE-2009"
+        ]
+      },
+      {
+        "proposition_id": "P6",
+        "decision": "upheld",
+        "reasoning": "The source USCG-CORR-2024 is marked 'current; cancels COMDTINST M5216.4D'. The supersession details in SPR-011 state 'USCG-CORR-2024 cancels COMDTINST M5216.4D'. The profile does not assert the cancelled text is absent from the corpus, only that the new manual cancels the old instruction, preserving the supersession note as a relationship rather than a deletion assertion.",
+        "citations": [
+          "USCG-CORR-2024",
+          "SPR-011"
+        ]
+      },
+      {
+        "proposition_id": "P7",
+        "decision": "upheld",
+        "reasoning": "All 17 rules (SPR-001 through SPR-017) in the provided profile evidence have the field 'review_status': 'human_review_required'. Each rule also contains a 'source' object with a 'locator' pointing to a normalized path and specific line numbers, satisfying the requirement for a source locator into a pinned normalized artifact.",
+        "citations": [
+          "SPR-001",
+          "SPR-002",
+          "SPR-003",
+          "SPR-004",
+          "SPR-005",
+          "SPR-006",
+          "SPR-007",
+          "SPR-008",
+          "SPR-009",
+          "SPR-010",
+          "SPR-011",
+          "SPR-012",
+          "SPR-013",
+          "SPR-014",
+          "SPR-015",
+          "SPR-016",
+          "SPR-017"
+        ]
+      },
+      {
+        "proposition_id": "P8",
+        "decision": "upheld",
+        "reasoning": "Every rule in the profile evidence contains the field 'authority_boundary': 'typed_style_proposal_only; no workflow authority, approval, or external-action authorization'. This explicitly prevents any rule from authorizing external actions or converting assertions into workflow state.",
+        "citations": [
+          "SPR-001",
+          "SPR-002",
+          "SPR-003",
+          "SPR-004",
+          "SPR-005",
+          "SPR-006",
+          "SPR-007",
+          "SPR-008",
+          "SPR-009",
+          "SPR-010",
+          "SPR-011",
+          "SPR-012",
+          "SPR-013",
+          "SPR-014",
+          "SPR-015",
+          "SPR-016",
+          "SPR-017"
+        ]
+      }
+    ],
+    "overall": "pass",
+    "uncertainties_preserved": [
+      "EIA-STYLE-2020 currentness review required",
+      "NIJ-STYLE-2022 currentness discrepancy requires review",
+      "DOI-CORR-2014 currentness review required",
+      "CA7-TYPOGRAPHY currentness review required",
+      "EPA-STYLE-2009 supersession unknown"
+    ]
+  },
+  "uncertainties_preserved": [
+    "EIA-STYLE-2020 currentness review required",
+    "NIJ-STYLE-2022 currentness discrepancy requires review",
+    "DOI-CORR-2014 currentness review required",
+    "CA7-TYPOGRAPHY currentness review required",
+    "EPA-STYLE-2009 supersession unknown"
+  ],
+  "prior_qualification": {
+    "expected_sha256": "21a77b4427d5774153d9701ff16940027d06bec0f7dea16f2e57ed9511638775",
+    "reproducible": false,
+    "explanation": "The completed card's temporary qualification file was cleaned. The prior hash is retained from its card link; this regeneration uses the durable challenge and current route/source pins, so byte identity cannot be proven."
+  },
+  "safety": {
+    "protected_matter_content": false,
+    "hammertime_inbox_accessed": false,
+    "deployment_or_promotion": false,
+    "external_action": false,
+    "secrets_in_prompt_or_output": false,
+    "fail_closed": [
+      "missing endpoint",
+      "transport timeout or error",
+      "malformed output",
+      "served-model attribution mismatch",
+      "incomplete proposition coverage",
+      "uncertainty mismatch"
+    ],
+    "rollback": "Delete this generated JSON only; route configuration and source evidence remain unchanged."
+  },
+  "source_pins": {
+    "challenge_evidence_pins": {
+      "style_profile_sha256": "9651ce6bdabf18cc27a39ff2bed87309b179b72fe37053c852f43cd288627959",
+      "rights_review_sha256": "e83ac258276fb022502f8ad83bbffa90af5958de9a4a4ef6e1ba529574db155e",
+      "completion_evidence_sha256": "91b3a6958f8f0d7c6e80a3d9b80fbebef6c14f85c90691fb0701d51952571179",
+      "core_principles_sha256": "66db5cb1eac1cbd9b958f96d07e29ebf7711e2902c56ddee87dd2d92852c26ed"
+    },
+    "scoped_release_manifest_sha256": "2ee914c26cf93e61138416c84b25d8e18dd5ee9ab7e1921b204d9b9176bbf752"
+  }
+}

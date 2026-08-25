@@ -1,0 +1,10 @@
+{
+  "schema": "sklegal-secondary-review-route/v1",
+  "logical_route": "sklegal.local-corpus-secondary-review",
+  "transport": "direct_qwen",
+  "endpoint_env": "SKLEGAL_QWEN_REVIEW_ENDPOINT",
+  "backend": "llama.cpp-local",
+  "requested_model": "qwen3.8-27b-huihui-abliterated-q4_k_m",
+  "served_model": "qwen3.8-27b-huihui-abliterated-q4_k_m",
+  "timeout_seconds": 120
+}

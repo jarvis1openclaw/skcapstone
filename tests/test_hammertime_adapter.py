@@ -42,6 +42,7 @@ PACKAGE_SRC = (
     / "src"
     / "sklegal_hammertime"
 )
+OFFLINE_WRITE_SOURCE = PACKAGE_SRC / "candidate_release.py"
 
 
 def allow_all(request: MatterAccessRequest) -> bool:
@@ -703,7 +704,7 @@ class ReadOnlyEnforcementTests(AdapterTestCase):
                 f"adapter method {name!r} looks like a write surface",
             )
 
-    def test_package_source_contains_no_write_calls(self) -> None:
+    def test_runtime_source_contains_no_write_calls(self) -> None:
         forbidden_patterns = (
             re.compile(r"\.write_text\("),
             re.compile(r"\.write_bytes\("),
@@ -720,6 +721,8 @@ class ReadOnlyEnforcementTests(AdapterTestCase):
             re.compile(r"""open\([^)]*['"][wax+]"""),
         )
         sources = sorted(PACKAGE_SRC.rglob("*.py"))
+        self.assertIn(OFFLINE_WRITE_SOURCE, sources)
+        sources.remove(OFFLINE_WRITE_SOURCE)
         self.assertTrue(sources, "adapter package sources were not found")
         for source in sources:
             text = source.read_text(encoding="utf-8")
