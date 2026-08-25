@@ -729,21 +729,24 @@ def register_coord_commands(main: click.Group) -> None:
             raise click.UsageError("Pass --title and/or --description.")
 
         home_path = Path(home).expanduser()
-        CardEventLog(home_path).append(
-            CardEvent(
-                card_id=task_id,
-                action="describe",
-                title=title,
-                description=description,
-                writer=agent or "",
+        try:
+            CardEventLog(home_path).append(
+                CardEvent(
+                    card_id=task_id,
+                    action="describe",
+                    title=title,
+                    description=description,
+                    writer=agent or "",
+                )
             )
-        )
-        from ..card_store import card_store_write_enabled, mirror_coord_describe
+            from ..card_store import card_store_write_enabled, mirror_coord_describe
 
-        if card_store_write_enabled():
-            mirror_coord_describe(
-                home_path, task_id, agent or "", title=title, description=description
-            )
+            if card_store_write_enabled():
+                mirror_coord_describe(
+                    home_path, task_id, agent or "", title=title, description=description
+                )
+        except ValueError as exc:
+            raise click.ClickException(str(exc)) from None
         changed = ", ".join(
             k for k, v in (("title", title), ("description", description)) if v is not None
         )
@@ -791,11 +794,18 @@ def register_coord_commands(main: click.Group) -> None:
         from ..card import CardEvent, CardEventLog
 
         home_path = Path(home).expanduser()
-        CardEventLog(home_path).append(
-            CardEvent(
-                card_id=task_id, action="link", link_key=key, link_value=value, writer=agent or ""
+        try:
+            CardEventLog(home_path).append(
+                CardEvent(
+                    card_id=task_id,
+                    action="link",
+                    link_key=key,
+                    link_value=value,
+                    writer=agent or "",
+                )
             )
-        )
+        except ValueError as exc:
+            raise click.ClickException(str(exc)) from None
         console.print(f"\n  [green]Linked {task_id}: {key} = {value}.[/]\n")
 
     @coord.command("changelog")
