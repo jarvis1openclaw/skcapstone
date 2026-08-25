@@ -7,6 +7,8 @@ from pathlib import Path
 
 import pytest
 
+from skcapstone.fleet import store as fleet_store
+from skcapstone.fleet.paths import FleetPaths
 from skcapstone.team_engine import AgentStatus, DeployedAgent, TeamDeployment, TeamEngine
 from skcapstone.trustee_monitor import (
     MonitorConfig,
@@ -16,16 +18,44 @@ from skcapstone.trustee_monitor import (
 from skcapstone.trustee_ops import TrusteeOps
 
 # ---------------------------------------------------------------------------
+# Actuation gate helpers (card e51a3e7e / SKW-AUTONOMY-E4)
+#
+# restart_agent/rotate_agent (called internally by _try_restart/_try_rotate)
+# now refuse unless the actuation gate allows. `tmp_home` provisions the
+# freeze store off; `ops` grants a capauth allow, so restart keeps working
+# exactly as before. rotate_agent ALSO requires an approved ITIL change,
+# which TrusteeMonitor has no way to supply autonomously (its call site,
+# _try_rotate, passes no change_id) -- see TestCheckDeployment's rotation
+# tests below for what that means for auto-rotate now.
+# ---------------------------------------------------------------------------
+
+
+class _AllowDecision:
+    """Fake capauth Decision: always allow."""
+
+    def __init__(self) -> None:
+        self.allow = True
+        self.reason = "test fixture: always allow"
+
+
+def _allow_decide(subject, capability, **kw):  # noqa: ANN001, ANN201 - test fake
+    return _AllowDecision()
+
+
+# ---------------------------------------------------------------------------
 # Fixtures
 # ---------------------------------------------------------------------------
 
 
 @pytest.fixture
 def tmp_home(tmp_path: Path) -> Path:
-    """Create a temporary skcapstone home directory."""
+    """Create a temporary skcapstone home directory, gate provisioned open."""
     home = tmp_path / ".skcapstone"
     (home / "deployments").mkdir(parents=True)
     (home / "coordination").mkdir(parents=True)
+    paths = FleetPaths(root=home / "fleet")
+    writer = fleet_store.Writer(role="operator", node="test-node", identity="test")
+    fleet_store.set_frozen(paths, False, writer=writer, reason="test fixture provisioning")
     return home
 
 
@@ -37,8 +67,10 @@ def engine(tmp_home: Path) -> TeamEngine:
 
 @pytest.fixture
 def ops(engine: TeamEngine, tmp_home: Path) -> TrusteeOps:
-    """TrusteeOps wired to the tmp engine."""
-    return TrusteeOps(engine=engine, home=tmp_home)
+    """TrusteeOps wired to the tmp engine, capauth PDP allow granted."""
+    return TrusteeOps(
+        engine=engine, home=tmp_home, subject="test-fingerprint", decide_fn=_allow_decide
+    )
 
 
 def _make_deployment(
@@ -177,7 +209,20 @@ class TestCheckDeployment:
         report = monitor.check_deployment(deployment)
         assert "worker-1" in report.restarts_triggered
 
-    def test_max_restarts_triggers_rotation(self, ops, engine, tmp_home):
+    def test_max_restarts_triggers_rotation_attempt_which_the_gate_refuses(
+        self, ops, engine, tmp_home
+    ):
+        """Card e51a3e7e: rotate_agent now additionally requires an approved
+        ITIL change id, and TrusteeMonitor's auto-rotate path (_try_rotate)
+        has no way to supply one -- it calls `self._ops.rotate_agent(deployment_id,
+        agent_name)` with none. So the escalation path still ATTEMPTS
+        rotation once restart attempts are exhausted (the incident is not
+        left to retry restart forever), but the attempt is correctly
+        refused rather than silently succeeding without authorization. This
+        is the intended fallout of "rotation is never routine": autonomous
+        rotation can no longer complete on its own until a future card
+        wires ITIL change creation into the monitor's escalation path.
+        """
         deployment = _make_deployment(
             engine,
             agent_statuses={"worker-1": AgentStatus.FAILED},
@@ -188,7 +233,11 @@ class TestCheckDeployment:
         incident = monitor._get_incident("test-deploy/worker-1")
         incident.restart_attempts = 3
         report = monitor.check_deployment(deployment)
-        assert "worker-1" in report.rotations_triggered
+        assert report.rotations_triggered == []
+        # The refusal did not fabricate a success: the incident is still
+        # not marked rotated, so a later pass (once a change id exists) can
+        # still try again rather than being permanently skipped.
+        assert monitor._get_incident("test-deploy/worker-1").rotated is False
 
     def test_rotation_only_once(self, ops, engine, tmp_home):
         deployment = _make_deployment(

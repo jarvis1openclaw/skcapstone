@@ -11,6 +11,14 @@ operating under the Trustee Oath:
 
 Private helpers (audit, snapshot, log utilities) live in
 _trustee_helpers.py to keep this module under 500 lines.
+
+restart_agent, scale_agent, and rotate_agent are gated by
+trustee_actuation.guard (card e51a3e7e, AUTONOMY_ARCHITECTURE.md section
+3.5(d)): actuation-readiness/freeze first, then a capauth PDP allow (fail
+closed if capauth is unreachable), and for rotate_agent an additional
+approved-ITIL-change requirement, because rotation is never routine.
+_audit below is correctly demoted from safeguard to record: it is NOT the
+gate, it only records what the gate already allowed.
 """
 
 from __future__ import annotations
@@ -18,8 +26,9 @@ from __future__ import annotations
 import logging
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any, Callable, Dict, List, Optional
 
+from . import trustee_actuation
 from ._trustee_helpers import (
     audit_lines_for_agent,
     refresh_deployment_status,
@@ -27,6 +36,7 @@ from ._trustee_helpers import (
     stub_spec,
     write_audit,
 )
+from .fleet.paths import FleetPaths
 from .team_engine import AgentStatus, DeployedAgent, TeamEngine
 
 logger = logging.getLogger(__name__)
@@ -41,19 +51,80 @@ class TrusteeOps:
     Args:
         engine: A configured TeamEngine instance.
         home: Agent home directory (used for audit log path).
+        paths: Fleet tree paths for the actuation-readiness/freeze gate
+            (card e51a3e7e). Defaults to `FleetPaths(root=home / "fleet")`,
+            matching `fleet.paths.default_paths`'s own `<home>/fleet`
+            convention; override in tests to point at a throwaway tree.
+        shared_root: Root the ITIL change lookup (for `rotate_agent`'s
+            approved-change requirement) reads from. Defaults to `home`.
+        subject: Override for the caller's capauth-authenticated fingerprint.
+            When None (the default), it is resolved per call via
+            `trustee_actuation.resolve_subject()`; tests inject a fixed
+            value instead of standing up a real capauth identity.
+        decide_fn: Override for `capauth.decide`, forwarded to
+            `trustee_actuation.authorize`. Tests use this to simulate an
+            allow, a deny, or an unreachable PDP without a real capauth
+            store.
+        capauth_base_dir: Storage root capauth reads devices/tokens from.
+            Defaults to `home`.
     """
 
     def __init__(
         self,
         engine: TeamEngine,
         home: Optional[Path] = None,
+        *,
+        paths: Optional[FleetPaths] = None,
+        shared_root: Optional[Path] = None,
+        subject: Optional[str] = None,
+        decide_fn: Optional[Callable[..., Any]] = None,
+        capauth_base_dir: Optional[Path] = None,
     ) -> None:
         self._engine = engine
         self._home = (home or Path("~/.skcapstone")).expanduser()
+        self._paths = paths or FleetPaths(root=self._home / "fleet")
+        self._shared_root = shared_root or self._home
+        self._subject_override = subject
+        self._decide_fn = decide_fn
+        self._capauth_base_dir = capauth_base_dir if capauth_base_dir is not None else self._home
 
     # ------------------------------------------------------------------
     # Internal helpers
     # ------------------------------------------------------------------
+
+    def _enforce_gate(
+        self,
+        capability: str,
+        *,
+        require_approved_change: bool = False,
+        change_id: Optional[str] = None,
+    ) -> None:
+        """Refuse the calling verb unless `trustee_actuation.guard` allows it.
+
+        Raises `trustee_actuation.ActuationRefusedError` (never a bare exception)
+        so every caller -- MCP handler, CLI, test -- can branch on
+        `exc.reason` without parsing text. See the module docstring and
+        card e51a3e7e / AUTONOMY_ARCHITECTURE.md section 3.5(d).
+        """
+        subject = (
+            self._subject_override
+            if self._subject_override is not None
+            else trustee_actuation.resolve_subject()
+        )
+        result = trustee_actuation.guard(
+            capability,
+            paths=self._paths,
+            subject=subject,
+            shared_root=self._shared_root,
+            require_approved_change=require_approved_change,
+            change_id=change_id,
+            decide_fn=self._decide_fn,
+            base_dir=self._capauth_base_dir,
+        )
+        if not result.allowed:
+            raise trustee_actuation.ActuationRefusedError(
+                result.reason or "refused", result.detail
+            )
 
     def _audit(self, action: str, deployment_id: str, **details: Any) -> None:
         """Write an audit entry.
@@ -104,6 +175,8 @@ class TrusteeOps:
 
         Raises:
             ValueError: If deployment or agent is not found.
+            trustee_actuation.ActuationRefusedError: If the actuation gate refuses
+                (not actuation-ready, frozen, or no capauth capability grant).
         """
         deployment = self._engine.get_deployment(deployment_id)
         if not deployment:
@@ -115,6 +188,8 @@ class TrusteeOps:
             targets = {agent_name: deployment.agents[agent_name]}
         else:
             targets = dict(deployment.agents)
+
+        self._enforce_gate(trustee_actuation.CAP_RESTART)
 
         results: Dict[str, str] = {}
         provider = self._engine._provider
@@ -169,6 +244,8 @@ class TrusteeOps:
 
         Raises:
             ValueError: If deployment not found or count < 1.
+            trustee_actuation.ActuationRefusedError: If the actuation gate refuses
+                (not actuation-ready, frozen, or no capauth capability grant).
         """
         if count < 1:
             raise ValueError("count must be >= 1.")
@@ -176,6 +253,8 @@ class TrusteeOps:
         deployment = self._engine.get_deployment(deployment_id)
         if not deployment:
             raise ValueError(f"Deployment '{deployment_id}' not found.")
+
+        self._enforce_gate(trustee_actuation.CAP_SCALE)
 
         current = {
             name: agent
@@ -245,21 +324,36 @@ class TrusteeOps:
         self,
         deployment_id: str,
         agent_name: str,
+        *,
+        change_id: Optional[str] = None,
     ) -> Dict[str, Any]:
         """Snapshot context, destroy, and redeploy an agent fresh.
 
         Used when an agent shows context degradation. Snapshots the
         agent's memory directory before destruction so nothing is lost.
 
+        Rotation is a credential-adjacent operation (a fresh agent means a
+        fresh identity) and is never routine: unlike restart/scale, it
+        additionally requires `change_id` to name an ITIL change that is
+        currently APPROVED (card e51a3e7e / AUTONOMY_ARCHITECTURE.md section
+        3.5(d)). Omitting `change_id`, or naming a change that is not
+        approved, refuses exactly like an unapproved one -- there is no
+        "skip the check" default.
+
         Args:
             deployment_id: Target deployment.
             agent_name: Name of the specific agent instance to rotate.
+            change_id: The ITIL change id authorizing this rotation. Must
+                fold to APPROVED status or the call is refused.
 
         Returns:
             Dict with "snapshot_path", "destroyed", "redeployed" keys.
 
         Raises:
             ValueError: If deployment or agent is not found.
+            trustee_actuation.ActuationRefusedError: If the actuation gate refuses
+                (not actuation-ready, frozen, no capauth capability grant, or
+                no approved ITIL change).
         """
         deployment = self._engine.get_deployment(deployment_id)
         if not deployment:
@@ -267,6 +361,12 @@ class TrusteeOps:
 
         if agent_name not in deployment.agents:
             raise ValueError(f"Agent '{agent_name}' not in deployment '{deployment_id}'.")
+
+        self._enforce_gate(
+            trustee_actuation.CAP_ROTATE,
+            require_approved_change=True,
+            change_id=change_id,
+        )
 
         agent = deployment.agents[agent_name]
         provider = self._engine._provider

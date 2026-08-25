@@ -1,9 +1,23 @@
-"""Trustee operations tools (health, restart, scale, rotate, monitor, logs, deployments)."""
+"""Trustee operations tools (health, restart, scale, rotate, monitor, logs, deployments).
+
+trustee_restart, trustee_scale, and trustee_rotate are gated by
+trustee_actuation.guard, enforced inside TrusteeOps itself (card e51a3e7e,
+AUTONOMY_ARCHITECTURE.md section 3.5(d)): a refusal raises
+trustee_actuation.ActuationRefusedError, caught here and turned into a
+machine-readable `{"refused": true, "reason": ...}` response rather than an
+uncaught exception. trustee_health, trustee_logs, trustee_deployments, and
+trustee_monitor's own read/report surface are unaffected; trustee_monitor's
+internal auto-restart/auto-rotate calls go through the same gated TrusteeOps
+methods and already treat a raised refusal as "this attempt failed" (see
+trustee_monitor.py's existing try/except around _ops.restart_agent /
+_ops.rotate_agent), so no separate handling is needed for it here.
+"""
 
 from __future__ import annotations
 
 from mcp.types import TextContent, Tool
 
+from ..trustee_actuation import ActuationRefusedError
 from ._helpers import _error_response, _home, _json_response
 
 TOOLS: list[Tool] = [
@@ -62,12 +76,23 @@ TOOLS: list[Tool] = [
         name="trustee_rotate",
         description=(
             "Snapshot context, destroy, and redeploy an agent fresh. Used when an agent "
-            "shows context degradation."
+            "shows context degradation. Rotation is credential-adjacent and never routine: "
+            "requires change_id to name a currently-APPROVED ITIL change, in addition to the "
+            "actuation-readiness/freeze and capauth checks every trustee lifecycle verb "
+            "requires. Refused (not raised as a bare error) with a machine-readable reason "
+            "when any of those do not hold."
         ),
         inputSchema={
             "properties": {
                 "agent_name": {"description": "Agent to rotate", "type": "string"},
                 "deployment_id": {"description": "The deployment ID", "type": "string"},
+                "change_id": {
+                    "description": (
+                        "ITIL change id authorizing this rotation. Must fold to APPROVED "
+                        "status or the call is refused."
+                    ),
+                    "type": "string",
+                },
             },
             "required": ["deployment_id", "agent_name"],
             "type": "object",
@@ -133,6 +158,16 @@ TOOLS: list[Tool] = [
 # ── Helpers ──────────────────────────────────────────────────
 
 
+def _refused_response(exc: ActuationRefusedError) -> list[TextContent]:
+    """Turn a gate refusal into a machine-readable response.
+
+    `reason` is one of trustee_actuation's REASON_* constants (`frozen`,
+    `unprovisioned`, `capability_denied`, `change_not_approved`) so a caller
+    can branch on it programmatically instead of parsing `message`.
+    """
+    return _json_response({"refused": True, "reason": exc.reason, "message": str(exc)})
+
+
 def _get_trustee_ops():
     """Build TrusteeOps and TeamEngine from agent home."""
     from ..team_engine import TeamEngine
@@ -191,6 +226,8 @@ async def _handle_trustee_restart(args: dict) -> list[TextContent]:
         )
     except ValueError as exc:
         return _error_response(str(exc))
+    except ActuationRefusedError as exc:
+        return _refused_response(exc)
 
 
 async def _handle_trustee_scale(args: dict) -> list[TextContent]:
@@ -213,18 +250,26 @@ async def _handle_trustee_scale(args: dict) -> list[TextContent]:
         )
     except ValueError as exc:
         return _error_response(str(exc))
+    except ActuationRefusedError as exc:
+        return _refused_response(exc)
 
 
 async def _handle_trustee_rotate(args: dict) -> list[TextContent]:
-    """Rotate an agent (snapshot + fresh deploy)."""
+    """Rotate an agent (snapshot + fresh deploy).
+
+    Requires `change_id` to name a currently-APPROVED ITIL change (rotation
+    is credential-adjacent and never routine); omitting it refuses exactly
+    like naming an unapproved one, via ActuationRefusedError below.
+    """
     deployment_id = args.get("deployment_id", "")
     agent_name = args.get("agent_name", "")
+    change_id = args.get("change_id")
     if not deployment_id or not agent_name:
         return _error_response("deployment_id and agent_name are required")
 
     ops, _ = _get_trustee_ops()
     try:
-        result = ops.rotate_agent(deployment_id, agent_name)
+        result = ops.rotate_agent(deployment_id, agent_name, change_id=change_id)
         return _json_response(
             {
                 "deployment_id": deployment_id,
@@ -234,6 +279,8 @@ async def _handle_trustee_rotate(args: dict) -> list[TextContent]:
         )
     except ValueError as exc:
         return _error_response(str(exc))
+    except ActuationRefusedError as exc:
+        return _refused_response(exc)
 
 
 async def _handle_trustee_monitor(args: dict) -> list[TextContent]:
