@@ -20,6 +20,7 @@ from __future__ import annotations
 import subprocess
 import time
 
+from skcapstone.fleet import store
 from skcapstone.fleet.paths import FleetPaths
 from skcapstone.operator_seat import (
     act_dispatch,
@@ -101,7 +102,18 @@ def test_gameday_wedge_detected_and_self_heal_computed_dry(monkeypatch, tmp_path
         calls.append(cmd)
         return subprocess.CompletedProcess(cmd, 0, "", "")
 
-    apply_fn = act_dispatch.build_apply_fn(_paths(tmp_path), "drill", runner=capture, itil=None)
+    drill_paths = _paths(tmp_path)
+    # Human-only provisioning ceremony (AUTONOMY_ARCHITECTURE.md section 3.6):
+    # actuator.honor now refuses (reason "unprovisioned") until a human has
+    # written the freeze store, so the drill provisions it first, same as a
+    # real estate would before Atlas's actuation is ever turned on.
+    store.set_frozen(
+        drill_paths,
+        False,
+        writer=store.Writer(role="operator", node="drill", identity="drill-human"),
+        reason="gameday drill provisioning",
+    )
+    apply_fn = act_dispatch.build_apply_fn(drill_paths, "drill", runner=capture, itil=None)
     result = apply_fn(proposal, planned[0]["classification"])
     assert result["adapter"] == "skchat"
     assert result["actuation"]["performed"] is True

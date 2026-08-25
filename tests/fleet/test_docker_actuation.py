@@ -89,6 +89,9 @@ def test_dispatch_by_runtime() -> None:
 def test_docker_service_converges_like_systemd(paths, operator, scheduler_writer) -> None:
     events.reset_dedupe()
     backoff.reset_trackers()
+    # Human-only provisioning ceremony (AUTONOMY_ARCHITECTURE.md section 3.6):
+    # required before converge will heal anything.
+    store.set_frozen(paths, False, writer=operator, reason="initial provisioning")
     store.write_spec(paths, "node", "node-41", {"actuate": True}, writer=operator)
     store.write_spec(
         paths, "service", "coturn", {"unit": "coturn", "runtime": "docker"}, writer=operator

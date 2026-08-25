@@ -3,9 +3,11 @@
 fleet_act records a signed INTENT (operatorActions) on an object's spec; this
 module carries that intent out through the Phase 3 actuation layer (the same
 tested systemd verbs sknoded uses). It is gated: it refuses when the fleet is
-frozen, and physical actuation of real services is a deliberate enablement wired
-into the converge pass behind a flag, not automatic. The runner is injectable so
-tests never touch real systemd.
+frozen OR when the freeze store has never been human-provisioned
+(`store.check_actuation_gate`, AUTONOMY_ARCHITECTURE.md section 3.6), and
+physical actuation of real services is a deliberate enablement wired into the
+converge pass behind a flag, not automatic. The runner is injectable so tests
+never touch real systemd.
 """
 
 from __future__ import annotations
@@ -25,15 +27,18 @@ def unconsumed_actions(operator_actions, consumed_keys) -> list[dict]:
 
 
 def honor(paths, action: dict, unit: str, *, runner=None) -> dict:
-    """Physically perform one operator action. Refuses when frozen.
+    """Physically perform one operator action. Refuses when frozen or unprovisioned.
 
     Uses the tested actuation layer (never raises on a systemd failure). Returns
-    a result dict: {performed, action, unit, key, reason?}. Unmapped actions are
-    a no-op success-of-record (the signed intent stands, no physical muscle yet).
+    a result dict: {performed, action, unit, key, reason?}. `reason` on refusal
+    is `store.REASON_FROZEN` or `store.REASON_UNPROVISIONED`, machine-readable
+    per `store.check_actuation_gate`. Unmapped actions are a no-op
+    success-of-record (the signed intent stands, no physical muscle yet).
     """
     key = action_key(action)
-    if store.is_frozen(paths):
-        return {"performed": False, "reason": "frozen", "key": key}
+    gate = store.check_actuation_gate(paths)
+    if not gate.allowed:
+        return {"performed": False, "reason": gate.reason, "key": key}
     runner = runner or actuation.default_runner
     act = action.get("action")
     if act == "restart_service":

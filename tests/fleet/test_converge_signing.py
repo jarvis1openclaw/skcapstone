@@ -53,6 +53,9 @@ def _fresh():
 
 
 def _fleet(paths, operator, scheduler_writer, *, signed: bool) -> None:
+    # Human-only provisioning ceremony (AUTONOMY_ARCHITECTURE.md section 3.6):
+    # required before converge will heal anything, orthogonal to signing mode.
+    store.set_frozen(paths, False, writer=operator, reason="initial provisioning")
     signer = fake_signer if signed else None
     store.write_spec(paths, "node", NODE, {"actuate": True}, writer=operator, signer=signer)
     store.write_spec(

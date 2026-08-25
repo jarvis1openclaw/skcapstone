@@ -4,8 +4,9 @@ Available as `skoperator`. Commands:
   run       one operator pass (report-only by default; reasons via the hybrid brain)
   pending   list parked decisions awaiting a human
   decide    approve or reject a parked decision (human only)
-  status    freeze state
+  status    freeze state (frozen / active / unprovisioned)
   freeze / unfreeze   toggle the kill switch (human only)
+  provision   write the freeze store in its off position for the first time (human only)
 
 Report-only by default. With --execute, auto-normal proposals are applied via
 the fleet act verb (signed spec annotations); majors still park for approval and
@@ -276,9 +277,25 @@ def decide_cmd(decision_id: str, approve: bool, choice: int | None) -> None:
 
 @operator.command("status")
 def status_cmd() -> None:
-    """Show the freeze state."""
-    frozen = store.is_frozen(default_paths())
-    click.echo("FROZEN (Atlas stands down)" if frozen else "active (freeze off)")
+    """Show the freeze state: FROZEN, active, or UNPROVISIONED.
+
+    Tri-state, deliberately (AUTONOMY_ARCHITECTURE.md section 3.6): a
+    missing freeze store and a freeze store deliberately switched off used
+    to render identically as "active (freeze off)", which made "provisioned
+    and switched off" indistinguishable from "nobody ever set this up".
+    UNPROVISIONED now names that second state instead of collapsing into
+    active. Run `skoperator provision` to fix it.
+    """
+    gate = store.check_actuation_gate(default_paths())
+    if gate.reason == store.REASON_FROZEN:
+        click.echo("FROZEN (Atlas stands down)")
+    elif gate.reason == store.REASON_UNPROVISIONED:
+        click.echo(
+            "UNPROVISIONED (no freeze store written by a human yet; "
+            "Atlas cannot actuate; run `skoperator provision`)"
+        )
+    else:
+        click.echo("active (freeze off)")
 
 
 @operator.command("schedule-doctor")
@@ -321,6 +338,29 @@ def unfreeze_cmd() -> None:
     """Lift the freeze (human only)."""
     store.set_frozen(default_paths(), False, writer=_human_writer())
     click.echo("unfrozen: Atlas resumes")
+
+
+@operator.command("provision")
+def provision_cmd() -> None:
+    """Provision the freeze store in its off position (human only).
+
+    The one-time ceremony AUTONOMY_ARCHITECTURE.md section 3.6 requires
+    before any actuation surface may run: a human writes `_freeze.json`
+    through the same human-only path `freeze`/`unfreeze` use
+    (`store.set_frozen`), so the kill switch is proven to exist before
+    anything it governs can act. `skoperator unfreeze` performs the exact
+    same write and remains the command to lift an existing freeze; this
+    command exists so first-time setup has a name that says what it means
+    instead of reading as "unfreeze something that was never frozen".
+
+    Safe to re-run: a state that is already provisioned is left alone.
+    """
+    paths = default_paths()
+    if store.actuation_ready(paths):
+        click.echo("already provisioned: freeze store exists and was human-written")
+        return
+    store.set_frozen(paths, False, writer=_human_writer(), reason="initial provisioning")
+    click.echo("provisioned: freeze store written (off); actuation surfaces may now run")
 
 
 @operator.command("kedb-seed")

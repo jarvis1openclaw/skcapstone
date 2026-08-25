@@ -349,6 +349,14 @@ def is_frozen(paths: FleetPaths) -> bool:
 
     An unreadable freeze file counts as frozen: when in doubt, halt
     actuation (running services are never touched by the flag itself).
+
+    Deliberately unchanged (AUTONOMY_ARCHITECTURE.md section 3.6): a missing
+    file reads as NOT frozen. Making a missing file read as frozen would turn
+    the kill switch into something anyone able to delete a file can flip, and
+    a kill switch that defaults to on is an outage, not a switch. The gap
+    this leaves, that a missing file and a deliberately-off file both read as
+    "not frozen", is closed by `actuation_ready`/`check_actuation_gate`
+    below, not by changing this function.
     """
     path = paths.freeze_path()
     if not path.exists():
@@ -357,6 +365,121 @@ def is_frozen(paths: FleetPaths) -> bool:
     if payload is None:
         return True
     return bool(payload.get("frozen"))
+
+
+#: Machine-readable refusal reasons for `check_actuation_gate`. Kept as plain
+#: lowercase strings (not the operator_http.py PascalCase REASON_ convention)
+#: because these two exact spellings are the coord card's acceptance criteria
+#: and already match `actuator.honor`'s existing `"reason": "frozen"`.
+REASON_FROZEN = "frozen"
+REASON_UNPROVISIONED = "unprovisioned"
+
+
+def _looks_human_provisioned(payload: dict) -> bool:
+    """True when `payload` has the exact shape `set_frozen` writes.
+
+    This is a schema match, not a cryptographic proof: like every other
+    ownership rule in this module (`OwnershipError` is enforced at write
+    time, never re-verified by reading a file back), the guarantee comes
+    from the fact that `set_frozen` is the only code path that produces
+    this shape with `writer.role == "operator"`, and `set_frozen` itself
+    refuses any writer that is not a human (not `agent_seat`) before it
+    ever reaches `_dump`. A process with raw filesystem access could still
+    fabricate a matching file; that is the same trust boundary every other
+    single-writer-per-file rule here already accepts, and closing it fully
+    would require the signing plane (`suite_id`/`signature`), which this
+    predicate does not require to stay usable before that plane is on.
+    """
+    if not isinstance(payload, dict):
+        return False
+    if not isinstance(payload.get("frozen"), bool):
+        return False
+    if not isinstance(payload.get("reason", ""), str):
+        return False
+    if not isinstance(payload.get("updatedAt"), str) or not payload["updatedAt"]:
+        return False
+    writer = payload.get("writer")
+    if not isinstance(writer, dict):
+        return False
+    # set_frozen refuses any writer whose role is not "operator" (and, among
+    # those, refuses agent_seat writers) before it ever writes. A role other
+    # than "operator" on disk therefore proves this file did NOT come from
+    # set_frozen, whatever else it might otherwise resemble.
+    if writer.get("role") != "operator":
+        return False
+    for key in ("node", "identity", "suite_id"):
+        if not isinstance(writer.get(key), str):
+            return False
+    return True
+
+
+def actuation_ready(paths: FleetPaths) -> bool:
+    """True only when the freeze store is provisioned, not merely present.
+
+    "Provisioned" means `_freeze.json` exists, parses as JSON, and matches
+    the exact shape `set_frozen` produces, whose `writer.role == "operator"`
+    field only ever lands on disk via the human-only `set_frozen` path
+    (`set_frozen` raises `OwnershipError` before writing for any other
+    writer). A file that is absent, corrupt, or merely resembles a freeze
+    file without having gone through `set_frozen` (e.g. a stray `{}`, or a
+    hand-edited fragment) all read as NOT ready.
+
+    This is deliberately independent of `is_frozen`: a provisioned estate
+    can be ready AND frozen (switch on) or ready AND not frozen (switch
+    off). Callers that gate actuation want both: see `check_actuation_gate`.
+    """
+    payload = _load(paths.freeze_path())
+    if payload is None:
+        return False
+    return _looks_human_provisioned(payload)
+
+
+@dataclass(frozen=True)
+class ActuationGate:
+    """The verdict of `check_actuation_gate`: allowed, or refused with why.
+
+    Attributes:
+        allowed: True only when the freeze store is human-provisioned AND
+            the kill switch is off. False otherwise.
+        reason: None when allowed. Otherwise exactly one of
+            `REASON_FROZEN` ("frozen": the kill switch is on, or the
+            freeze store is corrupt/unreadable, which `is_frozen` also
+            treats as frozen) or `REASON_UNPROVISIONED` ("unprovisioned":
+            no freeze store has ever been written through the human-only
+            `set_frozen` path, so the kill switch cannot be proven to
+            exist yet).
+    """
+
+    allowed: bool
+    reason: str | None
+
+
+def check_actuation_gate(paths: FleetPaths) -> ActuationGate:
+    """The one guard every actuation surface must consult before acting.
+
+    Guarantees ``allowed is True`` only when BOTH hold: the freeze store
+    was provisioned through the human-only `set_frozen` path
+    (`actuation_ready`), AND the kill switch is currently off
+    (`not is_frozen`). This is the shared helper section 3.6 of
+    AUTONOMY_ARCHITECTURE.md calls for: `actuator.honor` and
+    `fleet/converge.py`'s `_heal` call it directly, and the stray-surface
+    retrofit (ansible, trustee tools, MCP actuation tools) is expected to
+    import and call it the same way rather than re-deriving the rule.
+
+    Freeze is checked FIRST, matching the existing convention
+    (`operator_seat/loop.py`: "freeze wins, always, and first") and the
+    corrupt-file case in particular: a corrupt/unreadable freeze file
+    makes `is_frozen` return True, so it is reported as `REASON_FROZEN`,
+    never `REASON_UNPROVISIONED`, even though such a file also fails the
+    provisioning check. An absent file is reported as
+    `REASON_UNPROVISIONED`, since `is_frozen` reads a missing file as not
+    frozen (section 3.6: that read must never change).
+    """
+    if is_frozen(paths):
+        return ActuationGate(False, REASON_FROZEN)
+    if not actuation_ready(paths):
+        return ActuationGate(False, REASON_UNPROVISIONED)
+    return ActuationGate(True, None)
 
 
 def set_frozen(paths: FleetPaths, frozen: bool, *, writer: Writer, reason: str = "") -> dict:

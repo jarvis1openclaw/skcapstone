@@ -346,6 +346,14 @@ def build_context(
     root: Path, *, cooldown_seconds: float = 900.0, retry_budget: int = 3
 ) -> DrillContext:
     paths = FleetPaths(root=root)
+    # Human-only provisioning ceremony (AUTONOMY_ARCHITECTURE.md section 3.6,
+    # coord card 3925d012): actuator.honor now refuses with reason
+    # "unprovisioned" until a human has written the freeze store, and every
+    # scenario below expects actuator.honor to attempt real actuation (or
+    # refuse for a documented reason OTHER than "the kill switch was never
+    # proven to exist"). Provision it off here, exactly as a real estate
+    # must be provisioned before Atlas's actuation is ever turned on.
+    store.set_frozen(paths, False, writer=_human_writer(), reason="drill root provisioning")
     execution_state = safety.ExecutionState(
         root / "atlas" / "state", cooldown_seconds=cooldown_seconds, retry_budget=retry_budget
     )

@@ -72,6 +72,9 @@ def _fresh(monkeypatch):
 
 
 def _fleet(paths, operator, scheduler_writer, *, role: str) -> None:
+    # Human-only provisioning ceremony (AUTONOMY_ARCHITECTURE.md section
+    # 3.6): required before converge will heal anything.
+    store.set_frozen(paths, False, writer=operator, reason="initial provisioning")
     node_spec = {"cordoned": False, "taints": [], "actuate": True}
     if role:
         node_spec["role"] = role

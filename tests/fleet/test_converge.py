@@ -44,7 +44,14 @@ def _fresh():
     backoff.reset_trackers()
 
 
-def _fleet(paths, operator, scheduler_writer, *, actuate=True, spec=None) -> None:
+def _fleet(paths, operator, scheduler_writer, *, actuate=True, spec=None, provision=True) -> None:
+    if provision:
+        # The human-only ceremony (AUTONOMY_ARCHITECTURE.md section 3.6): a
+        # freeze store must be provisioned (off) before any actuation
+        # surface, including converge's heal path, may act. Most tests here
+        # are about behavior downstream of that ceremony, so it defaults on;
+        # tests of the unprovisioned state itself pass provision=False.
+        store.set_frozen(paths, False, writer=operator, reason="initial provisioning")
     node_spec = {"cordoned": False, "taints": []}
     if actuate:
         node_spec["actuate"] = True
@@ -111,6 +118,23 @@ def test_freeze_halts_all_actuation_but_not_reporting(paths, operator, scheduler
     assert runner.verbs() == []  # kill-switch: zero verbs
     st = store.read_status(paths, "service", "skgateway", NODE)
     assert st["status"]["state"] == "failed"  # self-report continues
+
+
+def test_unprovisioned_halts_healing_but_not_reporting(paths, operator, scheduler_writer) -> None:
+    """Negative test (fails against current code before the change, coord
+    card 3925d012): a node whose freeze store was never provisioned must
+    not heal, and converge must name that state "unprovisioned" rather
+    than silently behaving as "actuate" the way it did when is_frozen's
+    missing-file read was the only signal converge consulted."""
+    _fleet(paths, operator, scheduler_writer, provision=False)  # no freeze store at all
+    runner = FakeRunner({SHOW: FAILED})
+    out = converge.converge_once(paths, NODE, runner=runner, now=1000.0)
+    assert out["mode"] == "unprovisioned"
+    assert runner.verbs() == []  # unprovisioned: zero verbs, same as frozen
+    st = store.read_status(paths, "service", "skgateway", NODE)
+    assert st["status"]["state"] == "failed"  # self-report continues
+    prog = {c["type"]: c for c in st["conditions"]}["Progressing"]
+    assert prog["reason"] == "Unprovisioned"
 
 
 def test_report_only_without_opt_in(paths, operator, scheduler_writer) -> None:
