@@ -19,7 +19,6 @@ from mcp.types import TextContent, Tool
 
 from . import (
     agent_tools,
-    ansible_tools,
     brain_first_tools,
     capauth_tools,
     chat_tools,
@@ -67,7 +66,6 @@ _MODULES = [
     sync_tools,
     coord_tools,
     coord_card_tools,
-    ansible_tools,
     soul_tools,
     did_tools,
     trust_tools,

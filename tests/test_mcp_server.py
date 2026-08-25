@@ -81,11 +81,12 @@ class TestToolListing:
         # + coord_describe / coord_label / coord_link   (card 61b97e22)
         # + coord_reprioritize / coord_amend_criteria   (card e78fd954)
         # + coord_void                                  (card 325a737f)
+        # - ansible playbook runner tool         (removed, see CHANGELOG: ungated subprocess, zero live consumers)
         #
-        # Bump this WITH the commit that adds a tool. It drifted three behind
-        # and kept main red, which is worse than useless: a count nobody trusts
-        # gets bumped reflexively, and then it guards nothing.
-        assert len(tools) == 137
+        # Bump this WITH the commit that adds or removes a tool. It drifted three
+        # behind once and kept main red, which is worse than useless: a count
+        # nobody trusts gets bumped reflexively, and then it guards nothing.
+        assert len(tools) == 136
 
     @pytest.mark.asyncio
     async def test_tool_names_are_unique(self):
@@ -207,7 +208,6 @@ class TestToolListing:
             "itil_problem_create",
             "itil_problem_update",
             "itil_status",
-            "run_ansible_playbook",
             "security_audit_log",
             "security_status",
             "skstacks_secret_get",

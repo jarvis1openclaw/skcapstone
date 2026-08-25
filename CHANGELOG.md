@@ -54,6 +54,26 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   implemented and merged; the HTTP surface ships gated OFF (`SKOPERATOR_HTTP`
   unset), so nothing in either document has yet changed a running service.
 
+### Removed
+
+- **`run_ansible_playbook` MCP tool.** An audit under card `e51a3e7e` found
+  `ansible_tools.py` ran `ansible-playbook <path> -i <inventory>` as a raw
+  subprocess with no freeze check, no capauth check, no ITIL requirement, no
+  policy classification, and no allowlist: any agent session holding the MCP
+  surface could run any playbook against any inventory, live. A follow-up
+  search across every repo, all 14 Claude Code transcripts mentioning the
+  tool name, every coordination card, and every agent's memory, journal and
+  logs for the `ansible-run` memory tag found zero live-run consumers, zero
+  check-mode consumers, zero successful runs ever, and no Ansible playbooks
+  reachable on the host at all. `skharness`'s autocode tool firewall already
+  denied this tool by name, next to `capauth_secret_get`, so the estate's own
+  security tooling already treated it as forbidden. An ungated subprocess
+  into arbitrary infrastructure that nothing has ever used, and that another
+  part of the estate already blocks, should not ship. This supersedes PR #197
+  (`fix/ansible-check-only`), which had restricted the tool to check mode as
+  a holding position while the deletion decision was pending; that PR should
+  be closed unmerged.
+
 ### Added
 
 - **Card 90b5b277 (epic c880017b): `skcapstone atlas soak`, the Phase 3
