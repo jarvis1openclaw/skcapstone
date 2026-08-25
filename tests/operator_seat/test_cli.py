@@ -71,7 +71,8 @@ def test_provision_via_unfreeze_also_satisfies_readiness(tmp_path, monkeypatch):
     assert store.actuation_ready(paths) is True
 
 
-def test_pending_and_decide(tmp_path, monkeypatch):
+def test_pending_and_decide_reject(tmp_path, monkeypatch):
+    # Rejection needs no ITIL involvement (nothing to authorize either way).
     paths = _enroll(tmp_path, monkeypatch)
     ddir = str(paths.root / "decisions")
     decisions.park(
@@ -82,9 +83,70 @@ def test_pending_and_decide(tmp_path, monkeypatch):
     )
     r = CliRunner()
     assert "d1" in r.invoke(cli.operator, ["pending"]).output
-    out = r.invoke(cli.operator, ["decide", "d1", "--approve", "--choice", "0"])
-    assert out.exit_code == 0 and "approved" in out.output
+    out = r.invoke(cli.operator, ["decide", "d1", "--reject"])
+    assert out.exit_code == 0 and "rejected" in out.output
     assert decisions.list_pending(ddir) == []  # resolved, no longer pending
+
+
+def test_decide_approve_with_no_linked_change_refuses_and_names_reason(tmp_path, monkeypatch):
+    """Negative test (coord card cf12b21d): a decisions-store-only approval
+    with no linked ITIL change must never actuate, and the CLI must name the
+    reason instead of printing success. This is the exact bug the card
+    describes: `decide --approve` used to write `by="human"` and print
+    "approved" unconditionally, with nothing downstream ever re-reading the
+    record. Fails against pre-change behaviour (the old body always exited 0
+    and always printed "approved")."""
+    paths = _enroll(tmp_path, monkeypatch)
+    ddir = str(paths.root / "decisions")
+    decisions.park(
+        ddir,
+        [{"action": "delete_object", "object": "x"}],  # no itil_change_id
+        decision_id="d1",
+        created_iso="2026-07-29T00:00:00Z",
+    )
+    out = CliRunner().invoke(cli.operator, ["decide", "d1", "--approve", "--choice", "0"])
+    assert out.exit_code != 0
+    assert "d1 ->" not in out.output  # never prints the success line
+    assert "no ITIL change linked" in out.output
+    # Never actuates: the decision is left pending, not silently resolved.
+    assert len(decisions.list_pending(ddir)) == 1
+
+
+def test_decide_approve_with_linked_change_submits_a_cab_vote(tmp_path, monkeypatch):
+    """Positive counterpart: a decision whose option carries a real
+    itil_change_id write-throughs to a provenance-bound CAB vote (never the
+    literal by="human"), and the ITIL change folds approved as a result."""
+    from skcapstone.fleet import store as fleet_store
+
+    paths = _enroll(tmp_path, monkeypatch)
+    home = _redirect_kedb_home(tmp_path, monkeypatch)
+    itil = ITILManager(home)
+    chg = itil.propose_change(
+        title="test change",
+        change_type="normal",
+        risk="low",
+        rollback_plan="revert",
+        created_by="atlas",
+        tags=["operator"],
+    )
+    ddir = str(paths.root / "decisions")
+    decisions.park(
+        ddir,
+        [{"action": "restart_service", "object": "x", "itil_change_id": chg.id}],
+        decision_id="d1",
+        created_iso="2026-07-29T00:00:00Z",
+    )
+    out = CliRunner().invoke(cli.operator, ["decide", "d1", "--approve", "--choice", "0"])
+    assert out.exit_code == 0, out.output
+    assert "approved" in out.output
+    assert decisions.list_pending(ddir) == []  # resolved, no longer pending
+
+    votes = itil.get_cab_votes(chg.id)
+    assert len(votes) == 1
+    assert votes[0].agent == fleet_store.resolved_writer_identity()  # never "human"
+    assert votes[0].subject_role == "approver"
+    refolded = [c for c in itil.list_changes() if c.id == chg.id][0]
+    assert refolded.status.value == "approved"
 
 
 def test_pending_empty(tmp_path, monkeypatch):

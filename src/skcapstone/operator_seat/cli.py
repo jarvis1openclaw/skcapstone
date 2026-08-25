@@ -3,7 +3,8 @@
 Available as `skoperator`. Commands:
   run       one operator pass (report-only by default; reasons via the hybrid brain)
   pending   list parked decisions awaiting a human
-  decide    approve or reject a parked decision (human only)
+  decide    approve or reject a parked decision (human only), write-through to a CAB vote
+  honor-pending   dispatch every PROPOSED ledger intent whose linked ITIL change now approves
   status    freeze state (frozen / active / unprovisioned)
   freeze / unfreeze   toggle the kill switch (human only)
   provision   write the freeze store in its off position for the first time (human only)
@@ -31,6 +32,7 @@ from . import (
     brief_publish,
     decisions,
     discovery,
+    dispatch,
     fleet_adapter,
     kedb_seeds,
     loop,
@@ -167,15 +169,20 @@ def run_cmd(
 
     apply_fn = None
     rollback_fn = None
+    itil_manager = None
     if execute and honor:
         # CR-9.1: physically actuate auto STANDARD-catalog fixes (fleet + skchat),
         # each recorded as an ITIL change first. Freeze is enforced by the act verbs.
+        # The SAME ITILManager instance is also handed to loop.run_once below (the
+        # `itil=` param): that is what lets the loop draft-and-bind a change onto
+        # each proposal's ledger intent BEFORE it exists, and re-point the auto
+        # lane through dispatch.dispatch_intent (AUTONOMY_ARCHITECTURE.md
+        # section 3.2) instead of authorizing itself inline.
         from .. import SHARED_ROOT
         from ..itil import ITILManager
 
-        apply_fn = act_dispatch.build_apply_fn(
-            paths, now, itil=ITILManager(SHARED_ROOT), emit=click.echo
-        )
+        itil_manager = ITILManager(SHARED_ROOT)
+        apply_fn = act_dispatch.build_apply_fn(paths, now, itil=itil_manager, emit=click.echo)
         rollback_fn = act_dispatch.build_rollback_fn(paths)
     elif execute:
 
@@ -224,6 +231,7 @@ def run_cmd(
         require_verified_actions=honor,
         require_signed_catalog=honor,
         lifecycle_ledger=ledger,
+        itil=itil_manager,
     )
     if honor:
         click.echo("honor: ON (CR-9.1 step-1 physical actuation: fleet + skchat)")
@@ -263,16 +271,96 @@ def pending_cmd() -> None:
 @click.option("--approve/--reject", required=True)
 @click.option("--choice", type=int, default=None, help="Option index when several are offered.")
 def decide_cmd(decision_id: str, approve: bool, choice: int | None) -> None:
-    """Approve or reject a parked decision (human only)."""
-    out = decisions.resolve(
-        _decisions_dir(default_paths()),
-        decision_id,
-        approve=approve,
-        choice=choice,
-        by="human",
-        resolved_iso=_now_iso(),
-    )
+    """Approve or reject a parked decision (human only).
+
+    Resolution is write-through (AUTONOMY_ARCHITECTURE.md section 3.1): the
+    decisions store is a projection, so approving here submits a
+    provenance-bound CAB vote on the option's linked ITIL change, and it is
+    THAT vote, folded by ITIL, that authorizes -- never the free-text literal
+    ``by="human"`` this command used to write (PROVENANCE_AND_MUTATION_STANDARD
+    bans exactly that). A decision parked with no linked change authorizes
+    nothing: this command refuses and names the reason instead of printing
+    success.
+    """
+    from .. import SHARED_ROOT
+    from ..itil import ITILManager
+
+    subject = store.resolved_writer_identity()
+    if subject in ("", "unattributed"):
+        raise click.ClickException(
+            "cannot resolve an authenticated CapAuth identity for this approval; "
+            "failing closed rather than recording an unattributed decision"
+        )
+    try:
+        out = dispatch.resolve_decision(
+            _decisions_dir(default_paths()),
+            ITILManager(SHARED_ROOT),
+            decision_id,
+            approve=approve,
+            choice=choice,
+            subject=subject,
+            resolved_iso=_now_iso(),
+        )
+    except dispatch.UnauthorizedDecisionError as exc:
+        raise click.ClickException(str(exc))
     click.echo(f"{decision_id} -> {out['status']}")
+
+
+@operator.command("honor-pending")
+def honor_pending_cmd() -> None:
+    """Dispatch every PROPOSED ledger intent whose linked ITIL change now folds
+    approved: the slow half of the dispatcher's "one code path, two speeds"
+    (AUTONOMY_ARCHITECTURE.md section 3.2). Run this after `skoperator decide
+    --approve` so a human's CAB vote actually causes the actuation it
+    authorized -- before this command existed, nothing downstream ever
+    re-read a resolved decision, and every escalated proposal was a dead end.
+
+    Refuses outright (same as any actuation surface) unless the estate is
+    actuation-ready and not frozen. An intent whose change has not yet folded
+    approved is left pending for a later run, not treated as an error.
+    """
+    paths = default_paths()
+    now = _now_iso()
+    from .. import SHARED_ROOT
+    from ..itil import ITILManager
+
+    signer = signing.capauth_signer()
+    verifier = signing.capauth_verifier()
+    if signer is None or verifier is None:
+        raise click.ClickException(
+            "honor-pending requires a usable CapAuth signer and trusted verifier; "
+            "failing closed"
+        )
+    ledger = action_ledger.ActionLedger(
+        paths.root / "atlas" / "action-ledger",
+        signer=signer,
+        verifier=verifier,
+        require_signatures=True,
+    )
+    itil_manager = ITILManager(SHARED_ROOT)
+    apply_fn = act_dispatch.build_apply_fn(paths, now, itil=itil_manager, emit=click.echo)
+    rollback_fn = act_dispatch.build_rollback_fn(paths)
+    extra_observers = discovery.discover_observers()
+    adapters = {**extra_observers, **loop.ADAPTERS}
+    outcomes = dispatch.run_dispatch_pass(
+        paths,
+        ledger,
+        itil_manager,
+        adapters=adapters,
+        problem_types=loop.PROBLEM_WHEN_TRUE,
+        apply_fn=apply_fn,
+        rollback_fn=rollback_fn,
+        execution_state=loop.safety.ExecutionState(paths.root / "atlas" / "state"),
+        decisions_dir=_decisions_dir(paths),
+        now_iso=now,
+        actor="dispatcher",
+        emit=click.echo,
+    )
+    if not outcomes:
+        click.echo("honor-pending: nothing to dispatch")
+        return
+    for o in outcomes:
+        click.echo(f"{o.intent_id}: {o.outcome}")
 
 
 @operator.command("status")

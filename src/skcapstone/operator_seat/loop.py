@@ -24,7 +24,9 @@ from . import (
     brief,
     cmdb_adapter,
     decisions,
+    dispatch,
     fleet_adapter,
+    itil_intent,
     plan,
     safety,
     skchat_adapter,
@@ -38,8 +40,12 @@ from . import (
 
 #: The registered app adapters: name -> observe callable(paths, now_iso) -> {conditions}.
 #: One operator, many apps: the fleet is the reference; each app plugs in here.
-#: Every app observe fails safe (reports healthy when the app is unreachable), so a
-#: down probe never raises a false alarm.
+#: Every app observe fails safe (reports Unknown, never healthy, when the app is
+#: unreachable -- ``adapter.normalize_observe`` refuses to let missing evidence
+#: silently become healthy, and ``_condition_firing`` below treats Unknown as
+#: firing), so a down probe raises the alarm instead of hiding behind it. This
+#: comment used to say the opposite ("reports healthy"), which sk-standards E3
+#: (merged 2026-08-25) called out as stale and contradicting the code beneath it.
 #:
 #: skdashboard was registered as an Operatorapp (registration.APP_REGISTRY) but
 #: was never added here, so an unfrozen ATLAS never actually observed it: the
@@ -149,46 +155,15 @@ def _bind_signed_catalog_generation(paths, proposal: dict) -> dict:
     return bound
 
 
-def _condition_firing(condition: dict, problem_types: set[str]) -> bool:
-    """Return whether one observed condition is firing under its polarity."""
-    status = condition.get("status")
-    if status == "Unknown":
-        return True
-    polarity = condition.get("polarity")
-    problem_when_true = (
-        polarity == "problem_when_true"
-        if polarity in adapter.POLARITIES
-        else condition.get("type") in problem_types
-    )
-    return (problem_when_true and status == "True") or (
-        not problem_when_true and status == "False"
-    )
-
-
-def _verify_postcondition(
-    observers: dict[str, Callable[..., dict]],
-    proposal: dict,
-    paths,
-    now_iso: str,
-    problem_types: set[str],
-) -> tuple[bool, str]:
-    """Re-observe the owning app and require the bound condition to clear."""
-    app = proposal.get("app")
-    observer = observers.get(app)
-    if observer is None:
-        return False, "owning observer unavailable"
-    conditions = observer(paths, now_iso).get("conditions", [])
-    matches = [
-        item
-        for item in conditions
-        if item.get("type") == proposal.get("condition")
-        and (proposal.get("object") is None or item.get("object") == proposal.get("object"))
-    ]
-    if not matches:
-        return False, "bound condition missing after action"
-    if any(_condition_firing(item, problem_types) for item in matches):
-        return False, "bound condition still firing after action"
-    return True, "postcondition verified"
+# _condition_firing / _verify_postcondition used to be defined here. They now
+# live in dispatch.py (dispatch.condition_firing / dispatch.verify_postcondition):
+# postcondition re-observation after AUTHORIZED->EXECUTING is the dispatcher's
+# job (AUTONOMY_ARCHITECTURE.md section 3.2 step 5), and keeping one copy is
+# what lets the auto lane below and ``skoperator honor-pending`` share the
+# exact same verification, not two copies that could drift. The names stay
+# aliased here for anything that still imports them off ``loop``.
+_condition_firing = dispatch.condition_firing
+_verify_postcondition = dispatch.verify_postcondition
 
 
 def _run_once(
@@ -212,6 +187,7 @@ def _run_once(
     catalog_generation: str = "operatorapp-current",
     ledger_actor: str = "atlas",
     deadline: float | None = None,
+    itil: Any | None = None,
 ) -> dict:
     """Run one operator pass.
 
@@ -225,6 +201,19 @@ def _run_once(
     ``ADAPTERS`` (a built-in always wins on a name clash) so discovery only widens
     what Atlas observes. Empty/None (the default, and whenever discovery is gated
     off) makes this byte-identical to the built-in-only pass.
+
+    ``itil`` (an ``ITILManager``-shaped object, optional) is what makes the
+    dispatcher's contract (AUTONOMY_ARCHITECTURE.md section 3) live for this
+    pass: when given, every proposal that reaches the lifecycle ledger is
+    first bound to a drafted ITIL change (so the intent's frozen
+    ``itil_change_id`` field is set BEFORE the ledger intent exists, never
+    rewritten after), and the auto lane's own actuation is re-pointed through
+    ``dispatch.dispatch_intent`` instead of authorizing itself inline -- the
+    same function ``skoperator honor-pending`` calls for the human lane, so
+    the two converge onto one code path with two speeds. When ``itil`` is
+    None (every caller before this change, and every caller that has not yet
+    wired one), this pass is byte-identical to before: no change is drafted,
+    and the auto lane keeps its pre-existing self-contained inline actuation.
 
     Returns {frozen, brief, route, proposals, planned, outcomes, report}.
     """
@@ -309,6 +298,39 @@ def _run_once(
     occurrence_memo: dict[tuple, int] = {}
     for i, pl in enumerate(planned):
         prop, disp = pl["proposal"], pl["disposition"]
+        if (
+            itil is not None
+            and lifecycle_ledger is not None
+            and not (prop.get("change_id") or prop.get("itil_change_id"))
+        ):
+            # Draft the ITIL change BEFORE the ledger intent exists, so its
+            # frozen itil_change_id field (action_ledger.py, ``identity()``)
+            # is set at birth and never needs rewriting later -- the
+            # dispatcher (AUTONOMY_ARCHITECTURE.md section 3.2 step 2)
+            # enumerates PROPOSED intents by exactly this field, and an
+            # intent with none is invisible to it forever, by design. This
+            # runs for BOTH lanes: the auto lane needs its own change to
+            # independently re-read (standard/auto-normal auto-approves at
+            # the ITIL fold), and the escalate lane needs one for a human to
+            # vote on -- see ``dispatch.resolve_decision``.
+            record = itil_intent.build_change_record(
+                {"name": prop.get("action")},
+                pl["classification"],
+                dry_run="false",
+                rollback_plan=prop.get("rollback_plan") or "revert via controller reconcile",
+            )
+            change_type = (
+                "standard" if pl["classification"].get("change_class") == "standard" else "normal"
+            )
+            chg = itil.propose_change(
+                title=record["title"],
+                change_type=change_type,
+                risk=record["risk"],
+                rollback_plan=record["rollback_plan"],
+                created_by=ledger_actor,
+                tags=list(record["tags"]),
+            )
+            prop["itil_change_id"] = chg.id
         intent_id: str | None = None
         if lifecycle_ledger is not None:
             created_at = datetime.fromisoformat(now_iso.replace("Z", "+00:00"))
@@ -343,6 +365,7 @@ def _run_once(
                 rollback=dict(prop.get("rollback") or {}),
                 authorization_ref=base_identity["authorization_ref"],
                 occurrence=occurrence,
+                condition_type=prop.get("condition"),
             )
             lifecycle_ledger.create(
                 intent,
@@ -366,7 +389,46 @@ def _run_once(
                     occurred_at=created_at,
                     actor=ledger_actor,
                 )
-        if disp == "auto" and execute and apply_fn is not None:
+        if (
+            disp == "auto"
+            and execute
+            and apply_fn is not None
+            and itil is not None
+            and lifecycle_ledger is not None
+        ):
+            # The converged path (AUTONOMY_ARCHITECTURE.md section 3.2): the
+            # auto lane's own actuation is re-pointed through
+            # dispatch.dispatch_intent, the SAME function
+            # ``skoperator honor-pending`` calls for a human-approved change,
+            # instead of authorizing itself inline on its own say-so. It
+            # re-reads the ITIL fold it just drafted above (auto-normal /
+            # standard changes auto-approve there) rather than trusting this
+            # pass's own classification, so "standard change, auto-approved
+            # by the fold" really is just the fastest kind of approved
+            # change -- one code path, two speeds.
+            if deadline is not None:
+                safety.assert_before_deadline(deadline)
+            outcome = dispatch.dispatch_intent(
+                paths,
+                lifecycle_ledger,
+                itil,
+                intent_id,
+                adapters=adapters,
+                problem_types=ptypes,
+                apply_fn=apply_fn,
+                rollback_fn=rollback_fn,
+                execution_state=execution_state,
+                decisions_dir=decisions_dir,
+                now_iso=now_iso,
+                actor=ledger_actor,
+                emit=emit,
+            ).outcome
+        elif disp == "auto" and execute and apply_fn is not None:
+            # Pre-itil, self-contained inline actuation. Kept byte-identical
+            # for callers that have not wired an ITIL manager into this pass
+            # (every caller before this change): AUTHORIZED/EXECUTING are
+            # appended on the loop's own say-so, exactly as before.
+            #
             # Per-proposal isolation, mirroring the fail-safe observe side: one bad
             # proposal must not abort the pass. Without this a single raise skipped
             # every later proposal INCLUDING decisions.park, so escalations the human
