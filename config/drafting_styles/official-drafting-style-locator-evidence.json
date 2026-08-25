@@ -1,0 +1,19 @@
+{
+  "evidence_inputs": {
+    "profile": {
+      "commit": "b34bbc2c608bffdd01ea449cdced3442fdd063ba",
+      "kind": "committed_non_corpus_artifact",
+      "path": "config/drafting_styles/official-drafting-style-profiles.json",
+      "sha256": "9651ce6bdabf18cc27a39ff2bed87309b179b72fe37053c852f43cd288627959"
+    },
+    "provenance_pin": {
+      "card_id": "9b4ed733",
+      "kind": "append_only_card_link",
+      "link_key": "hashes",
+      "sha256": "f3e9ef8a568e304c4f51ec6b1b309c4251acc1922e4bd95f16bae8d4fed49eed"
+    }
+  },
+  "profile_sha256": "9651ce6bdabf18cc27a39ff2bed87309b179b72fe37053c852f43cd288627959",
+  "provenance_sha256": "fb7101a3c91cec2a56155fcd9feb7d666438e2fcfce2a30f09189972454c5b0d",
+  "schema_version": "sklegal-official-drafting-locator-evidence-v3"
+}
