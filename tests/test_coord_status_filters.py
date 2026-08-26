@@ -12,7 +12,9 @@ import click
 import pytest
 from click.testing import CliRunner
 
+from skcapstone.card_store import CardCore, CardStore
 from skcapstone.cli.coord import register_coord_commands
+from skcapstone.coord_eligibility import LeafEligibilityCounts, leaf_eligibility_counts
 from skcapstone.coordination import Board, Task
 from skcapstone.mcp_tools import coord_tools
 
@@ -155,3 +157,48 @@ async def test_mcp_status_combined_filters(tmp_path, monkeypatch):
     data = _parse(await coord_tools._handle_coord_status({"parent": "epic0001", "status": "open"}))
     ids = {t["id"] for t in data["tasks"]}
     assert ids == {"child001"}
+
+
+def test_status_leaf_eligible_known_mix_uses_folded_cards(tmp_path):
+    """Known noise, gate, container, dependency, and ownership cases are excluded."""
+    store = CardStore(tmp_path)
+
+    def add(card_id, title, *, kind="task", labels=(), dependencies=()):
+        """Create one immutable fixture card."""
+        store.create(
+            CardCore(
+                id=card_id,
+                kind=kind,
+                title=title,
+                initial_labels=list(labels),
+                dependencies=list(dependencies),
+            )
+        )
+
+    add("done0001", "Completed dependency")
+    store.append_event("done0001", "complete", "fixture")
+    add("leaf0001", "Genuine leaf", dependencies=("done0001",))
+    add("human01", "[HUMAN] Approval")
+    add("humantag", "Approval", labels=("human-gate",))
+    add("parent01", "Parent")
+    add("child001", "Child", labels=("parent-parent01", "do-not-claim"))
+    add("epic0001", "Epic", kind="epic")
+    add("sprint01", "Sprint", labels=("sprint-container",))
+    add("sprint02", "[AREA][SPRINT 1] Sprint by title")
+    add("blocked1", "Blocked", dependencies=("missing1",))
+    add("super01", "Superseded", labels=("superseded",))
+    add("noclaim1", "Do not claim", labels=("do-not-claim",))
+    add("noclaim2", "Not claimable", labels=("not-claimable",))
+    add("owned001", "Owned")
+    store.append_event("owned001", "assign", "fixture", owner="agent")
+    add("review01", "Needs reviewer")
+    store.append_event("review01", "move", "fixture", column="review")
+    add("noise001", "x")
+
+    result = CliRunner().invoke(_main(), ["coord", "status", "--home", str(tmp_path)])
+    assert result.exit_code == 0, result.output
+    assert "1 leaf eligible" in result.output
+    assert "1 review needs identity" in result.output
+    assert leaf_eligibility_counts(tmp_path) == LeafEligibilityCounts(
+        leaves=1, review=1, malformed=1
+    )

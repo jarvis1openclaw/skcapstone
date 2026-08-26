@@ -147,6 +147,7 @@ TOOLS: list[Tool] = [
 
 async def _handle_coord_status(args: dict) -> list[TextContent]:
     """Return coordination board status, with optional tag/parent/status filters."""
+    from ..coord_eligibility import leaf_eligibility_counts
     from ..coordination import Board
 
     board = Board(_home())
@@ -163,6 +164,8 @@ async def _handle_coord_status(args: dict) -> list[TextContent]:
     status_filter = args.get("status")
     if status_filter:
         views = [v for v in views if v.status.value == status_filter]
+
+    eligibility = leaf_eligibility_counts(_home(), {v.task.id for v in views})
 
     return _json_response(
         {
@@ -191,6 +194,9 @@ async def _handle_coord_status(args: dict) -> list[TextContent]:
             "summary": {
                 "total": len(views),
                 "open": sum(1 for v in views if v.status.value == "open"),
+                "leaf_eligible": eligibility.leaves,
+                "review_needs_identity": eligibility.review,
+                "malformed": eligibility.malformed,
                 "claimed": sum(1 for v in views if v.status.value == "claimed"),
                 "in_progress": sum(1 for v in views if v.status.value == "in_progress"),
                 "done": sum(1 for v in views if v.status.value == "done"),
