@@ -9,7 +9,7 @@ from typing import Collection
 from .card import Column, Kind
 from .card_store import CardStore
 
-_EXCLUDED_LABELS = frozenset({"do-not-claim", "human-gate", "superseded"})
+_EXCLUDED_LABELS = frozenset({"do-not-claim", "human-gate", "not-claimable", "superseded"})
 _CONTAINER_LABELS = frozenset({"parent-container", "sprint-container"})
 
 
@@ -26,6 +26,18 @@ def _has_excluded_label(labels: set[str]) -> bool:
     """Return whether labels explicitly prohibit a claim."""
     return bool(labels & _EXCLUDED_LABELS) or any(
         label.startswith("superseded-") or "do-not-claim" in label for label in labels
+    )
+
+
+def _is_container(card, labels: set[str], parent_ids: set[str]) -> bool:
+    """Return whether a folded card is a parent, epic, or sprint container."""
+    title = card.title.lower()
+    return bool(
+        card.kind == Kind.EPIC
+        or card.id in parent_ids
+        or labels & _CONTAINER_LABELS
+        or "[epic]" in title
+        or "[sprint " in title
     )
 
 
@@ -62,9 +74,7 @@ def leaf_eligibility_counts(
         if card.status not in {Column.BACKLOG, Column.REVIEW} or card.owner:
             continue
         if (
-            card.kind == Kind.EPIC
-            or card.id in parent_ids
-            or labels & _CONTAINER_LABELS
+            _is_container(card, labels, parent_ids)
             or _has_excluded_label(labels)
             or "[human]" in card.title.lower()
         ):
@@ -74,7 +84,7 @@ def leaf_eligibility_counts(
             for dependency in card.dependencies
         ):
             continue
-        if not card.id.strip() or not card.title.strip():
+        if not card.id.strip() or card.title.strip().lower() in {"", "x"}:
             malformed += 1
         elif card.status == Column.REVIEW:
             review += 1

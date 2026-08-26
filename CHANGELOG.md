@@ -9,6 +9,13 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ### Added
 
+- **Card 2ff077b8: report leaf-eligible coordination work.** `coord status`
+  now distinguishes unowned, dependency-complete leaf work from the broader
+  open count. Human gates, parent and sprint containers, superseded cards,
+  do-not-claim cards, and malformed records are excluded, while review work
+  that needs a reviewer identity is reported separately. The same summary is
+  available through the coordination MCP status response.
+
 - **Headless out-of-band alerting for daemon-down / agent-dark.** The daemon
   watchdog now fires an alert through a configurable non-desktop channel
   (`SKCAPSTONE_ALERT_WEBHOOK` for a generic webhook POST, or
