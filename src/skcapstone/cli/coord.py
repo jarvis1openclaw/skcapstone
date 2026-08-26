@@ -90,12 +90,18 @@ def register_coord_commands(main: click.Group) -> None:
         progress_count = sum(1 for v in views if v.status.value == "in_progress")
         claimed_count = sum(1 for v in views if v.status.value == "claimed")
         done_count = sum(1 for v in views if v.status.value == "done")
+        from ..coord_eligibility import leaf_eligibility_counts
+
+        eligibility = leaf_eligibility_counts(home_path, {v.task.id for v in views})
 
         console.print()
         console.print(
             Panel(
                 f"[bold]Tasks:[/] {len(views)} total  "
                 f"[green]{open_count} open[/]  "
+                f"[bold green]{eligibility.leaves} leaf eligible[/]  "
+                f"[magenta]{eligibility.review} review needs identity[/]  "
+                f"[red]{eligibility.malformed} malformed[/]  "
                 f"[cyan]{claimed_count} claimed[/]  "
                 f"[yellow]{progress_count} in progress[/]  "
                 f"[dim]{done_count} done[/]",
