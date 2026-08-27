@@ -1,0 +1,490 @@
+{
+  "acceptance_evidence": {
+    "conflict_preservation": {
+      "historical_source_not_current": "WH-CORR-HIST",
+      "passed": true,
+      "preserved_conflicts": [
+        "SPR-003 DOE/CA7",
+        "SPR-006 DOI/GPO"
+      ],
+      "profile_path": "config/drafting_styles/official-drafting-style-profiles.json",
+      "profile_sha256": "9651ce6bdabf18cc27a39ff2bed87309b179b72fe37053c852f43cd288627959",
+      "qwen_review_path": "docs/evidence/corpus/SKL-S6-05-SECONDARY-REVIEW-QUALIFICATION-2026-08-24-EC199C44.json",
+      "qwen_review_sha256": "ab6d253607897ed500c1a10309577fa308ff2e6ab765546d432c10f0edda84e0",
+      "served_model": "qwen3.8-27b-huihui-abliterated-q4_k_m"
+    },
+    "leaf_acceptance": {
+      "leaf_count": 6,
+      "passed": true,
+      "qualification_artifact": "docs/evidence/corpus/SKL-S6-05-PARENT-QUALIFICATION-2026-08-24.json",
+      "qualification_sha256": "be2856bda4445a26d4d8323b2960bafb0156f260a2ea276d38639acce7e07d1c"
+    },
+    "promoted_source_provenance": {
+      "passed": true,
+      "records": [
+        {
+          "acquired_at": "2026-08-22T03:50:04Z",
+          "completion_evidence": {
+            "path": "/mnt/cloud/onedrive/projects/DAVE-AI/hammerTime/json/intake-manifests/2026-08-21-official-government-style-manuals-completion-evidence.json",
+            "sha256": "91b3a6958f8f0d7c6e80a3d9b80fbebef6c14f85c90691fb0701d51952571179"
+          },
+          "currentness": "currentness review required",
+          "issuing_body": "U.S. Court of Appeals for the Seventh Circuit",
+          "normalized_artifact": {
+            "path": "reference/intake/2026-08-21-official-government-style-manuals/documents/seventh-circuit-practitioners-handbook-pdf.md",
+            "sha256": "90ab45b0403f522e1705f3057a221e6802beb50f8512edfe8c87f1d6d08b912e"
+          },
+          "official_artifact_url": "https://www.ca7.uscourts.gov/rules-procedures/Handbook.pdf",
+          "official_landing_url": "https://www.ca7.uscourts.gov/pages/LandingPage.php?page=guides",
+          "release_reference": {
+            "path": "/mnt/cloud/onedrive/projects/DAVE-AI/hammerTime/json/releases/corpus-release-dev-20260824-official-drafting-standards-candidate-2.json",
+            "release_id": "dev-20260824-official-drafting-standards-candidate-2",
+            "sha256": "550105e4c4b8fb33d3c4c5421e1c28b57f9048524bef7a01f2ab2a4fbf88308f"
+          },
+          "rights_record": {
+            "decision": "cleared_for_internal_ingest",
+            "path": "/mnt/cloud/onedrive/hammertime-Ingested/processed-inbox-archive/2026-08-21/2026-08-21-official-government-style-manuals/completed-inbox-sources/_imports/2026-08-21-official-government-style-manuals/source-root/manifests/rights-review.json",
+            "sha256": "e83ac258276fb022502f8ad83bbffa90af5958de9a4a4ef6e1ba529574db155e"
+          },
+          "scope": "Seventh Circuit briefs and other papers",
+          "source_id": "CA7-TYPOGRAPHY",
+          "source_sha256": "495bc24c2cc417b98355f42543a6d20549476cdf322b3e8e621d9bce901024ce"
+        },
+        {
+          "acquired_at": "2026-08-22T03:50:00Z",
+          "completion_evidence": {
+            "path": "/mnt/cloud/onedrive/projects/DAVE-AI/hammerTime/json/intake-manifests/2026-08-21-official-government-style-manuals-completion-evidence.json",
+            "sha256": "91b3a6958f8f0d7c6e80a3d9b80fbebef6c14f85c90691fb0701d51952571179"
+          },
+          "currentness": "current official posting",
+          "issuing_body": "Department of Energy Technical Standards Program",
+          "normalized_artifact": {
+            "path": "reference/intake/2026-08-21-official-government-style-manuals/documents/doe-technical-standards-style-guidance-2015-pdf.md",
+            "sha256": "b91f2990f054fa7b76532b91b2ca76c307488eaa75ca865fc5d6ce1f8b9c82b0"
+          },
+          "official_artifact_url": "https://www.energy.gov/sites/default/files/2026-04/Style%20Guidance_5-11-15.pdf",
+          "official_landing_url": "https://www.energy.gov/ehss/technical-standards-procedures",
+          "release_reference": {
+            "path": "/mnt/cloud/onedrive/projects/DAVE-AI/hammerTime/json/releases/corpus-release-dev-20260824-official-drafting-standards-candidate-2.json",
+            "release_id": "dev-20260824-official-drafting-standards-candidate-2",
+            "sha256": "550105e4c4b8fb33d3c4c5421e1c28b57f9048524bef7a01f2ab2a4fbf88308f"
+          },
+          "rights_record": {
+            "decision": "cleared_for_internal_ingest",
+            "path": "/mnt/cloud/onedrive/hammertime-Ingested/processed-inbox-archive/2026-08-21/2026-08-21-official-government-style-manuals/completed-inbox-sources/_imports/2026-08-21-official-government-style-manuals/source-root/manifests/rights-review.json",
+            "sha256": "e83ac258276fb022502f8ad83bbffa90af5958de9a4a4ef6e1ba529574db155e"
+          },
+          "scope": "DOE standards, handbooks, and specifications",
+          "source_id": "DOE-TECH-STYLE-2015",
+          "source_sha256": "3bbbd7c89f3cf0b67355f04385d6eac1d7d8f4f837f963f16f22e89ead007d0f"
+        },
+        {
+          "acquired_at": "2026-08-22T03:50:02Z",
+          "completion_evidence": {
+            "path": "/mnt/cloud/onedrive/projects/DAVE-AI/hammerTime/json/intake-manifests/2026-08-21-official-government-style-manuals-completion-evidence.json",
+            "sha256": "91b3a6958f8f0d7c6e80a3d9b80fbebef6c14f85c90691fb0701d51952571179"
+          },
+          "currentness": "currentness review required",
+          "issuing_body": "Department of the Interior",
+          "normalized_artifact": {
+            "path": "reference/intake/2026-08-21-official-government-style-manuals/documents/doi-secretarial-correspondence-handbook-2014-pdf.md",
+            "sha256": "5e23693f6a7c3a9a588648ec15bb274ed2da13d13784d1d7f918defb21f15d04"
+          },
+          "official_artifact_url": "https://www.doi.gov/sites/default/files/elips/documents/382_dm_5_hb_-_secretarial_correspondence_handbook_0.pdf",
+          "official_landing_url": "https://www.doi.gov/elips/browse",
+          "release_reference": {
+            "path": "/mnt/cloud/onedrive/projects/DAVE-AI/hammerTime/json/releases/corpus-release-dev-20260824-official-drafting-standards-candidate-2.json",
+            "release_id": "dev-20260824-official-drafting-standards-candidate-2",
+            "sha256": "550105e4c4b8fb33d3c4c5421e1c28b57f9048524bef7a01f2ab2a4fbf88308f"
+          },
+          "rights_record": {
+            "decision": "cleared_for_internal_ingest",
+            "path": "/mnt/cloud/onedrive/hammertime-Ingested/processed-inbox-archive/2026-08-21/2026-08-21-official-government-style-manuals/completed-inbox-sources/_imports/2026-08-21-official-government-style-manuals/source-root/manifests/rights-review.json",
+            "sha256": "e83ac258276fb022502f8ad83bbffa90af5958de9a4a4ef6e1ba529574db155e"
+          },
+          "scope": "DOI secretarial correspondence",
+          "source_id": "DOI-CORR-2014",
+          "source_sha256": "b35625ceaf8517eb09d4c74e1dc66a01b94e359afbedcb1c52aa1eb8ba624f68"
+        },
+        {
+          "acquired_at": "2026-08-22T03:50:00Z",
+          "completion_evidence": {
+            "path": "/mnt/cloud/onedrive/projects/DAVE-AI/hammerTime/json/intake-manifests/2026-08-21-official-government-style-manuals-completion-evidence.json",
+            "sha256": "91b3a6958f8f0d7c6e80a3d9b80fbebef6c14f85c90691fb0701d51952571179"
+          },
+          "currentness": "currentness review required",
+          "issuing_body": "Energy Information Administration",
+          "normalized_artifact": {
+            "path": "reference/intake/2026-08-21-official-government-style-manuals/documents/eia-writing-style-guide-2020-pdf.md",
+            "sha256": "25a420e19f4d4dfc0c8df9ecfd1f16d8d65e308295e711146b2fa4b57d581a6e"
+          },
+          "official_artifact_url": "https://www.eia.gov/about/pdfs/WritingStyleGuide_2020.pdf",
+          "official_landing_url": "https://www.eia.gov/about/",
+          "release_reference": {
+            "path": "/mnt/cloud/onedrive/projects/DAVE-AI/hammerTime/json/releases/corpus-release-dev-20260824-official-drafting-standards-candidate-2.json",
+            "release_id": "dev-20260824-official-drafting-standards-candidate-2",
+            "sha256": "550105e4c4b8fb33d3c4c5421e1c28b57f9048524bef7a01f2ab2a4fbf88308f"
+          },
+          "rights_record": {
+            "decision": "cleared_for_internal_ingest",
+            "path": "/mnt/cloud/onedrive/hammertime-Ingested/processed-inbox-archive/2026-08-21/2026-08-21-official-government-style-manuals/completed-inbox-sources/_imports/2026-08-21-official-government-style-manuals/source-root/manifests/rights-review.json",
+            "sha256": "e83ac258276fb022502f8ad83bbffa90af5958de9a4a4ef6e1ba529574db155e"
+          },
+          "scope": "EIA external analytical communications",
+          "source_id": "EIA-STYLE-2020",
+          "source_sha256": "6d89adec71d4f02d07dba1579bde2df0278cde1fd0b64b9aea9fb27b956ff635"
+        },
+        {
+          "acquired_at": "2026-08-22T03:51:36Z",
+          "completion_evidence": {
+            "path": "/mnt/cloud/onedrive/projects/DAVE-AI/hammerTime/json/intake-manifests/2026-08-21-official-government-style-manuals-completion-evidence.json",
+            "sha256": "91b3a6958f8f0d7c6e80a3d9b80fbebef6c14f85c90691fb0701d51952571179"
+          },
+          "currentness": "archived; supersession unknown",
+          "issuing_body": "Environmental Protection Agency",
+          "normalized_artifact": {
+            "path": "reference/intake/2026-08-21-official-government-style-manuals/documents/epa-communication-product-standards-stylebook-2009-pdf.md",
+            "sha256": "ddc2ecd76f8fe38eba084ce9a6ae3fd9c9d58645abefb8622496d6b515ef5dcf"
+          },
+          "official_artifact_url": "https://19january2021snapshot.epa.gov/sites/static/files/documents/stylebook.pdf",
+          "official_landing_url": "https://19january2017snapshot.epa.gov/stylebook/pdf-version-epa-communication-product-standards-stylebook_.html",
+          "release_reference": {
+            "path": "/mnt/cloud/onedrive/projects/DAVE-AI/hammerTime/json/releases/corpus-release-dev-20260824-official-drafting-standards-candidate-2.json",
+            "release_id": "dev-20260824-official-drafting-standards-candidate-2",
+            "sha256": "550105e4c4b8fb33d3c4c5421e1c28b57f9048524bef7a01f2ab2a4fbf88308f"
+          },
+          "rights_record": {
+            "decision": "cleared_for_internal_ingest",
+            "path": "/mnt/cloud/onedrive/hammertime-Ingested/processed-inbox-archive/2026-08-21/2026-08-21-official-government-style-manuals/completed-inbox-sources/_imports/2026-08-21-official-government-style-manuals/source-root/manifests/rights-review.json",
+            "sha256": "e83ac258276fb022502f8ad83bbffa90af5958de9a4a4ef6e1ba529574db155e"
+          },
+          "scope": "EPA communications, design, accessibility, and production",
+          "source_id": "EPA-STYLE-2009",
+          "source_sha256": "8cfa2453421751d1c9c6a5f60c56dccc00c283d411bd51d33b9e28bc7f748df4"
+        },
+        {
+          "acquired_at": "2026-08-22T03:49:58Z",
+          "completion_evidence": {
+            "path": "/mnt/cloud/onedrive/projects/DAVE-AI/hammerTime/json/intake-manifests/2026-08-21-official-government-style-manuals-completion-evidence.json",
+            "sha256": "91b3a6958f8f0d7c6e80a3d9b80fbebef6c14f85c90691fb0701d51952571179"
+          },
+          "currentness": "current official edition",
+          "issuing_body": "U.S. Government Publishing Office",
+          "normalized_artifact": {
+            "path": "reference/intake/2026-08-21-official-government-style-manuals/documents/gpo-style-manual-2016-pdf.md",
+            "sha256": "14765e5df71d7ee6e4e9ad2a59df883dfe0862b86f4f440c51779fe52af6376e"
+          },
+          "official_artifact_url": "https://www.govinfo.gov/content/pkg/GPO-STYLEMANUAL-2016/pdf/GPO-STYLEMANUAL-2016.pdf",
+          "official_landing_url": "https://www.govinfo.gov/collection/gpo-style-manual",
+          "release_reference": {
+            "path": "/mnt/cloud/onedrive/projects/DAVE-AI/hammerTime/json/releases/corpus-release-dev-20260824-official-drafting-standards-candidate-2.json",
+            "release_id": "dev-20260824-official-drafting-standards-candidate-2",
+            "sha256": "550105e4c4b8fb33d3c4c5421e1c28b57f9048524bef7a01f2ab2a4fbf88308f"
+          },
+          "rights_record": {
+            "decision": "cleared_for_internal_ingest",
+            "path": "/mnt/cloud/onedrive/hammertime-Ingested/processed-inbox-archive/2026-08-21/2026-08-21-official-government-style-manuals/completed-inbox-sources/_imports/2026-08-21-official-government-style-manuals/source-root/manifests/rights-review.json",
+            "sha256": "e83ac258276fb022502f8ad83bbffa90af5958de9a4a4ef6e1ba529574db155e"
+          },
+          "scope": "general federal publication and printing",
+          "source_id": "GPO-2016",
+          "source_sha256": "da9de9500079e885f54dc8dfe63f62ebbaa3535ce6398333fafbed46f5ce512f"
+        },
+        {
+          "acquired_at": "2026-08-22T03:49:58Z",
+          "completion_evidence": {
+            "path": "/mnt/cloud/onedrive/projects/DAVE-AI/hammerTime/json/intake-manifests/2026-08-21-official-government-style-manuals-completion-evidence.json",
+            "sha256": "91b3a6958f8f0d7c6e80a3d9b80fbebef6c14f85c90691fb0701d51952571179"
+          },
+          "currentness": "current",
+          "issuing_body": "House Office of Legislative Counsel",
+          "normalized_artifact": {
+            "path": "reference/intake/2026-08-21-official-government-style-manuals/documents/house-introduction-to-legislative-drafting-2025-pdf.md",
+            "sha256": "b86d7c00892715f11eb4ab8779d72caff50f01705083db205639b0db8be4a9ef"
+          },
+          "official_artifact_url": "https://legcounsel.house.gov/sites/evo-subsites/legcounsel.house.gov/files/evo-media-document/Intro_to_Drafting_1_13_25.pdf",
+          "official_landing_url": "https://legcounsel.house.gov/holc-guide-legislative-drafting",
+          "release_reference": {
+            "path": "/mnt/cloud/onedrive/projects/DAVE-AI/hammerTime/json/releases/corpus-release-dev-20260824-official-drafting-standards-candidate-2.json",
+            "release_id": "dev-20260824-official-drafting-standards-candidate-2",
+            "sha256": "550105e4c4b8fb33d3c4c5421e1c28b57f9048524bef7a01f2ab2a4fbf88308f"
+          },
+          "rights_record": {
+            "decision": "cleared_for_internal_ingest",
+            "path": "/mnt/cloud/onedrive/hammertime-Ingested/processed-inbox-archive/2026-08-21/2026-08-21-official-government-style-manuals/completed-inbox-sources/_imports/2026-08-21-official-government-style-manuals/source-root/manifests/rights-review.json",
+            "sha256": "e83ac258276fb022502f8ad83bbffa90af5958de9a4a4ef6e1ba529574db155e"
+          },
+          "scope": "overview of federal legislative drafting",
+          "source_id": "HOLC-INTRO-2025",
+          "source_sha256": "6bea8ff0940b0c0f76810fe8dfc62e0e17a985f608866fb409e8b451f6155841"
+        },
+        {
+          "acquired_at": "2026-08-22T03:49:58Z",
+          "completion_evidence": {
+            "path": "/mnt/cloud/onedrive/projects/DAVE-AI/hammerTime/json/intake-manifests/2026-08-21-official-government-style-manuals-completion-evidence.json",
+            "sha256": "91b3a6958f8f0d7c6e80a3d9b80fbebef6c14f85c90691fb0701d51952571179"
+          },
+          "currentness": "current",
+          "issuing_body": "House Office of Legislative Counsel",
+          "normalized_artifact": {
+            "path": "reference/intake/2026-08-21-official-government-style-manuals/documents/house-manual-on-drafting-style-2022-pdf.md",
+            "sha256": "d974b6f69bb7eb4dc7a13aa75d53c191337b1e982599717a64d863d149931735"
+          },
+          "official_artifact_url": "https://legcounsel.house.gov/sites/evo-subsites/legcounsel-evo.house.gov/files/documents/ManualDraftStyle_2022.pdf",
+          "official_landing_url": "https://legcounsel.house.gov/holc-guide-legislative-drafting",
+          "release_reference": {
+            "path": "/mnt/cloud/onedrive/projects/DAVE-AI/hammerTime/json/releases/corpus-release-dev-20260824-official-drafting-standards-candidate-2.json",
+            "release_id": "dev-20260824-official-drafting-standards-candidate-2",
+            "sha256": "550105e4c4b8fb33d3c4c5421e1c28b57f9048524bef7a01f2ab2a4fbf88308f"
+          },
+          "rights_record": {
+            "decision": "cleared_for_internal_ingest",
+            "path": "/mnt/cloud/onedrive/hammertime-Ingested/processed-inbox-archive/2026-08-21/2026-08-21-official-government-style-manuals/completed-inbox-sources/_imports/2026-08-21-official-government-style-manuals/source-root/manifests/rights-review.json",
+            "sha256": "e83ac258276fb022502f8ad83bbffa90af5958de9a4a4ef6e1ba529574db155e"
+          },
+          "scope": "House legislative drafting",
+          "source_id": "HOLC-STYLE-2022",
+          "source_sha256": "7e68eb1c2b6c2a3230ca46b48976557afde2c488ee756cf3a3bbfed7624dbafa"
+        },
+        {
+          "acquired_at": "2026-08-22T03:49:59Z",
+          "completion_evidence": {
+            "path": "/mnt/cloud/onedrive/projects/DAVE-AI/hammerTime/json/intake-manifests/2026-08-21-official-government-style-manuals-completion-evidence.json",
+            "sha256": "91b3a6958f8f0d7c6e80a3d9b80fbebef6c14f85c90691fb0701d51952571179"
+          },
+          "currentness": "current",
+          "issuing_body": "National Archives and Records Administration",
+          "normalized_artifact": {
+            "path": "reference/intake/2026-08-21-official-government-style-manuals/documents/nara-writing-style-guide-2024-pdf.md",
+            "sha256": "2cab2c85aafdebda0874f06b5286caa8c5e175637d60e4c302569421fc98c959"
+          },
+          "official_artifact_url": "https://www.archives.gov/files/open/plain-writing/style-guide.pdf",
+          "official_landing_url": "https://www.archives.gov/open/plain-writing",
+          "release_reference": {
+            "path": "/mnt/cloud/onedrive/projects/DAVE-AI/hammerTime/json/releases/corpus-release-dev-20260824-official-drafting-standards-candidate-2.json",
+            "release_id": "dev-20260824-official-drafting-standards-candidate-2",
+            "sha256": "550105e4c4b8fb33d3c4c5421e1c28b57f9048524bef7a01f2ab2a4fbf88308f"
+          },
+          "rights_record": {
+            "decision": "cleared_for_internal_ingest",
+            "path": "/mnt/cloud/onedrive/hammertime-Ingested/processed-inbox-archive/2026-08-21/2026-08-21-official-government-style-manuals/completed-inbox-sources/_imports/2026-08-21-official-government-style-manuals/source-root/manifests/rights-review.json",
+            "sha256": "e83ac258276fb022502f8ad83bbffa90af5958de9a4a4ef6e1ba529574db155e"
+          },
+          "scope": "NARA communications and usage",
+          "source_id": "NARA-STYLE-2024",
+          "source_sha256": "5dc307a30e56435a1231690f6889660d544c70fa75ddb0418ed3cd324d914e46"
+        },
+        {
+          "acquired_at": "2026-08-22T03:50:00Z",
+          "completion_evidence": {
+            "path": "/mnt/cloud/onedrive/projects/DAVE-AI/hammerTime/json/intake-manifests/2026-08-21-official-government-style-manuals-completion-evidence.json",
+            "sha256": "91b3a6958f8f0d7c6e80a3d9b80fbebef6c14f85c90691fb0701d51952571179"
+          },
+          "currentness": "currentness discrepancy requires review",
+          "issuing_body": "National Institute of Justice",
+          "normalized_artifact": {
+            "path": "reference/intake/2026-08-21-official-government-style-manuals/documents/nij-style-guide-2022-pdf.md",
+            "sha256": "112f9420a67ece2142068ef285acbe805cae32f660f37dd5b56123744dfa0bdf"
+          },
+          "official_artifact_url": "https://www.ojp.gov/pdffiles1/nij/250404.pdf",
+          "official_landing_url": "https://nij.ojp.gov/library/publications/national-institute-justice-style-guide",
+          "release_reference": {
+            "path": "/mnt/cloud/onedrive/projects/DAVE-AI/hammerTime/json/releases/corpus-release-dev-20260824-official-drafting-standards-candidate-2.json",
+            "release_id": "dev-20260824-official-drafting-standards-candidate-2",
+            "sha256": "550105e4c4b8fb33d3c4c5421e1c28b57f9048524bef7a01f2ab2a4fbf88308f"
+          },
+          "rights_record": {
+            "decision": "cleared_for_internal_ingest",
+            "path": "/mnt/cloud/onedrive/hammertime-Ingested/processed-inbox-archive/2026-08-21/2026-08-21-official-government-style-manuals/completed-inbox-sources/_imports/2026-08-21-official-government-style-manuals/source-root/manifests/rights-review.json",
+            "sha256": "e83ac258276fb022502f8ad83bbffa90af5958de9a4a4ef6e1ba529574db155e"
+          },
+          "scope": "NIJ publications and web writing",
+          "source_id": "NIJ-STYLE-2022",
+          "source_sha256": "866c9200bb0edee1b2554c698ad691c251e6940c06ffac374425b72e39db08b1"
+        },
+        {
+          "acquired_at": "2026-08-22T03:49:59Z",
+          "completion_evidence": {
+            "path": "/mnt/cloud/onedrive/projects/DAVE-AI/hammerTime/json/intake-manifests/2026-08-21-official-government-style-manuals-completion-evidence.json",
+            "sha256": "91b3a6958f8f0d7c6e80a3d9b80fbebef6c14f85c90691fb0701d51952571179"
+          },
+          "currentness": "current revision",
+          "issuing_body": "Office of the Federal Register",
+          "normalized_artifact": {
+            "path": "reference/intake/2026-08-21-official-government-style-manuals/documents/ofr-document-drafting-handbook-2018-r2-2-pdf.md",
+            "sha256": "faf69c1ee03dd6fbb992c4084109e47f3ae1ca4a03f3f05128c767d9d912570b"
+          },
+          "official_artifact_url": "https://www.archives.gov/files/federal-register/write/handbook/ddh.pdf",
+          "official_landing_url": "https://www.archives.gov/federal-register/write/ddh",
+          "release_reference": {
+            "path": "/mnt/cloud/onedrive/projects/DAVE-AI/hammerTime/json/releases/corpus-release-dev-20260824-official-drafting-standards-candidate-2.json",
+            "release_id": "dev-20260824-official-drafting-standards-candidate-2",
+            "sha256": "550105e4c4b8fb33d3c4c5421e1c28b57f9048524bef7a01f2ab2a4fbf88308f"
+          },
+          "rights_record": {
+            "decision": "cleared_for_internal_ingest",
+            "path": "/mnt/cloud/onedrive/hammertime-Ingested/processed-inbox-archive/2026-08-21/2026-08-21-official-government-style-manuals/completed-inbox-sources/_imports/2026-08-21-official-government-style-manuals/source-root/manifests/rights-review.json",
+            "sha256": "e83ac258276fb022502f8ad83bbffa90af5958de9a4a4ef6e1ba529574db155e"
+          },
+          "scope": "Federal Register rules, proposed rules, notices",
+          "source_id": "OFR-DDH-2018-R2.2",
+          "source_sha256": "23228934343294b0cd9785703bf287a86258ec716ecd62d9332ee09cb695ebc6"
+        },
+        {
+          "acquired_at": "2026-08-22T03:49:59Z",
+          "completion_evidence": {
+            "path": "/mnt/cloud/onedrive/projects/DAVE-AI/hammerTime/json/intake-manifests/2026-08-21-official-government-style-manuals-completion-evidence.json",
+            "sha256": "91b3a6958f8f0d7c6e80a3d9b80fbebef6c14f85c90691fb0701d51952571179"
+          },
+          "currentness": "currentness stated in routing",
+          "issuing_body": "Office of the Federal Register",
+          "normalized_artifact": {
+            "path": "reference/intake/2026-08-21-official-government-style-manuals/documents/ofr-incorporation-by-reference-handbook-2023-pdf.md",
+            "sha256": "51e132214191b1dec4b46c9134b7027ee824ac98db3e53155ec0738096f170c1"
+          },
+          "official_artifact_url": "https://www.archives.gov/files/federal-register/write/handbook/ibr.pdf",
+          "official_landing_url": "https://www.archives.gov/federal-register/write/ibr",
+          "release_reference": {
+            "path": "/mnt/cloud/onedrive/projects/DAVE-AI/hammerTime/json/releases/corpus-release-dev-20260824-official-drafting-standards-candidate-2.json",
+            "release_id": "dev-20260824-official-drafting-standards-candidate-2",
+            "sha256": "550105e4c4b8fb33d3c4c5421e1c28b57f9048524bef7a01f2ab2a4fbf88308f"
+          },
+          "rights_record": {
+            "decision": "cleared_for_internal_ingest",
+            "path": "/mnt/cloud/onedrive/hammertime-Ingested/processed-inbox-archive/2026-08-21/2026-08-21-official-government-style-manuals/completed-inbox-sources/_imports/2026-08-21-official-government-style-manuals/source-root/manifests/rights-review.json",
+            "sha256": "e83ac258276fb022502f8ad83bbffa90af5958de9a4a4ef6e1ba529574db155e"
+          },
+          "scope": "incorporation by reference in the Code of Federal Regulations",
+          "source_id": "OFR-IBR-2023",
+          "source_sha256": "42f4d8dff64dea49152d3f54aa104febabc2c511e603898b800e687a9c7a53cd"
+        },
+        {
+          "acquired_at": "2026-08-22T03:50:02Z",
+          "completion_evidence": {
+            "path": "/mnt/cloud/onedrive/projects/DAVE-AI/hammerTime/json/intake-manifests/2026-08-21-official-government-style-manuals-completion-evidence.json",
+            "sha256": "91b3a6958f8f0d7c6e80a3d9b80fbebef6c14f85c90691fb0701d51952571179"
+          },
+          "currentness": "current; cancels COMDTINST M5216.4D",
+          "issuing_body": "U.S. Coast Guard",
+          "normalized_artifact": {
+            "path": "reference/intake/2026-08-21-official-government-style-manuals/documents/uscg-correspondence-manual-2024-pdf.md",
+            "sha256": "fc6772965a4bbff509fc3355776d56d220cb5abd8e7ce73247348b21554b632a"
+          },
+          "official_artifact_url": "https://media.defense.gov/2024/Apr/02/2003427453/-1/-1/0/CI_5216_4E.PDF",
+          "official_landing_url": "https://www.dcms.uscg.mil/Our-Organization/Assistant-Commandant-for-Command-Control-Communications-Cyber-and-Intelligence-C4IT-CG-6/Office-of-Information-Management-CG-61/About-CG-Directives-System/",
+          "release_reference": {
+            "path": "/mnt/cloud/onedrive/projects/DAVE-AI/hammerTime/json/releases/corpus-release-dev-20260824-official-drafting-standards-candidate-2.json",
+            "release_id": "dev-20260824-official-drafting-standards-candidate-2",
+            "sha256": "550105e4c4b8fb33d3c4c5421e1c28b57f9048524bef7a01f2ab2a4fbf88308f"
+          },
+          "rights_record": {
+            "decision": "cleared_for_internal_ingest",
+            "path": "/mnt/cloud/onedrive/hammertime-Ingested/processed-inbox-archive/2026-08-21/2026-08-21-official-government-style-manuals/completed-inbox-sources/_imports/2026-08-21-official-government-style-manuals/source-root/manifests/rights-review.json",
+            "sha256": "e83ac258276fb022502f8ad83bbffa90af5958de9a4a4ef6e1ba529574db155e"
+          },
+          "scope": "USCG electronic and paper correspondence",
+          "source_id": "USCG-CORR-2024",
+          "source_sha256": "2410e971aebf6de25071b71b6b76668a62bbacb8da6d304db5e5519b77ace7c0"
+        },
+        {
+          "acquired_at": "2026-08-22T03:51:37Z",
+          "completion_evidence": {
+            "path": "/mnt/cloud/onedrive/projects/DAVE-AI/hammerTime/json/intake-manifests/2026-08-21-official-government-style-manuals-completion-evidence.json",
+            "sha256": "91b3a6958f8f0d7c6e80a3d9b80fbebef6c14f85c90691fb0701d51952571179"
+          },
+          "currentness": "historical; never current",
+          "issuing_body": "White House, Ford Administration",
+          "normalized_artifact": {
+            "path": "reference/intake/2026-08-21-official-government-style-manuals/documents/white-house-correspondence-manual-historical-ford-pdf.md",
+            "sha256": "fdda81133b2115ebf20fa177a44c5ab40fbdcf72fbf73448727c360d181c7cd8"
+          },
+          "official_artifact_url": "https://www.fordlibrarymuseum.gov/sites/default/files/pdf_documents/library/document/0120/4527504.pdf",
+          "official_landing_url": "https://www.fordlibrarymuseum.gov/digital-research-room/library-collections",
+          "release_reference": {
+            "path": "/mnt/cloud/onedrive/projects/DAVE-AI/hammerTime/json/releases/corpus-release-dev-20260824-official-drafting-standards-candidate-2.json",
+            "release_id": "dev-20260824-official-drafting-standards-candidate-2",
+            "sha256": "550105e4c4b8fb33d3c4c5421e1c28b57f9048524bef7a01f2ab2a4fbf88308f"
+          },
+          "rights_record": {
+            "decision": "cleared_for_internal_ingest",
+            "path": "/mnt/cloud/onedrive/hammertime-Ingested/processed-inbox-archive/2026-08-21/2026-08-21-official-government-style-manuals/completed-inbox-sources/_imports/2026-08-21-official-government-style-manuals/source-root/manifests/rights-review.json",
+            "sha256": "e83ac258276fb022502f8ad83bbffa90af5958de9a4a4ef6e1ba529574db155e"
+          },
+          "scope": "historical executive correspondence",
+          "source_id": "WH-CORR-HIST",
+          "source_sha256": "da509600d3c650c9ea747a1d2e1d48e935d8e638b4cdf111381302cc5346228b"
+        }
+      ],
+      "source_count": 14
+    }
+  },
+  "card": "4a1c5428",
+  "checks": {
+    "acquisition_timestamps": "14 of 14",
+    "ascii_dash": "passed",
+    "completion_evidence": "14 of 14",
+    "exact_source_hashes": "14 of 14",
+    "json_parse": "passed",
+    "normalized_artifacts": "14 of 14",
+    "official_urls": "14 of 14",
+    "release_references": "14 of 14",
+    "rights_records": "14 of 14",
+    "source_join": "14 of 14"
+  },
+  "generated_at": "2026-08-27T04:00:37.925417+00:00",
+  "limitations": [
+    "This parent closeout verifies the bounded dev release evidence. It does not authorize UAT, production, external action, or a new promotion."
+  ],
+  "safety": {
+    "automerge": false,
+    "commit": false,
+    "config_mutation": false,
+    "deploy": false,
+    "human_signoff_written": false,
+    "live_execution": false,
+    "live_gateway_mutation": false,
+    "merge": false,
+    "push": false,
+    "repository_mutation": "evidence artifact only",
+    "repository_visibility_changed": false,
+    "restart": false
+  },
+  "schema_version": "sklegal-sprint-6-parent-closeout-v1",
+  "structural_observation": {
+    "leaf_cards": [
+      {
+        "id": "74b36366",
+        "status": "done",
+        "task": "SKL-S6-01"
+      },
+      {
+        "id": "d11a97c8",
+        "status": "done",
+        "task": "SKL-S6-02"
+      },
+      {
+        "id": "088c52f5",
+        "status": "done",
+        "task": "SKL-S6-03"
+      },
+      {
+        "id": "1ed3e1a6",
+        "status": "done",
+        "task": "SKL-S6-04"
+      },
+      {
+        "id": "0ad49216",
+        "status": "done",
+        "task": "SKL-S6-05"
+      },
+      {
+        "id": "8ddb737e",
+        "status": "done",
+        "task": "SKL-S6-05A"
+      }
+    ],
+    "note": "Lifecycle state is recorded only as structural observation. The verdict is based on the separate hashed evidence below.",
+    "source": "CardStore folded snapshot from skcapstone coord kanban --json"
+  },
+  "verdict": "PASS"
+}
