@@ -10,6 +10,20 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ### Fixed
 
+
+- `coord link` now refuses a BLOCKED verdict that does not record `blocked_on`
+  with a category (dependency, card, human, capability) AND the exact thing it
+  refers to. Measured on the live board 2026-08-27: of 39 open cards whose latest
+  outcome was BLOCKED, 18 were the literal word and 20 more named no `blocked_on`
+  at all, so that pool could not drain. Only outcome-shaped keys with a value
+  beginning BLOCKED are validated; PASS verdicts and pr/commit/artifact links are
+  untouched. Shape is deliberately tolerant: JSON, prose and key=value all pass.
+  A referent for `dependency` or `card` must now be an actual card id: a claim
+  that another card is in the way is only checkable if that card is named.
+  `blocked_on=card referent=ac:1` is refused, because `ac:1` is an acceptance
+  criterion and no query returns it. `human` and `capability` keep free-form
+  referents, since an approval name has no id and demanding one would push
+  workers back toward recording nothing at all.
 - `validate_task_id` now accepts ITIL-prefixed card IDs (`inc-`, `prb-`, `chg-`).
   The hex-only pattern rejected all 314 such cards in the live store, so
   `coord release-claim` could not release a claim on an incident, problem or
