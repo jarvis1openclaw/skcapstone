@@ -1,0 +1,186 @@
+{
+  "api_authorization": {
+    "authorized_matter": true,
+    "cross_matter_denied": true,
+    "cross_tenant_denied": true,
+    "revoked_session_denied": true
+  },
+  "backup_restore": {
+    "core": {
+      "pass": true,
+      "restore_rows": 4,
+      "sha256": "d947293b65c4deda8e32392f1e993b96790251621993bed9d60646df04ab9f34"
+    },
+    "retrieval": {
+      "pass": true,
+      "restore_rows": 1,
+      "sha256": "3280575f3cf0535a0868606324c4683766a37eb2a09afeb0e5139725391e9e90"
+    }
+  },
+  "browser": {
+    "compactLayout": {
+      "labelledScrollRegions": 3,
+      "pageOverflow": false,
+      "width": 390
+    },
+    "corpusPath": "/corpus?matterId=44444444-4444-4444-8444-444444444441",
+    "csp": "default-src 'self'; base-uri 'none'; frame-ancestors 'none'; form-action 'self'; object-src 'none'",
+    "cspConsoleEvents": 0,
+    "matterPath": "/matters/44444444-4444-4444-8444-444444444441",
+    "namedAccessibilityGroups": 7,
+    "networkFailures": 0,
+    "reloadPath": "/matters/44444444-4444-4444-8444-444444444441",
+    "status": "PASS",
+    "storage": {
+      "cookie": "",
+      "local": [],
+      "session": []
+    }
+  },
+  "card": "c0bc2c68",
+  "duration_seconds": 25.439,
+  "feature_readback": {
+    "activity_exports": 1,
+    "activity_idempotency": 2,
+    "activity_outbox": 3,
+    "agent_audit": 3,
+    "agent_idempotency": 3,
+    "artifact_audit": 2,
+    "artifact_idempotency": 1,
+    "artifact_outbox": 2,
+    "authorization_audit": 41,
+    "task_audit": 3,
+    "task_idempotency": 3,
+    "task_outbox": 3,
+    "work_product_audit": 3,
+    "work_product_idempotency": 3,
+    "work_product_outbox": 3
+  },
+  "limitations": [
+    "public-synthetic corpus only",
+    "simulated connectors only",
+    "optional AGE remains activation-gated"
+  ],
+  "migration_replay": {
+    "pins_equal": true,
+    "readback": {
+      "audit": 0,
+      "outbox": 1,
+      "pgvector": 1,
+      "projections": 1,
+      "records": 4
+    }
+  },
+  "outages": {
+    "core_failed_closed": true,
+    "core_restart_recovered": true,
+    "projection_lag_workspace_safe": true,
+    "retrieval_failed_closed": true,
+    "retrieval_workspace_safe": true,
+    "stale_policy_failed_closed": true
+  },
+  "pins": {
+    "fixture_sha256": "4b14516539289255daca9065dd28060a9e96aea365faec9ecbd1a679bdb47742",
+    "projection_sha256": "90580aa438825b4fcdfcf58a5e3339decdaf1749bcaf23928da55bc414e69e34"
+  },
+  "projection_rebuild": {
+    "actual_sha256": "90580aa438825b4fcdfcf58a5e3339decdaf1749bcaf23928da55bc414e69e34",
+    "expected_sha256": "90580aa438825b4fcdfcf58a5e3339decdaf1749bcaf23928da55bc414e69e34",
+    "idempotent_rows": 1,
+    "pass": true
+  },
+  "readback_after": {
+    "audit": 48,
+    "outbox": 1,
+    "pgvector": 1,
+    "projections": 1,
+    "records": 4
+  },
+  "readback_before": {
+    "audit": 0,
+    "outbox": 1,
+    "pgvector": 1,
+    "projections": 1,
+    "records": 4
+  },
+  "reset_reseed": {
+    "pins_equal": true,
+    "readback": {
+      "audit": 0,
+      "outbox": 1,
+      "pgvector": 1,
+      "projections": 1,
+      "records": 4
+    }
+  },
+  "revocation_revision": "5adb8c3d42601f14dc3c467830d23dcc75ffae17236d02c6bb26c6e31b1c3c8e",
+  "revocation_rows": 1,
+  "rls": {
+    "cross_matter": true,
+    "cross_tenant": true
+  },
+  "rollback": "Stop the exact task project and remove only its two named volumes.",
+  "safe_state": {
+    "task_containers_absent": true,
+    "task_volumes_absent": true
+  },
+  "source_commit": "76a293802259bf66239fe780c9f7a20f4a993fda",
+  "source_tree": "6dc1d5f233a88fd18091d54b8225dc5fe30e3008",
+  "status": "PASS",
+  "topology": {
+    "core_port_loopback": 34159,
+    "retrieval_port_loopback": 42323,
+    "separate_admins": true,
+    "separate_app_roles": true,
+    "separate_networks": true,
+    "separate_volumes": true
+  },
+  "v2_openapi": {
+    "exact_matches": 21,
+    "manifest_sha256": "0857b0642c49531ae615362b7a40785e21aa8676a933ea6a27a5f1f057e11c66",
+    "openapi_sha256": "1555cec46c8143e0c4f69210b8ccf0f91ea90a9cea62166d645893462fb820b6",
+    "operation_ids_unique": true,
+    "required": 21
+  },
+  "v2_operations": {
+    "all_21_succeeded": true,
+    "decision_bound_replay_conflicts": [
+      "create_activity_export"
+    ],
+    "idempotency_replays": [
+      "compute_deadline",
+      "create_analysis_run",
+      "create_artifact_intake",
+      "create_challenge",
+      "create_simulation_handoff",
+      "create_work_product_version",
+      "decide_approval",
+      "decide_recommendation",
+      "upsert_task",
+      "validate_work_product"
+    ],
+    "operations": {
+      "compute_deadline": 201,
+      "create_activity_export": 201,
+      "create_analysis_run": 201,
+      "create_artifact_intake": 201,
+      "create_challenge": 200,
+      "create_simulation_handoff": 201,
+      "create_work_product_version": 200,
+      "decide_approval": 200,
+      "decide_recommendation": 200,
+      "get_agent_run": 200,
+      "get_artifact": 200,
+      "get_claim_ledger": 200,
+      "get_corpus_span": 200,
+      "get_joined_analysis": 200,
+      "get_work_product": 200,
+      "get_workspace": 200,
+      "list_activity": 200,
+      "list_recommendations": 200,
+      "search_corpus": 200,
+      "upsert_task": 201,
+      "validate_work_product": 200
+    }
+  }
+}
