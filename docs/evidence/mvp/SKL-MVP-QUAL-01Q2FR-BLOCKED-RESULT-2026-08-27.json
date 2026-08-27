@@ -1,0 +1,104 @@
+{
+  "card": "a4ac0192",
+  "claim_owner": "codex-sol-a4ac0192",
+  "dependency": {
+    "card": "36ce9b05",
+    "status": "complete"
+  },
+  "finding": {
+    "id": "durable_browser_capauth_route_coverage",
+    "missing_frozen_operation_credentials": 17,
+    "root_cause": "The production browser session defines exact request-bound capabilities for only four of the 21 frozen operations.",
+    "session_request_pairs_total": 8,
+    "stock_qualifier_executes_missing_operations": false,
+    "verdict_impact": "All 21 operations cannot execute through the reviewed production composition."
+  },
+  "hashes": {
+    "changed_implementation_files_sha256": "3414457a37d8511add83721ece3f212d2c793ac599f11bec6ad85edc76387268",
+    "current_openapi_sha256": "1555cec46c8143e0c4f69210b8ccf0f91ea90a9cea62166d645893462fb820b6",
+    "frozen_v2_manifest_sha256": "0857b0642c49531ae615362b7a40785e21aa8676a933ea6a27a5f1f057e11c66",
+    "implementation_archive_sha256": "f9f39b5a59126870c2b71a94164b8268a2f1861e36f564536e3e9e48d1051ec1",
+    "independent_authorization_probe_result_sha256": "7a823a9d85ebb090fbcaf9667f95ed86cfbf0ca8fbc5b80e2f10e57930b713bc",
+    "independent_original_openapi_sha256": "b318210749206ffcf6fa54744f9baacef47df3479e2d7bfb59068422cd7cc2f1",
+    "independent_stock_result_sha256": "00e279ac2dbc16858045821fcfa857330cff373850f806e4e3e6fb513f4041b3",
+    "migration_bootstrap_manifest_aggregate_sha256": "75f8aacc924039a5b99166e03726f98b865ec19c4042c6c4842ac8f6384776ed",
+    "producer_result_sha256": "75315583e85ef472fca13d0ca6456267d61c5073b961e96517c6e9504b19fd27",
+    "retrieval_migration_manifest_sha256": "9d5b0c8118db9d4b56b9fc3ec432800833bcc70f9693bc9cc7bf323215f4cdf6",
+    "core_migration_manifest_sha256": "08c517e51124d68585ba16fef9791afb5a73c90f883b128790327ad0bc899c35",
+    "reviewed_source_archive_sha256": "ce40aa8dea238b6247e0bce1b458efcb9ee7b6731e5a4283b036cf4f189dd7e2"
+  },
+  "limitations": [
+    "The repository has no card-specific Q2F or Q2FR TDD section; the durable integration and independent review TDD plus CardStore criteria governed the review.",
+    "The producer did not record the exact command for its claimed 400-test selection.",
+    "The independently regenerated original OpenAPI hash differs from the preserved historical report hash, while the 0-of-21 structural gap reproduces exactly.",
+    "The 17 inaccessible operations could not be validly executed because the production session cannot present their required capabilities."
+  ],
+  "live_operation_probes": [
+    {"method": "GET", "operation_id": "get_joined_analysis", "path": "/v1/matters/{matter_id}/analysis", "status": 403},
+    {"method": "POST", "operation_id": "create_analysis_run", "path": "/v1/matters/{matter_id}/agent-runs", "status": 403},
+    {"method": "GET", "operation_id": "get_agent_run", "path": "/v1/matters/{matter_id}/agent-runs/{agent_run_id}", "status": 403},
+    {"method": "POST", "operation_id": "create_challenge", "path": "/v1/matters/{matter_id}/claims/{claim_id}/challenges", "status": 403},
+    {"method": "GET", "operation_id": "list_recommendations", "path": "/v1/matters/{matter_id}/recommendations", "status": 403},
+    {"method": "POST", "operation_id": "decide_recommendation", "path": "/v1/matters/{matter_id}/recommendations/{recommendation_id}/decisions", "status": 403},
+    {"method": "POST", "operation_id": "create_artifact_intake", "path": "/v1/matters/{matter_id}/artifacts", "status": 403},
+    {"method": "GET", "operation_id": "get_artifact", "path": "/v1/matters/{matter_id}/artifacts/{artifact_id}", "status": 403},
+    {"method": "GET", "operation_id": "get_work_product", "path": "/v1/matters/{matter_id}/work-products/{work_product_id}", "status": 403},
+    {"method": "POST", "operation_id": "create_work_product_version", "path": "/v1/matters/{matter_id}/work-products/{work_product_id}/versions", "status": 403},
+    {"method": "POST", "operation_id": "validate_work_product", "path": "/v1/matters/{matter_id}/work-products/{work_product_id}/versions/{version_id}/validations", "status": 403},
+    {"method": "POST", "operation_id": "decide_approval", "path": "/v1/matters/{matter_id}/work-products/{work_product_id}/versions/{version_id}/approval-decisions", "status": 503},
+    {"method": "POST", "operation_id": "upsert_task", "path": "/v1/matters/{matter_id}/tasks", "status": 403},
+    {"method": "POST", "operation_id": "compute_deadline", "path": "/v1/matters/{matter_id}/deadlines", "status": 403},
+    {"method": "POST", "operation_id": "create_simulation_handoff", "path": "/v1/matters/{matter_id}/action-simulations", "status": 403},
+    {"method": "GET", "operation_id": "list_activity", "path": "/v1/matters/{matter_id}/activity", "status": 403},
+    {"method": "POST", "operation_id": "create_activity_export", "path": "/v1/matters/{matter_id}/activity-exports", "status": 403}
+  ],
+  "openapi": {
+    "exact_matches": 21,
+    "method_path_pairs_unique": true,
+    "operation_ids_unique": true,
+    "required": 21
+  },
+  "original_gap_reproduction": {
+    "exact_matches": 0,
+    "legacy_operation_ids": {
+      "get_claim_ledger": "claims_ledger",
+      "get_corpus_span": "corpus_span",
+      "get_workspace": "workspace_matters_workspace",
+      "search_corpus": "corpus_search"
+    },
+    "required": 21,
+    "required_pairs_absent": 17
+  },
+  "reviewed_source": {
+    "commit": "278d7af5277f95c2489c15ad7288009a7d4bc897",
+    "implementation_commit": "d2938d353ea77655a77d99107b04b2930c0f756e",
+    "implementation_tree": "b849b3d7c38d292e0749b097111dc3601a873fcc",
+    "tree": "68725be83f7a7429490d0d863004dbfab00761cb"
+  },
+  "safe_state": {
+    "implementation_source_changed": false,
+    "review_processes_absent": true,
+    "task_containers_absent": true,
+    "task_symlinks_absent": true,
+    "task_temporary_files_absent": true,
+    "task_volumes_absent": true
+  },
+  "secret_hygiene": {
+    "changed_source_findings": 0,
+    "credential_or_private_key_findings": 0,
+    "repository_evidence_hash_findings": 50,
+    "repository_metadata_keyword_findings": 1,
+    "repository_scan": "FAIL_INHERITED_EVIDENCE_FINDINGS"
+  },
+  "tests": {
+    "contract_and_route_composition": "PASS_44",
+    "focused_features": "PASS_347_ONE_WARNING",
+    "migration_manifest": "PASS_28",
+    "real_chrome_dual_postgresql": "PASS",
+    "ruff": "PASS",
+    "web": "PASS_24_FILES_258_TESTS",
+    "web_lint": "PASS",
+    "web_typecheck": "PASS"
+  },
+  "verdict": "BLOCKED"
+}
