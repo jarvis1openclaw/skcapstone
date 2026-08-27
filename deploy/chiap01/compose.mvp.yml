@@ -1,0 +1,56 @@
+name: sklegal-mvp
+
+services:
+  core:
+    image: postgres:17.7-alpine@sha256:a6d31f853205ce20d399df4e33a0b4c715672f232f4ee7440499747e6e02c126
+    environment:
+      POSTGRES_DB: sklegal_core
+      POSTGRES_USER: sklegal_core_admin
+      POSTGRES_PASSWORD: ${SKLEGAL_MVP_CORE_ADMIN_PASSWORD:?required}
+      SKLEGAL_APP_PASSWORD: ${SKLEGAL_MVP_CORE_APP_PASSWORD:?required}
+    ports:
+      - "127.0.0.1:${SKLEGAL_MVP_CORE_PORT:-15441}:5432"
+    volumes:
+      - core-data:/var/lib/postgresql/data
+      - ./mvp/core:/docker-entrypoint-initdb.d:ro
+    networks:
+      core-private:
+        aliases: [sklegal-core-pg]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U sklegal_core_admin -d sklegal_core"]
+      interval: 2s
+      timeout: 3s
+      retries: 30
+    restart: "no"
+
+  retrieval:
+    image: sklegal-pgvector:17.7-0.8.0-3d169f30@sha256:4281bcea53dd1fa0e7eb056f32ee040ee1592a5234007ef48daa69fda44cc88b
+    environment:
+      POSTGRES_DB: sklegal_retrieval
+      POSTGRES_USER: sklegal_retrieval_admin
+      POSTGRES_PASSWORD: ${SKLEGAL_MVP_RETRIEVAL_ADMIN_PASSWORD:?required}
+      SKLEGAL_APP_PASSWORD: ${SKLEGAL_MVP_RETRIEVAL_APP_PASSWORD:?required}
+    ports:
+      - "127.0.0.1:${SKLEGAL_MVP_RETRIEVAL_PORT:-15442}:5432"
+    volumes:
+      - retrieval-data:/var/lib/postgresql/data
+      - ./mvp/retrieval:/docker-entrypoint-initdb.d:ro
+    networks:
+      retrieval-private:
+        aliases: [sklegal-retrieval-pg]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U sklegal_retrieval_admin -d sklegal_retrieval"]
+      interval: 2s
+      timeout: 3s
+      retries: 30
+    restart: "no"
+
+networks:
+  core-private: {}
+  retrieval-private: {}
+
+volumes:
+  core-data:
+    name: ${SKLEGAL_MVP_CORE_VOLUME:?required}
+  retrieval-data:
+    name: ${SKLEGAL_MVP_RETRIEVAL_VOLUME:?required}

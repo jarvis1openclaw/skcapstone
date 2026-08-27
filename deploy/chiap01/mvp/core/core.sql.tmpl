@@ -1,0 +1,119 @@
+CREATE ROLE sklegal_core_app LOGIN NOSUPERUSER NOCREATEDB NOCREATEROLE
+  NOINHERIT NOBYPASSRLS PASSWORD :'app_password';
+
+CREATE SCHEMA sklegal_mvp AUTHORIZATION sklegal_core_admin;
+
+CREATE TABLE sklegal_mvp.principals (
+  tenant_id uuid NOT NULL,
+  principal_id uuid NOT NULL,
+  principal_type text NOT NULL,
+  subject text NOT NULL,
+  active boolean NOT NULL,
+  revision text NOT NULL CHECK (revision ~ '^[0-9a-f]{64}$'),
+  PRIMARY KEY (tenant_id, principal_id)
+);
+
+CREATE TABLE sklegal_mvp.matter_memberships (
+  tenant_id uuid NOT NULL,
+  matter_id uuid NOT NULL,
+  principal_id uuid NOT NULL,
+  PRIMARY KEY (tenant_id, matter_id, principal_id)
+);
+
+CREATE TABLE sklegal_mvp.records (
+  tenant_id uuid NOT NULL,
+  record_kind text NOT NULL,
+  record_id text NOT NULL,
+  matter_id uuid,
+  payload jsonb NOT NULL,
+  PRIMARY KEY (tenant_id, record_kind, record_id)
+);
+
+CREATE TABLE sklegal_mvp.browser_sessions (
+  session_sha256 text PRIMARY KEY CHECK (session_sha256 ~ '^[0-9a-f]{64}$'),
+  tenant_id uuid NOT NULL,
+  principal_id uuid NOT NULL,
+  csrf_sha256 text NOT NULL CHECK (csrf_sha256 ~ '^[0-9a-f]{64}$'),
+  csrf_token text NOT NULL,
+  expires_at timestamptz NOT NULL,
+  created_at timestamptz NOT NULL DEFAULT clock_timestamp()
+);
+
+CREATE TABLE sklegal_mvp.revocations (
+  tenant_id uuid NOT NULL,
+  credential_sha256 text NOT NULL CHECK (credential_sha256 ~ '^[0-9a-f]{64}$'),
+  revoked_at timestamptz NOT NULL DEFAULT clock_timestamp(),
+  PRIMARY KEY (tenant_id, credential_sha256)
+);
+
+CREATE TABLE sklegal_mvp.replay_reservations (
+  tenant_id uuid NOT NULL,
+  credential_sha256 text NOT NULL,
+  decision_id uuid NOT NULL,
+  expires_at timestamptz NOT NULL,
+  PRIMARY KEY (tenant_id, credential_sha256)
+);
+
+CREATE TABLE sklegal_mvp.audit_events (
+  sequence bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+  tenant_id uuid NOT NULL,
+  matter_id uuid,
+  event_kind text NOT NULL,
+  event_id uuid NOT NULL UNIQUE,
+  correlation_id uuid NOT NULL,
+  payload jsonb NOT NULL,
+  occurred_at timestamptz NOT NULL
+);
+
+CREATE TABLE sklegal_mvp.outbox (
+  sequence bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+  tenant_id uuid NOT NULL,
+  matter_id uuid NOT NULL,
+  idempotency_key text NOT NULL UNIQUE,
+  payload jsonb NOT NULL,
+  created_at timestamptz NOT NULL DEFAULT clock_timestamp()
+);
+
+CREATE TABLE sklegal_mvp.projection_registry (
+  tenant_id uuid NOT NULL,
+  matter_id uuid NOT NULL,
+  generation integer NOT NULL CHECK (generation > 0),
+  core_watermark bigint NOT NULL CHECK (core_watermark >= 0),
+  retrieval_watermark bigint NOT NULL CHECK (retrieval_watermark >= 0),
+  state text NOT NULL CHECK (state IN ('current', 'lagging', 'rebuilding')),
+  PRIMARY KEY (tenant_id, matter_id)
+);
+
+CREATE TABLE sklegal_mvp.policy_state (
+  tenant_id uuid PRIMARY KEY,
+  revision text NOT NULL,
+  stale boolean NOT NULL DEFAULT false,
+  revocation_watermark bigint NOT NULL DEFAULT 0
+);
+
+DO $$
+DECLARE table_name text;
+BEGIN
+  FOREACH table_name IN ARRAY ARRAY[
+    'principals', 'matter_memberships', 'records', 'browser_sessions',
+    'revocations', 'replay_reservations', 'audit_events', 'outbox',
+    'projection_registry', 'policy_state'
+  ] LOOP
+    EXECUTE format('ALTER TABLE sklegal_mvp.%I ENABLE ROW LEVEL SECURITY', table_name);
+    EXECUTE format('ALTER TABLE sklegal_mvp.%I FORCE ROW LEVEL SECURITY', table_name);
+    EXECUTE format(
+      'CREATE POLICY tenant_isolation ON sklegal_mvp.%I USING '
+      || '(tenant_id = nullif(current_setting(''sklegal.tenant_id'', true), '''')::uuid) '
+      || 'WITH CHECK '
+      || '(tenant_id = nullif(current_setting(''sklegal.tenant_id'', true), '''')::uuid)',
+      table_name
+    );
+  END LOOP;
+END $$;
+
+GRANT USAGE ON SCHEMA sklegal_mvp TO sklegal_core_app;
+GRANT SELECT ON ALL TABLES IN SCHEMA sklegal_mvp TO sklegal_core_app;
+GRANT INSERT, DELETE ON sklegal_mvp.browser_sessions TO sklegal_core_app;
+GRANT INSERT, DELETE ON sklegal_mvp.replay_reservations TO sklegal_core_app;
+GRANT INSERT ON sklegal_mvp.audit_events TO sklegal_core_app;
+GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA sklegal_mvp TO sklegal_core_app;

@@ -429,7 +429,7 @@ def _start(args: argparse.Namespace) -> int:
             str(python),
             "-m",
             "uvicorn",
-            "sklegal_api.public_synthetic_preview:app",
+            args.api_module,
             "--host",
             LOOPBACK,
             "--port",
@@ -529,6 +529,10 @@ def _parser() -> argparse.ArgumentParser:
     start.add_argument("--candidate-commit", required=True)
     start.add_argument("--mode", required=True)
     start.add_argument("--api-port", type=int, default=15172)
+    start.add_argument(
+        "--api-module",
+        default="sklegal_api.public_synthetic_preview:app",
+    )
     start.add_argument("--web-port", type=int, default=15173)
     start.set_defaults(handler=_start)
     for name, handler in (("stop", _stop), ("status", _status), ("reset", _reset)):

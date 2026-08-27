@@ -78,7 +78,11 @@ async function poll(cdp, expression, expected) {
     if (last === expected) return;
     await new Promise((resolve) => setTimeout(resolve, 100));
   }
-  throw new QualificationError(`expected ${expected}, received ${last}`);
+  const location = await cdp.evaluate("location.pathname + location.search");
+  const body = await cdp.evaluate("document.body.innerText.slice(0, 500)");
+  throw new QualificationError(
+    `expected ${expected}, received ${last} at ${location}: ${body}`,
+  );
 }
 
 async function waitForPage(debugPort) {
