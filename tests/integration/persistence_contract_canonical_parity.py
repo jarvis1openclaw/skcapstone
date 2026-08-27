@@ -445,7 +445,7 @@ class PersistenceContract08CanonicalParityTests(PersistenceContractBase):
         )
 
     def test_11_every_domain_entity_round_trips_through_rls(self) -> None:
-        role = "sklegal_test_alpha_one"
+        role = "sklegal_test_fresh_writer"
         self._psql(
             role,
             """
