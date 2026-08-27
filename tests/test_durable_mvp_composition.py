@@ -68,7 +68,8 @@ def test_production_runtime_contains_no_in_memory_dependency() -> None:
     runtime = RUNTIME.read_text(encoding="utf-8")
     assert 'mode="production"' in runtime
     assert "InMemory" not in runtime
-    assert "capabilities_by_request=self._capabilities()" in runtime
+    assert "self._capability_lock = Lock()" in runtime
+    assert "with self._capability_lock" in runtime
     assert "capabilities_by_request" not in CORE_SQL.read_text(encoding="utf-8")
     assert "FileTrustedIssuerBackend" in runtime
     assert "DurableAuthorizationAuditSink" in runtime

@@ -15,7 +15,7 @@ from collections.abc import Callable, Iterator, Mapping
 from contextlib import contextmanager
 from datetime import UTC, datetime
 from pathlib import Path
-from threading import local
+from threading import Lock, local
 from typing import Any, cast
 from uuid import UUID
 
@@ -336,6 +336,10 @@ class DurableBrowserSessions:
     def __init__(self, core: PostgresBoundary, issuer: CapabilityIssuer) -> None:
         self._core = core
         self._issuer = issuer
+        # A browser Matter load requests workspace and claims concurrently.
+        # Keep gpg-agent signing serialized so both requests receive complete,
+        # valid request-bound capability sets.
+        self._capability_lock = Lock()
         self._principal = PrincipalContext(
             principal_id=PRINCIPAL_ID,
             principal_type=PrincipalType.HUMAN,
@@ -434,6 +438,8 @@ class DurableBrowserSessions:
     def _authentication(
         self, session_id: str, csrf_token: str, expires_at: datetime
     ) -> BrowserSessionAuthentication:
+        with self._capability_lock:
+            capabilities = self._capabilities()
         return BrowserSessionAuthentication(
             session_id=session_id,
             principal=self._principal,
@@ -447,7 +453,7 @@ class DurableBrowserSessions:
                 "claim.review",
                 "corpus.read",
             ),
-            capabilities_by_request=self._capabilities(),
+            capabilities_by_request=capabilities,
             csrf_digest=_digest(csrf_token),
             csrf_token=csrf_token,
             expires_at=expires_at,

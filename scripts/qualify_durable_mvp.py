@@ -744,6 +744,22 @@ def qualify(output: Path) -> dict[str, Any]:
         )
         if workspace_status != 200:
             raise QualificationError("durable workspace request failed")
+        cross_matter_status, _, _ = _http(
+            "http://127.0.0.1:{}/v1/matters/{}/workspace".format(
+                api_port, UUID("bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb")
+            ),
+            headers=request_headers,
+        )
+        cross_tenant_headers = {
+            **request_headers,
+            "X-SKLegal-Tenant": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+        }
+        cross_tenant_status, _, _ = _http(
+            f"http://127.0.0.1:{api_port}/v1/matters/{MATTER_ID}/workspace",
+            headers=cross_tenant_headers,
+        )
+        if cross_matter_status != 403 or cross_tenant_status != 403:
+            raise QualificationError("API cross-scope authorization did not deny")
 
         _compose(env, project, "stop", "retrieval")
         safe_workspace, _, _ = _http(
@@ -842,6 +858,17 @@ def qualify(output: Path) -> dict[str, Any]:
         backup_restore = _backup_restore(project)
         if not all(item["pass"] for item in backup_restore.values()):
             raise QualificationError("backup restore readback failed")
+        signout_status, _, _ = _http(
+            f"http://127.0.0.1:{api_port}/v1/session",
+            "DELETE",
+            headers=request_headers,
+        )
+        revoked_session_status, _, _ = _http(
+            f"http://127.0.0.1:{api_port}/v1/matters/{MATTER_ID}/workspace",
+            headers=request_headers,
+        )
+        if signout_status != 204 or revoked_session_status != 401:
+            raise QualificationError("revoked browser session did not fail closed")
         readback_after = _readback(core_admin_dsn, retrieval_admin_dsn)
         _reset(core_admin_dsn, retrieval_admin_dsn)
         reset_pins = _seed(core_admin_dsn, retrieval_admin_dsn)
@@ -886,6 +913,12 @@ def qualify(output: Path) -> dict[str, Any]:
                 "readback": replay_readback,
             },
             "rls": rls,
+            "api_authorization": {
+                "authorized_matter": workspace_status == 200,
+                "cross_matter_denied": cross_matter_status == 403,
+                "cross_tenant_denied": cross_tenant_status == 403,
+                "revoked_session_denied": revoked_session_status == 401,
+            },
             "browser": browser,
             "outages": {
                 "retrieval_workspace_safe": True,
