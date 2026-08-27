@@ -152,9 +152,7 @@ class TestAgentRunsRouter:
         assert run["request"]["publicSynthetic"] is True
         assert run["route"]["logicalRouteId"] == "sklegal.corpus-analysis"
 
-        list_token = self.token(
-            "list", Capability.MATTER_READ, Purpose.MATTER_MANAGEMENT
-        )
+        list_token = self.token("list", Capability.CLAIM_REVIEW, Purpose.CLAIM_REVIEW)
         listed = self.client.get(
             f"/v1/matters/{MATTER_ID}/agent-runs",
             headers=self.auth(list_token),
@@ -162,7 +160,7 @@ class TestAgentRunsRouter:
         assert listed.status_code == 200
         assert [item["runId"] for item in listed.json()] == [run["runId"]]
 
-        get_token = self.token("get", Capability.MATTER_READ, Purpose.MATTER_MANAGEMENT)
+        get_token = self.token("get", Capability.CLAIM_REVIEW, Purpose.CLAIM_REVIEW)
         got = self.client.get(
             f"/v1/matters/{MATTER_ID}/agent-runs/{run['runId']}",
             headers=self.auth(get_token),

@@ -12,6 +12,7 @@ from uuid import NAMESPACE_URL, UUID, uuid4, uuid5
 
 import psycopg
 from fastapi import APIRouter
+from psycopg.types.json import Jsonb
 from sklegal_capauth import (
     VERIFIER_POLICY_VERSION,
     Capability,
@@ -145,7 +146,20 @@ class PsycopgSession:
     def execute(
         self, statement: str, parameters: Mapping[str, object]
     ) -> list[Mapping[str, object]]:
-        return list(self._connection.execute(statement, parameters).fetchall())
+        adapted = {
+            key: Jsonb(value)
+            if isinstance(value, dict)
+            or key in {"derived", "proposed_links"}
+            or (
+                isinstance(value, list)
+                and any(isinstance(item, dict) for item in value)
+            )
+            else list(value)
+            if isinstance(value, tuple)
+            else value
+            for key, value in parameters.items()
+        }
+        return list(self._connection.execute(statement, adapted).fetchall())
 
 
 class PostgresArtifactAdapter:

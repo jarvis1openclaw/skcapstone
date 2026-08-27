@@ -49,7 +49,7 @@ def reviewer():  # type: ignore[no-untyped-def]
 
 
 def reader():  # type: ignore[no-untyped-def]
-    return actor(capability="matter.read", purpose="matter_management")
+    return actor(capability="claim.review", purpose="claim_review")
 
 
 def start_record():  # type: ignore[no-untyped-def]
@@ -514,7 +514,7 @@ def test_stale_versions_same_model_challenger_and_stale_reviewer_policy_are_deni
         )
 
 
-def test_read_requires_read_capability_and_returns_scoped_record() -> None:
+def test_read_requires_review_capability_and_returns_scoped_record() -> None:
     service, _, _, initial = start_record()
     assert (
         service.get(matter_id=MATTER_ID, run_id=initial.run_id, actor=reader())

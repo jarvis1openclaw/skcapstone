@@ -48,10 +48,11 @@ GRANT SELECT, INSERT ON ALL TABLES IN SCHEMA sklegal_artifact,
   sklegal_task_deadline, sklegal_governed_corpus TO sklegal_core_app;
 GRANT SELECT ON sklegal_activity.entries,
   sklegal_activity.export_proposals TO sklegal_core_app;
-GRANT INSERT, UPDATE ON sklegal_legal.work_product_feature_identities
+GRANT SELECT, INSERT, UPDATE ON sklegal_legal.work_product_feature_identities
   TO sklegal_core_app;
-GRANT INSERT ON sklegal_legal.work_product_feature_versions,
-  sklegal_legal.work_product_feature_idempotency,
+GRANT SELECT, INSERT ON sklegal_legal.work_product_feature_versions,
+  sklegal_legal.work_product_feature_idempotency TO sklegal_core_app;
+GRANT INSERT ON
   sklegal_audit.work_product_feature_events,
   sklegal_audit.work_product_feature_outbox TO sklegal_core_app;
 GRANT EXECUTE ON FUNCTION
@@ -67,4 +68,7 @@ GRANT EXECUTE ON FUNCTION
   TO sklegal_core_app;
 GRANT EXECUTE ON ALL FUNCTIONS IN SCHEMA sklegal_activity
   TO sklegal_core_app;
+GRANT EXECUTE ON FUNCTION sklegal_governed_corpus.current_source_v1(
+  uuid, uuid, uuid, text, integer, text, text, integer
+) TO sklegal_core_app;
 SQL

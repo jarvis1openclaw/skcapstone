@@ -75,6 +75,21 @@ def test_production_runtime_contains_no_in_memory_dependency() -> None:
     assert "DurableAuthorizationAuditSink" in runtime
 
 
+def test_approval_capability_uses_the_trusted_current_version_binding() -> None:
+    runtime = RUNTIME.read_text(encoding="utf-8")
+    for required in (
+        "V2_REQUEST_CAPABILITIES.resolve(request.method, request.url.path)",
+        "version.current_version_number AS resource_version",
+        "version.current_content_sha256 AS resource_sha256",
+        "identity.work_product_id = %s",
+        "version.current_version_id = %s",
+        "resolved.bind_exact_version(",
+        "resource_version=resolved.resource_version",
+        "resource_sha256=resolved.resource_sha256",
+    ):
+        assert required in runtime
+
+
 def test_qualification_covers_recovery_and_exact_cleanup() -> None:
     qualification = QUALIFICATION.read_text(encoding="utf-8")
     for required in (

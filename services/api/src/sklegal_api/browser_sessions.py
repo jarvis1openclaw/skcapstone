@@ -74,9 +74,12 @@ class BrowserSessionAuthentication:
     csrf_digest: str
     csrf_token: str
     expires_at: datetime
+    capability_resolver: Callable[[Request], str | None] | None = None
 
     def presented_for(self, request: Request) -> PresentedCapability | None:
         raw = self.capabilities_by_request.get((request.method, request.url.path))
+        if raw is None and self.capability_resolver is not None:
+            raw = self.capability_resolver(request)
         if raw is None:
             return None
         return parse_authorization_bearer(raw)

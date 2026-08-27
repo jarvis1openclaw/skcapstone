@@ -74,7 +74,7 @@ ORDER BY version DESC
 LIMIT 1
 """.strip()
 
-LOCK_CURRENT_RUN_SQL = CURRENT_RUN_SQL + "\nFOR UPDATE"
+LOCK_CURRENT_RUN_SQL = CURRENT_RUN_SQL
 
 LIST_RUNS_SQL = """
 SELECT record
@@ -314,7 +314,7 @@ class PostgresAgentRunRepository:
         record = validate_write_evidence(record, audit)
 
         def operation(tx: SqlTransaction) -> AgentRunRecord:
-            self._lock(tx, record.tenant_id, record.matter_id, idempotency_key)
+            self._lock(tx, record.tenant_id, record.matter_id, record.run_id)
             existing = tx.fetch_one(
                 IDEMPOTENCY_SQL,
                 (record.tenant_id, record.matter_id, idempotency_key),

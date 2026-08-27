@@ -2,13 +2,17 @@
 
 from __future__ import annotations
 
+import inspect
 from collections.abc import Iterable, Mapping
 from functools import wraps
 from pathlib import Path
 from typing import Any
 
 from fastapi import APIRouter, Request
+from fastapi.params import Depends as DependsParameter
 from fastapi.routing import APIRoute
+
+from .v2_request_capabilities import V2_REQUEST_CAPABILITIES
 
 MANIFEST_PATH = (
     Path(__file__).resolve().parents[4]
@@ -34,7 +38,9 @@ def _manifest_operations() -> tuple[dict[str, str], ...]:
         operation_id = operation.get("operation_id")
         method = operation.get("method")
         path = operation.get("path")
-        if not all(isinstance(item, str) and item for item in (operation_id, method, path)):
+        if not all(
+            isinstance(item, str) and item for item in (operation_id, method, path)
+        ):
             raise MvpRouteCompositionError("V2 operation manifest is invalid")
         result.append({"operation_id": operation_id, "method": method, "path": path})
     return tuple(result)
@@ -114,6 +120,16 @@ def _adapt_route(
     aliases: Mapping[str, str],
 ) -> APIRoute:
     endpoint = route.endpoint
+    reviewed = next(
+        (
+            item
+            for item in V2_REQUEST_CAPABILITIES.reviewed
+            if item.operation_id == operation_id
+        ),
+        None,
+    )
+    if reviewed is None:
+        raise MvpRouteCompositionError(f"unknown V2 operation: {operation_id}")
 
     @wraps(endpoint)
     async def adapted_endpoint(*args: Any, **kwargs: Any) -> Any:
@@ -133,6 +149,28 @@ def _adapt_route(
             return await endpoint(*args, **kwargs)
         finally:
             request.scope["path_params"] = original
+
+    signature = inspect.signature(endpoint)
+    parameters = []
+    for parameter in signature.parameters.values():
+        default = parameter.default
+        rebind = (
+            getattr(default.dependency, "for_api_operation", None)
+            if isinstance(default, DependsParameter)
+            else None
+        )
+        if callable(rebind):
+            default = DependsParameter(
+                rebind(
+                    operation_id=operation_id,
+                    capability=reviewed.capability,
+                    purpose=reviewed.purpose,
+                ),
+                use_cache=default.use_cache,
+            )
+            parameter = parameter.replace(default=default)
+        parameters.append(parameter)
+    adapted_endpoint.__signature__ = signature.replace(parameters=parameters)
 
     return APIRoute(
         path=path,
@@ -221,9 +259,7 @@ def compose_v2_feature_router(
     return selected
 
 
-def rename_operation_ids(
-    router: APIRouter, mapping: Mapping[str, str]
-) -> APIRouter:
+def rename_operation_ids(router: APIRouter, mapping: Mapping[str, str]) -> APIRouter:
     """Rename selected base routes while preserving their request contracts."""
 
     renamed = APIRouter()

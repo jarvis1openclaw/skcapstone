@@ -571,7 +571,7 @@ class AgentRunService:
 
     def get(self, *, matter_id: UUID, run_id: UUID, actor: RunActor) -> AgentRunRecord:
         self._require_operation(
-            actor, capability="matter.read", purpose="matter_management"
+            actor, capability="claim.review", purpose="claim_review"
         )
         self._require_member(actor, matter_id)
         try:
@@ -586,7 +586,7 @@ class AgentRunService:
 
     def list(self, *, matter_id: UUID, actor: RunActor) -> tuple[AgentRunRecord, ...]:
         self._require_operation(
-            actor, capability="matter.read", purpose="matter_management"
+            actor, capability="claim.review", purpose="claim_review"
         )
         self._require_member(actor, matter_id)
         try:

@@ -128,7 +128,7 @@ def build_agent_runs_router(
     async def list_runs(
         request: Request,
         authorized: AuthorizedContext = Depends(
-            dependency(Capability.MATTER_READ, Purpose.MATTER_MANAGEMENT, "list")
+            dependency(Capability.CLAIM_REVIEW, Purpose.CLAIM_REVIEW, "list")
         ),
     ) -> Any:
         return _run(
@@ -141,7 +141,7 @@ def build_agent_runs_router(
     async def get_run(
         request: Request,
         authorized: AuthorizedContext = Depends(
-            dependency(Capability.MATTER_READ, Purpose.MATTER_MANAGEMENT, "get")
+            dependency(Capability.CLAIM_REVIEW, Purpose.CLAIM_REVIEW, "get")
         ),
     ) -> Any:
         return _run(

@@ -1,13 +1,26 @@
 from __future__ import annotations
 
+from typing import cast
+
 import pytest
-from fastapi import APIRouter, FastAPI, Request
+from fastapi import APIRouter, Depends, FastAPI, Request
 from fastapi.routing import APIRoute
 from fastapi.testclient import TestClient
+from sklegal_api.capauth import ProtectedRouteDependency
 from sklegal_api.mvp_integration import (
     MvpRouteCompositionError,
     canonical_operation_ids,
     compose_v2_feature_router,
+)
+from sklegal_capauth import (
+    ApiCapabilityBoundary,
+    AuthorizedContext,
+    BoundaryScope,
+    Capability,
+    CapabilityAuthorizer,
+    PrincipalContext,
+    PrincipalType,
+    Purpose,
 )
 
 
@@ -104,8 +117,7 @@ def test_v2_adapter_maps_canonical_agent_run_path_parameter() -> None:
     app.include_router(
         compose_v2_feature_router(
             (router,),
-            existing_operation_ids=set(canonical_operation_ids())
-            - {"get_agent_run"},
+            existing_operation_ids=set(canonical_operation_ids()) - {"get_agent_run"},
         )
     )
     with TestClient(app) as client:
@@ -115,3 +127,47 @@ def test_v2_adapter_maps_canonical_agent_run_path_parameter() -> None:
         )
     assert response.status_code == 200
     assert response.json()["run_id"].endswith("2222")
+
+
+def test_v2_adapter_rebinds_protected_route_to_reviewed_contract() -> None:
+    legacy = ApiCapabilityBoundary(
+        authorizer=cast(CapabilityAuthorizer, object()),
+        route_name="agent_runs.get",
+        capability=Capability.MATTER_READ,
+        purpose=Purpose.MATTER_MANAGEMENT,
+    )
+
+    async def principal(_request: Request) -> PrincipalContext:
+        return PrincipalContext(
+            tenant_id="11111111-1111-4111-8111-111111111111",
+            principal_id="22222222-2222-4222-8222-222222222222",
+            principal_type=PrincipalType.HUMAN,
+        )
+
+    async def scope(_request: Request) -> BoundaryScope:
+        return BoundaryScope(tenant_id="11111111-1111-4111-8111-111111111111")
+
+    dependency = ProtectedRouteDependency(
+        boundary=legacy,
+        principal_resolver=principal,
+        scope_resolver=scope,
+    )
+    router = APIRouter()
+
+    async def endpoint(
+        request: Request,
+        _authorized: AuthorizedContext = Depends(dependency),
+    ) -> dict[str, str]:
+        return {"path": request.url.path}
+
+    router.get("/source/{matter_id}/{run_id}", operation_id="agent_runs_get")(endpoint)
+    composed = compose_v2_feature_router(
+        (router,),
+        existing_operation_ids=set(canonical_operation_ids()) - {"get_agent_run"},
+    )
+    route = cast(APIRoute, composed.routes[0])
+    rebound = cast(ProtectedRouteDependency, route.dependant.dependencies[0].call)
+    requirement = rebound._boundary.requirement
+    assert requirement.target == "api:get_agent_run"
+    assert requirement.capability is Capability.CLAIM_REVIEW
+    assert requirement.purpose is Purpose.CLAIM_REVIEW

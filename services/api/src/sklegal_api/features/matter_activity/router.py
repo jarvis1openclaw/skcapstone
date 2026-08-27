@@ -100,6 +100,57 @@ def _access(authorized: AuthorizedContext, matter_id: UUID) -> ActivityAccessCon
     )
 
 
+class _ActivityRouteDependency:
+    def __init__(self, protected: ProtectedRouteDependency) -> None:
+        self._protected = protected
+
+    def for_api_operation(
+        self,
+        *,
+        operation_id: str,
+        capability: Capability,
+        purpose: Purpose,
+    ) -> _ActivityRouteDependency:
+        return type(self)(
+            self._protected.for_api_operation(
+                operation_id=operation_id,
+                capability=capability,
+                purpose=purpose,
+            )
+        )
+
+    async def __call__(self, request: Request) -> AuthorizedContext:
+        _correlation_id(request)
+        if (
+            not request.headers.get("Authorization")
+            and getattr(request.state, "browser_session", None) is None
+        ):
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail=_error_detail(request, "authentication_required"),
+            )
+        try:
+            return await self._protected(request)
+        except HTTPException as error:
+            code = (
+                "authentication_required"
+                if error.status_code == status.HTTP_401_UNAUTHORIZED
+                else "dependency_unavailable"
+                if error.status_code >= status.HTTP_500_INTERNAL_SERVER_ERROR
+                else "access_denied"
+            )
+            raise HTTPException(
+                status_code=(
+                    status.HTTP_401_UNAUTHORIZED
+                    if code == "authentication_required"
+                    else status.HTTP_503_SERVICE_UNAVAILABLE
+                    if code == "dependency_unavailable"
+                    else status.HTTP_403_FORBIDDEN
+                ),
+                detail=_error_detail(request, code),
+            ) from None
+
+
 async def _export_command(request: Request) -> ActivityExportCommand:
     try:
         body = await request.json()
@@ -144,6 +195,7 @@ def build_matter_activity_router(
                 raise TypeError("scope resolver returned the wrong type")
             return BoundaryScope(
                 tenant_id=selected.tenant_id,
+                matter_id=selected.matter_id,
                 resource_id=selected.resource_id,
             )
 
@@ -153,38 +205,7 @@ def build_matter_activity_router(
             scope_resolver=activity_scope_resolver,
         )
 
-        async def authorize(request: Request) -> AuthorizedContext:
-            _correlation_id(request)
-            if (
-                not request.headers.get("Authorization")
-                and getattr(request.state, "browser_session", None) is None
-            ):
-                raise HTTPException(
-                    status_code=status.HTTP_401_UNAUTHORIZED,
-                    detail=_error_detail(request, "authentication_required"),
-                )
-            try:
-                return await raw(request)
-            except HTTPException as error:
-                code = (
-                    "authentication_required"
-                    if error.status_code == status.HTTP_401_UNAUTHORIZED
-                    else "dependency_unavailable"
-                    if error.status_code >= status.HTTP_500_INTERNAL_SERVER_ERROR
-                    else "access_denied"
-                )
-                raise HTTPException(
-                    status_code=(
-                        status.HTTP_401_UNAUTHORIZED
-                        if code == "authentication_required"
-                        else status.HTTP_503_SERVICE_UNAVAILABLE
-                        if code == "dependency_unavailable"
-                        else status.HTTP_403_FORBIDDEN
-                    ),
-                    detail=_error_detail(request, code),
-                ) from None
-
-        return authorize
+        return _ActivityRouteDependency(raw)
 
     read_dependency = dependency(
         Capability.AUDIT_READ,

@@ -59,6 +59,7 @@ from .browser_sessions import (
     BrowserSessionBackendUnavailable,
     BrowserTenant,
 )
+from .capauth import ResolutionDenied
 from .claims import ClaimLedgerRead, ClaimLedgerStoreUnavailable
 from .corpus import (
     CorpusResearchStore,
@@ -66,6 +67,10 @@ from .corpus import (
     CorpusSpanAvailableRead,
     CorpusSpanRead,
     CorpusStoreUnavailable,
+)
+from .v2_request_capabilities import (
+    V2_REQUEST_CAPABILITIES,
+    ResolvedRequestCapability,
 )
 from .workspace import (
     ClientDetailRead,
@@ -200,17 +205,19 @@ class DurableRevocationBackend:
         self._tenant_id = tenant_id
 
     def snapshot(self, credential_digests: tuple[str, ...]) -> RevocationSnapshot:
-        rows = self._core.all(
+        row = self._core.one(
             self._tenant_id,
-            """SELECT credential_sha256 FROM sklegal_mvp.revocations
-               WHERE tenant_id = %s ORDER BY credential_sha256""",
-            (self._tenant_id,),
+            "SELECT sklegal_identity.capability_revocation_snapshot(%s, %s) AS snapshot",
+            (self._tenant_id, list(credential_digests)),
         )
-        all_revoked = tuple(str(row["credential_sha256"]) for row in rows)
-        requested = frozenset(credential_digests)
+        if row is None or not isinstance(row["snapshot"], dict):
+            raise BrowserSessionBackendUnavailable("revocation snapshot unavailable")
+        snapshot = row["snapshot"]
         return RevocationSnapshot(
-            revision=hashlib.sha256(":".join(all_revoked).encode()).hexdigest(),
-            revoked_credential_digests=frozenset(requested.intersection(all_revoked)),
+            revision=str(snapshot["revision"]),
+            revoked_credential_digests=frozenset(
+                str(item) for item in snapshot["revoked_credential_digests"]
+            ),
         )
 
 
@@ -386,38 +393,6 @@ class DurableBrowserSessions:
                 Purpose.MATTER_MANAGEMENT,
                 MATTER_ID,
             ),
-            (
-                "GET",
-                f"/v1/matters/{MATTER_ID}/workspace",
-                "api:workspace.matters.workspace",
-                Capability.MATTER_READ,
-                Purpose.MATTER_MANAGEMENT,
-                MATTER_ID,
-            ),
-            (
-                "GET",
-                f"/v1/matters/{MATTER_ID}/claims",
-                "api:claims.ledger",
-                Capability.CLAIM_REVIEW,
-                Purpose.CLAIM_REVIEW,
-                MATTER_ID,
-            ),
-            (
-                "POST",
-                f"/v1/matters/{MATTER_ID}/corpus/search",
-                "api:governed_corpus.search",
-                Capability.CORPUS_SEARCH,
-                Purpose.LEGAL_RESEARCH,
-                MATTER_ID,
-            ),
-            (
-                "GET",
-                f"/v1/matters/{MATTER_ID}/corpus/sources/{CORPUS_SOURCE_ID}/span",
-                "api:governed_corpus.span",
-                Capability.CORPUS_ARTIFACT_READ,
-                Purpose.LEGAL_RESEARCH,
-                MATTER_ID,
-            ),
         )
         return {
             (method, path): self._issuer.issue_root(
@@ -438,6 +413,35 @@ class DurableBrowserSessions:
             ).credentials_for_verification()[-1]
             for method, path, target, capability, purpose, matter_id in definitions
         }
+
+    def _capability_for(self, request: Request) -> str | None:
+        try:
+            resolved = _resolved_request_capability(self._core, request)
+        except BrowserSessionBackendUnavailable:
+            return None
+        if resolved is None:
+            return None
+        reviewed = resolved.reviewed
+        rule = CAPABILITY_RULES[reviewed.capability]
+        with self._capability_lock:
+            return self._issuer.issue_root(
+                principal=self._principal,
+                grant=CapabilityGrant(
+                    audience=Audience.API,
+                    target=reviewed.target,
+                    capability=reviewed.capability,
+                    tenant_id=TENANT_ID,
+                    matter_id=resolved.matter_id,
+                    resource_type=rule.resource_type,
+                    resource_id=resolved.resource_id,
+                    resource_version=resolved.resource_version,
+                    resource_sha256=resolved.resource_sha256,
+                    operation=rule.operation,
+                    purpose=reviewed.purpose,
+                ),
+                ttl_seconds=300,
+                max_delegation_depth=0,
+            ).credentials_for_verification()[-1]
 
     def _authentication(
         self, session_id: str, csrf_token: str, expires_at: datetime
@@ -461,6 +465,7 @@ class DurableBrowserSessions:
             csrf_digest=_digest(csrf_token),
             csrf_token=csrf_token,
             expires_at=expires_at,
+            capability_resolver=self._capability_for,
         )
 
     def _new(self, tenant_id: UUID) -> BrowserSessionAuthentication:
@@ -733,6 +738,43 @@ class ReadOnlyDurableGovernance:
         )
 
 
+def _resolved_request_capability(
+    core: PostgresBoundary, request: Request
+) -> ResolvedRequestCapability | None:
+    resolved = V2_REQUEST_CAPABILITIES.resolve(request.method, request.url.path)
+    if (
+        resolved is None
+        or resolved.reviewed.capability is not Capability.WORK_PRODUCT_APPROVE
+    ):
+        return resolved
+    row = core.one(
+        TENANT_ID,
+        """SELECT version.current_version_number AS resource_version,
+                  version.current_content_sha256 AS resource_sha256
+           FROM sklegal_legal.work_product_feature_identities AS identity
+           JOIN sklegal_legal.work_product_feature_versions AS version
+             ON version.tenant_id = identity.tenant_id
+            AND version.matter_id = identity.matter_id
+            AND version.work_product_id = identity.work_product_id
+            AND version.aggregate_version = identity.current_aggregate_version
+           WHERE identity.tenant_id = %s AND identity.matter_id = %s
+             AND identity.work_product_id = %s
+             AND version.current_version_id = %s""",
+        (
+            TENANT_ID,
+            resolved.matter_id,
+            UUID(resolved.parameter("work_product_id")),
+            UUID(resolved.resource_id),
+        ),
+        matter_id=resolved.matter_id,
+    )
+    if row is None:
+        raise ResolutionDenied(status_code=403)
+    return resolved.bind_exact_version(
+        int(row["resource_version"]), str(row["resource_sha256"])
+    )
+
+
 def _required(name: str) -> str:
     value = os.environ.get(name, "").strip()
     if not value:
@@ -767,6 +809,15 @@ def build_durable_public_synthetic_app():
         return request.state.browser_session.principal
 
     def scope_resolver(request: Request) -> BoundaryScope:
+        resolved = _resolved_request_capability(core, request)
+        if resolved is not None:
+            return BoundaryScope(
+                tenant_id=request.state.browser_session.active_tenant_id,
+                matter_id=resolved.matter_id,
+                resource_id=resolved.resource_id,
+                resource_version=resolved.resource_version,
+                resource_sha256=resolved.resource_sha256,
+            )
         raw = request.path_params.get("matter_id")
         matter_id = UUID(str(raw)) if raw is not None else None
         return BoundaryScope(

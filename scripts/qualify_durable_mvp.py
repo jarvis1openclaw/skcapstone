@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import argparse
+import base64
 import hashlib
 import json
 import os
@@ -11,12 +12,13 @@ import secrets
 import shutil
 import socket
 import subprocess
+import sys
 import tempfile
 import time
 import urllib.error
 import urllib.request
 from contextlib import closing
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from typing import Any
 from uuid import NAMESPACE_URL, UUID, uuid5
@@ -31,18 +33,50 @@ from sklegal_api.corpus import (
     CorpusSpanAvailableRead,
     CorpusTraceRead,
 )
+from sklegal_api.features.joined_analysis.contract import (
+    JoinedAnalysisSnapshotProjection,
+)
+from sklegal_api.features.joined_analysis.service import (
+    projection_provenance_sha256,
+    projection_sha256,
+)
 from sklegal_capauth import VERIFIER_POLICY_VERSION, Audience, Capability, PrincipalType
 from sklegal_persistence.features.governed_corpus.models import (
     Classification,
     CorpusSourceVersion,
     ProjectionState,
     VerificationState,
-    canonical_sha256,
+)
+from sklegal_persistence.features.governed_corpus.models import (
+    canonical_sha256 as corpus_sha256,
+)
+from sklegal_persistence.features.joined_analysis.repository import (
+    canonical_projection_sha256,
+)
+from sklegal_persistence.features.work_products.models import (
+    WorkProductAggregate,
+)
+from sklegal_persistence.features.work_products.models import (
+    canonical_sha256 as work_product_sha256,
 )
 
 ROOT = Path(__file__).resolve().parents[1]
 COMPOSE = ROOT / "deploy/chiap01/compose.mvp.yml"
 FIXTURE = ROOT / "tests/fixtures/mvp/public-synthetic-mvp-v1.json"
+AGENT_FIXTURE = (
+    ROOT / "tests/fixtures/mvp/fragments/agent_runs/public-synthetic-agent-run-v1.json"
+)
+ARTIFACT_FIXTURE = (
+    ROOT
+    / "tests/fixtures/mvp/fragments/artifact_intake/public-synthetic-artifact-intake.json"
+)
+JOINED_FIXTURE = (
+    ROOT / "tests/fixtures/mvp/fragments/joined_analysis/public-synthetic-v1.json"
+)
+WORK_PRODUCT_FIXTURE = (
+    ROOT
+    / "tests/fixtures/mvp/fragments/work_products/public-synthetic-work-product-v1.json"
+)
 V2_MANIFEST = ROOT / "docs/contracts/v2-mvp/v2-surface-manifest.v1.json"
 CHROME_QUALIFICATION = ROOT / "tests/qualification/session_reload_csp_qualification.mjs"
 TENANT_ID = UUID("11111111-1111-4111-8111-111111111111")
@@ -58,6 +92,8 @@ FEATURE_RIGHTS_REVISION = hashlib.sha256(
 FEATURE_RELEASE_ID = "public-synthetic-release-v1"
 FEATURE_PROJECTION_GENERATION = 1
 FEATURE_CORE_WATERMARK = 1
+WORK_PRODUCT_ID = UUID("50000000-0000-4000-8000-000000000001")
+WORK_PRODUCT_VERSION_ID = UUID("50000000-0000-4000-8000-000000000002")
 
 
 class QualificationError(RuntimeError):
@@ -326,17 +362,170 @@ def _governed_corpus_records(
     return projection, source
 
 
-def _seed(core_dsn: str, retrieval_dsn: str) -> dict[str, str]:
+def _replace_fixture_scope(value: Any, replacements: dict[str, str]) -> Any:
+    if isinstance(value, dict):
+        return {
+            key: _replace_fixture_scope(item, replacements)
+            for key, item in value.items()
+        }
+    if isinstance(value, list):
+        return [_replace_fixture_scope(item, replacements) for item in value]
+    return replacements.get(value, value) if isinstance(value, str) else value
+
+
+def _joined_analysis_seed() -> tuple[dict[str, Any], str]:
+    projection = json.loads(JOINED_FIXTURE.read_text(encoding="utf-8"))
+    projection = _replace_fixture_scope(
+        projection,
+        {
+            projection["tenant_id"]: str(TENANT_ID),
+            projection["matter_id"]: str(MATTER_ID),
+        },
+    )
+    typed = JoinedAnalysisSnapshotProjection.model_validate(projection)
+    projection["snapshot"].update(projection_provenance_sha256(typed))
+    typed = JoinedAnalysisSnapshotProjection.model_validate(projection)
+    digest = projection_sha256(typed)
+    projection["snapshot"]["projection_sha256"] = digest
+    if canonical_projection_sha256(projection) != digest:
+        raise QualificationError("joined analysis canonical digest drifted")
+    return projection, digest
+
+
+def _work_product_seed() -> WorkProductAggregate:
+    payload = json.loads(WORK_PRODUCT_FIXTURE.read_text(encoding="utf-8"))
+    payload = _replace_fixture_scope(
+        payload,
+        {
+            payload["tenantId"]: str(TENANT_ID),
+            payload["matterId"]: str(MATTER_ID),
+            "30000000-0000-4000-8000-000000000001": str(PRINCIPAL_ID),
+            "30000000-0000-4000-8000-000000000002": str(PRINCIPAL_ID),
+        },
+    )
+    now = datetime.now(UTC)
+    payload["status"] = "validated"
+    payload["updatedAt"] = now.isoformat()
+    approval = payload["approvals"][0]
+    approval.update(
+        {
+            "approvalId": payload["currentVersionId"],
+            "status": "pending",
+            "reviewerPrincipalId": None,
+            "decidedAt": None,
+            "rationale": None,
+            "decisionPolicyRevision": None,
+            "decisionAuthorization": None,
+            "revokerPrincipalId": None,
+            "revokedAt": None,
+            "revocationRationale": None,
+            "revocationAuthorization": None,
+            "supersededAt": None,
+            "supersededByApprovalId": None,
+            "supersedingVersionId": None,
+            "requestedAt": (now - timedelta(minutes=1)).isoformat(),
+        }
+    )
+    payload["validations"][0]["validatedAt"] = (now - timedelta(minutes=2)).isoformat()
+    for authorization in (
+        payload["validations"][0]["authorization"],
+        approval["requestAuthorization"],
+    ):
+        authorization["authorizedAt"] = (now - timedelta(minutes=5)).isoformat()
+        authorization["expiresAt"] = (now + timedelta(hours=1)).isoformat()
+    return WorkProductAggregate.model_validate(payload)
+
+
+def _seed_activity(core_admin_dsn: str, core_app_dsn: str) -> dict[str, Any]:
+    source_id = UUID("82000000-0000-4000-8000-000000000001")
+    event_id = UUID("81000000-0000-4000-8000-000000000001")
+    projection_event_id = UUID("88000000-0000-4000-8000-000000000001")
+    source_sha256 = "a" * 64
+    occurred_at = datetime.now(UTC) - timedelta(seconds=2)
+    with psycopg.connect(core_admin_dsn) as core:
+        core.execute(
+            """GRANT EXECUTE ON FUNCTION sklegal_audit.append_event(
+                   uuid, uuid, uuid, uuid, uuid, uuid, text, text, text, text,
+                   text, text, uuid, uuid, uuid, text, text, timestamptz, jsonb
+               ) TO sklegal_core_app"""
+        )
+    with psycopg.connect(core_app_dsn, row_factory=dict_row) as core:
+        _scope(core, TENANT_ID, MATTER_ID)
+        event = core.execute(
+            """SELECT sklegal_audit.append_event(
+                   %s, %s, %s, %s, %s, %s, %s, %s, '01', 'api',
+                   'matter_activity.source.recorded', 'matter_event', %s,
+                   %s, %s, 'success', 'recorded', %s,
+                   %s::jsonb
+               ) AS event""",
+            (
+                event_id,
+                TENANT_ID,
+                MATTER_ID,
+                PRINCIPAL_ID,
+                UUID("83000000-0000-4000-8000-000000000001"),
+                UUID("84000000-0000-4000-8000-000000000001"),
+                "85000000000040008000000000000001",
+                "8500000000004000",
+                source_id,
+                UUID("86000000-0000-4000-8000-000000000001"),
+                UUID("87000000-0000-4000-8000-000000000001"),
+                occurred_at,
+                Jsonb(
+                    {
+                        "operation": "read",
+                        "resource_version": 1,
+                        "resource_sha256": source_sha256,
+                    }
+                ),
+            ),
+        ).fetchone()["event"]
+        projected_at = datetime.now(UTC)
+        projected = core.execute(
+            """SELECT sklegal_activity.project_event(
+                   %s, %s, %s, %s, %s, 'matter_event', %s, 1, %s,
+                   'recorded', %s, NULL, NULL, NULL, NULL, NULL, NULL, NULL,
+                   %s, %s, %s, %s
+               ) AS projected""",
+            (
+                TENANT_ID,
+                MATTER_ID,
+                event_id,
+                int(event["event_sequence"]),
+                event["event_sha256"],
+                source_id,
+                source_sha256,
+                occurred_at,
+                "b" * 64,
+                "c" * 64,
+                projection_event_id,
+                projected_at,
+            ),
+        ).fetchone()["projected"]
+    if projected is not True:
+        raise QualificationError("Matter activity seed did not project")
+    return {
+        "first_event_sequence": int(event["event_sequence"]),
+        "projected_sequence": int(event["event_sequence"]),
+        "projected_sha256": str(event["event_sha256"]),
+    }
+
+
+def _seed(core_dsn: str, core_app_dsn: str, retrieval_dsn: str) -> dict[str, str]:
     fixture_bytes = FIXTURE.read_bytes()
     fixture = json.loads(fixture_bytes)
+    artifact_governance = json.loads(ARTIFACT_FIXTURE.read_text(encoding="utf-8"))[
+        "governance"
+    ]
     search, span = _corpus_payloads(fixture)
     feature_projection, feature_source = _governed_corpus_records(fixture)
     feature_source_json = feature_source.model_dump(mode="json", by_alias=True)
     feature_projection_json = feature_projection.model_dump(mode="json", by_alias=True)
+    joined_projection, joined_sha256 = _joined_analysis_seed()
+    work_product = _work_product_seed()
+    work_product_json = work_product.model_dump(mode="json", by_alias=True)
     client_id = uuid5(NAMESPACE_URL, f"{TENANT_ID}:public-synthetic-client")
-    engagement_id = uuid5(
-        NAMESPACE_URL, f"{TENANT_ID}:public-synthetic-engagement"
-    )
+    engagement_id = uuid5(NAMESPACE_URL, f"{TENANT_ID}:public-synthetic-engagement")
     principal_revision = hashlib.sha256(
         f"{TENANT_ID}:{PRINCIPAL_ID}:active".encode()
     ).hexdigest()
@@ -402,6 +591,84 @@ def _seed(core_dsn: str, retrieval_dsn: str) -> dict[str, str]:
             (TENANT_ID, MATTER_ID, PRINCIPAL_ID),
         )
         core.execute(
+            """INSERT INTO sklegal_legal.retention_policies
+                   (id, tenant_id, matter_id, retain_for_days, effective_from,
+                    decided_by_principal_id)
+               VALUES (%s, %s, %s, 3650, '2026-08-01T00:00:00Z', %s)""",
+            (
+                UUID(artifact_governance["retention_policy_id"]),
+                TENANT_ID,
+                MATTER_ID,
+                PRINCIPAL_ID,
+            ),
+        )
+        for legal_hold_id in artifact_governance["legal_hold_ids"]:
+            core.execute(
+                """INSERT INTO sklegal_legal.legal_holds
+                       (id, tenant_id, matter_id, status, hold_scope,
+                        issued_by_principal_id, effective_from)
+                   VALUES (%s, %s, %s, 'active', 'matter', %s,
+                           '2026-08-01T00:00:00Z')""",
+                (UUID(legal_hold_id), TENANT_ID, MATTER_ID, PRINCIPAL_ID),
+            )
+        snapshot = joined_projection["snapshot"]
+        core.execute(
+            """INSERT INTO sklegal_legal.joined_analysis_snapshots
+                   (tenant_id, matter_id, snapshot_id, version, observed_at,
+                    matter_snapshot_sha256, claim_projection_revision,
+                    authority_snapshot, projection_revision, projection_sha256,
+                    projection)
+               VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)""",
+            (
+                TENANT_ID,
+                MATTER_ID,
+                UUID(snapshot["snapshot_id"]),
+                snapshot["version"],
+                snapshot["observed_at"],
+                snapshot["matter_snapshot_sha256"],
+                snapshot["claim_projection_revision"],
+                snapshot["authority_snapshot"],
+                snapshot["projection_revision"],
+                joined_sha256,
+                Jsonb(joined_projection),
+            ),
+        )
+        core.execute(
+            """INSERT INTO sklegal_legal.work_product_feature_identities
+                   (tenant_id, matter_id, work_product_id,
+                    current_aggregate_version, created_at, updated_at)
+               VALUES (%s, %s, %s, %s, %s, %s)""",
+            (
+                TENANT_ID,
+                MATTER_ID,
+                work_product.work_product_id,
+                work_product.aggregate_version,
+                work_product.created_at,
+                work_product.updated_at,
+            ),
+        )
+        core.execute(
+            """INSERT INTO sklegal_legal.work_product_feature_versions
+                   (tenant_id, matter_id, work_product_id, aggregate_version,
+                    current_version_id, current_version_number,
+                    current_content_sha256, status, aggregate_sha256,
+                    aggregate_payload, created_at)
+               VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)""",
+            (
+                TENANT_ID,
+                MATTER_ID,
+                work_product.work_product_id,
+                work_product.aggregate_version,
+                work_product.current_version_id,
+                work_product.current_version.version_number,
+                work_product.current_version.content_sha256,
+                work_product.status.value,
+                work_product_sha256(work_product),
+                Jsonb(work_product_json),
+                work_product.updated_at,
+            ),
+        )
+        core.execute(
             """INSERT INTO sklegal_governed_corpus.projection_registry
                    (tenant_id, matter_id, projection_generation, release_id,
                     core_watermark, policy_revision, rights_revision, record,
@@ -445,7 +712,7 @@ def _seed(core_dsn: str, retrieval_dsn: str) -> dict[str, str]:
                 feature_source.exact_span,
                 feature_source.supersedes_source_version_id,
                 Jsonb(feature_source_json),
-                canonical_sha256(feature_source),
+                corpus_sha256(feature_source),
                 feature_source.authorization_decision_id,
                 feature_source.recorded_at,
             ),
@@ -535,7 +802,7 @@ def _seed(core_dsn: str, retrieval_dsn: str) -> dict[str, str]:
                 json.dumps(feature_source.embedding),
                 feature_source.supersedes_source_version_id,
                 Jsonb(feature_source_json),
-                canonical_sha256(feature_source),
+                corpus_sha256(feature_source),
                 feature_source.recorded_at,
             ),
         )
@@ -563,6 +830,7 @@ def _seed(core_dsn: str, retrieval_dsn: str) -> dict[str, str]:
                WHERE tenant_id = %s AND matter_id = %s""",
             (TENANT_ID, MATTER_ID),
         )
+    _seed_activity(core_dsn, core_app_dsn)
     return {
         "fixture_sha256": hashlib.sha256(fixture_bytes).hexdigest(),
         "projection_sha256": hashlib.sha256(
@@ -595,6 +863,33 @@ def _readback(core_dsn: str, retrieval_dsn: str) -> dict[str, int]:
         "projections": int(projections),
         "pgvector": int(extension),
     }
+
+
+def _feature_readback(core_dsn: str) -> dict[str, int]:
+    with psycopg.connect(core_dsn, row_factory=dict_row) as core:
+        _scope(core, TENANT_ID, MATTER_ID)
+        row = core.execute(
+            """SELECT
+              (SELECT count(*) FROM sklegal_mvp.audit_events) AS authorization_audit,
+              (SELECT count(*) FROM sklegal_workflow.agent_run_idempotency) AS agent_idempotency,
+              (SELECT count(*) FROM sklegal_workflow.agent_run_audit_events) AS agent_audit,
+              (SELECT count(*) FROM sklegal_artifact.artifact_idempotency_receipts) AS artifact_idempotency,
+              (SELECT count(*) FROM sklegal_artifact.artifact_audit_facts) AS artifact_audit,
+              (SELECT count(*) FROM sklegal_artifact.artifact_outbox) AS artifact_outbox,
+              (SELECT count(*) FROM sklegal_legal.work_product_feature_idempotency) AS work_product_idempotency,
+              (SELECT count(*) FROM sklegal_audit.work_product_feature_events) AS work_product_audit,
+              (SELECT count(*) FROM sklegal_audit.work_product_feature_outbox) AS work_product_outbox,
+              (SELECT count(*) FROM sklegal_task_deadline.idempotency_receipts) AS task_idempotency,
+              (SELECT count(*) FROM sklegal_task_deadline.audit_events) AS task_audit,
+              (SELECT count(*) FROM sklegal_task_deadline.outbox) AS task_outbox,
+              (SELECT count(*) FROM sklegal_activity.export_proposals) AS activity_exports,
+              (SELECT count(*) FROM sklegal_activity.projection_receipts) AS activity_idempotency,
+              (SELECT count(*) FROM sklegal_audit.outbox) AS activity_outbox"""
+        ).fetchone()
+    counts = {key: int(value) for key, value in row.items()}
+    if not all(value > 0 for value in counts.values()):
+        raise QualificationError(f"durable feature evidence is incomplete: {counts}")
+    return counts
 
 
 def _rls_denials(core_app_dsn: str, retrieval_app_dsn: str) -> dict[str, bool]:
@@ -815,9 +1110,7 @@ def _http(
         return error.code, json.loads(raw) if raw else {}, dict(error.headers)
 
 
-def _v2_openapi_inventory(
-    api_port: int, headers: dict[str, str]
-) -> dict[str, Any]:
+def _v2_openapi_inventory(api_port: int, headers: dict[str, str]) -> dict[str, Any]:
     status, schema, _ = _http(
         f"http://127.0.0.1:{api_port}/openapi.json", headers=headers
     )
@@ -851,6 +1144,314 @@ def _v2_openapi_inventory(
     }
 
 
+def _execute_v2_operations(api_port: int, headers: dict[str, str]) -> dict[str, Any]:
+    base = f"http://127.0.0.1:{api_port}"
+    matter = f"/v1/matters/{MATTER_ID}"
+    results: dict[str, int] = {}
+    replayed: list[str] = []
+    replay_conflicts: list[str] = []
+
+    def invoke(
+        operation_id: str,
+        method: str,
+        path: str,
+        body: dict[str, Any] | None = None,
+        *,
+        idempotency: bool = False,
+        decision_bound_replay: bool = False,
+    ) -> dict[str, Any]:
+        request_headers = dict(headers)
+        if idempotency:
+            request_headers["Idempotency-Key"] = str(
+                uuid5(NAMESPACE_URL, f"c0bc2c68:{operation_id}")
+            )
+        status, payload, _ = _http(f"{base}{path}", method, body, request_headers)
+        if status not in {200, 201}:
+            raise QualificationError(
+                f"V2 operation {operation_id} failed: status={status} body={payload}"
+            )
+        results[operation_id] = status
+        if idempotency:
+            replay_status, replay_payload, _ = _http(
+                f"{base}{path}", method, body, request_headers
+            )
+            if decision_bound_replay:
+                detail = replay_payload.get("detail", {})
+                if replay_status != 409 or detail.get("code") != "idempotency_conflict":
+                    raise QualificationError(
+                        f"V2 operation {operation_id} did not protect its "
+                        "decision-bound idempotency receipt"
+                    )
+                replay_conflicts.append(operation_id)
+                return payload
+            expected_replay = dict(payload)
+            if "replayed" in expected_replay:
+                expected_replay["replayed"] = True
+            if replay_status != status or replay_payload != expected_replay:
+                raise QualificationError(
+                    f"V2 operation {operation_id} idempotency replay drifted: "
+                    f"status={replay_status} body={replay_payload}"
+                )
+            replayed.append(operation_id)
+        return payload
+
+    invoke("get_workspace", "GET", f"{matter}/workspace")
+    invoke("get_claim_ledger", "GET", f"{matter}/claims")
+    invoke("get_joined_analysis", "GET", f"{matter}/analysis")
+
+    agent_fixture = json.loads(AGENT_FIXTURE.read_text(encoding="utf-8"))
+    analysis = dict(agent_fixture["request"])
+    for field in (
+        "tenantId",
+        "matterId",
+        "principalId",
+        "requestId",
+        "idempotencyKey",
+    ):
+        analysis.pop(field)
+    analysis["schemaVersion"] = "sklegal.agent-analysis-command/v1"
+    run = invoke(
+        "create_analysis_run",
+        "POST",
+        f"{matter}/agent-runs",
+        analysis,
+        idempotency=True,
+    )
+    run_id = run["runId"]
+    recommendation = run["recommendations"][0]
+    invoke("get_agent_run", "GET", f"{matter}/agent-runs/{run_id}")
+    challenged = invoke(
+        "create_challenge",
+        "POST",
+        f"{matter}/claims/{run_id}/challenges",
+        {
+            "schemaVersion": "sklegal.agent-blind-challenge-command/v1",
+            "expectedRunVersion": run["version"],
+            "recommendationId": recommendation["recommendationId"],
+            "recommendationVersion": recommendation["version"],
+            "challengerSpecId": "sklegal.public-independent-challenger",
+            "challengerSpecVersion": 1,
+            "challengerSpecSha256": "a1" * 32,
+            "requestedLogicalRouteId": "sklegal.public-independent-challenge",
+        },
+        idempotency=True,
+    )
+    invoke("list_recommendations", "GET", f"{matter}/recommendations")
+    invoke(
+        "decide_recommendation",
+        "POST",
+        f"{matter}/recommendations/{run_id}/decisions",
+        {
+            "schemaVersion": "sklegal.agent-human-disposition-command/v1",
+            "expectedRunVersion": challenged["version"],
+            "recommendationId": recommendation["recommendationId"],
+            "recommendationVersion": recommendation["version"],
+            "decision": "accept_as_proposed_task",
+            "rationale": "Public synthetic recommendation reviewed.",
+            "policyRevision": VERIFIER_POLICY_VERSION,
+        },
+        idempotency=True,
+    )
+
+    artifact_fixture = json.loads(ARTIFACT_FIXTURE.read_text(encoding="utf-8"))
+    content = artifact_fixture["original"]["content_utf8"].encode()
+    artifact = invoke(
+        "create_artifact_intake",
+        "POST",
+        f"{matter}/artifacts",
+        {
+            "source": artifact_fixture["source"],
+            "original": {
+                "filename": artifact_fixture["original"]["filename"],
+                "mediaType": artifact_fixture["original"]["media_type"],
+                "byteCount": len(content),
+                "contentSha256": hashlib.sha256(content).hexdigest(),
+                "contentBase64": base64.b64encode(content).decode(),
+            },
+            "acquisitionMethod": "synthetic_adapter",
+            "classification": "public",
+            "privilegeState": "not_privileged",
+            "retentionPolicyId": artifact_fixture["governance"]["retention_policy_id"],
+            "legalHoldIds": artifact_fixture["governance"]["legal_hold_ids"],
+            "ethicalWallIds": [],
+            "requestedDerivations": [],
+            "proposedLinks": [],
+        },
+        idempotency=True,
+    )
+    artifact_id = artifact["artifact"]["artifactId"]
+    invoke("get_artifact", "GET", f"{matter}/artifacts/{artifact_id}")
+
+    current = invoke(
+        "get_work_product",
+        "GET",
+        f"{matter}/work-products/{WORK_PRODUCT_ID}",
+    )
+    binding = {
+        "workProductVersionId": current["currentVersionId"],
+        "versionNumber": current["versions"][-1]["versionNumber"],
+        "contentSha256": current["versions"][-1]["contentSha256"],
+    }
+    approved = invoke(
+        "decide_approval",
+        "POST",
+        f"{matter}/work-products/{WORK_PRODUCT_ID}/versions/"
+        f"{WORK_PRODUCT_VERSION_ID}/approval-decisions",
+        {
+            "schemaVersion": "sklegal.approval-decision-command/v1",
+            "expectedAggregateVersion": current["aggregateVersion"],
+            "binding": binding,
+            "decision": "approved",
+            "rationale": "Exact public synthetic version reviewed.",
+        },
+        idempotency=True,
+    )
+    approved_model = WorkProductAggregate.model_validate(approved)
+    approval = next(
+        item for item in approved_model.approvals if item.status.value == "approved"
+    )
+
+    task = invoke(
+        "upsert_task",
+        "POST",
+        f"{matter}/tasks",
+        {
+            "schemaVersion": "sklegal.task-command/v1",
+            "expectedVersion": 0,
+            "title": "Review public synthetic Work Product",
+            "description": "Qualification Task with no external effect.",
+            "assignedPrincipalId": str(PRINCIPAL_ID),
+        },
+        idempotency=True,
+    )
+    deadline_fixture = json.loads(
+        (
+            ROOT
+            / "tests/fixtures/mvp/fragments/task_deadlines/public-synthetic-task-deadlines-v1.json"
+        ).read_text(encoding="utf-8")
+    )["deadlines"][0]
+    invoke(
+        "compute_deadline",
+        "POST",
+        f"{matter}/deadlines",
+        {
+            "schemaVersion": "sklegal.deadline-command/v1",
+            "expectedVersion": 0,
+            "title": "Public synthetic qualification Deadline",
+            "trigger": deadline_fixture["trigger"],
+            "rule": deadline_fixture["rule"],
+            "calendar": deadline_fixture["calendar"],
+            "reminderOffsetsDays": [1],
+        },
+        idempotency=True,
+    )
+    invoke(
+        "create_simulation_handoff",
+        "POST",
+        f"{matter}/action-simulations",
+        {
+            "schemaVersion": "sklegal.action-simulation-command/v1",
+            "taskId": task["task"]["taskId"],
+            "deadlineId": None,
+            "workProductId": str(approved_model.work_product_id),
+            "workProductVersionId": str(approved_model.current_version_id),
+            "workProductVersionNumber": approved_model.current_version.version_number,
+            "workProductContentSha256": approved_model.current_version.content_sha256,
+            "approvalId": str(approval.approval_id),
+            "approvalSnapshotSha256": work_product_sha256(approval),
+            "approvalCurrent": True,
+            "destinationSha256": "d" * 64,
+            "actionKind": "email",
+            "simulationOnly": True,
+        },
+        idempotency=True,
+    )
+
+    new_content = "The repaired public synthetic Work Product remains local."
+    versioned = invoke(
+        "create_work_product_version",
+        "POST",
+        f"{matter}/work-products/{WORK_PRODUCT_ID}/versions",
+        {
+            "schemaVersion": "sklegal.work-product-version-command/v1",
+            "expectedAggregateVersion": approved["aggregateVersion"],
+            "expectedCurrent": binding,
+            "content": new_content,
+            "contentSha256": hashlib.sha256(new_content.encode()).hexdigest(),
+            "source": approved["versions"][-1]["source"],
+        },
+        idempotency=True,
+    )
+    new_version = versioned["versions"][-1]
+    invoke(
+        "validate_work_product",
+        "POST",
+        f"{matter}/work-products/{WORK_PRODUCT_ID}/versions/"
+        f"{new_version['versionId']}/validations",
+        {
+            "schemaVersion": "sklegal.work-product-validation-command/v1",
+            "expectedAggregateVersion": versioned["aggregateVersion"],
+            "binding": {
+                "workProductVersionId": new_version["versionId"],
+                "versionNumber": new_version["versionNumber"],
+                "contentSha256": new_version["contentSha256"],
+            },
+            "checkIds": ["content_hash", "sentence_grounding", "source_lineage"],
+            "rationale": "Deterministic qualification validation.",
+        },
+        idempotency=True,
+    )
+
+    activity = invoke("list_activity", "GET", f"{matter}/activity")
+    invoke(
+        "create_activity_export",
+        "POST",
+        f"{matter}/activity-exports",
+        {
+            "title": "Public synthetic qualification activity",
+            "firstEventSequence": 1,
+            "lastEventSequence": 1,
+            "expectedProjectedSequence": activity["snapshotSequence"],
+            "expectedProjectedSha256": activity["snapshotSha256"],
+            "expectedResourceVersion": activity["snapshotSequence"],
+        },
+        idempotency=True,
+        decision_bound_replay=True,
+    )
+    invoke(
+        "search_corpus",
+        "POST",
+        f"{matter}/corpus/search",
+        {
+            "query": "invented delivery date",
+            "expectedReleaseId": FEATURE_RELEASE_ID,
+            "expectedProjectionGeneration": FEATURE_PROJECTION_GENERATION,
+            "requiredCoreWatermark": FEATURE_CORE_WATERMARK,
+        },
+    )
+    invoke(
+        "get_corpus_span",
+        "GET",
+        f"{matter}/corpus/sources/{CORPUS_SOURCE_ID}/span"
+        f"?expectedReleaseId={FEATURE_RELEASE_ID}"
+        f"&expectedProjectionGeneration={FEATURE_PROJECTION_GENERATION}"
+        f"&requiredCoreWatermark={FEATURE_CORE_WATERMARK}",
+    )
+
+    expected = {
+        item["operation_id"]
+        for item in json.loads(V2_MANIFEST.read_text())["operations"]
+    }
+    if set(results) != expected:
+        raise QualificationError("not every frozen V2 operation executed")
+    return {
+        "operations": results,
+        "all_21_succeeded": len(results) == 21,
+        "idempotency_replays": sorted(replayed),
+        "decision_bound_replay_conflicts": sorted(replay_conflicts),
+    }
+
+
 def _compose(env: dict[str, str], project: str, *arguments: str) -> None:
     _run(
         [
@@ -868,7 +1469,7 @@ def _compose(env: dict[str, str], project: str, *arguments: str) -> None:
 
 def qualify(output: Path) -> dict[str, Any]:
     suffix = secrets.token_hex(4)
-    project = f"sklegal-06a2686f-{suffix}"
+    project = f"sklegal-c0bc2c68-{suffix}"
     ports: set[int] = set()
     while len(ports) < 5:
         ports.add(_port())
@@ -877,7 +1478,7 @@ def qualify(output: Path) -> dict[str, Any]:
     core_app = secrets.token_urlsafe(30)
     retrieval_admin = secrets.token_urlsafe(30)
     retrieval_app = secrets.token_urlsafe(30)
-    runtime = Path(tempfile.mkdtemp(prefix="sklegal-06a2686f-"))
+    runtime = Path(tempfile.mkdtemp(prefix="sklegal-c0bc2c68-"))
     gpg_home = runtime / "gnupg"
     issuer_policy = runtime / "issuer-policy.json"
     browser_output = runtime / "browser.json"
@@ -912,7 +1513,7 @@ def qualify(output: Path) -> dict[str, Any]:
         _compose(env, project, "up", "--detach", "--wait")
         _wait_postgres(core_admin_dsn)
         _wait_postgres(retrieval_admin_dsn)
-        pins = _seed(core_admin_dsn, retrieval_admin_dsn)
+        pins = _seed(core_admin_dsn, core_app_dsn, retrieval_admin_dsn)
         readback_before = _readback(core_admin_dsn, retrieval_admin_dsn)
         rls = _rls_denials(core_app_dsn, retrieval_app_dsn)
         if not all(rls.values()) or readback_before["pgvector"] != 1:
@@ -931,7 +1532,7 @@ def qualify(output: Path) -> dict[str, Any]:
         )
         api = subprocess.Popen(
             [
-                str(ROOT / ".venv/bin/python"),
+                sys.executable,
                 "-m",
                 "uvicorn",
                 "sklegal_api.durable_public_synthetic:app",
@@ -958,7 +1559,7 @@ def qualify(output: Path) -> dict[str, Any]:
         _run(["npm", "run", "build", "--workspace", "@sklegal/web"], env=build_env)
         web = subprocess.Popen(
             [
-                str(ROOT / ".venv/bin/python"),
+                sys.executable,
                 str(ROOT / "scripts/mvp_preview.py"),
                 "serve-web",
                 "--dist",
@@ -1013,12 +1614,14 @@ def qualify(output: Path) -> dict[str, Any]:
         cookie = set_cookie.split(";", 1)[0]
         request_headers = {"Cookie": cookie, "X-CSRF-Token": session["csrfToken"]}
         v2_openapi = _v2_openapi_inventory(api_port, request_headers)
-        workspace_status, _, _ = _http(
-            f"http://127.0.0.1:{api_port}/v1/matters/{MATTER_ID}/workspace",
-            headers=request_headers,
-        )
-        if workspace_status != 200:
-            raise QualificationError("durable workspace request failed")
+        try:
+            v2_operations = _execute_v2_operations(api_port, request_headers)
+        except QualificationError as error:
+            api_log.flush()
+            detail = (runtime / "api.log").read_text(encoding="utf-8")[-6000:]
+            raise QualificationError(f"{error}\nAPI log:\n{detail}") from None
+        feature_readback = _feature_readback(core_admin_dsn)
+        workspace_status = v2_operations["operations"]["get_workspace"]
         cross_matter_status, _, _ = _http(
             "http://127.0.0.1:{}/v1/matters/{}/workspace".format(
                 api_port, UUID("bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb")
@@ -1091,12 +1694,13 @@ def qualify(output: Path) -> dict[str, Any]:
         with psycopg.connect(core_admin_dsn) as core:
             _scope(core, TENANT_ID)
             core.execute(
-                """INSERT INTO sklegal_mvp.revocations
-                       VALUES (%s, %s, now())""",
-                (TENANT_ID, "a" * 64),
+                """INSERT INTO sklegal_identity.capability_revocations
+                       (tenant_id, credential_digest, revoked_by, rationale)
+                   VALUES (%s, %s, %s, %s)""",
+                (TENANT_ID, "a" * 64, PRINCIPAL_ID, "qualification revocation"),
             )
             revoked = core.execute(
-                "SELECT count(*) FROM sklegal_mvp.revocations"
+                "SELECT count(*) FROM sklegal_identity.capability_revocations"
             ).fetchone()[0]
         if revoked != 1:
             raise QualificationError("revocation persistence failed")
@@ -1151,7 +1755,7 @@ def qualify(output: Path) -> dict[str, Any]:
             raise QualificationError("revoked browser session did not fail closed")
         readback_after = _readback(core_admin_dsn, retrieval_admin_dsn)
         _reset(core_admin_dsn, retrieval_admin_dsn)
-        reset_pins = _seed(core_admin_dsn, retrieval_admin_dsn)
+        reset_pins = _seed(core_admin_dsn, core_app_dsn, retrieval_admin_dsn)
         reset_readback = _readback(core_admin_dsn, retrieval_admin_dsn)
         if (
             reset_pins != pins
@@ -1170,14 +1774,14 @@ def qualify(output: Path) -> dict[str, Any]:
         _compose(env, project, "up", "--detach", "--wait")
         _wait_postgres(core_admin_dsn)
         _wait_postgres(retrieval_admin_dsn)
-        replay_pins = _seed(core_admin_dsn, retrieval_admin_dsn)
+        replay_pins = _seed(core_admin_dsn, core_app_dsn, retrieval_admin_dsn)
         replay_readback = _readback(core_admin_dsn, retrieval_admin_dsn)
         if replay_pins != pins or replay_readback != readback_before:
             raise QualificationError("fresh migration replay was not deterministic")
 
         result = {
             "status": "PASS",
-            "card": "06a2686f",
+            "card": "c0bc2c68",
             "duration_seconds": round(time.monotonic() - started, 3),
             "source_commit": _run(["git", "rev-parse", "HEAD"]).stdout.strip(),
             "source_tree": _run(["git", "rev-parse", "HEAD^{tree}"]).stdout.strip(),
@@ -1213,6 +1817,8 @@ def qualify(output: Path) -> dict[str, Any]:
             "projection_rebuild": projection_rebuild,
             "backup_restore": backup_restore,
             "v2_openapi": v2_openapi,
+            "v2_operations": v2_operations,
+            "feature_readback": feature_readback,
             "topology": {
                 "core_port_loopback": core_port,
                 "retrieval_port_loopback": retrieval_port,
