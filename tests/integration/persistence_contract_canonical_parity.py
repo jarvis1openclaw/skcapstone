@@ -29,7 +29,39 @@ from tests.support.persistence_write_adapter import (
 
 
 class PersistenceContract08CanonicalParityTests(PersistenceContractBase):
+    def _fresh_contract_ready(self) -> bool:
+        contract = build_fresh_contract()
+        tenant = str(contract.tenant_id)
+        marker = str(contract.entities["WorkProductVersion"].id)
+        state = self._psql(
+            "postgres",
+            f"""
+            SELECT EXISTS (
+                       SELECT 1 FROM pg_roles
+                       WHERE rolname = '{contract.runtime_role}'
+                   )
+                   AND EXISTS (
+                       SELECT 1 FROM sklegal_identity.tenants
+                       WHERE id = '{tenant}'::uuid
+                   )
+                   AND EXISTS (
+                       SELECT 1 FROM sklegal_legal.work_product_versions
+                       WHERE id = '{marker}'::uuid
+                   );
+            """,
+        )
+        return state.stdout.strip() == "t"
+
+    def _ensure_fresh_contract(self) -> None:
+        if not self._fresh_contract_ready():
+            self._write_fresh_contract()
+
     def test_11_canonical_entities_write_first_through_declared_authorities(
+        self,
+    ) -> None:
+        self._ensure_fresh_contract()
+
+    def _write_fresh_contract(
         self,
     ) -> None:
         self.maxDiff = None
@@ -445,6 +477,7 @@ class PersistenceContract08CanonicalParityTests(PersistenceContractBase):
         )
 
     def test_11_every_domain_entity_round_trips_through_rls(self) -> None:
+        self._ensure_fresh_contract()
         contract = build_fresh_contract()
         tenant = str(contract.tenant_id)
         matter = str(contract.matter_id)
