@@ -24,7 +24,7 @@ class SecretBaselineTests(unittest.TestCase):
         )
         check_secrets._validate_reviewed_baseline(payload)
         findings = [entry for entries in payload["results"].values() for entry in entries]
-        self.assertEqual(353, len(findings))
+        self.assertEqual(363, len(findings))
         self.assertTrue(all(entry["is_secret"] is False for entry in findings))
 
     def test_unreviewed_baseline_entry_fails_closed(self) -> None:
