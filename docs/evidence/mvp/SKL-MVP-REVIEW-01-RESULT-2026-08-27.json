@@ -1,0 +1,103 @@
+{
+  "acceptance": {
+    "all_21_frozen_operations": true,
+    "audit_outbox_idempotency": true,
+    "backup_restore": true,
+    "browser_accessibility": true,
+    "browser_visual": true,
+    "build_deterministic": true,
+    "contracts_recomputed": true,
+    "cross_matter_denied": true,
+    "cross_tenant_denied": true,
+    "fresh_axe_zero_violations": true,
+    "fresh_migration_replay": true,
+    "fresh_pngs_retained": true,
+    "migrations_recomputed": true,
+    "openapi_recomputed": true,
+    "preserved_prior_blocked_evidence": true,
+    "reset_reseed": true,
+    "rollback": true,
+    "safe_state": true,
+    "seed_recomputed": true,
+    "source_read_only": true
+  },
+  "card": "13473fb6",
+  "candidate": {
+    "archive_sha256": "33d08bbb5f9f3628ac43016343277035af829d98ed24a4796ab82a531a8cd8d6",
+    "commit": "b8836c91a8337d125a86fc06fd87c270ba176b2e",
+    "tree": "c1f98547a2337c34e2248b0d77d89e299e3d122c"
+  },
+  "evidence": {
+    "compact_png_sha256": "90b31a6a0e5befdf9c17ee845b23ac8b75b0b9846af735bd99d36b3113d198cd",
+    "expanded_png_sha256": "83fea41f29c9dbf722aac622ad916903c315a7dfe0b4d61383f12bfb7772216d",
+    "run_1_sha256": "3fd81b74e3321b64b80c813ad302964a369adcd5573e1a415c2fcbecd66e80a3",
+    "run_2_sha256": "d60db062ad744c281825783ec59a0eb8e84942018cab6bef789609e3b66908bc",
+    "runtime_visual_aggregate_sha256": "e86f8855b1ac85d4118fe6569331c9fd9b80ede03e3e44a1a827fe9cab1c10e5",
+    "runs_normalized_sha256": "39c072709ec9fd8fa3bbf5d1df4411a64282031214e4cc72c02190af0f641842"
+  },
+  "hashes": {
+    "build_aggregate_sha256": "889f45fccfc0953a23cca62bd60b63b802e34d8a63ad96a228cd8b80e4517ebf",
+    "contracts_aggregate_sha256": "af766d16974506f14a4242a8016018c2a7ca1c1d891f477fc6af6a9245cc5bac",
+    "core_migration_manifest_sha256": "08c517e51124d68585ba16fef9791afb5a73c90f883b128790327ad0bc899c35",
+    "frozen_manifest_sha256": "0857b0642c49531ae615362d7a40785e21aa8676a933ea6a27a5f1f057e11c66",
+    "implementation_archive_sha256": "82d709c35551120facaae1abed2bb1c0beaa8c0b04eb8750d970a12e2fa2833b",
+    "migration_sql_aggregate_sha256": "be4e14723627eca23638b10da6dd3ad438db18045e5b98207e7ba515023fae1b",
+    "openapi_sha256": "1555cec46c8143e0c4f69210b8ccf0f91ea90a9cea62166d645893462fb820b6",
+    "ordered_migration_bootstrap_sha256": "e269a2358a5c032996e64b5e070a25967639a530679a364fac64725b681248cd",
+    "package_lock_sha256": "b4da8dc8d7815a19b54bff1ee059c25167485708c0261f40ca6b6df2452e71e8",
+    "public_synthetic_seed_sha256": "4b14516539289255daca9065dd28060a9e96aea365faec9ecbd1a679bdb47742",
+    "q3_bundle_sha256": "90072c68de6397cac2fed08101b0ecdbd01d678be0d2db769bcfabec648ddfa6",
+    "retrieval_migration_manifest_sha256": "9d5b0c8118db9d4b56b9fc3ec432800833bcc70f9693bc9cc7bf323215f4cdf6",
+    "uv_lock_sha256": "a77c624eae87f9908127c7af695ac1275eeab18efc519ab66185227fbc80d458"
+  },
+  "implementation": {
+    "commit": "89c5e0e77bf2fcc362d66442b961439528583ace",
+    "tree": "dbf076fca56794efae6278c8c3cba5921f9b28f3"
+  },
+  "limitations": [
+    "Public-synthetic corpus only.",
+    "Connectors remain simulation-only.",
+    "Optional AGE remains activation-gated.",
+    "The official repository secret gate remains inherited red. Changed implementation files have zero findings and negative controls pass.",
+    "Expanded mypy reports 12 inherited errors in 6 changed Python files. The frozen-operation registry passes focused mypy.",
+    "Web Prettier remains inherited red on apps/web/src/api/client.ts."
+  ],
+  "preserved_failure": {
+    "archive_sha256": "fc7b107e3a6f3528d40ac1fa7c474b4075fc2344ff210beb8da667a9e4476c88",
+    "commit": "9b21c8878b9e62faf46b1145293218181c64a4a2",
+    "tree": "b060621ab012fae9054961f16abdce3593390d20"
+  },
+  "recorded_at": "2026-08-27T22:48:56Z",
+  "reviewer": "codex-sol-13473fb6",
+  "safe_state": {
+    "card_431db4dd_mutation": false,
+    "credential_access": false,
+    "deployment": false,
+    "external_action": false,
+    "merge": false,
+    "non_loopback_listener": false,
+    "product_source_changed": false,
+    "protected_content": false,
+    "provider_traffic": false,
+    "push": false,
+    "task_containers_absent": true,
+    "task_volumes_absent": true
+  },
+  "secret_hygiene": {
+    "changed_implementation_findings": 0,
+    "new_evidence_content_hash_findings": 47,
+    "new_evidence_metadata_keyword_findings": 1,
+    "negative_control_result": "4 passed, 6 subtests passed",
+    "official_repository_gate": "FAIL_INHERITED_BASELINE_DRIFT"
+  },
+  "tests": {
+    "capauth_api_agent_activity": "174 passed, 97 subtests passed",
+    "durable_feature_owners": "348 passed, 1 inherited warning",
+    "focused_request_capability_composition": "20 passed",
+    "secret_negative_controls": "4 passed, 6 subtests passed",
+    "web": "24 files passed, 258 tests passed",
+    "web_lint": "PASS",
+    "web_typecheck": "PASS"
+  },
+  "verdict": "PASS"
+}
