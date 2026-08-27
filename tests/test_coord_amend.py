@@ -69,17 +69,46 @@ def _assert_authoritative_criteria(tmp_path, task_id: str, expected: list[str]) 
     assert view.task.acceptance_criteria == expected
 
 
-def test_skcoord_dependency_requires_cardstore_home_guard_release():
+def test_skcoord_pins_agree_between_pyproject_and_ci():
+    """The declared floor and the CI registry pin must be the SAME version.
+
+    tests/test_coord_amend.py runs twice in the pytest workflow: once against the
+    registry wheel that step force-installs, and again against skcoord from git
+    main. If those implement different contracts, no assertion in this file can
+    satisfy both and the job is unwinnable by anyone.
+
+    This test used to hardcode the version in a third place, which is precisely
+    how the drift became invisible: the CI pin sat at 0.1.44 while skcoord
+    released through 0.1.53, and this test kept asserting 0.1.44 was correct. On
+    2026-08-27 skcoord 0.1.51 changed KanbanBoard.cards() from failing closed on
+    malformed criteria to degrading the one unreadable card, the two CI steps
+    began asserting opposite behaviours, and every open PR went red without
+    having touched the code.
+
+    So it now derives the expected version from pyproject and asserts CI matches,
+    rather than naming a version of its own. Bumping skcoord is then a two-file
+    change that this test verifies, instead of a three-file change where forgetting
+    the third is silent.
+    """
     project = tomllib.loads((PROJECT_ROOT / "pyproject.toml").read_text(encoding="utf-8"))
     requirements = [Requirement(value) for value in project["project"]["dependencies"]]
     skcoord = next(requirement for requirement in requirements if requirement.name == "skcoord")
 
-    assert Version("0.1.43") not in skcoord.specifier
-    assert Version("0.1.44") in skcoord.specifier
+    floors = [Version(spec.version) for spec in skcoord.specifier if spec.operator in (">=", "==")]
+    assert floors, "skcoord must declare an explicit floor, not float on any release"
+    declared = max(floors)
+
+    # the floor is a real gate: the release below it must be excluded
+    below = Version(f"{declared.major}.{declared.minor}.{max(declared.micro - 1, 0)}")
+    assert below not in skcoord.specifier
+    assert declared in skcoord.specifier
 
     workflow = (PROJECT_ROOT / ".github" / "workflows" / "pytest.yml").read_text(encoding="utf-8")
-    assert '"skcoord==0.1.44"' in workflow
-    assert 'Version(version("skcoord")) == Version("0.1.44")' in workflow
+    assert f'"skcoord=={declared}"' in workflow, (
+        f"CI registry pin must equal the pyproject floor {declared}; "
+        "a stale pin makes the two test runs assert different contracts"
+    )
+    assert f'Version(version("skcoord")) == Version("{declared}")' in workflow
 
 
 @pytest.mark.parametrize("mode", [None, "1", "dual", "0", "off", "false", "no"])
@@ -108,8 +137,15 @@ def test_every_card_store_selector_projects_current_criteria(tmp_path, monkeypat
     assert (CardStore(tmp_path).cards_dir / "criteria9" / "core.json").read_bytes() == core_before
 
 
-@pytest.mark.parametrize("mode", [None, "1", "dual", "0", "off", "false", "no"])
-def test_every_card_store_selector_fails_closed_on_malformed_criteria(tmp_path, monkeypatch, mode):
+# Legacy-read selectors still refuse the board outright. Store-read selectors
+# degrade the one bad card instead, since skcoord 0.1.51 (skcoord #52,
+# "fix(cardstore): isolate unreadable card folds") made KanbanBoard.cards() pass
+# degrade_unreadable=True so one corrupt stream cannot blank the whole board.
+_LEGACY_READ_SELECTORS = ["dual", "0", "off", "false", "no"]
+_STORE_READ_SELECTORS = [None, "1"]
+
+
+def _seed_malformed_criteria(tmp_path, monkeypatch, mode):
     monkeypatch.setenv("SKCOORD_CARD_STORE", "1")
     _seed(tmp_path, "badcriteria", criteria=["birth criterion"])
     CardStore(tmp_path).append_event("badcriteria", "amend_criteria", "uptake-test", criteria=[])
@@ -118,8 +154,42 @@ def test_every_card_store_selector_fails_closed_on_malformed_criteria(tmp_path, 
     else:
         monkeypatch.setenv("SKCOORD_CARD_STORE", mode)
 
+
+@pytest.mark.parametrize("mode", _LEGACY_READ_SELECTORS)
+def test_legacy_read_selectors_fail_closed_on_malformed_criteria(tmp_path, monkeypatch, mode):
+    _seed_malformed_criteria(tmp_path, monkeypatch, mode)
+
     with pytest.raises(ValueError, match="criteria"):
         KanbanBoard(tmp_path).cards()
+
+
+@pytest.mark.parametrize("mode", _STORE_READ_SELECTORS)
+def test_store_read_selectors_surface_malformed_criteria_loudly(tmp_path, monkeypatch, mode):
+    """The card must never project as if it were healthy.
+
+    The safety property this file has always asserted is that malformed criteria
+    cannot pass silently. Criteria are what "done" is measured against, so a card
+    whose criteria were dropped must not look like an ordinary card.
+
+    skcoord 0.1.51 changed HOW that is enforced on the store-read path, from
+    refusing the whole board to degrading the single bad card. The property still
+    holds, and this asserts it in the new form rather than deleting it: the card
+    is projected as UNREADABLE, flagged critical, labelled, and carries the
+    reason. What is NOT acceptable, and what this test would catch, is the card
+    appearing with its criteria quietly emptied.
+    """
+    _seed_malformed_criteria(tmp_path, monkeypatch, mode)
+
+    cards = KanbanBoard(tmp_path).cards()
+    bad = next(card for card in cards if card.id == "badcriteria")
+
+    assert bad.meta.get("unreadable") is True
+    assert "unreadable" in bad.labels
+    assert bad.title.startswith("UNREADABLE")
+    assert bad.priority == "critical"
+    assert "criteria" in str(bad.meta.get("reason", "")).lower()
+    # and the failure is attributable, not anonymous
+    assert bad.meta.get("source") == "cards/badcriteria"
 
 
 def test_criteria_projection_assertion_is_sensitive_to_fold_bypass(tmp_path, monkeypatch):
