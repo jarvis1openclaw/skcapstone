@@ -445,10 +445,14 @@ class PersistenceContract08CanonicalParityTests(PersistenceContractBase):
         )
 
     def test_11_every_domain_entity_round_trips_through_rls(self) -> None:
+        contract = build_fresh_contract()
+        tenant = str(contract.tenant_id)
+        matter = str(contract.matter_id)
+        authority = str(contract.entities["Authority"].id)
         role = "sklegal_test_fresh_writer"
         self._psql(
             role,
-            """
+            f"""
             INSERT INTO sklegal_legal.sentence_groundings (
                 id, tenant_id, matter_id, work_product_version_id,
                 work_product_version_number, work_product_content_sha256,
@@ -476,6 +480,44 @@ class PersistenceContract08CanonicalParityTests(PersistenceContractBase):
             ORDER BY version.id, claim.id
             LIMIT 1
             ON CONFLICT DO NOTHING;
+
+            INSERT INTO sklegal_legal.legacy_aliases (
+                id, tenant_id, matter_id, canonical_record_kind,
+                canonical_record_id, legacy_record_kind, legacy_id,
+                legacy_slug, legacy_path, source_version, content_sha256,
+                observed_at, import_batch_id
+            )
+            VALUES (
+                'e2000000-0000-4000-8000-000000000001'::uuid,
+                '{tenant}'::uuid,
+                '{matter}'::uuid,
+                'matter',
+                '{matter}'::uuid,
+                'problem',
+                'PRB-2026-001',
+                'synthetic-fresh-matter',
+                'synthetic/fresh-matter',
+                'v1',
+                repeat('a', 64)::sklegal_legal.sha256_digest,
+                clock_timestamp(),
+                'e2000000-0000-4000-8000-000000000002'::uuid
+            );
+
+            INSERT INTO sklegal_legal.authorities (
+                id, tenant_id, matter_id, title, citation, jurisdiction,
+                authority_kind, source_reference_id, valid_from, valid_to,
+                applicability_validation_id, status, classification,
+                completeness, version
+            )
+            SELECT id, tenant_id, matter_id, title, citation, jurisdiction,
+                   authority_kind, source_reference_id, valid_from, valid_to,
+                   applicability_validation_id, 'challenged', classification,
+                   completeness, 2
+            FROM sklegal_legal.authorities
+            WHERE tenant_id = '{tenant}'::uuid
+              AND matter_id = '{matter}'::uuid
+              AND id = '{authority}'::uuid
+              AND version = 1;
             """,
         )
         restored: dict[str, DomainEntity] = {}
