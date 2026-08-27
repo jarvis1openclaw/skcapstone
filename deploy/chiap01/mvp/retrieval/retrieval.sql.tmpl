@@ -1,7 +1,7 @@
 CREATE ROLE sklegal_retrieval_app LOGIN NOSUPERUSER NOCREATEDB NOCREATEROLE
   NOINHERIT NOBYPASSRLS PASSWORD :'app_password';
 
-CREATE EXTENSION vector;
+-- CREATE EXTENSION vector is owned by the reviewed retrieval migration.
 CREATE SCHEMA sklegal_retrieval AUTHORIZATION sklegal_retrieval_admin;
 
 CREATE TABLE sklegal_retrieval.projections (
@@ -33,3 +33,8 @@ CREATE POLICY tenant_matter_isolation ON sklegal_retrieval.projections
 
 GRANT USAGE ON SCHEMA sklegal_retrieval TO sklegal_retrieval_app;
 GRANT SELECT, INSERT, UPDATE, DELETE ON sklegal_retrieval.projections TO sklegal_retrieval_app;
+GRANT USAGE ON SCHEMA sklegal_governed_corpus TO sklegal_retrieval_app;
+GRANT SELECT ON ALL TABLES IN SCHEMA sklegal_governed_corpus
+  TO sklegal_retrieval_app;
+GRANT EXECUTE ON ALL FUNCTIONS IN SCHEMA sklegal_governed_corpus
+  TO sklegal_retrieval_app;

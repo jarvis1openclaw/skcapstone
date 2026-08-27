@@ -114,6 +114,10 @@ class PostgresBoundary:
                             "SELECT set_config('sklegal.matter_id', %s, true)",
                             (str(matter_id),),
                         )
+                    connection.execute(
+                        "SELECT set_config('sklegal.principal_id', %s, true)",
+                        (str(PRINCIPAL_ID),),
+                    )
                     self._local.connection = connection
                     try:
                         yield connection
@@ -401,7 +405,7 @@ class DurableBrowserSessions:
             (
                 "POST",
                 f"/v1/matters/{MATTER_ID}/corpus/search",
-                "api:corpus.search",
+                "api:governed_corpus.search",
                 Capability.CORPUS_SEARCH,
                 Purpose.LEGAL_RESEARCH,
                 MATTER_ID,
@@ -409,7 +413,7 @@ class DurableBrowserSessions:
             (
                 "GET",
                 f"/v1/matters/{MATTER_ID}/corpus/sources/{CORPUS_SOURCE_ID}/span",
-                "api:corpus.span",
+                "api:governed_corpus.span",
                 Capability.CORPUS_ARTIFACT_READ,
                 Purpose.LEGAL_RESEARCH,
                 MATTER_ID,
@@ -779,6 +783,8 @@ def build_durable_public_synthetic_app():
         )
         return row is not None and row["stale"] is False
 
+    from .durable_feature_routers import build_durable_feature_routers
+
     probes = {
         "authentication": core.ready,
         "policy": policy_ready,
@@ -801,6 +807,13 @@ def build_durable_public_synthetic_app():
         mode="production",
         browser_sessions=sessions,
         browser_session_audit=DurableSessionAuditSink(core),
+        feature_routers=build_durable_feature_routers(
+            core=core,
+            retrieval=retrieval,
+            authorizer=authorizer,
+            principal_resolver=principal_resolver,
+            scope_resolver=scope_resolver,
+        ),
     )
     app = create_mvp_app(composition)
     app.state.durable_public_synthetic = True

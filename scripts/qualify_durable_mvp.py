@@ -16,9 +16,10 @@ import time
 import urllib.error
 import urllib.request
 from contextlib import closing
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
-from uuid import UUID
+from uuid import NAMESPACE_URL, UUID, uuid5
 
 import psycopg
 from psycopg.rows import dict_row
@@ -31,15 +32,32 @@ from sklegal_api.corpus import (
     CorpusTraceRead,
 )
 from sklegal_capauth import VERIFIER_POLICY_VERSION, Audience, Capability, PrincipalType
+from sklegal_persistence.features.governed_corpus.models import (
+    Classification,
+    CorpusSourceVersion,
+    ProjectionState,
+    VerificationState,
+    canonical_sha256,
+)
 
 ROOT = Path(__file__).resolve().parents[1]
 COMPOSE = ROOT / "deploy/chiap01/compose.mvp.yml"
 FIXTURE = ROOT / "tests/fixtures/mvp/public-synthetic-mvp-v1.json"
+V2_MANIFEST = ROOT / "docs/contracts/v2-mvp/v2-surface-manifest.v1.json"
 CHROME_QUALIFICATION = ROOT / "tests/qualification/session_reload_csp_qualification.mjs"
 TENANT_ID = UUID("11111111-1111-4111-8111-111111111111")
 PRINCIPAL_ID = UUID("22222222-2222-4222-8222-222222222221")
 MATTER_ID = UUID("44444444-4444-4444-8444-444444444441")
 CORPUS_SOURCE_ID = "public-synthetic-authority-primary"
+FEATURE_POLICY_REVISION = hashlib.sha256(
+    b"sklegal-public-synthetic-policy-v1"
+).hexdigest()
+FEATURE_RIGHTS_REVISION = hashlib.sha256(
+    b"sklegal-public-synthetic-rights-v1"
+).hexdigest()
+FEATURE_RELEASE_ID = "public-synthetic-release-v1"
+FEATURE_PROJECTION_GENERATION = 1
+FEATURE_CORE_WATERMARK = 1
 
 
 class QualificationError(RuntimeError):
@@ -258,16 +276,180 @@ def _corpus_payloads(fixture: dict[str, Any]) -> tuple[dict[str, Any], dict[str,
     )
 
 
+def _governed_corpus_records(
+    fixture: dict[str, Any],
+) -> tuple[ProjectionState, CorpusSourceVersion]:
+    authority = fixture["authorities"][0]
+    exact_span = "Invented fixture authority for the invented delivery date only."
+    recorded_at = datetime(2026, 8, 27, 12, 0, tzinfo=UTC)
+    projection = ProjectionState(
+        release_id=FEATURE_RELEASE_ID,
+        projection_generation=FEATURE_PROJECTION_GENERATION,
+        backend_watermark=FEATURE_CORE_WATERMARK,
+        core_watermark=FEATURE_CORE_WATERMARK,
+        lag_events=0,
+        lag_seconds=0,
+        max_lag_events=0,
+        max_lag_seconds=0,
+    )
+    source = CorpusSourceVersion(
+        tenant_id=TENANT_ID,
+        matter_id=MATTER_ID,
+        source_id=CORPUS_SOURCE_ID,
+        source_version_id=uuid5(NAMESPACE_URL, f"{MATTER_ID}:{CORPUS_SOURCE_ID}"),
+        source_version=authority["sourceVersion"],
+        release_id=FEATURE_RELEASE_ID,
+        projection_generation=FEATURE_PROJECTION_GENERATION,
+        title=authority["title"],
+        citation=authority["citation"],
+        source_role="official_authority",
+        classification=Classification.PUBLIC,
+        rights_revision=FEATURE_RIGHTS_REVISION,
+        permitted_principal_ids=frozenset({PRINCIPAL_ID}),
+        source_sha256=authority["contentSha256"],
+        document_id="public-synthetic-authority-document",
+        chunk_id="public-synthetic-authority-chunk-1",
+        chunk_sha256=hashlib.sha256(exact_span.encode()).hexdigest(),
+        locator={"kind": "character", "start": 0, "end": len(exact_span)},
+        exact_span=exact_span,
+        embedding=(0.1, 0.2, 0.3),
+        verification_state=VerificationState.OFFICIAL_AUTHORITY_VERIFIED,
+        jurisdiction=authority["jurisdiction"],
+        recorded_at=recorded_at,
+        recorded_by_principal_id=PRINCIPAL_ID,
+        authorization_decision_id=uuid5(
+            NAMESPACE_URL, f"{MATTER_ID}:corpus-authorization"
+        ),
+        policy_decision_id=uuid5(NAMESPACE_URL, f"{MATTER_ID}:corpus-policy"),
+        policy_revision=FEATURE_POLICY_REVISION,
+    )
+    return projection, source
+
+
 def _seed(core_dsn: str, retrieval_dsn: str) -> dict[str, str]:
     fixture_bytes = FIXTURE.read_bytes()
     fixture = json.loads(fixture_bytes)
     search, span = _corpus_payloads(fixture)
+    feature_projection, feature_source = _governed_corpus_records(fixture)
+    feature_source_json = feature_source.model_dump(mode="json", by_alias=True)
+    feature_projection_json = feature_projection.model_dump(mode="json", by_alias=True)
+    client_id = uuid5(NAMESPACE_URL, f"{TENANT_ID}:public-synthetic-client")
+    engagement_id = uuid5(
+        NAMESPACE_URL, f"{TENANT_ID}:public-synthetic-engagement"
+    )
     principal_revision = hashlib.sha256(
         f"{TENANT_ID}:{PRINCIPAL_ID}:active".encode()
     ).hexdigest()
     outbox_payload = {"query": "invented delivery date", "search": search, "span": span}
     with psycopg.connect(core_dsn) as core:
         _scope(core, TENANT_ID)
+        core.execute(
+            """INSERT INTO sklegal_identity.tenants
+                   (id, tenant_id, slug, name, status, classification)
+               VALUES (%s, %s, 'public-synthetic', 'Public Synthetic Tenant',
+                       'active', 'public')""",
+            (TENANT_ID, TENANT_ID),
+        )
+        core.execute(
+            """INSERT INTO sklegal_identity.principals
+                   (id, tenant_id, principal_kind, display_name, status,
+                    classification)
+               VALUES (%s, %s, 'human', 'Public Synthetic Reviewer', 'active',
+                       'public')""",
+            (PRINCIPAL_ID, TENANT_ID),
+        )
+        core.execute(
+            """INSERT INTO sklegal_identity.database_role_bindings
+                   (database_role, tenant_id, principal_id)
+               VALUES ('sklegal_core_app', %s, %s)""",
+            (TENANT_ID, PRINCIPAL_ID),
+        )
+        core.execute(
+            """INSERT INTO sklegal_identity.tenant_memberships
+                   (tenant_id, principal_id, membership_role)
+               VALUES (%s, %s, 'reviewer')""",
+            (TENANT_ID, PRINCIPAL_ID),
+        )
+        core.execute(
+            """INSERT INTO sklegal_legal.clients
+                   (id, tenant_id, display_name, client_kind, status,
+                    classification)
+               VALUES (%s, %s, 'Synthetic Client', 'company', 'active',
+                       'public')""",
+            (client_id, TENANT_ID),
+        )
+        core.execute(
+            """INSERT INTO sklegal_legal.engagements
+                   (id, tenant_id, client_id, title, scope, status, valid_from,
+                    classification)
+               VALUES (%s, %s, %s, 'Synthetic Engagement', 'Synthetic only',
+                       'active', '2026-08-27T00:00:00Z', 'public')""",
+            (engagement_id, TENANT_ID, client_id),
+        )
+        core.execute(
+            """INSERT INTO sklegal_legal.matters
+                   (id, tenant_id, matter_id, client_id, engagement_id, title,
+                    summary, status, opened_at, classification)
+               VALUES (%s, %s, %s, %s, %s, 'Synthetic Matter',
+                       'Public synthetic qualification only.', 'open',
+                       '2026-08-27T00:00:00Z', 'public')""",
+            (MATTER_ID, TENANT_ID, MATTER_ID, client_id, engagement_id),
+        )
+        core.execute(
+            """INSERT INTO sklegal_legal.matter_memberships
+                   (tenant_id, matter_id, principal_id, membership_role)
+               VALUES (%s, %s, %s, 'reviewer')""",
+            (TENANT_ID, MATTER_ID, PRINCIPAL_ID),
+        )
+        core.execute(
+            """INSERT INTO sklegal_governed_corpus.projection_registry
+                   (tenant_id, matter_id, projection_generation, release_id,
+                    core_watermark, policy_revision, rights_revision, record,
+                    recorded_at)
+               VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)""",
+            (
+                TENANT_ID,
+                MATTER_ID,
+                FEATURE_PROJECTION_GENERATION,
+                FEATURE_RELEASE_ID,
+                FEATURE_CORE_WATERMARK,
+                FEATURE_POLICY_REVISION,
+                FEATURE_RIGHTS_REVISION,
+                Jsonb(feature_projection_json),
+                feature_source.recorded_at,
+            ),
+        )
+        core.execute(
+            """INSERT INTO sklegal_governed_corpus.source_versions
+                   (tenant_id, matter_id, source_id, source_version_id,
+                    source_version, release_id, projection_generation,
+                    classification, rights_revision, permitted_principal_ids,
+                    source_sha256, chunk_sha256, exact_span,
+                    supersedes_source_version_id, record, record_sha256,
+                    authorization_decision_id, recorded_at)
+               VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s,
+                       %s, %s, %s, %s, %s, %s)""",
+            (
+                TENANT_ID,
+                MATTER_ID,
+                feature_source.source_id,
+                feature_source.source_version_id,
+                feature_source.source_version,
+                feature_source.release_id,
+                feature_source.projection_generation,
+                int(feature_source.classification),
+                feature_source.rights_revision,
+                list(feature_source.permitted_principal_ids),
+                feature_source.source_sha256,
+                feature_source.chunk_sha256,
+                feature_source.exact_span,
+                feature_source.supersedes_source_version_id,
+                Jsonb(feature_source_json),
+                canonical_sha256(feature_source),
+                feature_source.authorization_decision_id,
+                feature_source.recorded_at,
+            ),
+        )
         core.execute(
             """INSERT INTO sklegal_mvp.principals
                    (tenant_id, principal_id, principal_type, subject, active, revision)
@@ -291,8 +473,8 @@ def _seed(core_dsn: str, retrieval_dsn: str) -> dict[str, str]:
                 (TENANT_ID, kind, record_id, matter_id, Jsonb(payload)),
             )
         core.execute(
-            "INSERT INTO sklegal_mvp.policy_state VALUES (%s, 'public-synthetic-policy-v1', false, 0)",
-            (TENANT_ID,),
+            "INSERT INTO sklegal_mvp.policy_state VALUES (%s, %s, false, 0)",
+            (TENANT_ID, FEATURE_POLICY_REVISION),
         )
         sequence = core.execute(
             """INSERT INTO sklegal_mvp.outbox
@@ -308,6 +490,55 @@ def _seed(core_dsn: str, retrieval_dsn: str) -> dict[str, str]:
         )
     with psycopg.connect(retrieval_dsn) as retrieval:
         _scope(retrieval, TENANT_ID, MATTER_ID)
+        retrieval.execute(
+            """INSERT INTO sklegal_governed_corpus.projection_state
+                   (tenant_id, matter_id, projection_generation, release_id,
+                    backend_watermark, core_watermark, record, recorded_at)
+               VALUES (%s, %s, %s, %s, %s, %s, %s, %s)""",
+            (
+                TENANT_ID,
+                MATTER_ID,
+                FEATURE_PROJECTION_GENERATION,
+                FEATURE_RELEASE_ID,
+                FEATURE_CORE_WATERMARK,
+                FEATURE_CORE_WATERMARK,
+                Jsonb(feature_projection_json),
+                feature_source.recorded_at,
+            ),
+        )
+        retrieval.execute(
+            """INSERT INTO sklegal_governed_corpus.source_projections
+                   (tenant_id, matter_id, source_id, source_version_id,
+                    source_version, release_id, projection_generation,
+                    classification, rights_revision, permitted_principal_ids,
+                    source_sha256, chunk_sha256, exact_span, search_document,
+                    embedding, supersedes_source_version_id, record,
+                    record_sha256, recorded_at)
+               VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s,
+                       %s, to_tsvector('english', %s), %s::public.vector, %s,
+                       %s, %s, %s)""",
+            (
+                TENANT_ID,
+                MATTER_ID,
+                feature_source.source_id,
+                feature_source.source_version_id,
+                feature_source.source_version,
+                feature_source.release_id,
+                feature_source.projection_generation,
+                int(feature_source.classification),
+                feature_source.rights_revision,
+                list(feature_source.permitted_principal_ids),
+                feature_source.source_sha256,
+                feature_source.chunk_sha256,
+                feature_source.exact_span,
+                f"{feature_source.title} {feature_source.exact_span}",
+                json.dumps(feature_source.embedding),
+                feature_source.supersedes_source_version_id,
+                Jsonb(feature_source_json),
+                canonical_sha256(feature_source),
+                feature_source.recorded_at,
+            ),
+        )
         retrieval.execute(
             """INSERT INTO sklegal_retrieval.projections
                    (tenant_id, matter_id, generation, outbox_sequence,
@@ -534,9 +765,15 @@ def _backup_restore(project: str) -> dict[str, Any]:
 def _reset(core_dsn: str, retrieval_dsn: str) -> None:
     with psycopg.connect(retrieval_dsn) as retrieval:
         _scope(retrieval, TENANT_ID, MATTER_ID)
-        retrieval.execute("TRUNCATE sklegal_retrieval.projections")
+        retrieval.execute(
+            """TRUNCATE sklegal_governed_corpus.projection_commands,
+                      sklegal_governed_corpus.source_projections,
+                      sklegal_governed_corpus.projection_state,
+                      sklegal_retrieval.projections"""
+        )
     with psycopg.connect(core_dsn) as core:
         _scope(core, TENANT_ID)
+        core.execute("TRUNCATE sklegal_identity.tenants CASCADE")
         core.execute(
             """TRUNCATE sklegal_mvp.audit_events,
                       sklegal_mvp.browser_sessions,
@@ -547,7 +784,8 @@ def _reset(core_dsn: str, retrieval_dsn: str) -> None:
                       sklegal_mvp.records,
                       sklegal_mvp.matter_memberships,
                       sklegal_mvp.principals,
-                      sklegal_mvp.policy_state
+                      sklegal_mvp.policy_state,
+                      sklegal_mvp.artifact_objects
                RESTART IDENTITY"""
         )
 
@@ -575,6 +813,42 @@ def _http(
     except urllib.error.HTTPError as error:
         raw = error.read()
         return error.code, json.loads(raw) if raw else {}, dict(error.headers)
+
+
+def _v2_openapi_inventory(
+    api_port: int, headers: dict[str, str]
+) -> dict[str, Any]:
+    status, schema, _ = _http(
+        f"http://127.0.0.1:{api_port}/openapi.json", headers=headers
+    )
+    if status != 200:
+        raise QualificationError(
+            f"OpenAPI inventory is unavailable: status={status} body={schema}"
+        )
+    manifest = json.loads(V2_MANIFEST.read_text(encoding="utf-8"))
+    expected = {
+        (item["method"], item["path"], item["operation_id"])
+        for item in manifest["operations"]
+    }
+    actual = [
+        (method.upper(), path, operation["operationId"])
+        for path, methods in schema["paths"].items()
+        for method, operation in methods.items()
+        if method.lower() in {"delete", "get", "patch", "post", "put"}
+    ]
+    exact = expected.intersection(actual)
+    operation_ids = [item[2] for item in actual]
+    if len(exact) != 21 or len(operation_ids) != len(set(operation_ids)):
+        raise QualificationError("frozen V2 OpenAPI inventory mismatch")
+    return {
+        "required": len(expected),
+        "exact_matches": len(exact),
+        "operation_ids_unique": True,
+        "openapi_sha256": hashlib.sha256(
+            json.dumps(schema, sort_keys=True, separators=(",", ":")).encode()
+        ).hexdigest(),
+        "manifest_sha256": hashlib.sha256(V2_MANIFEST.read_bytes()).hexdigest(),
+    }
 
 
 def _compose(env: dict[str, str], project: str, *arguments: str) -> None:
@@ -738,6 +1012,7 @@ def qualify(output: Path) -> dict[str, Any]:
         )
         cookie = set_cookie.split(";", 1)[0]
         request_headers = {"Cookie": cookie, "X-CSRF-Token": session["csrfToken"]}
+        v2_openapi = _v2_openapi_inventory(api_port, request_headers)
         workspace_status, _, _ = _http(
             f"http://127.0.0.1:{api_port}/v1/matters/{MATTER_ID}/workspace",
             headers=request_headers,
@@ -769,7 +1044,12 @@ def qualify(output: Path) -> dict[str, Any]:
         retrieval_outage, _, _ = _http(
             f"http://127.0.0.1:{api_port}/v1/matters/{MATTER_ID}/corpus/search",
             "POST",
-            {"query": "invented delivery date"},
+            {
+                "query": "invented delivery date",
+                "expectedReleaseId": FEATURE_RELEASE_ID,
+                "expectedProjectionGeneration": FEATURE_PROJECTION_GENERATION,
+                "requiredCoreWatermark": FEATURE_CORE_WATERMARK,
+            },
             request_headers,
         )
         _compose(env, project, "start", "retrieval")
@@ -932,6 +1212,7 @@ def qualify(output: Path) -> dict[str, Any]:
             "revocation_revision": revocation_snapshot.revision,
             "projection_rebuild": projection_rebuild,
             "backup_restore": backup_restore,
+            "v2_openapi": v2_openapi,
             "topology": {
                 "core_port_loopback": core_port,
                 "retrieval_port_loopback": retrieval_port,
@@ -953,14 +1234,14 @@ def qualify(output: Path) -> dict[str, Any]:
         )
         return result
     finally:
-        for process in (web, api):
-            if process is not None and process.poll() is None:
-                process.terminate()
+        for cleanup_process in (web, api):
+            if cleanup_process is not None and cleanup_process.poll() is None:
+                cleanup_process.terminate()
                 try:
-                    process.wait(timeout=10)
+                    cleanup_process.wait(timeout=10)
                 except subprocess.TimeoutExpired:
-                    process.kill()
-                    process.wait(timeout=5)
+                    cleanup_process.kill()
+                    cleanup_process.wait(timeout=5)
         api_log.close()
         web_log.close()
         _compose(env, project, "down", "--volumes", "--remove-orphans")

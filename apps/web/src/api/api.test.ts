@@ -35,6 +35,64 @@ describe("ApiClient", () => {
     });
   }
 
+  it("uses exact governed-corpus pins in public-synthetic mode", async () => {
+    const result = {
+      tenantId: "tenant-a",
+      matterId: "matter-a",
+      querySha256: "a".repeat(64),
+      authorizationDecisionId: crypto.randomUUID(),
+      policyDecisionId: crypto.randomUUID(),
+      policyRevision: "b".repeat(64),
+      rightsRevision: "c".repeat(64),
+      classificationCeiling: 0,
+      projection: {
+        releaseId: "release-1",
+        projectionGeneration: 2,
+        backendWatermark: 3,
+        coreWatermark: 3,
+        lagEvents: 0,
+        lagSeconds: 0,
+        maxLagEvents: 0,
+        maxLagSeconds: 0,
+        fullTextBackend: "postgresql_full_text",
+        vectorBackend: "postgresql_pgvector_exact",
+        qdrantCompatibility: "metadata_only",
+        falkordbCompatibility: "metadata_only",
+      },
+      mode: "full_text",
+      hits: [],
+      noAnswer: true,
+      continuationCursor: null,
+    };
+    const fetchImpl = vi.fn(
+      async () =>
+        new Response(JSON.stringify({ result }), {
+          status: 200,
+          headers: { "Content-Type": "application/json" },
+        }),
+    ) as unknown as typeof fetch;
+    const client = new ApiClient({
+      baseUrl: "https://api.test/",
+      tenantId: () => "tenant-a",
+      csrfToken: () => "csrf-test-token",
+      fetchImpl,
+      corpusProjectionPins: {
+        releaseId: "release-1",
+        projectionGeneration: 2,
+        coreWatermark: 3,
+      },
+    });
+    await client.searchCorpus("matter-a", "query");
+    const [, init] = (fetchImpl as unknown as ReturnType<typeof vi.fn>).mock
+      .calls[0] as [string, RequestInit];
+    expect(JSON.parse(String(init.body))).toEqual({
+      query: "query",
+      expectedReleaseId: "release-1",
+      expectedProjectionGeneration: 2,
+      requiredCoreWatermark: 3,
+    });
+  });
+
   it("sends exact tenant scope and a fresh correlation id without bearer material", async () => {
     const fetchImpl = vi.fn(
       async () => new Response(JSON.stringify([]), { status: 200 }),

@@ -16,6 +16,7 @@ dependencies = [
   "sklegal-capauth",
   "sklegal-migration",
   "sklegal-model-gateway",
+  "sklegal-persistence",
   "sklegal-policies",
   "sklegal-retrieval",
   "uvicorn==0.52.4",

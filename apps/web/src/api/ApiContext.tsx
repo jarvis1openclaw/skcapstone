@@ -4,6 +4,15 @@ import { ApiClient } from "./client";
 import { getSession } from "../auth/sessionStore";
 import { useSession } from "../auth/SessionProvider";
 
+const publicSyntheticCorpusPins =
+  import.meta.env.VITE_SKLEGAL_PUBLIC_SYNTHETIC_PREVIEW === "1"
+    ? {
+        releaseId: "public-synthetic-release-v1",
+        projectionGeneration: 1,
+        coreWatermark: 1,
+      }
+    : undefined;
+
 const ApiContext = createContext<ApiClient | null>(null);
 
 export function ApiProvider(props: { baseUrl: string; children: ReactNode }) {
@@ -15,6 +24,7 @@ export function ApiProvider(props: { baseUrl: string; children: ReactNode }) {
         tenantId: () => getSession()?.activeTenantId ?? "",
         csrfToken: () => csrfToken,
         onAuthenticationFailure: invalidate,
+        corpusProjectionPins: publicSyntheticCorpusPins,
       }),
     [csrfToken, invalidate, props.baseUrl],
   );

@@ -12,6 +12,17 @@ import type {
   MatterSummary,
   MatterWorkspace,
 } from "./types";
+import type {
+  CorpusSearchRead,
+  CorpusSpanRead,
+  GovernedCorpusResult,
+} from "../features/governed_corpus/types";
+
+export interface CorpusProjectionPins {
+  releaseId: string;
+  projectionGeneration: number;
+  coreWatermark: number;
+}
 
 export interface ApiClientOptions {
   baseUrl: string;
@@ -19,6 +30,7 @@ export interface ApiClientOptions {
   csrfToken?: () => string | null;
   onAuthenticationFailure?: () => void;
   fetchImpl?: typeof fetch;
+  corpusProjectionPins?: CorpusProjectionPins;
 }
 
 export interface ApiResult<T> {
@@ -32,6 +44,7 @@ export class ApiClient {
   private readonly csrfToken: () => string | null;
   private readonly onAuthenticationFailure: () => void;
   private readonly fetchImpl: typeof fetch;
+  private readonly corpusProjectionPins: CorpusProjectionPins | null;
 
   constructor(options: ApiClientOptions) {
     this.baseUrl = options.baseUrl.replace(/\/$/, "");
@@ -40,6 +53,7 @@ export class ApiClient {
     this.onAuthenticationFailure =
       options.onAuthenticationFailure ?? (() => {});
     this.fetchImpl = options.fetchImpl ?? globalThis.fetch.bind(globalThis);
+    this.corpusProjectionPins = options.corpusProjectionPins ?? null;
   }
 
   private async execute<T>(
@@ -132,20 +146,54 @@ export class ApiClient {
     );
   }
 
-  searchCorpus(
+  async searchCorpus(
     matterId: string,
     query: string,
   ): Promise<ApiResult<CorpusSearchResponse>> {
+    if (this.corpusProjectionPins !== null) {
+      const response = await this.postJson<CorpusSearchRead>(
+        `/v1/matters/${encodeURIComponent(matterId)}/corpus/search`,
+        {
+          query,
+          expectedReleaseId: this.corpusProjectionPins.releaseId,
+          expectedProjectionGeneration:
+            this.corpusProjectionPins.projectionGeneration,
+          requiredCoreWatermark: this.corpusProjectionPins.coreWatermark,
+        },
+      );
+      return {
+        correlationId: response.correlationId,
+        data: legacyCorpusSearch(query, response.data.result),
+      };
+    }
     return this.postJson(
       `/v1/matters/${encodeURIComponent(matterId)}/corpus/search`,
       { query },
     );
   }
 
-  getCorpusSpan(
+  async getCorpusSpan(
     matterId: string,
     sourceId: string,
   ): Promise<ApiResult<CorpusSpan>> {
+    if (this.corpusProjectionPins !== null) {
+      const query = new URLSearchParams({
+        expectedReleaseId: this.corpusProjectionPins.releaseId,
+        expectedProjectionGeneration: String(
+          this.corpusProjectionPins.projectionGeneration,
+        ),
+        requiredCoreWatermark: String(
+          this.corpusProjectionPins.coreWatermark,
+        ),
+      });
+      const response = await this.request<CorpusSpanRead>(
+        `/v1/matters/${encodeURIComponent(matterId)}/corpus/sources/${encodeURIComponent(sourceId)}/span?${query}`,
+      );
+      return {
+        correlationId: response.correlationId,
+        data: legacyCorpusSpan(response.data),
+      };
+    }
     return this.request(
       `/v1/matters/${encodeURIComponent(matterId)}/corpus/sources/${encodeURIComponent(sourceId)}/span`,
     );
@@ -154,6 +202,92 @@ export class ApiClient {
   getClaimLedger(matterId: string): Promise<ApiResult<ClaimLedger>> {
     return this.request(`/v1/matters/${encodeURIComponent(matterId)}/claims`);
   }
+}
+
+function legacyCorpusSearch(
+  query: string,
+  result: GovernedCorpusResult,
+): CorpusSearchResponse {
+  return {
+    matterId: result.matterId,
+    query,
+    scopeOptions: [
+      { scope: "this_matter", state: "active", reason: null },
+      {
+        scope: "tenant_corpus",
+        state: "unavailable",
+        reason: "Public synthetic composition is Matter scoped.",
+      },
+      {
+        scope: "official_sources",
+        state: "unavailable",
+        reason: "No external source retrieval is enabled.",
+      },
+    ],
+    results: result.hits.map(({ source, rank, supersessionStatus }) => ({
+      rank: rank.rank,
+      score: rank.score,
+      snippet: source.exactSpan,
+      sourceId: source.sourceId,
+      title: source.title,
+      citation: source.citation,
+      classification: String(source.classification),
+      origin: source.sourceRole,
+      verificationState: source.verificationState,
+      sourceVersion: source.sourceVersion,
+      sourceSha256: source.sourceSha256,
+      documentId: source.documentId,
+      chunkId: source.chunkId,
+      chunkSha256: source.chunkSha256,
+      sourceLocator: `${source.documentId}:${source.chunkId}`,
+      spanKind: source.locator.kind,
+      spanStart: source.locator.start,
+      spanEnd: source.locator.end,
+      spanPage: source.locator.page,
+      supersessionStatus,
+    })),
+    trace: {
+      scopeKind: "this_matter",
+      tenantId: result.tenantId,
+      matterId: result.matterId,
+      releaseId: result.projection.releaseId,
+      projectionGeneration: result.projection.projectionGeneration,
+      currentProjectionGeneration: result.projection.projectionGeneration,
+      projectionStale: false,
+      backendWatermark: result.projection.backendWatermark,
+      lagEvents: result.projection.lagEvents,
+      lagSeconds: result.projection.lagSeconds,
+      queryTemplateId: "governed-corpus-full-text",
+      queryTemplateVersion: "v1",
+      queryTemplateSha256: result.querySha256,
+      rankPath: result.hits[0]?.rank.rankPath ?? ["full_text"],
+      retrievalAdapterVersion: "durable-postgres-v2",
+      sourceIds: result.hits.map(({ source }) => source.sourceId),
+      sourceHashes: result.hits.map(({ source }) => source.sourceSha256),
+    },
+  };
+}
+
+function legacyCorpusSpan(value: CorpusSpanRead): CorpusSpan {
+  const { source } = value;
+  return {
+    state: "available",
+    sourceId: source.sourceId,
+    sourceVersion: source.sourceVersion,
+    sourceSha256: source.sourceSha256,
+    documentId: source.documentId,
+    citation: source.citation,
+    title: source.title,
+    classification: String(source.classification),
+    sourceLocator: `${source.documentId}:${source.chunkId}`,
+    spanKind: source.locator.kind,
+    spanStart: source.locator.start,
+    spanEnd: source.locator.end,
+    spanPage: source.locator.page,
+    spanText: source.exactSpan,
+    supersessionStatus: "current",
+    jurisdiction: source.jurisdiction,
+  };
 }
 
 export type { ApiError };
