@@ -33,13 +33,16 @@ if not _LIFECYCLE_OK:
     assess=write_report=None
 
 HOST=os.uname().nodename
-TARGET=int(os.environ.get("SKFLEET_TARGET","8"))
-MAX_LAUNCH=int(os.environ.get("SKFLEET_MAX_LAUNCH","4"))
+ROTATION_HOSTS=("chiap01", "chiap02", "chiap03", "chiap04", "chiap08")
+SKC=os.path.expanduser("~/.skenv/bin/skcapstone")
+TARGET=8
+MAX_LAUNCH=int(os.environ.get("SKFLEET_MAX_LAUNCH","11"))
 DRY = "--go" not in sys.argv
 HOME=os.path.expanduser("~")
 CARDS=os.path.join(HOME,".skcapstone/cards")
 EVID=os.path.join(HOME,".skcapstone/evidence/fleet-rotation")
 PI="/home/skuser01/.npm-global/bin/pi"
+ESC_MODEL=os.environ.get("SKFLEET_ESC_MODEL","gpt-5.6-sol")
 PRI={"critical":0,"high":1,"medium":2,"low":3}
 STAMP=datetime.datetime.now(datetime.timezone.utc).strftime("%Y%m%dT%H%M%SZ")
 
@@ -100,6 +103,10 @@ except BlockingIOError:
 
 d=os.path.join(EVID,STAMP)
 
+if HOST not in ROTATION_HOSTS:
+    log(d,"NOOP|%s|host is outside the authorized chiap01-chiap03 worker fleet"%HOST)
+    sys.exit(0)
+
 # Mandatory read-only graph validation precedes slot and assignment decisions.
 # The report is the exact machine-readable assignment exclusion contract.
 try:
@@ -118,7 +125,12 @@ try:
     # which are all derived from shared data and on which every host agrees.
     _classes = assessment.get("classes", {}) or {}
     _local_only = {r.get("card_id") for r in _classes.get("unclaimable_cards", []) if r.get("card_id")}
-    excluded=set(assessment["excluded_card_ids"]) - _local_only
+    # The volatile identity class names its repair card as tracking_card. That
+    # card is the work that removes the defect and must remain assignable; only
+    # the generated drift records belong in the exclusion set.
+    _tracking = {r.get("card_id") for r in _classes.get("volatile_ci_identity", [])
+                 if r.get("card_id") and r.get("reason")=="tracking_card"}
+    excluded=set(assessment["excluded_card_ids"]) - _local_only - _tracking
     log(d,"LIFECYCLE|%s|report=%s sha256=%s counts=%s excluded=%d"
         %(HOST,report_path,assessment["content_sha256"],json.dumps(assessment["counts"],sort_keys=True,separators=(",",":")),len(excluded)))
 except Exception as exc:
@@ -127,21 +139,125 @@ except Exception as exc:
 
 # a slot IS a live ephemeral worker; -p workers exit when finished
 sessions=sh("tmux","ls","-F","#{session_name}").split()
+GLM_HOLD_PATH=os.path.join(HOME,".skcapstone/evidence/fleet-glm-dispatch-hold.json")
+glm_held=False
+try:
+    with open(GLM_HOLD_PATH,encoding="utf-8") as _fh:
+        glm_held=bool(json.load(_fh).get("active"))
+except (OSError,ValueError,TypeError):
+    pass
 # Two worker lanes. GLM sat unused for six hours because the rotation only managed
 # codex-auto-* sessions, so the z.ai account received no traffic at all while nine
 # idle legacy glm panes did nothing. A lane is a prefix, a model alias, a target.
 LANES=[
     {"name":"codex","prefix":"codex-auto-","model":"sk-codex",
-     "target":int(os.environ.get("SKFLEET_TARGET","8"))},
+     "target":8},
     {"name":"glm","prefix":"glm-auto-","model":os.environ.get("SKFLEET_GLM_MODEL","glm-4.6"),
-     "target":int(os.environ.get("SKFLEET_GLM_TARGET","3"))},
+     "target":0 if glm_held else 3},
+    # Restored. needs_escalation() still exists and still marks a card whose
+    # worker reported blocked_on=capability, but the lane it routes to had been
+    # dropped, so those cards were marked for a destination that did not exist
+    # and could never be placed at all. 13 cards were in that state.
+    #
+    # It takes ONLY escalation cards and escalation cards go ONLY here, so the
+    # stronger model is never spent on work the cheap lanes can do.
+    {"name":"escalate","prefix":"esc-auto-",
+     "model":os.environ.get("SKFLEET_ESC_MODEL", ESC_MODEL if "ESC_MODEL" in dir() else "gpt-5.6-sol"),
+     "target":int(os.environ.get("SKFLEET_ESC_TARGET","2"))},
 ]
+if glm_held:
+    log(d,"GLM_HOLD|%s|new GLM dispatch disabled by %s"%(HOST,GLM_HOLD_PATH))
 for _L in LANES:
     _L["busy"]=[s for s in sessions if s.startswith(_L["prefix"])]
     _L["free"]=max(0,_L["target"]-len(_L["busy"]))
 free=sum(_L["free"] for _L in LANES)
 log(d,"SLOTS|%s|%s|total_free=%d"%(HOST,
     " ".join("%s=%d/%d"%(L["name"],len(L["busy"]),L["target"]) for L in LANES),free))
+
+# ---- worker liveness -------------------------------------------------------
+# A claim used to be reaped from elapsed time alone, which is wrong in both
+# directions at once. skcoord's detector will not look at a claim younger than
+# 24h, so when workers were killed on 2026-08-27 the board sat frozen behind 89
+# claims held by processes that no longer existed: ready=0 with 146 open cards
+# and every slot free. Lowering that constant only trades the failure over, since
+# a two hour floor yanks a card out from under a worker that is still running it.
+#
+# Time was only ever standing in for the question that actually matters, which is
+# whether the process is still there. Each host can answer that for its own
+# workers by reading tmux, and no host could see any other host's answer. So each
+# run now publishes the cards it is running, into evidence/ where Syncthing shares
+# it (.stignore excludes logs/, metrics/ and heartbeats/, not evidence/).
+LIVE = os.path.join(HOME, ".skcapstone/evidence/fleet-live")
+# Cards whose claim cannot be released because the stores disagree about it. The
+# CardStore fold reads `claimed` while the legacy coordination/tasks store already
+# considers it released, so `coord release-claim` answers "Already released",
+# exits 0, and writes nothing. The reaper then sees a claimed card again next tick
+# and tries again, forever.
+#
+# Measured 2026-08-28: 2b614910 had been reaped 455 times, ec202fdc 435 and
+# d9552c4c 434, none of which ever produced a release_claim event. 2b614910 has
+# exactly three events in its whole history: describe, claim, move.
+#
+# Recorded in the SHARED evidence dir so one host discovering it spares the other
+# four, and so the divergence is visible rather than buried in a repeating log
+# line that reads like successful work.
+# NOT inside LIVE: the quorum check counts *.json there as reporting hosts, and a
+# bookkeeping file dropped in that directory is counted as a sixth host, which
+# pushes reporting below known and disables reaping fleetwide. Observed within
+# one tick of adding it. It lives one level up.
+_INEFFECTIVE_PATH = os.path.join(HOME, ".skcapstone/evidence/reap-ineffective.json")
+LIVE_FRESH = 30 * 60      # a report older than this says nothing about now
+CLAIM_GRACE = 300         # one full rotation period, so every host has reported
+# Reaping needs a quorum, because a card running on chiap04 is invisible in
+# chiap08's report. During a rollout the first host to publish is the ONLY
+# reporting host, and without this floor it would read every other host's live
+# worker as absent and reap all of them. Below quorum the reaper does nothing.
+REAP_QUORUM = 3
+KNOWN_HOST_TTL = 24 * 3600   # a host silent this long has left the fleet
+
+def publish_live(sessions):
+    """Record which cards this host is running, for every other host to read."""
+    cards = sorted({s[len(L["prefix"]):] for L in LANES
+                    for s in sessions if s.startswith(L["prefix"])})
+    try:
+        os.makedirs(LIVE, exist_ok=True)
+        p = os.path.join(LIVE, HOST + ".json")
+        tmp = p + ".new"
+        with open(tmp, "w", encoding="utf-8") as fh:
+            json.dump({"host": HOST, "ts": time.time(), "cards": cards}, fh)
+        os.replace(tmp, p)          # atomic, so a reader never sees a half file
+    except OSError as exc:
+        log(d, "WARN|%s|could not publish liveness: %s" % (HOST, exc))
+    return cards
+
+def live_report():
+    """Return (oldest_recent_report, cards_running, reporting_host_count).
+
+    The first value is the OLDEST report among currently reporting hosts, not the
+    newest, and that choice is the whole safety property. A claim may only be
+    reaped once EVERY reporting host has published since it was made, because a
+    card running on chiap04 is invisible in chiap08's report. Taking the newest
+    would let the first host to start publishing reap every other host's live
+    workers, which is precisely the outage this code exists to prevent.
+    """
+    hosts = {}
+    running = set()
+    now = time.time()
+    for p in glob.glob(os.path.join(LIVE, "*.json")):
+        try:
+            with open(p, encoding="utf-8") as fh:
+                snap = json.load(fh)
+            ts = float(snap.get("ts") or 0)
+        except (OSError, ValueError, TypeError):
+            continue
+        if now - ts > LIVE_FRESH:
+            continue
+        hosts[str(snap.get("host") or p)] = ts
+        running.update(str(c) for c in (snap.get("cards") or ()))
+    return (min(hosts.values()) if hosts else 0.0), running, len(hosts)
+
+publish_live(sessions)
+
 if free==0:
     log(d,"NOOP|%s|all slots busy"%HOST); sys.exit(0)
 
@@ -152,6 +268,7 @@ if free==0:
 # cycle forever: measured 78 of 162 launches wasted, 48 percent, before this gate.
 _launched=collections.Counter()
 _launched_at={}
+_strong_launched_at={}
 for _f in glob.glob(os.path.join(EVID,"*","actions.log")):
     try:
         _launch_epoch=datetime.datetime.strptime(Path(_f).parent.name,"%Y%m%dT%H%M%SZ").replace(tzinfo=datetime.timezone.utc).timestamp()
@@ -164,6 +281,8 @@ for _f in glob.glob(os.path.join(EVID,"*","actions.log")):
                 if len(_p)>=4:
                     _launched[_p[3]]+=1
                     _launched_at[_p[3]]=max(_launched_at.get(_p[3],0),_launch_epoch)
+                    if "model=%s"%ESC_MODEL in _p:
+                        _strong_launched_at[_p[3]]=max(_strong_launched_at.get(_p[3],0),_launch_epoch)
     except OSError: pass
 # A card claimed and then RELEASED is open again and must be assignable. The prior
 # filter excluded any card with a claim action anywhere in history, making
@@ -315,6 +434,21 @@ def folded_labels(cid,core):
             labels=[item for item in labels if item!=label]
     return labels
 
+_NON_IMPLEMENTATION_LABELS = {
+    "planning-only-container",
+    "do-not-claim-as-implementation",
+    "human-gate",
+    "human-decision-recorded-no-action",
+    "no-action-authorized",
+}
+
+def non_implementation(core, labels):
+    folded={str(item).strip().lower().replace("_", "-") for item in labels}
+    if folded & _NON_IMPLEMENTATION_LABELS:
+        return True
+    blob=(str(core.get("title") or "")+" "+json.dumps(labels)).upper()
+    return "[HUMAN]" in blob
+
 def _latest_material_change(cid, verdict_ts):
     threshold=_ts_epoch(verdict_ts); latest=0
     for event in event_rows(cid):
@@ -388,6 +522,11 @@ def _still_assignable(cid):
     if st != "open": return False
     try: core=json.load(open(os.path.join(CARDS,cid,"core.json")))
     except Exception: return False
+    labels=folded_labels(cid,core)
+    if non_implementation(core,labels): return False
+    if "foreign-project" in {str(item).strip().lower() for item in labels}: return False
+    pin=host_pin(core,labels)
+    if pin and pin != HOST: return False
     return not any(not _dep_satisfied(dep) for dep in folded_dependencies(cid,core,fresh=True))
 
 _BLOCKED_CATEGORIES = ("dependency", "card", "human", "capability")
@@ -399,6 +538,11 @@ _BLOCKED_FILLER = set(_BLOCKED_CATEGORIES) | {
     "blocked", "blocked_on", "none", "null", "unknown", "tbd", "pending",
     "true", "false",
 }
+
+_PIPE_VERDICT_RE = re.compile(
+    r"^\s*BLOCKED\s*\|\s*(dependency|card|human|capability)\s*\|\s*([^|]+)", re.I)
+_CAPABILITY_BLOCK_RE = re.compile(
+    r"blocked[_\s-]?on[=: |]+\s*capability\b|^\s*BLOCKED\s*\|\s*capability\b", re.I)
 
 def _verdict_is_actionable(val):
     """True if a BLOCKED verdict names a category AND the thing it refers to.
@@ -416,6 +560,16 @@ def _verdict_is_actionable(val):
     below after three tries.
     """
     text = str(val or "")
+    # Workers also write the verdict pipe-delimited, as BLOCKED|category|referent.
+    # That names a category AND a referent, which is everything this function is
+    # asking for, and it was being rejected purely on punctuation. Measured
+    # 2026-08-27: BLOCKED|card|ac:1|bf3ffd12 read as unexplained, so the card got
+    # no backoff, went round again, and re-derived the identical verdict. A
+    # validator that refuses a truthful verdict on format teaches workers to
+    # fight the validator instead of to explain themselves.
+    pipe = _PIPE_VERDICT_RE.match(text)
+    if pipe and pipe.group(2).strip():
+        return True
     anchor = _BLOCKED_ON_RE.search(text)
     if not anchor:
         return False
@@ -427,6 +581,8 @@ def _verdict_is_actionable(val):
             if cand and cand.lower() not in _BLOCKED_FILLER:
                 return True
     return False
+
+_PASS_RE = re.compile(r"^\s*PASS(_FOR_REVIEW)?\b", re.I)
 
 def blocked_backoff(cid):
     """True if this card should stay out of the pool for now."""
@@ -442,6 +598,17 @@ def blocked_backoff(cid):
     # with nothing recorded the launch-attempt rule below parks it anyway. There
     # is always a counter that ends the loop.
     if ts and re.match(r"^\s*BLOCKED", val, re.I) and _verdict_is_actionable(val):
+        # Capability is a routing signal, not a dependency or approval hold. It
+        # must reach needs_escalation() below, which preferentially assigns it to
+        # Codex. After that stronger route has also returned capability, park the
+        # card until authored state changes so the fleet does not loop forever.
+        if _CAPABILITY_BLOCK_RE.search(str(val)):
+            strong_at=_strong_launched_at.get(cid,0)
+            if strong_at and _ts_epoch(ts)>=strong_at:
+                change=_latest_material_change(cid,ts)
+                if not change: return True
+                return strong_at>=change
+            return False
         change=_latest_material_change(cid,ts)
         if not change: return True
         return _launched_at.get(cid,0) >= change
@@ -464,9 +631,66 @@ def blocked_backoff(cid):
     #
     # _reporting_launches already skips zero-byte worker logs and ages out
     # evidence past a TTL, which is exactly the right test here.
-    if launch_attempts(cid) >= 3 and lifecycle_state(cid)!="complete":
+    #
+    # A card that RECORDED A PASS has something to show, and the counter above is
+    # explicitly about having nothing to show. Measured 2026-08-27: 8 cards whose
+    # latest outcome was PASS_FOR_REVIEW were parked here at exactly 3 launches,
+    # reported to the operator inside blocked_backoff as though they had refused.
+    # They had not refused, they had succeeded and were waiting on review. Parking
+    # them is right, since re-running finished work wastes a slot; calling them
+    # blocked is not, because it hides completed candidates in a bucket the
+    # operator reads as failures.
+    if ts and _PASS_RE.match(str(val or "")):
         return True
+    if launch_attempts(cid) >= 3 and lifecycle_state(cid)!="complete":
+        # ...unless the world changed since the last attempt. Without this the
+        # counter is a one-way door: nothing resets it, so a card parked here is
+        # parked forever no matter what happens to it afterwards. That is the
+        # same black hole as an infinite relaunch, just pointing the other way,
+        # and it is worse because it is silent.
+        #
+        # Measured 2026-08-27: 24 cards sat here on unexplained refusals. Their
+        # blocker had since been removed (the NIGHT-HANDOFF freeze was lifted)
+        # and the estate had started REFUSING to write a bare BLOCKED at all, so
+        # a re-run would now be forced to explain itself. Neither fact could
+        # reach them, because the only path back was through a verdict they were
+        # not able to record in the first place.
+        #
+        # A material change is a real, authored event: a dependency added,
+        # removed or completed, or a label applied. It is not free: something
+        # must actually happen to the card to buy it another attempt.
+        change = _material_change_since(cid, _launched_at.get(cid, 0))
+        if not change:
+            return True
+        return _launched_at.get(cid, 0) >= change
     return False
+
+
+def _material_change_since(cid, epoch):
+    """Latest material change strictly after `epoch`, or 0 if there is none."""
+    latest = 0
+    for event in event_rows(cid):
+        if event.get("action") in ("add_dependency", "remove_dependency"):
+            latest = max(latest, _ts_epoch(event.get("ts")))
+    for dep in folded_dependencies(cid):
+        if lifecycle_state(dep) != "complete":
+            continue
+        for event in event_rows(dep):
+            if event.get("action") == "complete":
+                latest = max(latest, _ts_epoch(event.get("ts")))
+    for event in _load_label_events().get(cid, []):
+        latest = max(latest, _ts_epoch(event.get("ts")))
+    return latest if latest > epoch else 0
+
+
+def awaiting_review(cid):
+    """True if this card produced a candidate and is waiting on a reviewer.
+
+    Reported separately from blocked_backoff so that work which SUCCEEDED is not
+    counted as work that refused.
+    """
+    ts, val = _load_outcomes().get(cid, (None, None))
+    return bool(ts and _PASS_RE.match(str(val or "")))
 
 # ---- host pinning ------------------------------------------------------------
 # Some cards only work on the host that holds the asset. The skdashboard-read-only
@@ -488,7 +712,6 @@ def blocked_backoff(cid):
 # chiap04 added 2026-08-27 after provisioning tmux 3.4 and pi 0.84.3 and a
 # 30G swapfile. 16 open cards name it, mostly the ChatGPT desktop client work,
 # which can only be done on the host running that desktop.
-ROTATION_HOSTS = ("chiap01", "chiap02", "chiap03", "chiap08", "chiap04")
 KNOWN_HOSTS = ROTATION_HOSTS + ("chiap04", "chiap08", "chiwk11", "chiwk12", "noroc2027")
 
 def host_pin(core,labels):
@@ -627,8 +850,268 @@ def itil_terminal(cid):
         return state in TERMINAL
     return False
 
+
+# ---- reap claims whose worker is provably gone -----------------------------
+# The rule is an observation, never an age: some host published a report AFTER
+# this claim was made, and no host reports the card as running. With no fresh
+# report the reaper does nothing at all, so a Syncthing stall or a stopped fleet
+# can never become a mass release. skcoord's 24h detector stays as the slow
+# backstop for anything this cannot see.
+#
+# Only ephemeral one-shot workers are eligible. A named agent (jarvis, lumina) or
+# a human may hold a claim deliberately for as long as they like.
+_EPHEMERAL_OWNER = re.compile(r"^(pi|codex|glm)[-_]")
+
+def _current_claim(cid):
+    """The claim in force now, as (owner, epoch), or (None, 0)."""
+    owner = None
+    ts = 0.0
+    for e in event_rows(cid):
+        a = e.get("action")
+        if a == "claim":
+            owner = e.get("agent") or e.get("owner") or e.get("actor") or e.get("by")
+            raw = str(e.get("ts") or e.get("timestamp") or "")
+            try:
+                ts = datetime.datetime.fromisoformat(
+                    raw.replace("Z", "+00:00")).timestamp()
+            except ValueError:
+                ts = 0.0
+        elif a in ("release_claim", "unassign", "complete", "void", "archive"):
+            owner, ts = None, 0.0
+    return owner, ts
+
+def _load_ineffective():
+    try:
+        with open(_INEFFECTIVE_PATH, encoding="utf-8") as fh:
+            return {str(x) for x in json.load(fh).get("cards") or ()}
+    except (OSError, ValueError):
+        return set()
+
+
+def _record_ineffective(cid):
+    known = _load_ineffective()
+    if cid in known:
+        return
+    known.add(cid)
+    try:
+        os.makedirs(os.path.dirname(_INEFFECTIVE_PATH), exist_ok=True)
+        tmp = _INEFFECTIVE_PATH + ".new"
+        with open(tmp, "w", encoding="utf-8") as fh:
+            json.dump({"cards": sorted(known)}, fh)
+        os.replace(tmp, _INEFFECTIVE_PATH)
+    except OSError:
+        pass
+
+
+def _current_claim_fresh(cid):
+    """The claim in force RIGHT NOW, read from disk, bypassing the run cache.
+
+    event_rows memoizes per run. A card can be claimed several times in the
+    seconds between the pool being built and a release being issued, so the cached
+    owner is not necessarily the owner CardStore will accept.
+
+    Observed 2026-08-28 on ec202fdc, which took four claims in eight seconds:
+      03:40:33 claim pi-codex   03:40:38 claim pi-codex
+      03:40:41 claim pi-glm     03:40:49 claim pi-glm
+    The release was refused with "CardStore owner conflict for ec202fdc: expected
+    pi-glm-ec202fdc" because the cached read still named the codex owner. This is
+    the same defect _acts_fresh exists to solve for the stale pool, applied to the
+    claim owner.
+    """
+    owner = None
+    ts = 0.0
+    for e in _acts_fresh_rows(cid):
+        a = e.get("action")
+        if a == "claim":
+            owner = e.get("agent") or e.get("owner") or e.get("actor") or e.get("by")
+            raw = str(e.get("ts") or e.get("timestamp") or "")
+            try:
+                ts = datetime.datetime.fromisoformat(
+                    raw.replace("Z", "+00:00")).timestamp()
+            except ValueError:
+                ts = 0.0
+        elif a in ("release_claim", "unassign", "complete", "void", "archive"):
+            owner, ts = None, 0.0
+    return owner, ts
+
+
+def _acts_fresh_rows(cid):
+    """Every event for a card, straight from disk."""
+    ev = os.path.join(CARDS, cid, "events")
+    out = []
+    if os.path.isdir(ev):
+        for f in os.listdir(ev):
+            try:
+                for l in open(os.path.join(ev, f), encoding="utf-8", errors="replace"):
+                    try: out.append(json.loads(l))
+                    except Exception: pass
+            except OSError:
+                pass
+    out.sort(key=lambda e: (str(e.get("ts") or ""), e.get("seq") or 0))
+    return out
+
+
+def reap_dead_claims():
+    """Return claimed cards whose worker no host reports running."""
+    oldest, running, nhosts = live_report()
+    # A host that is merely between runs must still be counted, or the quorum
+    # check passes while its workers are invisible. A host that is GONE must
+    # eventually stop counting, or one decommissioned machine blocks reaping for
+    # the whole fleet forever. KNOWN_HOST_TTL separates the two.
+    _cut = time.time() - KNOWN_HOST_TTL
+    known = sum(1 for f in glob.glob(os.path.join(LIVE, "*.json"))
+                if os.path.getmtime(f) >= _cut)
+    if not oldest or nhosts < REAP_QUORUM or nhosts < known:
+        log(d, "REAP|%s|below quorum (reporting=%d known=%d need>=%d); reaped nothing"
+            % (HOST, nhosts, known, REAP_QUORUM))
+        return 0
+    freed = 0
+    _ineffective = _load_ineffective()
+    for cd in sorted(glob.glob(CARDS + "/*")):
+        cid = os.path.basename(cd)
+        if not os.path.exists(os.path.join(cd, "core.json")):
+            continue
+        if lifecycle_state(cid) != "claimed":
+            continue
+        owner, cts = _current_claim(cid)
+        if not owner or not _EPHEMERAL_OWNER.match(str(owner)):
+            continue
+        if cid in running:
+            continue                      # a host says this is running right now
+        if cid in _ineffective:
+            continue                      # releasing it does nothing; see above
+        if oldest < cts + CLAIM_GRACE:
+            continue                      # some host has not reported since the claim
+        # Re-read the owner from disk immediately before releasing. The pool was
+        # built seconds to minutes ago and the card may have been re-claimed since.
+        fresh_owner, fresh_ts = _current_claim_fresh(cid)
+        if not fresh_owner:
+            continue                      # released by someone else in the meantime
+        if fresh_owner != owner:
+            log(d, "REAP_RECLAIMED|%s|%s|was %s now %s; leaving it alone this tick"
+                % (HOST, cid, owner, fresh_owner))
+            continue
+        r = subprocess.run(
+            [SKC, "coord", "release-claim", cid, "--owner", str(fresh_owner),
+             "--agent", "fleet-liveness-reaper"],
+            capture_output=True, text=True)
+        if r.returncode == 0:
+            _rows.pop(cid, None)          # the fold below must re-read from disk
+            # A zero exit is not proof the claim moved. When the two stores
+            # disagree the CLI answers "Already released" and writes nothing, so
+            # confirm against the fold rather than trusting the return code.
+            if lifecycle_state(cid) == "claimed":
+                _record_ineffective(cid)
+                log(d, "REAP_INEFFECTIVE|%s|%s|%s|release reported success but the "
+                       "card is still claimed; CardStore and the legacy task store "
+                       "disagree, needs repair" % (HOST, cid, owner))
+                continue
+            freed += 1
+            log(d, "REAPED|%s|%s|%s|no host reports this card running" % (HOST, cid, owner))
+        else:
+            # A release that keeps failing is a divergence, not a transient. Record
+            # it after the first failure so it does not retry every five minutes
+            # forever, which is how 2b614910 accumulated 455 pointless calls.
+            _record_ineffective(cid)
+            log(d, "REAP_FAILED|%s|%s|%s" % (HOST, cid, (r.stderr or "").strip()[:120]))
+    log(d, "REAP|%s|released=%d hosts_reporting=%d cards_running=%d ineffective=%d"
+        % (HOST, freed, nhosts, len(running), len(_load_ineffective())))
+    return freed
+
+# DRY gates every board MUTATION, not only the launch. Before this, --go gated the
+# tmux launch and nothing else, so running the rotation without --go still released
+# claims and completed cards. Anyone inspecting what the rotation "would" do was
+# silently changing the board, and importing the module for diagnostics ran a full
+# mutating pass. Both happened repeatedly on 2026-08-28 while debugging the reaper.
+#
+# A dry run must be safe to run at any time, from any host, by anyone. That is the
+# entire point of having one.
+if DRY:
+    log(d, "DRY_SKIPPED|%s|reap_dead_claims and close_reviewed_parents skipped; "
+           "pass --go to mutate the board" % HOST)
+else:
+    reap_dead_claims()
+
+# ---- close work that has been reviewed and passed --------------------------
+# A card that produced a candidate and had it independently reviewed and PASSED
+# is finished, and nothing moved it. Measured 2026-08-28: ac2e387c carried
+# PASS_FOR_REVIEW with an independent review recorded PASS and sat open until a
+# human joined the two stores by hand. The evidence for "done" was complete and
+# spread across two files, and no code ever read them together.
+#
+# The join is deliberately strict, and every clause is load-bearing because the
+# failure mode here is exposing a FAIL as a PASS:
+#   - the parent's own latest outcome must start with PASS
+#   - a review card must NAME the parent and be COMPLETE
+#   - that review's own latest outcome must be exactly PASS, not PASS_FOR_REVIEW,
+#     which only means a candidate is ready for someone else to look at
+# A BLOCKED review, or a review that recorded nothing, leaves the parent open.
+# Measured on the same board: 2 parents qualified, 3 were held by a BLOCKED
+# review and 2 by a silent one, which is the discrimination this is for.
+_PASS_ONLY_RE = re.compile(r"^\s*PASS(?!_FOR)", re.I)
+_PASS_ANY_RE  = re.compile(r"^\s*PASS", re.I)
+_REVIEW_TITLE = "[REVIEW"
+_ID_RE = re.compile(r"\b([0-9a-f]{8})\b")
+
+def _reviews_by_parent():
+    """Map parent card id -> review card ids that name it."""
+    out = {}
+    for cd in glob.glob(CARDS + "/*"):
+        cid = os.path.basename(cd)
+        cp = os.path.join(cd, "core.json")
+        if not os.path.exists(cp): continue
+        try: core = json.load(open(cp))
+        except Exception: continue
+        title = str(core.get("title") or "")
+        if _REVIEW_TITLE not in title.upper(): continue
+        blob = title + " " + str(core.get("description") or "")
+        for mm in _ID_RE.finditer(blob):
+            pid = mm.group(1)
+            if pid != cid:
+                out.setdefault(pid, set()).add(cid)
+    return out
+
+def close_reviewed_parents():
+    """Complete cards whose independent review is complete and PASSED."""
+    outcomes = _load_outcomes()
+    closed = 0
+    for parent, reviews in _reviews_by_parent().items():
+        if not os.path.isdir(os.path.join(CARDS, parent)): continue
+        if lifecycle_state(parent) != "open": continue
+        _pts, pval = outcomes.get(parent, (None, None))
+        if not (pval and _PASS_ANY_RE.match(str(pval))): continue
+        for rev in sorted(reviews):
+            if lifecycle_state(rev) != "complete": continue
+            _rts, rval = outcomes.get(rev, (None, None))
+            rv = str(rval or "")
+            if not rv.strip() or not _PASS_ONLY_RE.match(rv):
+                continue          # BLOCKED, or said nothing: the parent stays open
+            r = subprocess.run(
+                [SKC, "coord", "link", parent, "review_join",
+                 "closed on joined evidence: own outcome %s; independent review %s "
+                 "is complete with verdict %s" % (str(pval)[:40], rev, rv[:40]),
+                 "--agent", "fleet-review-closer"],
+                capture_output=True, text=True)
+            c = subprocess.run(
+                [SKC, "coord", "complete", parent, "--agent", "fleet-review-closer"],
+                capture_output=True, text=True)
+            if c.returncode == 0:
+                _rows.pop(parent, None)
+                closed += 1
+                log(d, "CLOSED_REVIEWED|%s|%s|review=%s|%s" % (HOST, parent, rev, rv[:40]))
+            else:
+                log(d, "CLOSE_FAILED|%s|%s|%s" % (HOST, parent, (c.stderr or "").strip()[:110]))
+            break
+    if closed:
+        log(d, "CLOSE_REVIEWED|%s|closed=%d" % (HOST, closed))
+    return closed
+
+if not DRY:
+    close_reviewed_parents()
+
+_NOT_CLAIMABLE = {"not-claimable", "sprint-container"}
 _PINNED_IDS=set()
-pool=[]; blocked=0; foreign_skipped=0; skipped_unclaimable=0; skipped_terminal=0; skipped_blocked=0; pinned_elsewhere=0
+pool=[]; blocked=0; foreign_skipped=0; skipped_unclaimable=0; skipped_terminal=0; skipped_blocked=0; skipped_review=0; not_claimable_skipped=0; pinned_elsewhere=0
 for cd in sorted(glob.glob(CARDS+"/*")):
     cid=os.path.basename(cd)
     core_p=os.path.join(cd,"core.json")
@@ -637,7 +1120,13 @@ for cd in sorted(glob.glob(CARDS+"/*")):
     if cid in excluded: continue
     if unclaimable(cid): skipped_unclaimable+=1; continue
     if itil_terminal(cid): skipped_terminal+=1; continue
-    if blocked_backoff(cid): skipped_blocked+=1; continue
+    if blocked_backoff(cid):
+        # Split the two, because one of them is success. A card that recorded
+        # PASS_FOR_REVIEW is waiting on a reviewer, not refusing to work, and
+        # reporting it as blocked hides a finished candidate in the failure count.
+        if awaiting_review(cid): skipped_review+=1
+        else: skipped_blocked+=1
+        continue
     try: core=json.load(open(core_p))
     except: continue
     if core.get("kind") not in ("task","incident","problem"): continue
@@ -652,13 +1141,30 @@ for cd in sorted(glob.glob(CARDS+"/*")):
     #   f0940676 [SKGW-REPLICA-ADOPTION-PACKET][REVIEW] Prepare no-action human ...
     # Those three PREPARE a packet for a human. They are not themselves gates, and
     # a starved pool cannot afford to skip work because of a word in its title.
-    if "[HUMAN]" in blob: continue
+    if non_implementation(core,labels): continue
     # Cards belonging to a different project that merely share this board. Casey's
     # GREG-BREAK-HOUSE tree is 35 cards and our fleet spent 33 claims on it between
     # 2026-08-26 and 2026-08-27 before anyone noticed it was not our work. The label
     # is deliberately generic rather than a GBH string match, so the next foreign
     # tree can be fenced by labelling it instead of by editing this file.
-    if "foreign-project" in labels: foreign_skipped+=1; continue
+    if "foreign-project" in {str(item).strip().lower() for item in labels}: foreign_skipped+=1; continue
+    # A card the board has explicitly marked unworkable. Sprint containers say so
+    # in their own descriptions, e.g. 9535bc80: "Planning and review container
+    # only. Do not claim as implementation work." The tags existed and the rotation
+    # had never read them. 28 cards carry one.
+    #
+    # 2b614910 is the consequence: a sprint-container tagged not-claimable that a
+    # worker claimed on 2026-08-22 and never released. The Board claim store has no
+    # record of it, correctly, so `coord release-claim` answers "Already released"
+    # and the CardStore claim cannot be cleared through a supported command at all.
+    # The reaper then retried it 455 times.
+    #
+    # Skipping these stops the fleet spending slots on work it has been told not to
+    # do, and stops it manufacturing claims that nothing can release.
+    _nc = {str(x).strip().lower() for x in (labels or ())} | \
+          {str(x).strip().lower() for x in (core.get("tags") or ())}
+    if _NOT_CLAIMABLE & _nc:
+        not_claimable_skipped += 1; continue
     if title.startswith("CMDB drift"): continue
     deps=folded_dependencies(cid,core)
     if any(not _dep_satisfied(str(dp)) for dp in deps):
@@ -698,15 +1204,15 @@ pool.sort(key=lambda x:(x[0],-x[4],x[1],x[2]))
 lc={0:0,1:0,2:0}
 for x in pool: lc[x[0]]+=1
 top=pool[0][4] if pool else 0
-log(d,"POOL|%s|ready=%d sklegal=%d eng=%d biz=%d dep_blocked=%d unclaimable=%d itil_closed=%d blocked_backoff=%d pinned_elsewhere=%d foreign=%d top_unblocks=%d"
-      %(HOST,len(pool),lc[0],lc[1],lc[2],blocked,skipped_unclaimable,skipped_terminal,skipped_blocked,pinned_elsewhere,foreign_skipped,top))
+log(d,"POOL|%s|ready=%d sklegal=%d eng=%d biz=%d dep_blocked=%d unclaimable=%d itil_closed=%d blocked_backoff=%d awaiting_review=%d pinned_elsewhere=%d foreign=%d not_claimable=%d top_unblocks=%d"
+      %(HOST,len(pool),lc[0],lc[1],lc[2],blocked,skipped_unclaimable,skipped_terminal,skipped_blocked,skipped_review,pinned_elsewhere,foreign_skipped,not_claimable_skipped,top))
 
 # Partition the CARD SPACE by hash, not by pool index. Index striding assumes all
 # three hosts see an identical pool at the same instant; ~/.skcapstone is Syncthing
 # shared and claims land continuously, so the pools drift and strides collide.
 # A hash partition is stable no matter what the local pool looks like.
-off={"chiap01":0,"chiap02":1,"chiap03":2,"chiap08":3,"chiap04":4}.get(HOST,0)
-_NHOST=5
+off={"chiap01":0,"chiap02":1,"chiap03":2}.get(HOST,0)
+_NHOST=3
 def owns(cid):
     # A host-pinned card is owned by its pinned host, full stop. Letting the hash
     # partition also apply would strand any card whose pin and hash slice disagree:
@@ -716,43 +1222,73 @@ def owns(cid):
     return int(hashlib.sha256(cid.encode()).hexdigest()[:8],16)%_NHOST==off
 owned=[x for x in pool if owns(x[2])]
 
-# ---- work stealing -----------------------------------------------------------
-# The hash partition gives each card exactly one owner, which keeps two hosts off
-# the same card without any coordination. Its failure mode is idleness: when a
-# host's own slice is empty it sits with free slots while other slices hold work,
-# and when a host is DOWN its entire slice is stranded with nobody able to take it.
-#
-# Measured 2026-08-27, with chiap04 rebooting for a memory upgrade: 8 workable
-# cards fleet-wide, of which chiap03 owned ZERO while holding 11 free slots. Four
-# of the eight belonged to the host that was down. Every host logged NOOP.
-#
-# So: take your own slice first, always. Only when it is EMPTY and slots are free
-# does a host steal from the global pool. Each host starts at a different offset,
-# so two idle hosts do not converge on the same card, and _still_assignable
-# re-reads the card from disk immediately before launch, which closes the
-# remaining window. Stealing is logged, because a host working outside its own
-# partition should be visible and not something discovered later in a claim
-# conflict.
-_stolen = 0
-if not owned and free > 0:
-    _unowned = [x for x in pool if not owns(x[2])]
-    if _unowned:
-        _k = off % len(_unowned)
-        owned = _unowned[_k:] + _unowned[:_k]
-        _stolen = len(owned)
-        log(d, "STEAL|%s|own slice empty, %d free slot(s); taking from the global pool "
-               "starting at offset %d of %d" % (HOST, free, _k, len(_unowned)))
+# Never steal another host's hash slice without an authoritative shared lock.
+# Syncthing propagation is not a compare-and-swap primitive. Measured 2026-08-28:
+# all three hosts stole review card 334b8d63 and claimed it within 350 ms under
+# one identity before any claim reached the other hosts. Stable ownership may
+# leave capacity idle when the pool is tiny, but it preserves one card, one claim,
+# one identity, and one worker. Safe work stealing requires a separate centralized
+# admission design.
+_ESCALATE_LABEL="needs-stronger-model"
+
+_CAPABILITY_VERDICT_RE = re.compile(
+    r"blocked_on[=: |]+\s*capability\b|^\s*BLOCKED\s*\|\s*capability\b", re.I)
+
+def needs_escalation(cid, core=None):
+    """True if this card has exhausted the ordinary lanes and needs a stronger model.
+
+    Two ways to qualify, and the second is the one that matters.
+
+    A LABEL is explicit and stays supported, because a human may know a card needs
+    the strong model before any worker has tried it.
+
+    A RECORDED CAPABILITY REFUSAL qualifies on its own, with no label. That value
+    means "this is solvable and I could not solve it", which is already the exact
+    signal the brief asks workers to send, and requiring someone to then hand-apply
+    a label to act on it is a routing rule that only works when a person is
+    watching. It was not: on 2026-08-28 all 8 capability-blocked cards had been
+    handed back to the model that refused them, one of them eight times, because
+    nothing converted the signal into a routing decision.
+    """
+    try: labels=folded_labels(cid, core or {})
+    except Exception: labels=[]
+    if _ESCALATE_LABEL in {str(x).strip().lower() for x in (labels or [])}:
+        return True
+    try:
+        _ts, _val = _load_outcomes().get(cid, (None, None))
+    except Exception:
+        return False
+    return bool(_ts and _CAPABILITY_VERDICT_RE.search(str(_val or "")))
+
 picks=[]; _i=0
 remaining={lane["name"]:lane["free"] for lane in LANES}
 lane_order=sorted(LANES,key=lambda lane:0 if lane["name"]=="glm" else 1)
+_esc_waiting=0
+# Lane affinity, in both directions. An escalation card may go ONLY to the escalate
+# lane, because returning it to a lane that already refused it just re-derives the
+# same verdict. The escalate lane takes ONLY escalation cards, because the strong
+# model is a scarce budget and must not be spent on work the cheap lanes can do.
+#
+# A card with no compatible free lane is SKIPPED, not allowed to end the loop. The
+# earlier version broke out entirely when the head card could not be placed, which
+# with lane affinity would let one waiting escalation card starve every ordinary
+# card queued behind it.
 while _i<len(owned) and len(picks)<MAX_LAUNCH:
-    progressed=False
-    for lane in lane_order:
+    _card=owned[_i]; _i+=1
+    _esc=needs_escalation(_card[2], _card[3])
+    _lane=None
+    card_lane_order=(sorted(LANES,key=lambda lane:0 if lane["name"]=="codex" else 1)
+                     if _esc else lane_order)
+    for lane in card_lane_order:
         if remaining[lane["name"]]<=0: continue
-        picks.append((lane,owned[_i])); _i+=1
-        remaining[lane["name"]]-=1; progressed=True
-        if _i>=len(owned) or len(picks)>=MAX_LAUNCH: break
-    if not progressed: break
+        _lane=lane; break
+    if _lane is None:
+        if _esc: _esc_waiting+=1
+        continue
+    picks.append((_lane,_card)); remaining[_lane["name"]]-=1
+if _esc_waiting:
+    log(d,"ESCALATE_QUEUED|%s|%d card(s) need the stronger model; escalate lane full"
+        %(HOST,_esc_waiting))
 if not picks:
     log(d,"NOOP|%s|no dependency-clear cards"%HOST); sys.exit(0)
 
@@ -760,16 +1296,26 @@ raced=0
 logdir=os.path.join(HOME,".skcapstone/fleet/logs"); os.makedirs(logdir,exist_ok=True)
 for _LANE,(_,_,cid,core,_nb) in picks:
     ac="\n".join("  %d. %s"%(i+1,x) for i,x in enumerate(core.get("acceptance_criteria") or []))
-    brief=("Work only SKCapstone card %s. Claim it first with a supported command. "
-      "If the claim fails because another agent holds it, or the card has an incomplete dependency, "
-      "say so and stop rather than working it anyway.\n\n"
+    brief=("Work only SKCapstone card %s. The fleet selector has already claimed it "
+      "for your exact agent identity. Verify that ownership before working and never "
+      "claim or substitute another card. If ownership is absent, or a dependency is "
+      "incomplete, say so and stop rather than working it anyway.\n\n"
       "CARD %s (%s)\nTITLE: %s\nDESCRIPTION: %s\n\nACCEPTANCE CRITERIA:\n%s\n\n"
-      "CONSTRAINTS (NIGHT-HANDOFF, non-negotiable):\n"
+      "CONSTRAINTS (standing rails, non-negotiable):\n"
       "- CardStore is append-only. Build JSON with a serializer and parse every line before appending. Never concatenate strings into JSON.\n"
       "- Join structural CardStore events with separate evidence events. Never infer a verdict from lifecycle state or from links alone.\n"
       "- Return exact PASS, PASS_FOR_REVIEW, or BLOCKED with a real hashed artifact, and notify jarvis and lumina by skmail.\n"
-      "- No commit or push to origin/main, merge, deploy, restart, live gateway or config mutation, credential disclosure, cleanup, WAKE-02 enablement, live_execution, or automerge.\n"
+      "- PUBLISH YOUR WORK. Commit to a feature branch, push it, and open a PR. This is\n"
+      "  required, not optional: a candidate that exists only in your worktree cannot be\n"
+      "  reviewed, is one pull away from being erased, and does not count as done.\n"
+      "- Do NOT commit or push to main, and do NOT merge. Landing is a separate decision\n"
+      "  a human makes on a reviewed PR.\n"
+      "- No deploy, restart, live gateway or config mutation, credential disclosure,\n"
+      "  WAKE-02 enablement, live_execution, or automerge.\n"
       "- You may not write a human_signoff or flip repository visibility.\n"
+      "- Clean up a worktree or branch ONLY after its work is pushed to a remote.\n"
+      "- Start repository work by creating a card-specific branch and git worktree "
+      "inside SKFLEET_WORKSPACE. Never modify a shared or live checkout.\n"
       "\n"
       "\n"
       "BLOCKED VERDICT CONTRACT, mandatory whenever your verdict is BLOCKED:\n"
@@ -832,23 +1378,62 @@ for _LANE,(_,_,cid,core,_nb) in picks:
       "If the card needs no repository change, say so explicitly in your verdict so the\n"
       "absence of a PR is a recorded decision rather than an omission.\n"
       "- Never use an em dash or en dash.\n") % (cid,cid,core.get("kind"),core.get("title"),core.get("description"),ac)
-    name="pi-%s-%s"%(_LANE["name"],cid); sess="%s%s"%(_LANE["prefix"],cid)
+    name="pi-%s-%s-%s"%(_LANE["name"],HOST,cid); sess="%s%s"%(_LANE["prefix"],cid)
+    model=ESC_MODEL if _LANE["name"]=="codex" and needs_escalation(cid,core) else _LANE["model"]
+    workspace=os.path.join(HOME,".skcapstone/fleet/workspaces",name)
+    os.makedirs(workspace,exist_ok=True)
     bf=os.path.join(logdir,"brief-%s.txt"%cid); open(bf,"w").write(brief)
     lf=os.path.join(logdir,"%s-%s.log"%(cid,STAMP))
-    inner=('env SKAGENT=%s SKCAPSTONE_AGENT=%s %s --approve --name %s '
-           '--provider skgateway --model %s --thinking off -p "$(cat %s)" >%s 2>&1'
-           % (name,name,PI,name,_LANE["model"],bf,lf))
+    # A worker can be terminated by tmux, SSH, or a service cgroup before Pi
+    # returns normally. Releasing only after the Pi command leaves a dead claim
+    # in that case and drains the assignable pool. Keep worker output separate
+    # from lifecycle cleanup so an interrupted zero-output launch does not become
+    # false reporting evidence merely because release-claim printed something.
+    inner=('release_claim() { %s coord release-claim %s --owner %s --agent %s '
+           '>/dev/null 2>&1 || true; }; '
+           'trap "release_claim; exit 143" HUP INT TERM; trap release_claim EXIT; '
+           'env SKAGENT=%s SKCAPSTONE_AGENT=%s SKFLEET_WORKSPACE=%s %s --approve --name %s '
+           '--provider skgateway --model %s --thinking off -p "$(cat %s)" >%s 2>&1; '
+           'rc=$?; trap - EXIT HUP INT TERM; release_claim; exit $rc'
+           % (SKC,cid,name,name,name,name,workspace,PI,name,model,bf,lf))
     if DRY:
-        log(d,"WOULD_LAUNCH|%s|%s|%s|lane=%s|%s"%(HOST,sess,cid,_LANE["name"],str(core.get("title"))[:40])); continue
+        log(d,"WOULD_LAUNCH|%s|%s|%s|lane=%s|model=%s|%s"%(HOST,sess,cid,_LANE["name"],model,str(core.get("title"))[:40])); continue
     # last-moment re-check: the pool may be a minute old by now
     if not _still_assignable(cid):
         raced += 1
         log(d,"SKIPPED_RACED|%s|%s|%s|another writer finished or claimed it since the pool was built"%(HOST,sess,cid))
         continue
-    r=subprocess.run(["tmux","new-session","-d","-s",sess,"bash","-lc",inner])
+    claim=subprocess.run([SKC,"coord","claim",cid,"--agent",name],capture_output=True,text=True)
+    claimed_owner,_claimed_at=_current_claim_fresh(cid)
+    if claim.returncode!=0 or claimed_owner!=name:
+        raced += 1
+        detail=(claim.stderr or claim.stdout or "claim not visible in CardStore fold").strip()[:140]
+        log(d,"CLAIM_FAILED|%s|%s|%s|owner=%s|%s"%(HOST,sess,cid,claimed_owner,detail))
+        continue
+    r=subprocess.run(["tmux","new-session","-d","-s",sess,"-c",workspace,"bash","-lc",inner])
     ok = r.returncode==0 and sess in sh("tmux","ls","-F","#{session_name}").split()
-    log(d,"%s|%s|%s|%s|lane=%s"%("LAUNCHED" if ok else "LAUNCH_FAILED",HOST,sess,cid,_LANE["name"]))
+    log(d,"%s|%s|%s|%s|lane=%s|model=%s"%("LAUNCHED" if ok else "LAUNCH_FAILED",HOST,sess,cid,_LANE["name"],model))
+    if not ok:
+        subprocess.run([SKC,"coord","release-claim",cid,"--owner",name,"--agent",name],
+                       capture_output=True,text=True)
     time.sleep(2)
+
+# republish after launching, because the first publish is a snapshot of the
+# sessions that existed when this tick STARTED. Publishing only there means a host
+# never reports the workers it just launched until its next tick, five minutes
+# later, so for those five minutes those cards are invisible to every other host.
+#
+# The reaper reaps on "no host reports this card running". A card nobody reports is
+# a card that looks dead, and CLAIM_GRACE alone was carrying the whole burden of
+# not acting on that. Observed 2026-08-28: every host published cards=0 while
+# chiap01 ran 3 workers and chiap03 ran 2, purely because each had launched them
+# after its own publish.
+#
+# Re-reading tmux here costs one subprocess and closes the window.
+try:
+    publish_live(sh("tmux","ls","-F","#{session_name}").split())
+except Exception as _exc:
+    log(d,"WARN|%s|could not republish liveness after launching: %s"%(HOST,_exc))
 
 if raced:
     log(d,"RACED|%s|%d card(s) finished between pool build and launch"%(HOST,raced))
