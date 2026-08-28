@@ -182,9 +182,7 @@ export class ApiClient {
         expectedProjectionGeneration: String(
           this.corpusProjectionPins.projectionGeneration,
         ),
-        requiredCoreWatermark: String(
-          this.corpusProjectionPins.coreWatermark,
-        ),
+        requiredCoreWatermark: String(this.corpusProjectionPins.coreWatermark),
       });
       const response = await this.request<CorpusSpanRead>(
         `/v1/matters/${encodeURIComponent(matterId)}/corpus/sources/${encodeURIComponent(sourceId)}/span?${query}`,
