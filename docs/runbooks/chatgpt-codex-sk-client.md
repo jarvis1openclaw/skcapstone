@@ -251,6 +251,23 @@ Identify the architecture:
 uname -m
 ```
 
+**Pre-installation memory check**: Terminal closure has been observed during
+package installation on systems with high memory usage. Before installing,
+verify available memory and close unnecessary terminal sessions:
+
+```bash
+# Check available memory (recommended: 2GB+ free)
+free -h
+
+# Identify high-memory terminal processes
+ps aux | grep -E 'gnome-terminal|vte-spawn' | awk '{print $2, $4, $11}' | sort -k2 -rn | head -10
+```
+
+If available memory is less than 2GB, close non-essential terminal windows
+from the GUI before proceeding. This prevents OOM killer events during
+package installation. See [section 8.1](#81-restart-only-the-windows-app) for
+details on the root cause analysis.
+
 Download the matching package from the official OpenAI page. For Ubuntu or
 Debian, install the downloaded `.deb`:
 
@@ -637,8 +654,40 @@ if (Compare-Object $terminalPidsBefore $terminalPidsAfter) {
 }
 ```
 
-On Linux, fully quit ChatGPT from its own menu and reopen `chatgpt`. Do not use
-a broad process pattern that can match terminal-launched Codex sessions.
+#### Linux safe restart
+
+On Linux, fully quit ChatGPT from its own menu (File → Quit or Ctrl+Q) and
+reopen `chatgpt`. Do not use a broad process pattern that can match
+terminal-launched Codex sessions.
+
+**DANGEROUS - never use these commands**:
+```bash
+pkill -f chatgpt      # May match unrelated processes
+killall chatgpt       # Non-specific process termination
+pkill -f codex        # Kills all Codex sessions
+systemctl stop gnome-terminal-server  # Closes all terminals
+```
+
+**Safe targeted restart (if menu unavailable)**:
+```bash
+# Identify ONLY the ChatGPT main process
+pgrep -a -f '/usr/lib/chatgpt/ChatGPT'
+
+# Terminate ONLY by PID
+kill <chatgpt_pid>
+
+# Restart
+chatgpt
+```
+
+#### Root cause: OOM during installation
+
+During the first official ChatGPT install on chiap04, all terminal windows
+closed due to an OOM killer event. The `apt install` operation, combined
+with high memory usage from multiple terminal sessions (5.7GB peak from
+`gnome-terminal-server` alone), triggered memory exhaustion. The ChatGPT
+package itself contains no logic to target or terminate terminals. Full
+analysis: `docs/evidence/chatgpt-client/terminal-closure-regression-root-cause.md`
 
 ### 8.2 Dependency-aware SK update
 
@@ -702,7 +751,7 @@ codex mcp remove skcomms
 | SKWhisper reports pending sessions and `Last digest: never` | Check daemon logs and the configured vector/database backend | Repair service dependencies; run `skwhisper digest --backlog` only in an approved window |
 | WSL sandbox fails around `bubblewrap` | Confirm `wsl --list --verbose` shows WSL2; inspect Codex version | Update WSL and use WSL2; install the distro `bubblewrap` package if the bundled fallback cannot run |
 | Changing Integrated terminal had no effect | The setting applies to new terminal sessions | Start a new chat or restart ChatGPT; agent and terminal settings are independent |
-| Restart closes terminal windows | Review the restart command/process target | Stop only `ChatGPT` processes; never kill `WindowsTerminal`, the WSL distro, or broad `codex` patterns |
+| Restart closes terminal windows | Review the restart command/process target | Stop only `ChatGPT` processes; never kill `WindowsTerminal`, the WSL distro, or broad `codex` patterns. For detailed guidance including canary testing and pre-installation memory checks, see `docs/evidence/chatgpt-client/safe-restart-procedure.md` |
 
 ## 10. Security and governance gates
 
@@ -727,8 +776,14 @@ codex mcp remove skcomms
 
 | Host | Platform | Accepted result |
 |---|---|---|
-| `chiap04` | Official Linux desktop package | Linux app-server; four SK MCP entries; Jarvis ritual and SKWhisper context loaded |
+| `chiap04` | Official Linux desktop package | Linux app-server; four SK MCP entries; Jarvis ritual and SKWhisper context loaded; terminal-closure OOM root cause identified and mitigated (see `terminal-closure-regression-root-cause.md`) |
 | `chiwk12` | Windows Store app with Ubuntu WSL2 agent | Windows-backed Codex home; WSL-native MCP children; Jarvis / `jarvis-unhinged` / OOF 100%; wrapped SKMemory health confirmed `PGVectorBackend` and `AGEGraphBackend`; Windows Terminal preserved during app restart |
+
+### Investigation evidence
+
+- **Terminal closure regression root cause**: `docs/evidence/chatgpt-client/terminal-closure-regression-root-cause.md` — OOM killer analysis from card 61bc82e3
+- **Safe restart procedure**: `docs/evidence/chatgpt-client/safe-restart-procedure.md` — Detailed operational guidance for preserving terminals during ChatGPT operations
+- **chiap04 qualification**: `docs/evidence/chatgpt-client/CGC-S1-03-CHIAP04-QUALIFICATION-2026-08-22.md` — Package version and MCP baseline
 
 Known implementation gaps:
 
