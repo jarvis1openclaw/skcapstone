@@ -1,0 +1,105 @@
+{
+  "ledger_id": "sklegal-mvp-base-01-conflict-ledger",
+  "version": 1,
+  "card_id": "91988c9e",
+  "review_card": "855ef00a",
+  "integration_base": {
+    "commit": "523b3a7b7ca4dd513596d9d5ec73d344d922362d",
+    "tree": "ae30d67b6ad5945985896ed034c0d7c9cc9bca87",
+    "ref": "origin/main"
+  },
+  "included_lineage": [
+    {
+      "item": "reviewed_v2_product",
+      "commit": "8177c88c5fd371a487e2c206c53b24e3619c1855",
+      "tree": "a23e08dc6edfde8397298b3d1ee0b354434c3bcd",
+      "method": "ancestor_of_fast_forward_contract_candidate"
+    },
+    {
+      "item": "independently_reviewed_repaired_contract",
+      "commit": "eade7626fb6190924e80d73b79473f685e1c2531",
+      "tree": "f003bd74f665465e8396255947dcd30e72d2dec5",
+      "review_card": "cf83cb57",
+      "method": "fast_forward_from_origin_main"
+    },
+    {
+      "item": "handoff_02_owned_tdd_and_manifests",
+      "commit": "a44a5144913c7ab6277ce542a0de5687aeb80687",
+      "tree": "c7892ceba1aab09600545ef98792c178143501c1",
+      "review_card": "7c2c9e20",
+      "method": "path_scoped_cherry_pick"
+    },
+    {
+      "item": "handoff_02_final_evidence",
+      "commit": "d150c9143062b7e4b470485cec17df9048f82c6e",
+      "tree": "6e028b01ac91ea49aae011bea578deb7750b4e46",
+      "review_commit": "1773e2120d929655f96ea4ea01e1cfb3b3f7e804",
+      "review_tree": "2c8adaf0070f1096e46d3414e8cd4e1eb5046271",
+      "method": "path_scoped_cherry_pick"
+    }
+  ],
+  "conflicts": [
+    {
+      "path": "docs/tasks/SUBAGENT-TASK-TTDS.md",
+      "source": "a44a5144913c7ab6277ce542a0de5687aeb80687",
+      "kind": "append_only_eof_conflict",
+      "resolution": "Preserve the repaired contract candidate bytes and append only the exact HANDOFF-02 and HANDOFF-02R owned sections. Reissue the exact BASE-01 and BASE-01R sections as this card's attributable delta. Do not import the excluded shared-main composite.",
+      "resolved_by_commit": "b1e5a219f6908019caed84a46109544504f09c9a"
+    }
+  ],
+  "pre_integration_observation": {
+    "kind": "transient_index_refresh_warning",
+    "paths": [
+      "docs/tasks/SUBAGENT-TASK-TTDS.md",
+      "migrations/manifest.json",
+      "tests/integration/persistence_contract_security_boundary.py"
+    ],
+    "disposition": "No integration bytes were applied. Immediate byte comparison matched HEAD for all three paths and git status was clean before retry."
+  },
+  "preserved_collision_boundaries": {
+    "migrations_manifest_sha256": "93666474456b984d0bab5139ceda4209d8f520f206583bcdcda8a23f596dedf9",
+    "persistence_security_test_sha256": "782dc9fa93c72719588f5eceb6da3a9043c8be1d7895c2729931a954496ec4df",
+    "migration_0019_sha256": "734ee0e00b76778f1e0a3098e77c729d6f9ec5ee803abcb3f77c2acdc8958376",
+    "migration_0020_present": false,
+    "migration_0021_present": false,
+    "lockfile_policy": "Preserve reviewed candidate lockfiles unless a reproducible integration gate proves reconciliation is required."
+  },
+  "known_base_limitation": {
+    "path": "tests/support/mvp_v2_cockpit.py",
+    "gate": "mypy",
+    "finding": "The full three-file contract support type gate reports an inherited assignment type mismatch at line 389 because the loop-local expected variable reuses an earlier string inference.",
+    "disposition": "Preserve the exact reviewed byte. BASE-01 is allowlist-only. Any correction requires a narrow repair card and independent review after BASE-01R."
+  },
+  "fail_closed_exclusions": [
+    "v2_contract_freeze_blocked_candidate_d0330518",
+    "shared_main_tdd_composite",
+    "shared_main_migration_manifest",
+    "shared_main_persistence_security_test",
+    "card_51ed3820_source_aggregate",
+    "card_78c95e1f_source_aggregate",
+    "card_c4dfd1df_source_aggregate",
+    "stale_card_e7a3d02e",
+    "all_other_shared_main_dirty_bytes"
+  ],
+  "migration_namespace": {
+    "preserved_last_migration": "0019_sentence_groundings.sql",
+    "reserved_but_unused": [
+      "0020_capauth_applied_history_delta.sql",
+      "0021_skgateway_qualification_scope.sql"
+    ],
+    "feature_lane_ranges": [
+      "0022-0029 joined-analysis",
+      "0030-0039 agent-runs",
+      "0040-0049 artifact-intake",
+      "0050-0059 work-products",
+      "0060-0069 tasks-deadlines",
+      "0070-0079 activity",
+      "0080-0089 corpus",
+      "0090-0099 integration-only-reconciliation"
+    ]
+  },
+  "rollback": {
+    "target_commit": "523b3a7b7ca4dd513596d9d5ec73d344d922362d",
+    "method": "Delete only the isolated integration branch and worktree after separately authorized retention expires. Shared main and live preview require no rollback because they were never mutated."
+  }
+}

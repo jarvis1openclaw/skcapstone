@@ -43,6 +43,31 @@ This is a local progress surface, not a production SKLegal deployment. A
 non-loopback bind, reverse-proxy route, protected data source, or production
 activation requires a separate eligible card and its own security gates.
 
+## Durable public-synthetic MVP qualification
+
+`compose.mvp.yml` defines the reversible COMPOSE-01 qualification topology.
+It runs canonical state in `sklegal-core-pg` and rebuildable full-text and
+pgvector projections in `sklegal-retrieval-pg`. The services use separate
+PostgreSQL processes, databases, administrator roles, application roles,
+volumes, networks, restart lifecycles, and backup lifecycles. Both published
+ports bind only to loopback.
+
+Run the complete disposable drill from the repository root:
+
+```bash
+.venv/bin/python scripts/qualify_durable_mvp.py \
+  --output /tmp/sklegal-mvp-compose-qualification.json
+```
+
+The driver creates random public-synthetic database credentials and an
+ephemeral dedicated CapAuth issuer under a task-owned temporary directory. It
+tests Chrome, RLS, policy freshness, revocation, audit and outbox, pgvector,
+projection lag and rebuild, independent outages and restarts, backup and
+restore, reset and reseed, migration replay, and rollback. Its finalizer stops
+and removes only its exact Compose project and its two named volumes. It does
+not deploy, read existing credentials, use protected content, invoke a model
+provider, access HammerTime `Inbox/`, or perform an external action.
+
 Run `make dev-deps` from the repository root to start the isolated PostgreSQL
 and Temporal development dependencies. Both ports bind only to loopback. Live
 database state uses a local Docker volume because the NFS project mount does

@@ -1,0 +1,40 @@
+CREATE ROLE sklegal_retrieval_app LOGIN NOSUPERUSER NOCREATEDB NOCREATEROLE
+  NOINHERIT NOBYPASSRLS PASSWORD :'app_password';
+
+-- CREATE EXTENSION vector is owned by the reviewed retrieval migration.
+CREATE SCHEMA sklegal_retrieval AUTHORIZATION sklegal_retrieval_admin;
+
+CREATE TABLE sklegal_retrieval.projections (
+  tenant_id uuid NOT NULL,
+  matter_id uuid NOT NULL,
+  generation integer NOT NULL CHECK (generation > 0),
+  outbox_sequence bigint NOT NULL CHECK (outbox_sequence > 0),
+  idempotency_key text NOT NULL UNIQUE,
+  query text NOT NULL,
+  search_payload jsonb NOT NULL,
+  span_payload jsonb NOT NULL,
+  searchable tsvector GENERATED ALWAYS AS
+    (to_tsvector('english', search_payload::text)) STORED,
+  embedding vector(3) NOT NULL,
+  PRIMARY KEY (tenant_id, matter_id, generation, outbox_sequence)
+);
+
+ALTER TABLE sklegal_retrieval.projections ENABLE ROW LEVEL SECURITY;
+ALTER TABLE sklegal_retrieval.projections FORCE ROW LEVEL SECURITY;
+CREATE POLICY tenant_matter_isolation ON sklegal_retrieval.projections
+  USING (
+    tenant_id = nullif(current_setting('sklegal.tenant_id', true), '')::uuid
+    AND matter_id = nullif(current_setting('sklegal.matter_id', true), '')::uuid
+  )
+  WITH CHECK (
+    tenant_id = nullif(current_setting('sklegal.tenant_id', true), '')::uuid
+    AND matter_id = nullif(current_setting('sklegal.matter_id', true), '')::uuid
+  );
+
+GRANT USAGE ON SCHEMA sklegal_retrieval TO sklegal_retrieval_app;
+GRANT SELECT, INSERT, UPDATE, DELETE ON sklegal_retrieval.projections TO sklegal_retrieval_app;
+GRANT USAGE ON SCHEMA sklegal_governed_corpus TO sklegal_retrieval_app;
+GRANT SELECT ON ALL TABLES IN SCHEMA sklegal_governed_corpus
+  TO sklegal_retrieval_app;
+GRANT EXECUTE ON ALL FUNCTIONS IN SCHEMA sklegal_governed_corpus
+  TO sklegal_retrieval_app;

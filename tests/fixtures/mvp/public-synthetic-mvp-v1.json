@@ -1,0 +1,487 @@
+{
+  "meta": {
+    "contractId": "public-synthetic-sklegal-mvp-v1",
+    "schemaVersion": 1,
+    "fixtureNamespace": "public-synthetic-mvp-v1",
+    "publicSynthetic": true,
+    "classification": "public",
+    "purpose": "internal_mvp_contract_test",
+    "fixedTime": "2099-01-15T12:00:00Z",
+    "resetStrategy": "reload_immutable_fixture",
+    "simulationOnly": true,
+    "containsProtectedMatterContent": false,
+    "containsCredentials": false,
+    "allowsProviderTraffic": false,
+    "allowsExternalEffects": false
+  },
+  "identifiers": {
+    "tenantId": "11111111-1111-4111-8111-111111111111",
+    "otherTenantId": "11111111-1111-4111-8111-111111111112",
+    "principalId": "22222222-2222-4222-8222-222222222221",
+    "otherPrincipalId": "22222222-2222-4222-8222-222222222222",
+    "clientId": "33333333-3333-4333-8333-333333333331",
+    "matterId": "44444444-4444-4444-8444-444444444441",
+    "otherMatterId": "44444444-4444-4444-8444-444444444442",
+    "foreignMatterId": "44444444-4444-4444-8444-444444444443"
+  },
+  "session": {
+    "fixtureId": "public-synthetic-session-primary",
+    "authenticationState": "authenticated_fixture",
+    "credentialIncluded": false,
+    "principal": {
+      "fixtureId": "public-synthetic-principal-primary",
+      "id": "22222222-2222-4222-8222-222222222221",
+      "displayName": "Public Synthetic Reviewer",
+      "capabilities": [
+        "tenant.read",
+        "client.read",
+        "matter.read",
+        "corpus.read",
+        "claim.review",
+        "task.read",
+        "workproduct.read",
+        "approval.read",
+        "audit.read"
+      ],
+      "tenantIds": ["11111111-1111-4111-8111-111111111111"]
+    },
+    "tenants": [
+      {
+        "fixtureId": "public-synthetic-tenant-primary",
+        "id": "11111111-1111-4111-8111-111111111111",
+        "displayName": "Public Synthetic Legal Tenant"
+      }
+    ],
+    "activeTenantId": "11111111-1111-4111-8111-111111111111"
+  },
+  "clients": [
+    {
+      "fixtureId": "public-synthetic-client-primary",
+      "id": "33333333-3333-4333-8333-333333333331",
+      "tenantId": "11111111-1111-4111-8111-111111111111",
+      "displayName": "Public Synthetic Client",
+      "matterCount": 1
+    }
+  ],
+  "matters": [
+    {
+      "fixtureId": "public-synthetic-matter-primary",
+      "id": "44444444-4444-4444-8444-444444444441",
+      "tenantId": "11111111-1111-4111-8111-111111111111",
+      "clientId": "33333333-3333-4333-8333-333333333331",
+      "clientDisplayName": "Public Synthetic Client",
+      "engagementId": "55555555-5555-4555-8555-555555555551",
+      "title": "Public Synthetic Supply Agreement Review",
+      "summary": "Fixture-only review of invented widgets and invented dates.",
+      "status": "open",
+      "openedOn": "2099-01-02",
+      "legacyAliases": []
+    },
+    {
+      "fixtureId": "public-synthetic-matter-nonmember",
+      "id": "44444444-4444-4444-8444-444444444442",
+      "tenantId": "11111111-1111-4111-8111-111111111111",
+      "clientId": "33333333-3333-4333-8333-333333333331",
+      "clientDisplayName": "Public Synthetic Client",
+      "engagementId": "55555555-5555-4555-8555-555555555551",
+      "title": "Public Synthetic Nonmember Matter",
+      "summary": "Fixture used only to prove cross-Matter denial.",
+      "status": "open",
+      "openedOn": "2099-01-03",
+      "legacyAliases": []
+    },
+    {
+      "fixtureId": "public-synthetic-matter-foreign-tenant",
+      "id": "44444444-4444-4444-8444-444444444443",
+      "tenantId": "11111111-1111-4111-8111-111111111112",
+      "clientId": "33333333-3333-4333-8333-333333333332",
+      "clientDisplayName": "Public Synthetic Foreign Client",
+      "engagementId": null,
+      "title": "Public Synthetic Foreign Tenant Matter",
+      "summary": "Fixture used only to prove cross-Tenant denial.",
+      "status": "open",
+      "openedOn": "2099-01-04",
+      "legacyAliases": []
+    }
+  ],
+  "workspace": {
+    "matter": {
+      "matterId": "44444444-4444-4444-8444-444444444441",
+      "clientId": "33333333-3333-4333-8333-333333333331",
+      "clientDisplayName": "Public Synthetic Client",
+      "engagementId": "55555555-5555-4555-8555-555555555551",
+      "title": "Public Synthetic Supply Agreement Review",
+      "summary": "Fixture-only review of invented widgets and invented dates.",
+      "status": "open",
+      "openedAt": "2099-01-02T09:00:00Z",
+      "legacyAliases": []
+    },
+    "engagementDisplayName": "Public Synthetic Advisory Engagement",
+    "parties": [],
+    "timeline": [],
+    "facts": [
+      {
+        "factAssertionId": "66666666-6666-4666-8666-666666666661",
+        "predicate": "synthetic_delivery_date",
+        "assertedValue": "2099-02-01",
+        "valueType": "date",
+        "reviewStatus": "source_asserted",
+        "sourcePath": "public-synthetic/sources/invented-agreement.txt",
+        "sourceLocator": "paragraph:2",
+        "sourceMissing": false,
+        "tensionGroupKey": null
+      }
+    ],
+    "tensions": [],
+    "evidence": [
+      {
+        "evidenceItemId": "77777777-7777-4777-8777-777777777771",
+        "title": "Public Synthetic Invented Agreement",
+        "mediaType": "text/plain",
+        "contentSha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "status": "collected",
+        "sourcePath": "public-synthetic/evidence/invented-agreement.txt",
+        "sourceMissing": false
+      }
+    ],
+    "communications": [],
+    "workProducts": [
+      {
+        "workProductId": "88888888-8888-4888-8888-888888888881",
+        "title": "Public Synthetic Review Memorandum",
+        "workProductKind": "memorandum",
+        "status": "in_review",
+        "currentVersion": {
+          "versionId": "88888888-8888-4888-8888-888888888882",
+          "versionNumber": 2,
+          "contentSha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+          "status": "frozen",
+          "content": "Public synthetic memorandum. The invented delivery date requires human review.",
+          "sentences": [
+            {
+              "sentenceKey": "public-synthetic-sentence-1",
+              "text": "The invented delivery date requires human review.",
+              "groundingStatus": "grounded",
+              "claimId": "99999999-9999-4999-8999-999999999991",
+              "claimStatement": "The invented delivery date is 2099-02-01.",
+              "claimStatus": "supported",
+              "warning": null
+            }
+          ],
+          "compareRows": []
+        },
+        "previousVersionNumber": 1,
+        "approvalBinding": {
+          "versionId": "88888888-8888-4888-8888-888888888882",
+          "versionNumber": 2,
+          "contentSha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+        }
+      }
+    ],
+    "versionLineage": [
+      {
+        "packetVersion": 1,
+        "sourcePath": "public-synthetic/packets/mvp-v1.json",
+        "sourceSha256": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+        "historical": false,
+        "currentReviewBaseline": true
+      }
+    ],
+    "executionStates": [
+      {
+        "targetType": "work_product",
+        "targetId": "88888888-8888-4888-8888-888888888881",
+        "stateKind": "approval",
+        "stateValue": "approved"
+      },
+      {
+        "targetType": "simulated_action",
+        "targetId": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaa1",
+        "stateKind": "execution",
+        "stateValue": "receipt_verified"
+      }
+    ],
+    "gaps": [],
+    "audit": [
+      {
+        "auditId": "public-synthetic-audit-work-product-approved",
+        "action": "work_product.approved",
+        "actor": "Public Synthetic Reviewer",
+        "occurredAt": "2099-01-15T10:00:00Z",
+        "outcome": "approved",
+        "detail": "Exact public synthetic version 2 approved."
+      },
+      {
+        "auditId": "public-synthetic-audit-simulation-receipt",
+        "action": "simulated_action.receipt_verified",
+        "actor": "Public Synthetic Connector",
+        "occurredAt": "2099-01-15T10:05:00Z",
+        "outcome": "receipt_verified",
+        "detail": "No external effect occurred."
+      }
+    ],
+    "provenance": {
+      "sourceSnapshot": "public-synthetic-snapshot-v1",
+      "currentSourceSnapshot": "public-synthetic-snapshot-v1",
+      "adapterVersion": "public-synthetic-fixture-v1",
+      "observedAt": "2099-01-15T09:00:00Z",
+      "stale": false,
+      "sourceFiles": [
+        {
+          "relativePath": "public-synthetic/sources/invented-agreement.txt",
+          "contentSha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "observedAt": "2099-01-15T09:00:00Z",
+          "byteCount": 128
+        }
+      ]
+    }
+  },
+  "authorities": [
+    {
+      "fixtureId": "public-synthetic-authority-primary",
+      "authorityId": "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbb1",
+      "matterId": "44444444-4444-4444-8444-444444444441",
+      "citation": "PUB-SYN 1:1",
+      "title": "Public Synthetic Widget Rule",
+      "jurisdiction": "US-SYN",
+      "authorityTier": "official_fixture",
+      "verificationState": "verified_fixture_only",
+      "sourceVersion": "public-synthetic-v1",
+      "contentSha256": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+      "controlsRealMatter": false
+    }
+  ],
+  "claimLedger": {
+    "matterId": "44444444-4444-4444-8444-444444444441",
+    "claims": [
+      {
+        "claimId": "99999999-9999-4999-8999-999999999991",
+        "statement": "The invented delivery date is 2099-02-01.",
+        "status": "supported",
+        "version": 1,
+        "policyRevision": "public-synthetic-policy-v1",
+        "updatedAt": "2099-01-15T09:30:00Z",
+        "support": [
+          {
+            "supportId": "public-synthetic-support-1",
+            "kind": "support",
+            "recordedAt": "2099-01-15T09:20:00Z",
+            "sourceSystem": "public-synthetic-fixture",
+            "sourceVersion": "v1",
+            "sourceLocator": "paragraph:2",
+            "contentSha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "spanStart": 0,
+            "spanEnd": 32,
+            "excerptSha256": "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+            "note": "Invented fixture support only.",
+            "recordedByPrincipalId": "22222222-2222-4222-8222-222222222221",
+            "policyRevision": "public-synthetic-policy-v1"
+          }
+        ],
+        "counterSupport": [],
+        "supportVerificationState": "passed",
+        "applicability": [
+          {
+            "checkId": "authority.fixture_scope",
+            "subjectId": "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbb1",
+            "outcome": "passed",
+            "reasons": []
+          }
+        ],
+        "challenges": [],
+        "reviewHistory": [
+          {
+            "reviewId": "public-synthetic-claim-review-1",
+            "reviewedAt": "2099-01-15T09:30:00Z",
+            "reviewerPrincipalId": "22222222-2222-4222-8222-222222222221",
+            "claimVersion": 1,
+            "decision": "accepted",
+            "note": "Accepted for public synthetic MVP demonstration only.",
+            "policyRevision": "public-synthetic-policy-v1"
+          }
+        ],
+        "gate": {
+          "gate": "claim_ready",
+          "evaluatedAt": "2099-01-15T09:31:00Z",
+          "outcome": "passed",
+          "failedChecks": []
+        },
+        "stateTransitions": [
+          {
+            "fromStatus": null,
+            "toStatus": "proposed",
+            "at": "2099-01-15T09:10:00Z",
+            "version": 1
+          },
+          {
+            "fromStatus": "proposed",
+            "toStatus": "supported",
+            "at": "2099-01-15T09:30:00Z",
+            "version": 1
+          }
+        ]
+      }
+    ]
+  },
+  "deadlines": [
+    {
+      "fixtureId": "public-synthetic-deadline-primary",
+      "deadlineId": "cccccccc-cccc-4ccc-8ccc-ccccccccccc1",
+      "matterId": "44444444-4444-4444-8444-444444444441",
+      "title": "Review invented response",
+      "status": "operative",
+      "dueAt": "2099-02-10T17:00:00Z",
+      "calculationId": "public-synthetic-calculation-1",
+      "reviewedBy": "22222222-2222-4222-8222-222222222221"
+    }
+  ],
+  "tasks": [
+    {
+      "fixtureId": "public-synthetic-task-primary",
+      "taskId": "dddddddd-dddd-4ddd-8ddd-ddddddddddd1",
+      "matterId": "44444444-4444-4444-8444-444444444441",
+      "deadlineId": "cccccccc-cccc-4ccc-8ccc-ccccccccccc1",
+      "title": "Review public synthetic memorandum",
+      "status": "open",
+      "assigneePrincipalId": "22222222-2222-4222-8222-222222222221"
+    }
+  ],
+  "approvals": [
+    {
+      "fixtureId": "public-synthetic-approval-primary",
+      "approvalId": "eeeeeeee-eeee-4eee-8eee-eeeeeeeeeee1",
+      "matterId": "44444444-4444-4444-8444-444444444441",
+      "status": "approved",
+      "subjectType": "work_product_version",
+      "subjectId": "88888888-8888-4888-8888-888888888882",
+      "versionNumber": 2,
+      "contentSha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "approvedBy": "22222222-2222-4222-8222-222222222221",
+      "approvedAt": "2099-01-15T10:00:00Z"
+    }
+  ],
+  "simulatedActions": [
+    {
+      "fixtureId": "public-synthetic-simulated-action-primary",
+      "actionId": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaa1",
+      "matterId": "44444444-4444-4444-8444-444444444441",
+      "connectorKind": "client_communication",
+      "simulationOnly": true,
+      "stateHistory": [
+        "draft",
+        "validated",
+        "approved",
+        "queued",
+        "dispatched",
+        "receipt_verified"
+      ],
+      "approvalId": "eeeeeeee-eeee-4eee-8eee-eeeeeeeeeee1",
+      "receiptId": "public-synthetic-simulation-receipt-1",
+      "externalEffectOccurred": false
+    }
+  ],
+  "contractMatrix": [
+    {
+      "scenarioId": "public-synthetic-mvp-session-allow",
+      "area": "sign_in_session",
+      "interface": "browser:session",
+      "fixtureRefs": ["public-synthetic-session-primary"],
+      "expected": "authorized_session",
+      "implementationState": "browser_contract_available"
+    },
+    {
+      "scenarioId": "public-synthetic-mvp-client-matter-navigation",
+      "area": "client_matter_navigation",
+      "interface": "GET /v1/clients and GET /v1/matters/{matter_id}/workspace",
+      "fixtureRefs": [
+        "public-synthetic-client-primary",
+        "public-synthetic-matter-primary"
+      ],
+      "expected": "200_scoped_records",
+      "implementationState": "api_contract_available"
+    },
+    {
+      "scenarioId": "public-synthetic-mvp-provenance",
+      "area": "provenance",
+      "interface": "GET /v1/matters/{matter_id}/workspace",
+      "fixtureRefs": ["public-synthetic-matter-primary"],
+      "expected": "pinned_public_synthetic_source_trace",
+      "implementationState": "api_contract_available"
+    },
+    {
+      "scenarioId": "public-synthetic-mvp-evidence-authority",
+      "area": "evidence_authority",
+      "interface": "GET /v1/matters/{matter_id}/workspace and future authority projection",
+      "fixtureRefs": ["public-synthetic-authority-primary"],
+      "expected": "evidence_and_separate_authority_lane",
+      "implementationState": "authority_projection_blocked"
+    },
+    {
+      "scenarioId": "public-synthetic-mvp-claims",
+      "area": "claims",
+      "interface": "GET /v1/matters/{matter_id}/claims",
+      "fixtureRefs": ["public-synthetic-support-1"],
+      "expected": "200_claim_ledger",
+      "implementationState": "api_contract_available"
+    },
+    {
+      "scenarioId": "public-synthetic-mvp-deadlines-tasks",
+      "area": "deadlines_tasks",
+      "interface": "future MVP deadline and task projection",
+      "fixtureRefs": [
+        "public-synthetic-deadline-primary",
+        "public-synthetic-task-primary"
+      ],
+      "expected": "matter_scoped_deadline_and_task",
+      "implementationState": "api_projection_blocked"
+    },
+    {
+      "scenarioId": "public-synthetic-mvp-work-product-approval",
+      "area": "work_products_approvals",
+      "interface": "GET /v1/matters/{matter_id}/workspace",
+      "fixtureRefs": ["public-synthetic-approval-primary"],
+      "expected": "exact_version_approval_binding",
+      "implementationState": "workspace_contract_available"
+    },
+    {
+      "scenarioId": "public-synthetic-mvp-simulated-action",
+      "area": "simulated_actions",
+      "interface": "future MVP simulation projection",
+      "fixtureRefs": ["public-synthetic-simulated-action-primary"],
+      "expected": "receipt_verified_without_external_effect",
+      "implementationState": "api_projection_blocked"
+    },
+    {
+      "scenarioId": "public-synthetic-mvp-audit",
+      "area": "audit",
+      "interface": "GET /v1/matters/{matter_id}/workspace",
+      "fixtureRefs": ["public-synthetic-audit-work-product-approved"],
+      "expected": "append_only_read_projection",
+      "implementationState": "workspace_contract_available"
+    },
+    {
+      "scenarioId": "public-synthetic-mvp-outage",
+      "area": "outage",
+      "interface": "workspace and claim stores",
+      "fixtureRefs": ["public-synthetic-matter-primary"],
+      "expected": "503_sanitized_fail_closed",
+      "implementationState": "api_contract_available"
+    },
+    {
+      "scenarioId": "public-synthetic-mvp-cross-tenant-denial",
+      "area": "cross_tenant_denial",
+      "interface": "GET /v1/matters/{matter_id}/workspace",
+      "fixtureRefs": ["public-synthetic-matter-foreign-tenant"],
+      "expected": "403_without_record_detail",
+      "implementationState": "api_contract_available"
+    },
+    {
+      "scenarioId": "public-synthetic-mvp-cross-matter-denial",
+      "area": "cross_matter_denial",
+      "interface": "GET /v1/matters/{matter_id}/workspace",
+      "fixtureRefs": ["public-synthetic-matter-nonmember"],
+      "expected": "403_without_record_detail",
+      "implementationState": "api_contract_available"
+    }
+  ]
+}

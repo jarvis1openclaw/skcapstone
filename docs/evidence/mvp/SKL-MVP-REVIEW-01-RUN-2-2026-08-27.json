@@ -1,0 +1,447 @@
+{
+  "api_authorization": {
+    "authorized_matter": true,
+    "cross_matter_denied": true,
+    "cross_tenant_denied": true,
+    "revoked_session_denied": true
+  },
+  "backup_restore": {
+    "core": {
+      "pass": true,
+      "restore_rows": 4,
+      "sha256": "092ec73ca9fca9ee76a1659a6e1a38d3c88a3e0bff74a2c037bb6035ce67b6ae"
+    },
+    "retrieval": {
+      "pass": true,
+      "restore_rows": 1,
+      "sha256": "127c442e7e0229535833bbdd628b92c4330ab750f361c18ffdc7ad5bdbfb7a43"
+    }
+  },
+  "browser": {
+    "compactLayout": {
+      "labelledScrollRegions": 3,
+      "pageOverflow": false,
+      "width": 390
+    },
+    "corpusPath": "/corpus?matterId=44444444-4444-4444-8444-444444444441",
+    "csp": "default-src 'self'; base-uri 'none'; frame-ancestors 'none'; form-action 'self'; object-src 'none'",
+    "cspConsoleEvents": 0,
+    "freshIndependentBrowser": {
+      "axe": {
+        "incomplete": [
+          {
+            "id": "aria-prohibited-attr",
+            "impact": "serious",
+            "nodes": [
+              {
+                "failureSummary": "Fix all of the following:\n  aria-label attribute is not well supported on a code with no valid role attribute.",
+                "html": "<code class=\"sl-hash\" tabindex=\"0\" aria-label=\"Source snapshot identifier\">public-synthetic-snapshot-v1</code>",
+                "target": [
+                  "code[aria-label=\"Source snapshot identifier\"]"
+                ]
+              },
+              {
+                "failureSummary": "Fix all of the following:\n  aria-label attribute is not well supported on a code with no valid role attribute.",
+                "html": "<code class=\"sl-hash\" tabindex=\"0\" aria-label=\"Adapter version identifier\">public-synthetic-fixture-v1</code>",
+                "target": [
+                  "code[aria-label=\"Adapter version identifier\"]"
+                ]
+              },
+              {
+                "failureSummary": "Fix all of the following:\n  aria-label attribute is not well supported on a code with no valid role attribute.",
+                "html": "<code class=\"sl-hash\" tabindex=\"0\" aria-label=\"Public Synthetic Invented Agreement content hash\">aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa</code>",
+                "target": [
+                  "td:nth-child(3) > .sl-hash"
+                ]
+              },
+              {
+                "failureSummary": "Fix all of the following:\n  aria-label attribute is not well supported on a code with no valid role attribute.",
+                "html": "<code class=\"sl-hash\" tabindex=\"0\" aria-label=\"Public Synthetic Review Memorandum content hash\">bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb</code>",
+                "target": [
+                  "dd:nth-child(4) > .sl-hash"
+                ]
+              },
+              {
+                "failureSummary": "Fix all of the following:\n  aria-label attribute is not well supported on a code with no valid role attribute.",
+                "html": "<code class=\"sl-hash\" tabindex=\"0\" aria-label=\"Source evidence snapshot identifier\">public-synthetic-snapshot-v1</code>",
+                "target": [
+                  "dd:nth-child(2) > .sl-hash"
+                ]
+              }
+            ]
+          },
+          {
+            "id": "color-contrast",
+            "impact": "serious",
+            "nodes": [
+              {
+                "failureSummary": "Fix any of the following:\n  Element content contains only non-text characters",
+                "html": "<span aria-hidden=\"true\" class=\"sl-status-glyph\">\u25cf</span>",
+                "target": [
+                  ".sl-record-meta > .sl-status-badge[data-tone=\"positive\"] > .sl-status-glyph[aria-hidden=\"true\"]"
+                ]
+              }
+            ]
+          }
+        ],
+        "passes": 28,
+        "violations": []
+      },
+      "axeTags": [
+        "wcag2a",
+        "wcag2aa",
+        "wcag21a",
+        "wcag21aa"
+      ],
+      "axeVersion": "4.13.0",
+      "chromeVersion": "151.0.7922.173",
+      "compactLayout": {
+        "clientWidth": 390,
+        "documentWidth": 390,
+        "labelledScrollRegions": 3,
+        "pageOverflow": false
+      },
+      "compactScreenshot": {
+        "bytes": 1291998,
+        "path": "/tmp/sklegal-13473fb6-review/docs/evidence/mvp/SKL-MVP-REVIEW-01-COMPACT-2026-08-27.png",
+        "sha256": "90b31a6a0e5befdf9c17ee845b23ac8b75b0b9846af735bd99d36b3113d198cd"
+      },
+      "expandedLayout": {
+        "clientWidth": 1440,
+        "documentWidth": 1440,
+        "pageOverflow": false
+      },
+      "expandedScreenshot": {
+        "bytes": 1243013,
+        "path": "/tmp/sklegal-13473fb6-review/docs/evidence/mvp/SKL-MVP-REVIEW-01-EXPANDED-2026-08-27.png",
+        "sha256": "83fea41f29c9dbf722aac622ad916903c315a7dfe0b4d61383f12bfb7772216d"
+      },
+      "externalRequests": 0,
+      "failedResponses": 0,
+      "hashAccessibilityReadback": [
+        {
+          "ignored": false,
+          "name": "Source snapshot identifier",
+          "role": "code"
+        },
+        {
+          "ignored": false,
+          "name": "Adapter version identifier",
+          "role": "code"
+        },
+        {
+          "ignored": false,
+          "name": "public-synthetic-snapshot-v1",
+          "role": "StaticText"
+        },
+        {
+          "ignored": false,
+          "name": "public-synthetic-fixture-v1",
+          "role": "StaticText"
+        },
+        {
+          "ignored": false,
+          "name": "public-synthetic-snapshot-v1",
+          "role": "InlineTextBox"
+        },
+        {
+          "ignored": false,
+          "name": "public-synthetic-fixture-v1",
+          "role": "InlineTextBox"
+        },
+        {
+          "ignored": false,
+          "name": "Public Synthetic Invented Agreement content hash",
+          "role": "cell"
+        },
+        {
+          "ignored": false,
+          "name": "Public Synthetic Review Memorandum content hash",
+          "role": "code"
+        },
+        {
+          "ignored": false,
+          "name": "Source evidence snapshot identifier",
+          "role": "code"
+        },
+        {
+          "ignored": false,
+          "name": "Public Synthetic Invented Agreement content hash",
+          "role": "code"
+        },
+        {
+          "ignored": false,
+          "name": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+          "role": "StaticText"
+        },
+        {
+          "ignored": false,
+          "name": "public-synthetic-snapshot-v1",
+          "role": "StaticText"
+        },
+        {
+          "ignored": false,
+          "name": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "role": "StaticText"
+        },
+        {
+          "ignored": false,
+          "name": "public-synthetic-snapshot-v1",
+          "role": "InlineTextBox"
+        },
+        {
+          "ignored": false,
+          "name": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "role": "InlineTextBox"
+        }
+      ],
+      "hashDomReadback": [
+        {
+          "label": "Source snapshot identifier",
+          "text": "public-synthetic-snapshot-v1"
+        },
+        {
+          "label": "Adapter version identifier",
+          "text": "public-synthetic-fixture-v1"
+        },
+        {
+          "label": "Public Synthetic Invented Agreement content hash",
+          "text": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        },
+        {
+          "label": "Public Synthetic Review Memorandum content hash",
+          "text": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+        },
+        {
+          "label": "Source evidence snapshot identifier",
+          "text": "public-synthetic-snapshot-v1"
+        }
+      ],
+      "hiddenGlyphReadback": [
+        {
+          "ariaHidden": "true",
+          "glyph": "\u25cf",
+          "visibleLabel": "Open"
+        },
+        {
+          "ariaHidden": "true",
+          "glyph": "\u25cf",
+          "visibleLabel": "Open"
+        },
+        {
+          "ariaHidden": "true",
+          "glyph": "\u2022",
+          "visibleLabel": "approved"
+        },
+        {
+          "ariaHidden": "true",
+          "glyph": "\u2022",
+          "visibleLabel": "receipt_verified"
+        },
+        {
+          "ariaHidden": "true",
+          "glyph": "\u2713",
+          "visibleLabel": "Current snapshot"
+        },
+        {
+          "ariaHidden": "true",
+          "glyph": "\u2022",
+          "visibleLabel": "Source asserted"
+        },
+        {
+          "ariaHidden": "true",
+          "glyph": "\u2022",
+          "visibleLabel": "Collected"
+        },
+        {
+          "ariaHidden": "true",
+          "glyph": "\u2713",
+          "visibleLabel": "Approved"
+        },
+        {
+          "ariaHidden": "true",
+          "glyph": "\u2713",
+          "visibleLabel": "Claim grounded"
+        },
+        {
+          "ariaHidden": "true",
+          "glyph": "\u2713",
+          "visibleLabel": "Current review baseline"
+        }
+      ],
+      "keyboardFocus": {
+        "focusVisible": true,
+        "id": "",
+        "tag": "A"
+      },
+      "pageErrors": 0,
+      "sectionReadback": {
+        "expected": 18,
+        "missing": [],
+        "observed": 18
+      },
+      "status": "PASS",
+      "storage": {
+        "cookie": "",
+        "localStorage": [],
+        "sessionStorage": []
+      }
+    },
+    "matterPath": "/matters/44444444-4444-4444-8444-444444444441",
+    "namedAccessibilityGroups": 7,
+    "networkFailures": 0,
+    "reloadPath": "/matters/44444444-4444-4444-8444-444444444441",
+    "status": "PASS",
+    "storage": {
+      "cookie": "",
+      "local": [],
+      "session": []
+    }
+  },
+  "card": "c0bc2c68",
+  "duration_seconds": 26.089,
+  "feature_readback": {
+    "activity_exports": 1,
+    "activity_idempotency": 2,
+    "activity_outbox": 3,
+    "agent_audit": 3,
+    "agent_idempotency": 3,
+    "artifact_audit": 2,
+    "artifact_idempotency": 1,
+    "artifact_outbox": 2,
+    "authorization_audit": 44,
+    "task_audit": 3,
+    "task_idempotency": 3,
+    "task_outbox": 3,
+    "work_product_audit": 3,
+    "work_product_idempotency": 3,
+    "work_product_outbox": 3
+  },
+  "limitations": [
+    "public-synthetic corpus only",
+    "simulated connectors only",
+    "optional AGE remains activation-gated"
+  ],
+  "migration_replay": {
+    "pins_equal": true,
+    "readback": {
+      "audit": 0,
+      "outbox": 1,
+      "pgvector": 1,
+      "projections": 1,
+      "records": 4
+    }
+  },
+  "outages": {
+    "core_failed_closed": true,
+    "core_restart_recovered": true,
+    "projection_lag_workspace_safe": true,
+    "retrieval_failed_closed": true,
+    "retrieval_workspace_safe": true,
+    "stale_policy_failed_closed": true
+  },
+  "pins": {
+    "fixture_sha256": "4b14516539289255daca9065dd28060a9e96aea365faec9ecbd1a679bdb47742",
+    "projection_sha256": "90580aa438825b4fcdfcf58a5e3339decdaf1749bcaf23928da55bc414e69e34"
+  },
+  "projection_rebuild": {
+    "actual_sha256": "90580aa438825b4fcdfcf58a5e3339decdaf1749bcaf23928da55bc414e69e34",
+    "expected_sha256": "90580aa438825b4fcdfcf58a5e3339decdaf1749bcaf23928da55bc414e69e34",
+    "idempotent_rows": 1,
+    "pass": true
+  },
+  "readback_after": {
+    "audit": 51,
+    "outbox": 1,
+    "pgvector": 1,
+    "projections": 1,
+    "records": 4
+  },
+  "readback_before": {
+    "audit": 0,
+    "outbox": 1,
+    "pgvector": 1,
+    "projections": 1,
+    "records": 4
+  },
+  "reset_reseed": {
+    "pins_equal": true,
+    "readback": {
+      "audit": 0,
+      "outbox": 1,
+      "pgvector": 1,
+      "projections": 1,
+      "records": 4
+    }
+  },
+  "revocation_revision": "5adb8c3d42601f14dc3c467830d23dcc75ffae17236d02c6bb26c6e31b1c3c8e",
+  "revocation_rows": 1,
+  "rls": {
+    "cross_matter": true,
+    "cross_tenant": true
+  },
+  "rollback": "Stop the exact task project and remove only its two named volumes.",
+  "safe_state": {
+    "task_containers_absent": true,
+    "task_volumes_absent": true
+  },
+  "source_commit": "b8836c91a8337d125a86fc06fd87c270ba176b2e",
+  "source_tree": "c1f98547a2337c34e2248b0d77d89e299e3d122c",
+  "status": "PASS",
+  "topology": {
+    "core_port_loopback": 43813,
+    "retrieval_port_loopback": 43867,
+    "separate_admins": true,
+    "separate_app_roles": true,
+    "separate_networks": true,
+    "separate_volumes": true
+  },
+  "v2_openapi": {
+    "exact_matches": 21,
+    "manifest_sha256": "0857b0642c49531ae615362b7a40785e21aa8676a933ea6a27a5f1f057e11c66",
+    "openapi_sha256": "1555cec46c8143e0c4f69210b8ccf0f91ea90a9cea62166d645893462fb820b6",
+    "operation_ids_unique": true,
+    "required": 21
+  },
+  "v2_operations": {
+    "all_21_succeeded": true,
+    "decision_bound_replay_conflicts": [
+      "create_activity_export"
+    ],
+    "idempotency_replays": [
+      "compute_deadline",
+      "create_analysis_run",
+      "create_artifact_intake",
+      "create_challenge",
+      "create_simulation_handoff",
+      "create_work_product_version",
+      "decide_approval",
+      "decide_recommendation",
+      "upsert_task",
+      "validate_work_product"
+    ],
+    "operations": {
+      "compute_deadline": 201,
+      "create_activity_export": 201,
+      "create_analysis_run": 201,
+      "create_artifact_intake": 201,
+      "create_challenge": 200,
+      "create_simulation_handoff": 201,
+      "create_work_product_version": 200,
+      "decide_approval": 200,
+      "decide_recommendation": 200,
+      "get_agent_run": 200,
+      "get_artifact": 200,
+      "get_claim_ledger": 200,
+      "get_corpus_span": 200,
+      "get_joined_analysis": 200,
+      "get_work_product": 200,
+      "get_workspace": 200,
+      "list_activity": 200,
+      "list_recommendations": 200,
+      "search_corpus": 200,
+      "upsert_task": 201,
+      "validate_work_product": 200
+    }
+  }
+}

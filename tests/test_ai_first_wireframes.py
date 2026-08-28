@@ -1,9 +1,8 @@
 from __future__ import annotations
 
+import unittest
 from html.parser import HTMLParser
 from pathlib import Path
-import unittest
-
 
 ROOT = Path(__file__).resolve().parents[1]
 WIREFRAME_DIR = ROOT / "docs" / "planning" / "wireframes"
@@ -11,10 +10,7 @@ V1 = WIREFRAME_DIR / "index.html"
 V2 = WIREFRAME_DIR / "index-v2.html"
 COMPONENT_MAP = WIREFRAME_DIR / "COMPONENT-API-MAP-V2.md"
 RESEARCH = (
-    ROOT
-    / "docs"
-    / "research"
-    / "HOWTOWININCOURT-ARCHITECTURE-REVIEW-2026-08-22.md"
+    ROOT / "docs" / "research" / "HOWTOWININCOURT-ARCHITECTURE-REVIEW-2026-08-22.md"
 )
 SKGATEWAY_RESEARCH = (
     ROOT / "docs" / "research" / "SKGATEWAY-INTEGRATION-REVIEW-2026-08-22.md"
@@ -31,9 +27,7 @@ class _DocumentParser(HTMLParser):
         self.hrefs: list[str] = []
         self.sources: list[str] = []
 
-    def handle_starttag(
-        self, tag: str, attrs: list[tuple[str, str | None]]
-    ) -> None:
+    def handle_starttag(self, tag: str, attrs: list[tuple[str, str | None]]) -> None:
         values = dict(attrs)
         if values.get("id"):
             self.ids.append(values["id"] or "")
@@ -192,7 +186,7 @@ class AiFirstWireframeTests(unittest.TestCase):
 
         self.assertIn("ecf6d536", task)
         self.assertIn("complete Matter activity log", task)
-        self.assertIn("Matter artifact intake contract owed to the UI", component_map)
+        self.assertIn("Matter artifact intake contract", component_map)
         self.assertIn("Matter activity and provenance contract", component_map)
         self.assertIn("Provenance and artifact handling decision", research)
         self.assertIn("Critical live-path gap", gateway_research)

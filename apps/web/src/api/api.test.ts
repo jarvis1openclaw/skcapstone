@@ -2,28 +2,7 @@ import { describe, expect, it, vi } from "vitest";
 
 import { ApiClient } from "./client";
 import { isCorrelationId } from "./correlation";
-import { SessionCredentialStore, type CredentialStorage } from "./credentials";
 import { ApiError, apiErrorFromCause, apiErrorFromStatus } from "./errors";
-
-function fakeStorage(): CredentialStorage & { calls: string[] } {
-  const map = new Map<string, string>();
-  const calls: string[] = [];
-  return {
-    calls,
-    getItem: (key) => {
-      calls.push(`get:${key}`);
-      return map.get(key) ?? null;
-    },
-    setItem: (key, value) => {
-      calls.push(`set:${key}`);
-      map.set(key, value);
-    },
-    removeItem: (key) => {
-      calls.push(`remove:${key}`);
-      map.delete(key);
-    },
-  };
-}
 
 describe("apiErrorFromStatus", () => {
   it("maps known statuses and fails closed on everything else", () => {
@@ -46,50 +25,75 @@ describe("apiErrorFromCause", () => {
   });
 });
 
-describe("SessionCredentialStore", () => {
-  it("round-trips a credential through the approved session storage only", () => {
-    const storage = fakeStorage();
-    const store = new SessionCredentialStore(storage);
-    store.save({ token: "t", expiresAt: "2999-01-01T00:00:00Z" });
-    expect(store.loadActive(new Date("2026-01-01T00:00:00Z"))?.token).toBe("t");
-    expect(storage.calls.every((call) => !call.includes("localStorage"))).toBe(
-      true,
-    );
-  });
-
-  it("treats an expired credential as absent and clears it", () => {
-    const storage = fakeStorage();
-    const store = new SessionCredentialStore(storage);
-    store.save({ token: "t", expiresAt: "2000-01-01T00:00:00Z" });
-    expect(store.loadActive(new Date("2026-01-01T00:00:00Z"))).toBeNull();
-    expect(storage.calls).toContain("remove:sklegal.session.credential");
-  });
-
-  it("treats malformed stored data as absent", () => {
-    const storage = fakeStorage();
-    storage.setItem("sklegal.session.credential", "not-json");
-    const store = new SessionCredentialStore(storage);
-    expect(store.load()).toBeNull();
-  });
-});
-
 describe("ApiClient", () => {
   function buildClient(fetchImpl: typeof fetch) {
-    const storage = fakeStorage();
-    const credentials = new SessionCredentialStore(storage);
-    credentials.save({
-      token: "session-token",
-      expiresAt: "2999-01-01T00:00:00Z",
-    });
     return new ApiClient({
       baseUrl: "https://api.test/",
-      credentials,
       tenantId: () => "tenant-a",
+      csrfToken: () => "csrf-test-token",
       fetchImpl,
     });
   }
 
-  it("sends tenant scope, credential, and a fresh correlation id", async () => {
+  it("uses exact governed-corpus pins in public-synthetic mode", async () => {
+    const result = {
+      tenantId: "tenant-a",
+      matterId: "matter-a",
+      querySha256: "a".repeat(64),
+      authorizationDecisionId: crypto.randomUUID(),
+      policyDecisionId: crypto.randomUUID(),
+      policyRevision: "b".repeat(64),
+      rightsRevision: "c".repeat(64),
+      classificationCeiling: 0,
+      projection: {
+        releaseId: "release-1",
+        projectionGeneration: 2,
+        backendWatermark: 3,
+        coreWatermark: 3,
+        lagEvents: 0,
+        lagSeconds: 0,
+        maxLagEvents: 0,
+        maxLagSeconds: 0,
+        fullTextBackend: "postgresql_full_text",
+        vectorBackend: "postgresql_pgvector_exact",
+        qdrantCompatibility: "metadata_only",
+        falkordbCompatibility: "metadata_only",
+      },
+      mode: "full_text",
+      hits: [],
+      noAnswer: true,
+      continuationCursor: null,
+    };
+    const fetchImpl = vi.fn(
+      async () =>
+        new Response(JSON.stringify({ result }), {
+          status: 200,
+          headers: { "Content-Type": "application/json" },
+        }),
+    ) as unknown as typeof fetch;
+    const client = new ApiClient({
+      baseUrl: "https://api.test/",
+      tenantId: () => "tenant-a",
+      csrfToken: () => "csrf-test-token",
+      fetchImpl,
+      corpusProjectionPins: {
+        releaseId: "release-1",
+        projectionGeneration: 2,
+        coreWatermark: 3,
+      },
+    });
+    await client.searchCorpus("matter-a", "query");
+    const [, init] = (fetchImpl as unknown as ReturnType<typeof vi.fn>).mock
+      .calls[0] as [string, RequestInit];
+    expect(JSON.parse(String(init.body))).toEqual({
+      query: "query",
+      expectedReleaseId: "release-1",
+      expectedProjectionGeneration: 2,
+      requiredCoreWatermark: 3,
+    });
+  });
+
+  it("sends exact tenant scope and a fresh correlation id without bearer material", async () => {
     const fetchImpl = vi.fn(
       async () => new Response(JSON.stringify([]), { status: 200 }),
     ) as unknown as typeof fetch;
@@ -99,7 +103,8 @@ describe("ApiClient", () => {
       .calls[0] as [string, RequestInit];
     const headers = init.headers as Record<string, string>;
     expect(headers["X-SKLegal-Tenant"]).toBe("tenant-a");
-    expect(headers.Authorization).toBe("Bearer session-token");
+    expect(headers.Authorization).toBeUndefined();
+    expect(init.credentials).toBe("same-origin");
     expect(isCorrelationId(headers["X-Correlation-ID"] ?? "")).toBe(true);
   });
 

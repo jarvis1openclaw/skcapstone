@@ -55,7 +55,7 @@
     "MANIFEST.in": "11da1a616ed64fc65fff1397ac02e01222224c82b01d22b0d7fd3b15a9461978",
     "README.md": "2fbe2e1921d092b89fd23107ec3af163bb9f2978a037f972f7f2f25d3e70de67",
     "pyproject.toml": "d824109feae1e9a4d7fc5be4e267d194c3318117886e57c3321b54f86b821640",
-    "src/capauth/__init__.py": "dec94c0448c640f0be3fd913d66b85da689f5df6f5b5ecc1e32b9507b0dc0a5f",
+    "src/capauth/__init__.py": "04f2f2f7d9ef71d382432f29427aa347b9bb65082d02e2ef069ef59cb1994fc0",
     "src/capauth/agent_identity.py": "3b9bf5f7bf74e6ef9295c99cdb9664d6cea216d37e7d0ccaa8f0afff8a927d17",
     "src/capauth/apps.py": "a2328ad3bc959c50692dea0ef74ea60c417b2924ad1c39285bf254898a229eb5",
     "src/capauth/authentik/__init__.py": "b6c5dccca20e7589be8177e0d2e473a55bb69d22bb50544111f1fc08dcbb026b",

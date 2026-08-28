@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import hashlib
 import json
-import os
 from collections.abc import Callable, Mapping
 from datetime import UTC, datetime
 from enum import StrEnum
@@ -86,11 +85,13 @@ class OfficialDraftingCandidateReleaseBuilder:
         adapter: HammerTimeReleaseAdapter,
         *,
         clock: Callable[[], datetime] | None = None,
+        manifest_sink: Callable[[Path, bytes], None] | None = None,
     ) -> None:
         if not isinstance(adapter, HammerTimeReleaseAdapter):
             raise ValueError("candidate release builder requires the HammerTime adapter")
         self._adapter = adapter
         self._clock = clock or (lambda: datetime.now(UTC))
+        self._manifest_sink = manifest_sink
 
     def build(
         self, request: OfficialDraftingCandidateBuildRequest
@@ -201,9 +202,25 @@ class OfficialDraftingCandidateReleaseBuilder:
                         detail="candidate manifest already exists",
                     )
                 )
+            elif self._manifest_sink is None:
+                blockers.append(
+                    CandidateBuildBlocker(
+                        code=CandidateBuildBlockerCode.INVALID_INPUT,
+                        subject=manifest_path,
+                        detail="external candidate manifest sink is unavailable",
+                    )
+                )
             else:
-                self._write_manifest(target, manifest_bytes)
+                self._manifest_sink(target, manifest_bytes)
                 actual_write_set = (manifest_path,)
+                if target.read_bytes() != manifest_bytes:
+                    blockers.append(
+                        CandidateBuildBlocker(
+                            code=CandidateBuildBlockerCode.HASH_MISMATCH,
+                            subject=manifest_path,
+                            detail="external candidate manifest sink changed bytes",
+                        )
+                    )
             alias_after = self._adapter.get_runtime_aliases()
             if alias_after.pin.content_sha256 != alias_before.pin.content_sha256:
                 blockers.append(
@@ -843,30 +860,6 @@ class OfficialDraftingCandidateReleaseBuilder:
             actual_write_set=actual_write_set,
             blockers=tuple(blockers),
         )
-
-    def _write_manifest(self, target: Path, content: bytes) -> None:
-        target.parent.mkdir(parents=True, exist_ok=True)
-        descriptor = os.open(
-            target,
-            os.O_WRONLY | os.O_CREAT | os.O_EXCL,
-            0o644,
-        )
-        try:
-            with os.fdopen(descriptor, "wb") as handle:
-                handle.write(content)
-                handle.flush()
-                os.fsync(handle.fileno())
-        except Exception:
-            try:
-                target.unlink(missing_ok=True)
-            except OSError:
-                pass
-            raise
-        observed = target.read_bytes()
-        if observed != content:
-            target.unlink(missing_ok=True)
-            raise ValueError("written candidate manifest bytes differ from the plan")
-
 
 __all__ = [
     "CandidateBuildBlocker",

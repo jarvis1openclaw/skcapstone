@@ -8,6 +8,7 @@ import { describe, expect, it } from "vitest";
 
 import { renderStatic } from "../testing/ssr";
 import { syntheticWorkspace } from "../testing/workspace";
+import { syntheticClaimLedger } from "../testing/claims";
 import type { MatterWorkspace } from "../api/types";
 import {
   MatterWorkspaceView,
@@ -15,7 +16,12 @@ import {
 } from "./MatterWorkspace";
 
 function render(workspace: MatterWorkspace = syntheticWorkspace): string {
-  return renderStatic(<MatterWorkspaceView workspace={workspace} />);
+  return renderStatic(
+    <MatterWorkspaceView
+      workspace={workspace}
+      claimLedger={syntheticClaimLedger()}
+    />,
+  );
 }
 
 describe("matter workspace structure and accessibility", () => {
@@ -28,6 +34,22 @@ describe("matter workspace structure and accessibility", () => {
       expect(html).toContain(`aria-label="${section.label}"`);
       expect(html).toContain(`href="#${section.id}"`);
     }
+  });
+
+  it("keeps compact V2 navigation bounded and legacy records collapsed", () => {
+    const html = render();
+    expect(html).toContain('class="sl-matter-nav-toggle"');
+    expect(html).toContain('aria-controls="sl-matter-section-links"');
+    expect(html).toContain('aria-expanded="false"');
+    expect(html).toContain('href="#decision"');
+    expect(html).toContain('href="#blind-challenge"');
+    expect(html).toContain('href="#underlying-records"');
+    expect(html).toContain(
+      '<details class="sl-v2-records" id="underlying-records"',
+    );
+    expect(html).not.toContain(
+      '<details class="sl-v2-records" id="underlying-records" open=""',
+    );
   });
 
   it("marks sections focusable for anchor navigation", () => {
@@ -194,12 +216,29 @@ describe("workspace sections", () => {
     expect(html).toContain("No communications are recorded for this matter.");
   });
 
-  it("keeps pending sections visible and renders the Documents editor", () => {
+  it("renders the integrated claims, Authority support, and Documents editor", () => {
     const html = render();
     expect(html).toContain('id="issues-and-claims"');
-    expect(html).toContain("SKL-S4-03");
+    expect(html).toContain("The vehicle stalled during ordinary operation.");
+    expect(html).toContain("Counter-support");
+    expect(html).toContain("research record");
     expect(html).toContain('id="work-products"');
     expect(html).toContain("Claim-grounded editor");
     expect(html).toContain("Version compare v2 to v3");
+    expect(html).toContain("MVP feature matrix");
+    expect(html).toContain("safely-unavailable");
+    expect(html).toContain("post-mvp");
+  });
+
+  it("does not invent Claims when the ledger is unavailable", () => {
+    const html = renderStatic(
+      <MatterWorkspaceView workspace={syntheticWorkspace} />,
+    );
+    expect(html).toContain(
+      "Safely unavailable: the claim ledger did not return an authorized answer.",
+    );
+    expect(html).not.toContain(
+      "The synthetic vehicle qualifies under the synthetic statute.",
+    );
   });
 });

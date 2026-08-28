@@ -1,54 +1,95 @@
 # SKLegal AI-first Matter analysis component map
 
-Date: 2026-08-22
-Card: `SKL-UI-03` (`ecf6d536`)
+Date: 2026-08-24
+Handoff card: `SKL-MVP-HANDOFF-03` (`433bb97c`)
 Companion: `docs/planning/wireframes/index-v2.html`
 
-This map separates current repository bindings from contracts that later
-cards still owe. Missing surfaces are named by package and owning work family.
-No literal endpoint is invented for an unimplemented contract.
+This is a planning and integration map, not runtime evidence. It supersedes
+the original immutable map with SHA-256
+`8e139a1374f894c787aa758cb56ec3af3a711141ac73df223b5f04133f3dd1cd`.
+The frozen contract is candidate
+`eade7626fb6190924e80d73b79473f685e1c2531`, tree
+`f003bd74f665465e8396255947dcd30e72d2dec5`. It fixes 18 ordered surfaces and
+21 operations. An accepted lane is not mounted merely because its commit and
+independent review exist.
 
-## Current read surfaces
+## State vocabulary
 
-| Surface | Current binding | State |
+| State | Meaning |
+| --- | --- |
+| Reviewed shell | Real Chrome qualified the exact public-synthetic V2 presentation. The result is not durable behavior. |
+| Accepted durable lane, unmounted | An independently reviewed feature commit and tree exist. Central API integration has not registered it. |
+| Blocked durable lane | No acceptable durable candidate exists. The UI remains safely unavailable. |
+| Central adapter owed | `c1ee25da` must reconcile the lane to the frozen operation contract without rewriting reviewed lane internals. |
+| Frontend wiring owed | `7334b7e5` must bind the joined API to the cockpit and prove browser behavior. |
+| Post-integration qualification | `06a2686f`, `465e000f`, and `13473fb6` still owe durable composition, browser qualification, and independent review. |
+| Post-MVP | The contract is deliberately outside the internal public-synthetic MVP. |
+
+## Current foundation and browser truth
+
+| Surface | Immutable custody | Current truth |
 | --- | --- | --- |
-| Client and Matter lists | `GET /v1/clients`, `GET /v1/matters` | Implemented |
-| Client and Matter detail | `GET /v1/clients/{id}`, `GET /v1/matters/{id}` | Implemented |
-| Matter workspace aggregate | `GET /v1/matters/{id}/workspace` | Implemented |
-| Parties, timeline, facts, tensions, evidence, communications, gaps, audit, provenance | `MatterWorkspaceRead` in `services/api/src/sklegal_api/workspace.py` | Implemented |
-| Route capability | `matter.read` through `matterDetail` route requirement | Implemented UX gate plus server authorization |
-| Qwen and OpenAI corpus summary proposal routes | `packages/model_gateway` and `config/model_gateway/route-registry.json` | Implemented narrow summary contract |
-| Versioned bounded agent registry and tool gateway | `packages/agents` | Implemented foundation |
-| Claim, Defense, Element, Authority, support, and counter-support entities | `packages/domain` and `packages/persistence` | Implemented domain and persistence foundation |
+| Repaired integration base | `0a293dd1afe9d5b4150468057e4ed8e552d7221b`, tree `5cccf34afa4653bf9bcfd59ebdad1b6eb3f61caa` | Independently reviewed base for central integration. It does not contain the accepted horizontal lanes as one composition. |
+| V2 browser shell | `8177c88c5fd371a487e2c206c53b24e3619c1855`, tree `a23e08dc6edfde8397298b3d1ee0b354434c3bcd` | Reviewed shell. Real Chrome passed 18-section navigation, compact and expanded layout, keyboard, axe, CSP, reload, outage, denial, and leakage checks against public-synthetic fixture behavior. |
+| Existing Client, Matter, workspace, policy, model gateway, agent registry, domain, and persistence foundations | Accepted repaired base and earlier reviewed packages | Reusable foundation only. They do not prove the frozen 21-operation durable composition. |
+| Accepted horizontal lanes | JOIN, RUN, ART, WP, TASK, and ACT commits below | Durable lane behavior accepted but unmounted. Central adapters and registration remain owed. |
+| Governed corpus lane | `38d61700` and repair `5ae69846` | Blocked pending exact offline PostgreSQL 17.7 and pgvector 0.8.0 input approval `71ecf523`, repair, and independent review. |
 
 ## Version 2 cockpit map
 
-| UI region | Domain or service binding | Current state | Owning work family |
+| # | UI region | Frozen operation binding | Current state | Next owner |
+| --- | --- | --- | --- | --- |
+| 1 | Decision first | Static presentation | Reviewed shell | FE preserves reviewed truth |
+| 2 | AI operating model | `create_analysis_run`, `get_agent_run` | RUN accepted durable lane, unmounted; central adapter and frontend wiring owed | `c1ee25da`, then `7334b7e5` |
+| 3 | Corpus and verification map | `search_corpus`, `get_corpus_span` | Durable corpus blocked; shell is presentation only | `38d61700`, then central and frontend integration |
+| 4 | Matter cockpit | `get_workspace`, `get_joined_analysis`, `create_analysis_run` | Reviewed public-synthetic shell plus JOIN and RUN accepted durable lanes, unmounted | `c1ee25da`, then `7334b7e5` |
+| 5 | AI intake | `create_analysis_run` | RUN accepted durable lane, unmounted; shell remains safely unavailable | `c1ee25da`, then `7334b7e5` |
+| 6 | Matter artifact intake | `get_artifact`, `create_artifact_intake` | ART accepted durable lane, unmounted; central adapter and frontend wiring owed | `c1ee25da`, then `7334b7e5` |
+| 7 | Essential Elements matrix | `get_claim_ledger`, `get_joined_analysis` | JOIN accepted durable lane, unmounted | `c1ee25da`, then `7334b7e5` |
+| 8 | Ranked recommendation | `list_recommendations`, `decide_recommendation` | RUN accepted durable lane, unmounted; browser ranking remains inert | `c1ee25da`, then `7334b7e5` |
+| 9 | Strategy and Authority | `get_joined_analysis`, `search_corpus`, `get_corpus_span` | JOIN accepted unmounted; corpus portion blocked | Corpus review, then central and frontend integration |
+| 10 | Agent team | `create_analysis_run`, `get_agent_run` | RUN accepted durable lane, unmounted | `c1ee25da`, then `7334b7e5` |
+| 11 | Blind challenge | `create_challenge`, `get_agent_run` | RUN accepted durable lane, unmounted; shell remains inert | `c1ee25da`, then `7334b7e5` |
+| 12 | Model routing evidence | `get_agent_run` | RUN evidence accepted unmounted; no provider request is authorized | `c1ee25da`, then `7334b7e5`; live provider use remains separately gated |
+| 13 | Work Product assembly | `get_work_product`, `create_work_product_version`, `validate_work_product`, `decide_approval` | WP accepted durable lane, unmounted | `c1ee25da`, then `7334b7e5` |
+| 14 | Tasks, Deadlines and action handoff | `upsert_task`, `compute_deadline`, `create_simulation_handoff` | TASK accepted durable lane, unmounted; connector effect remains simulation-only | `c1ee25da`, then `7334b7e5` |
+| 15 | Source and run evidence | `get_agent_run`, `get_corpus_span` | RUN accepted unmounted; corpus portion blocked | Corpus review, then central and frontend integration |
+| 16 | Matter case log | `list_activity`, `create_activity_export` | ACT accepted durable lane, unmounted | `c1ee25da`, then `7334b7e5` |
+| 17 | Failure states | Static presentation plus closed error envelopes | Reviewed shell; durable failure behavior remains post-integration qualification | Central, frontend, compose, qualify, review |
+| 18 | Delivery map | Static presentation | Reviewed shell; it grants no deployment authority | FE preserves reviewed truth |
+
+## Frozen operation inventory
+
+| Lane | Operations | Count | Current state |
 | --- | --- | --- | --- |
-| Matter scope header | Current workspace aggregate plus Forum and Proceeding | Partial, Forum and Proceeding fields missing from response | S4-02 follow-up |
-| Analysis request composer | Versioned agent input contract | Missing | S3-03 and S5-02 |
-| Workflow ribbon | Temporal workflow state plus sanitized Agent Run state | Package foundation only | S3-01, S3-03, S5-02 |
-| Ranked recommendation queue | New typed recommendation proposal and scoring policy | Missing | S3-05 and S5-02 |
-| Essential Elements proof matrix | Issue, Claim, Defense, Element, Fact Assertion, Evidence Item, Authority | Domain and persistence exist, no analysis HTTP surface | S3-05 and S4-03 |
-| Matter artifact intake | Source Artifact Reference, Evidence Item, Custody Event, import and extraction lineage | Domain and ingestion foundations are distributed, unified Matter intake UI and API are missing | S2-02, S2-03, S4-03, and a scoped UI contract |
-| Missing-artifact request builder | Proof gap, proposed Task, proposed Communication, requested artifact specification | Missing joined contract | S3-05, S4-03, and S4-06 |
-| Course strategy panel | HammerTime read-only adapter plus policy-filtered retrieval | Package surface only | S2-04 and S4-03A |
-| Jurisdiction overlay | Authority applicability, effective time, official-source connectors, Deadline engine | Partial foundations, no joined Matter view | S2-06, S3-05B, S4-05 |
-| Source-span viewer | Retrieval result, source hash, release, trace, exact locator | Package surface only | S4-03A |
-| Support and counter-support panel | Claim ledger entities | Domain and persistence exist, no HTTP surface | S4-03B |
-| Blind challenge panel | Challenge proposal, defects, human disposition | Missing | S3-05C and S5-02B |
-| Work Product assembler | Work Product domain plus `workproduct.draft` tool contract | Domain and tool output exist, no drafting route or API | S4-04 |
-| Model evidence drawer | Model gateway `Proposal` evidence plus Agent Run evidence | No HTTP surface | S3-03 and S5-02 |
-| Deployment transport profile | Logical SKLegal route to direct Qwen, SKGateway Chat Completions, or direct OpenAI Responses binding | Missing | SKL-S3-10, `bbf206c3` |
-| SKGateway route evidence | Requested model or bucket, gateway commit and config, backend, capacity domain, bucket member, exact served model, retry and failover | Upstream foundation exists, SKLegal evidence contract missing | SKL-S3-10, `bbf206c3` |
-| Human decision panel | Approval domain plus exact artifact or proposal binding | General decision surface missing | S3-05 and S4-04 |
-| Matter activity log | Matter Events, Agent Runs, tool calls, Tasks, Decisions, versions, Approvals, Execution Events, and receipts | Current workspace audit read slice plus durable audit foundation, joined projection and exports missing | S1-05, S4-02, and a scoped projection contract |
-| Artifact lineage and production bundle | Source Artifact Reference, content hash, derived-artifact parent, Evidence Item, Work Product version, Approval, and receipt | Foundations are distributed, joined lineage and bundle API are missing | S2-03, S4-03, S4-04, and S4-06 |
-| External-action handoff | Connector state machine and simulation harness | Implemented foundation, qualification gated | S4-06 and S5-03 |
+| JOIN | `get_workspace`, `get_claim_ledger`, `get_joined_analysis` | 3 | Candidate `a9f87e1e1010ab75d446833268282ad531e3f173`, tree `2a975487b7c855a250864a70f88adcc660df63db`, accepted and unmounted |
+| RUN | `create_analysis_run`, `get_agent_run`, `create_challenge`, `list_recommendations`, `decide_recommendation` | 5 | Candidate `4bf27dbcd9b038d21b9458728a9d3ae1e81f0b7c`, tree `dc186c2f615207ff45755ac51618fcb69225c163`, accepted and unmounted |
+| ART | `create_artifact_intake`, `get_artifact` | 2 | Candidate `701e42d1ba1016c3ba5d75661eaa4ca9c8f66bfc`, tree `1846438ad92a7654c23deddacdc861a794e0b946`, accepted and unmounted |
+| WP | `get_work_product`, `create_work_product_version`, `validate_work_product`, `decide_approval` | 4 | Candidate `3935618e42bba9dee044893b61e08a24df8a7f6e`, tree `e1fbdf095a95d09b76b79e541e16792c45f31a61`, accepted and unmounted |
+| TASK | `upsert_task`, `compute_deadline`, `create_simulation_handoff` | 3 | Candidate `c2c61d2536572fe2d7f0908dfb43a77c29da5103`, tree `3e93f7fc206572c6c656d3933e430088da306adb`, accepted and unmounted |
+| ACT | `list_activity`, `create_activity_export` | 2 | Candidate `d0b0cf16a13cbcbfe431f042fe050f7d955e94`, tree `19a6d8a5ae27dedff85602117107727cffcb6664`, accepted and unmounted |
+| CORPUS | `search_corpus`, `get_corpus_span` | 2 | Blocked. No accepted durable candidate. |
+| Total | Frozen manifest version `1.0.1` | 21 | No joined, durable, browser-qualified composition exists yet. |
 
-## Recommendation proposal shape owed to the UI
+The current accepted lane commits are separate immutable lineages. Their
+route registration, shared envelopes, OpenAPI, fixture registration, migration
+sequence, and any compatibility adapters belong only to `c1ee25da`. The map
+does not claim that any frozen route is mounted until that integration passes.
 
-The implementing task should define a strict schema containing:
+## Dual PostgreSQL failure-domain boundary
+
+| Cluster identity | Canonical responsibility | Required separation |
+| --- | --- | --- |
+| `sklegal-core-pg` | Legal domain state, policy state, audit, outbox, workflow references, and projection registry | Dedicated database, volume, roles, credentials, resource controls, private network identity, restart lifecycle, backup lifecycle, and no shared superuser or cross-cluster transaction |
+| `sklegal-retrieval-pg` | Governed full-text, native pgvector, and optional AGE projections | Separate database, volume, roles, credentials, resource controls, private network identity, restart lifecycle, backup lifecycle, deterministic rebuild, and no canonical state ownership |
+
+Core must continue safely or fail closed when retrieval is unavailable.
+Retrieval failure never makes unknown or stale data appear healthy. This
+planning boundary does not create either cluster or authorize deployment.
+
+## Reviewed recommendation proposal shape awaiting central integration
+
+The accepted RUN lane and central integration must preserve a strict schema containing:
 
 - recommendation identity, version, Matter scope, and scoring-policy version
 - targeted Issue, Claim or Defense, Element, and Proceeding phase
@@ -65,9 +106,10 @@ This proposal is inert. The UI may offer `Challenge`, `Accept as proposed
 Task`, `Request Work Product proposal`, and `Reject`. It must not offer a
 direct model-to-connector action.
 
-## Matter artifact intake contract owed to the UI
+## Reviewed Matter artifact intake contract awaiting central integration
 
-The implementing task should define an idempotent intake contract containing:
+The accepted ART lane, central integration, and frontend wiring must preserve
+an idempotent intake contract containing:
 
 - Tenant, Matter, submitting principal, purpose, classification, and source
   identity
@@ -87,10 +129,11 @@ The single `Add to this Matter` interaction can hide most of this complexity,
 but the record cannot. The original bytes are immutable. Reprocessing creates
 a new derived artifact version and preserves lineage.
 
-## Matter activity and provenance contract owed to the UI
+## Reviewed Matter activity and provenance contract awaiting central integration
 
-The case log is a human-readable projection over append-only domain and audit
-records. It must include:
+The accepted ACT lane defines the durable projection. Central integration and
+frontend wiring must preserve a human-readable case log over append-only
+domain and audit records containing:
 
 - court and party activity, Matter Events, service, hearings,
   Communications, Evidence Items, Tasks, Deadlines, and outcomes
@@ -109,7 +152,7 @@ Exports such as a case chronology, artifact manifest, analysis dossier, and
 action log are versioned Work Products with their own hashes and manifests.
 They never replace the underlying records.
 
-## Model transport seam owed to the UI
+## Separately gated model transport seam
 
 Matter code and Agent specs name only a logical SKLegal route ID. The route
 resolves through a versioned deployment transport profile:

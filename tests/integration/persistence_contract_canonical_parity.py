@@ -29,7 +29,39 @@ from tests.support.persistence_write_adapter import (
 
 
 class PersistenceContract08CanonicalParityTests(PersistenceContractBase):
+    def _fresh_contract_ready(self) -> bool:
+        contract = build_fresh_contract()
+        tenant = str(contract.tenant_id)
+        marker = str(contract.entities["WorkProductVersion"].id)
+        state = self._psql(
+            "postgres",
+            f"""
+            SELECT EXISTS (
+                       SELECT 1 FROM pg_roles
+                       WHERE rolname = '{contract.runtime_role}'
+                   )
+                   AND EXISTS (
+                       SELECT 1 FROM sklegal_identity.tenants
+                       WHERE id = '{tenant}'::uuid
+                   )
+                   AND EXISTS (
+                       SELECT 1 FROM sklegal_legal.work_product_versions
+                       WHERE id = '{marker}'::uuid
+                   );
+            """,
+        )
+        return state.stdout.strip() == "t"
+
+    def _ensure_fresh_contract(self) -> None:
+        if not self._fresh_contract_ready():
+            self._write_fresh_contract()
+
     def test_11_canonical_entities_write_first_through_declared_authorities(
+        self,
+    ) -> None:
+        self._ensure_fresh_contract()
+
+    def _write_fresh_contract(
         self,
     ) -> None:
         self.maxDiff = None
@@ -82,7 +114,7 @@ class PersistenceContract08CanonicalParityTests(PersistenceContractBase):
             )
         )
         self.assertEqual(set(MAPPINGS) - {"ExecutionReceipt"}, set(payloads))
-        self.assertEqual(35, len(payloads))
+        self.assertEqual(36, len(payloads))
 
         tenant = str(contract.tenant_id)
         principal = str(contract.principal_id)
@@ -139,6 +171,7 @@ class PersistenceContract08CanonicalParityTests(PersistenceContractBase):
             "Communication",
             "WorkProduct",
             "WorkProductVersion",
+            "SentenceGrounding",
             "WorkProductTemplate",
             "WorkProductTemplateVersion",
             "WorkProductUnknown",
@@ -346,12 +379,12 @@ class PersistenceContract08CanonicalParityTests(PersistenceContractBase):
             """,
         )
         self.assertEqual(set(MAPPINGS), set(payloads))
-        self.assertEqual(36, len(payloads))
+        self.assertEqual(37, len(payloads))
 
         write_authority = {
             name: payload.write_contract.authority for name, payload in payloads.items()
         }
-        self.assertEqual(36, len(write_authority))
+        self.assertEqual(37, len(write_authority))
         self.assertEqual("administrative_bootstrap", write_authority["Tenant"])
         self.assertEqual("controlled_writer", write_authority["ExecutionEvent"])
         self.assertEqual("controlled_writer", write_authority["ExecutionReceipt"])
@@ -431,7 +464,7 @@ class PersistenceContract08CanonicalParityTests(PersistenceContractBase):
             restored[entity_name] = reconstruction.entity
             retained[entity_name] = reconstruction.metadata
         self.assertEqual(set(MAPPINGS), set(restored))
-        self.assertEqual(36, len(retained))
+        self.assertEqual(37, len(retained))
         restored_execution = restored["Execution"]
         self.assertEqual(
             tuple(range(1, 6)),
@@ -444,7 +477,82 @@ class PersistenceContract08CanonicalParityTests(PersistenceContractBase):
         )
 
     def test_11_every_domain_entity_round_trips_through_rls(self) -> None:
-        role = "sklegal_test_alpha_one"
+        self._ensure_fresh_contract()
+        contract = build_fresh_contract()
+        tenant = str(contract.tenant_id)
+        matter = str(contract.matter_id)
+        authority = str(contract.entities["Authority"].id)
+        role = "sklegal_test_fresh_writer"
+        self._psql(
+            role,
+            f"""
+            INSERT INTO sklegal_legal.sentence_groundings (
+                id, tenant_id, matter_id, work_product_version_id,
+                work_product_version_number, work_product_content_sha256,
+                sentence_key, claim_id, classification, completeness,
+                version, created_at, updated_at
+            )
+            SELECT
+                'e1000000-0000-4000-8000-000000000001'::uuid,
+                version.tenant_id,
+                version.matter_id,
+                version.id,
+                version.version_number,
+                version.content_sha256,
+                repeat('e', 64)::sklegal_legal.sha256_digest,
+                claim.id,
+                version.classification,
+                version.completeness,
+                1,
+                clock_timestamp(),
+                clock_timestamp()
+            FROM sklegal_legal.work_product_versions AS version
+            JOIN sklegal_legal.ledger_claim_identities AS claim
+              ON claim.tenant_id = version.tenant_id
+             AND claim.matter_id = version.matter_id
+            ORDER BY version.id, claim.id
+            LIMIT 1
+            ON CONFLICT DO NOTHING;
+
+            INSERT INTO sklegal_legal.legacy_aliases (
+                id, tenant_id, matter_id, canonical_record_kind,
+                canonical_record_id, legacy_record_kind, legacy_id,
+                legacy_slug, legacy_path, source_version, content_sha256,
+                observed_at, import_batch_id
+            )
+            VALUES (
+                'e2000000-0000-4000-8000-000000000001'::uuid,
+                '{tenant}'::uuid,
+                '{matter}'::uuid,
+                'matter',
+                '{matter}'::uuid,
+                'problem',
+                'PRB-2026-001',
+                'synthetic-fresh-matter',
+                'synthetic/fresh-matter',
+                'v1',
+                repeat('a', 64)::sklegal_legal.sha256_digest,
+                clock_timestamp(),
+                'e2000000-0000-4000-8000-000000000002'::uuid
+            );
+
+            INSERT INTO sklegal_legal.authorities (
+                id, tenant_id, matter_id, title, citation, jurisdiction,
+                authority_kind, source_reference_id, valid_from, valid_to,
+                applicability_validation_id, status, classification,
+                completeness, version
+            )
+            SELECT id, tenant_id, matter_id, title, citation, jurisdiction,
+                   authority_kind, source_reference_id, valid_from, valid_to,
+                   applicability_validation_id, 'challenged', classification,
+                   completeness, 2
+            FROM sklegal_legal.authorities
+            WHERE tenant_id = '{tenant}'::uuid
+              AND matter_id = '{matter}'::uuid
+              AND id = '{authority}'::uuid
+              AND version = 1;
+            """,
+        )
         restored: dict[str, DomainEntity] = {}
         retained_metadata: dict[str, PersistenceMetadata] = {}
         decomposed_count = 0
@@ -478,7 +586,7 @@ class PersistenceContract08CanonicalParityTests(PersistenceContractBase):
             restored[entity_name] = entity
             retained_metadata[entity_name] = reconstruction.metadata
         self.assertEqual(set(MAPPINGS), set(restored))
-        self.assertEqual(36, decomposed_count)
+        self.assertEqual(37, decomposed_count)
 
         self.assertIn(
             "import_batch_id", retained_metadata["Matter"].relations["aliases"][0]

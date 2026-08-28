@@ -22,8 +22,10 @@ class PersistenceContract11MigrationGuardTests(PersistenceContractBase):
             """,
         )
         self.assertEqual(
-            "sklegal_audit,sklegal_identity,sklegal_integrations,sklegal_legal,"
-            "sklegal_migrations,sklegal_workflow",
+            "sklegal_activity,sklegal_artifact,sklegal_audit,"
+            "sklegal_governed_corpus,sklegal_identity,sklegal_integrations,"
+            "sklegal_legal,sklegal_migrations,sklegal_task_deadline,"
+            "sklegal_workflow",
             schemas.stdout.strip(),
         )
         inspection = subprocess.run(

@@ -26,6 +26,16 @@ NUMBER_WORDS = {
     16: "Sixteen",
     17: "Seventeen",
     18: "Eighteen",
+    19: "Nineteen",
+    20: "Twenty",
+    21: "Twenty-one",
+    22: "Twenty-two",
+    23: "Twenty-three",
+    24: "Twenty-four",
+    25: "Twenty-five",
+    26: "Twenty-six",
+    27: "Twenty-seven",
+    28: "Twenty-eight",
 }
 
 PERSISTENCE_DOC = ROOT / "docs/development/PERSISTENCE.md"

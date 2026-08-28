@@ -1,0 +1,27 @@
+{
+  "snapshot_id": "sklegal-mvp-handoff-02-scoped-cardstore",
+  "observed_at": "2026-08-23T17:15:41Z",
+  "source": "skcapstone coord kanban --json",
+  "cards": [
+    {"id": "5195197c", "status": "done", "dependencies": ["ac4c56f7"]},
+    {"id": "cb60092e", "status": "done", "dependencies": ["5195197c"], "candidate": "d03305180c050f90243a63dee866cf657612f033", "tree": "3d1ad95d166ff6c8721bb8d2da947fd53e845182"},
+    {"id": "b417bc62", "status": "done", "dependencies": ["cb60092e"], "disposition": "BLOCKED_P1_CLAIM_APPROVAL_SPLIT_TRUTH", "blocked_candidate": "d03305180c050f90243a63dee866cf657612f033", "repair_card": "09c527da", "rereview_card": "cf83cb57"},
+    {"id": "09c527da", "status": "backlog", "dependencies": ["b417bc62"], "blocked_candidate": "d03305180c050f90243a63dee866cf657612f033"},
+    {"id": "cf83cb57", "status": "backlog", "dependencies": ["09c527da"], "blocks": "91988c9e"},
+    {"id": "d6c5f135", "status": "done", "dependencies": ["5195197c"]},
+    {"id": "539344d7", "status": "done", "dependencies": ["d6c5f135"]},
+    {"id": "0a5e4e0c", "status": "doing", "dependencies": ["539344d7"]},
+    {"id": "7c2c9e20", "status": "backlog", "dependencies": ["0a5e4e0c"], "blocks": "91988c9e"},
+    {"id": "91988c9e", "status": "backlog", "dependencies": ["b417bc62", "539344d7"], "blocked_by_link": ["7c2c9e20", "cf83cb57"], "formal_dependency_gap": "7c2c9e20_and_cf83cb57_are_not_in_dependencies"}
+  ],
+  "assertions": {
+    "all_dependencies_exist": true,
+    "dependency_graph_acyclic": true,
+    "base_integration_currently_eligible": false,
+    "required_before_base": ["09c527da_replacement_candidate", "cf83cb57_done_pass", "7c2c9e20_done_pass", "base_formal_dependencies_on_cf83cb57_and_7c2c9e20"],
+    "contract_candidate_excluded": true,
+    "base_review_links_are_not_formal_dependencies": true,
+    "broader_parity_reconciled": false,
+    "broader_parity_observation": {"checked": 894, "matched": 510, "mismatches": 114, "missing": 270, "legacy_open": 164, "store_open": 155, "open_drift": 9}
+  }
+}

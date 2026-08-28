@@ -25,7 +25,7 @@ import { getSession } from "./auth/sessionStore";
 import { useSession } from "./auth/SessionProvider";
 import { newCorrelationId } from "./api/correlation";
 import { AppShell } from "./shell/AppShell";
-import { HomePage, PlaceholderPage } from "./pages/HomePage";
+import { FeatureAvailabilityPage, HomePage } from "./pages/HomePage";
 import { SignInPage } from "./pages/SignInPage";
 import { ClientsPage } from "./pages/ClientsPage";
 import { ClientDetailPage } from "./pages/ClientDetailPage";
@@ -139,7 +139,15 @@ const calendarRoute = createRoute({
   path: "/calendar",
   beforeLoad: guardRoute("calendar"),
   component: function CalendarComponent() {
-    return <PlaceholderPage title="Calendar" card="SKL-S4-05" />;
+    return (
+      <FeatureAvailabilityPage
+        title="Calendar"
+        state="safely-unavailable"
+        reason="The immutable MVP API has no reviewed Deadline calendar contract."
+        alternativeTo="/matters"
+        alternativeLabel="Open Matters"
+      />
+    );
   },
 });
 
@@ -148,7 +156,15 @@ const workQueueRoute = createRoute({
   path: "/work-queue",
   beforeLoad: guardRoute("workQueue"),
   component: function WorkQueueComponent() {
-    return <PlaceholderPage title="Work Queue" card="SKL-S4-06" />;
+    return (
+      <FeatureAvailabilityPage
+        title="Work Queue"
+        state="safely-unavailable"
+        reason="The immutable MVP API has no reviewed Task mutation contract."
+        alternativeTo="/matters"
+        alternativeLabel="Open Matter workbench"
+      />
+    );
   },
 });
 
@@ -173,7 +189,15 @@ const agentRunsRoute = createRoute({
   path: "/agent-runs",
   beforeLoad: guardRoute("agentRuns"),
   component: function AgentRunsComponent() {
-    return <PlaceholderPage title="Agent Runs" card="SKL-S4-04" />;
+    return (
+      <FeatureAvailabilityPage
+        title="Agent Runs"
+        state="safely-unavailable"
+        reason="Agent Run execution is not composed into the internal public-synthetic MVP."
+        alternativeTo="/corpus"
+        alternativeLabel="Open governed corpus research"
+      />
+    );
   },
 });
 
@@ -182,7 +206,15 @@ const approvalsRoute = createRoute({
   path: "/approvals",
   beforeLoad: guardRoute("approvals"),
   component: function ApprovalsComponent() {
-    return <PlaceholderPage title="Approvals" card="SKL-S4-06" />;
+    return (
+      <FeatureAvailabilityPage
+        title="Approvals"
+        state="safely-unavailable"
+        reason="Approval state is visible on each Matter, but no global Approval mutation surface is authorized."
+        alternativeTo="/matters"
+        alternativeLabel="Review Matter Approval state"
+      />
+    );
   },
 });
 
@@ -191,7 +223,13 @@ const administrationRoute = createRoute({
   path: "/administration",
   beforeLoad: guardRoute("administration"),
   component: function AdministrationComponent() {
-    return <PlaceholderPage title="Administration" card="SKL-S4-07" />;
+    return (
+      <FeatureAvailabilityPage
+        title="Administration"
+        state="post-mvp"
+        reason="Administrative mutation is outside this bounded internal MVP."
+      />
+    );
   },
 });
 

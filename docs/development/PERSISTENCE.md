@@ -19,14 +19,14 @@ relations, functions, and types, must be owned by the exact non-superuser,
 | `sklegal_workflow` | Opaque workflow and policy decision references |
 | `sklegal_audit` | Append-only audit chain, transactional outbox, delivery receipts, and projection watermarks |
 
-The legal schema covers all 36 entities in the approved `SKL-S1-01` domain
+The legal schema covers all 37 entities in the approved `SKL-S1-01` domain
 contract plus the `SKL-S3-05A` claim ledger entities (LedgerClaim and
 ClaimSupport) and the `SKL-S4-04A` work product drafting entities
 (WorkProductTemplate, WorkProductTemplateVersion, and WorkProductUnknown).
 `tests/fixtures/persistence/domain-table-parity.json` is the reviewed
 entity-to-table and required-column matrix. The reusable, driver-neutral
 `sklegal_persistence.mapping` adapter declares scalar, value-object, and
-normalized-relation mappings for all 36 public `DomainEntity` types. It
+normalized-relation mappings for all 37 public `DomainEntity` types. It
 decomposes canonical instances into closed scalar and relation rows, restores
 those rows with strict Pydantic validation, and rejects missing joins, unknown
 columns, undeclared persistence metadata, over-cardinality, and ambiguous
@@ -200,11 +200,11 @@ contract and its production limitations.
 
 ## Migration, provisioning, and rollback
 
-Eighteen digest-pinned migrations create the foundation, identity, legal
+Twenty-eight digest-pinned migrations create the foundation, identity, legal
 records, integration and workflow references, audit target, RLS policies,
 legal information-barrier records, the CapAuth state, snapshot, and grant
-surface, the work product drafting surface, the claim ledger, and the
-isolated pilot import staging surface. Each file
+surface, the work product drafting surface, the claim ledger, the isolated
+pilot import staging surface, and the durable V2 feature surfaces. Each file
 contains explicit up and down sections.
 Migrations 0001 through 0004 create the six prefixed schemas, shared domains
 and helper functions (0001), tenants, principals, database-role bindings, and
@@ -310,7 +310,36 @@ to only one exact policy invocation across workers. Expired rows are pruned in
 the same transaction, PUBLIC execution is revoked, and only
 `sklegal_runtime` receives execute authority.
 
-The down sections run in reverse order. The 0018 down drops only its controlled
+Migration 0019 adds append-only, matter-scoped `sentence_groundings`. Each row
+binds one sentence digest to one exact Work Product Version triple and one
+LedgerClaim identity. Composite foreign keys preserve the Tenant and Matter
+boundary, forced RLS applies to reads and inserts, and the runtime provisioner
+grants only the insert authority required by the declared persistence writer.
+
+Migration 0020 is a fail-closed CapAuth compatibility marker. Its up and down
+paths assert the reviewed CapAuth trigger and least-privilege function ACL
+state without mutating application objects. Migration 0021 adds the
+tenant- and Matter-scoped SKGateway qualification scope with its local-Qwen
+route and workflow binding checks. Migration 0022 adds immutable joined
+analysis snapshots that pin the Matter, Claim, Authority, and projection
+digests used for a joined result.
+
+Migration 0023 adds the public-synthetic governed Agent Run identity,
+request, proposal, challenge, and disposal records. Migration 0024 adds the
+artifact intake schema for original and derived artifacts, custody hashes,
+classification, privilege, retention, legal holds, and policy decisions.
+Migration 0025 adds the Work Product feature-lane identity, version,
+idempotency, and review records. Migration 0026 adds versioned Tasks and
+Deadlines with policy, actor, calculation, and reconciliation evidence.
+
+Migration 0027 adds the append-only Matter Activity projection over audit,
+workflow, model, tool, human, and connector events. Migration 0028 adds the
+governed corpus projection registry, source versions, release metadata, exact
+spans, rights, and retrieval records. These migrations remain one contiguous
+reviewed prefix and their manifest digests are authoritative.
+
+The down sections run in reverse order. The 0019 down drops only the
+SentenceGrounding index, policies, triggers, and table. The 0018 down drops only its controlled
 function, policies, and reservation table. The 0017 down drops only the
 SKGateway authorization snapshot function. The 0016 down drops the pilot import
 staging tables in reverse dependency order. The 0015 down drops the claim
@@ -321,7 +350,9 @@ blocker, then drops the drafting functions and tables. The 0013 down
 drops the prune function and restores the 0008-era `reserve_capability`, the
 0010 down restores the 0009-era snapshot function after dropping the subject
 column, and the 0008 down drops the three functions, their policies, and both
-CapAuth state tables.
+CapAuth state tables. The 0028 through 0021 downs drop only the objects owned by
+their corresponding V2 feature migrations in reverse dependency order. The
+0020 down re-runs the same compatibility assertions and performs no mutation.
 
 Three PostgreSQL role classes exist:
 
@@ -373,7 +404,7 @@ and removes the container automatically.
 The suite verifies migration owner preflight and ownership, up/down/up,
 migration failure rollback, exact runtime grants, forced RLS, unfiltered tenant
 and matter isolation, same-tenant unassigned and cross-tenant mutation denial,
-role-bypass resistance, scoped UUID reuse, 31-entity table parity, source and
+role-bypass resistance, scoped UUID reuse, 37-entity table parity, source and
 legacy provenance, encryption completeness, append-only and bitemporal
 behavior, state validity, optimistic concurrency, monotonic update time,
 controlled artifact and execution transitions, live identity status and
@@ -390,8 +421,8 @@ schema isolation,
 ordinary rollback, and service cleanup.
 
 Bidirectional qualification has two independent halves. The reverse path reads
-all 31 normalized records, strictly reconstructs them, and compares canonical
-snapshots. The write-first path starts with 31 canonical instances, calls the
+all 37 normalized records, strictly reconstructs them, and compares canonical
+snapshots. The write-first path starts with 37 canonical instances, calls the
 production decomposer before any corresponding insert, writes in dependency
 order, reads, strictly reconstructs, and compares canonical state plus retained
 persistence metadata. Tenant, Client, Engagement, and Matter use the explicit

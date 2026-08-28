@@ -15,10 +15,25 @@ import { CorrelationBadge } from "../components/CorrelationBadge";
 import { layoutModeForWidth, type LayoutMode } from "../design/tokens";
 import { PRODUCT_NAME } from "../foundation";
 import type { Session } from "../auth/session";
+import { useSession } from "../auth/SessionProvider";
 import { Navigation } from "./Navigation";
 import { TenantSwitcher } from "./TenantSwitcher";
 
 const sessionCorrelationId = newCorrelationId();
+
+function SignOutControl() {
+  const { session, clearSession } = useSession();
+  if (session === null) return null;
+  return (
+    <button
+      type="button"
+      className="sl-button"
+      onClick={() => void clearSession()}
+    >
+      Sign out
+    </button>
+  );
+}
 
 export function AppShell(props: {
   session: Session | null;
@@ -59,6 +74,7 @@ export function AppShell(props: {
               {props.session.principal.displayName}
             </span>
           ) : null}
+          <SignOutControl />
         </div>
       </header>
       {props.session !== null && (layoutMode === "expanded" || navOpen) ? (

@@ -25,6 +25,7 @@ sklegal-email = { workspace = true }
 sklegal-domain = { workspace = true }
 sklegal-capauth = { workspace = true }
 sklegal-model-gateway = { workspace = true }
+sklegal-persistence = { workspace = true }
 sklegal-policies = { workspace = true }
 sklegal-audit = { workspace = true }
 sklegal-hammertime = { workspace = true }

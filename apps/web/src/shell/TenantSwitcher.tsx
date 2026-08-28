@@ -34,7 +34,9 @@ export function TenantSwitcher() {
         id="sl-tenant-select"
         className="sl-tenant-select"
         value={session.activeTenantId}
-        onChange={(event) => setActiveTenant(event.target.value)}
+        onChange={(event) => {
+          void setActiveTenant(event.target.value);
+        }}
       >
         {session.tenants.map((tenant) => (
           <option key={tenant.id} value={tenant.id}>

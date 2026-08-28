@@ -4,7 +4,8 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { RouterProvider } from "@tanstack/react-router";
 
 import { ApiProvider } from "./api/ApiContext";
-import { SessionCredentialStore } from "./api/credentials";
+import { SessionClient } from "./auth/sessionClient";
+import { hydrateSessionBeforeRouter } from "./auth/sessionBootstrap";
 import { SessionProvider } from "./auth/SessionProvider";
 import { createAppRouter } from "./router";
 import "./styles.css";
@@ -26,17 +27,19 @@ const queryClient = new QueryClient({
   },
 });
 
+const apiBase = import.meta.env.VITE_SKLEGAL_API_BASE || "/api";
+const sessionClient = new SessionClient(apiBase);
+await hydrateSessionBeforeRouter(sessionClient);
 const router = createAppRouter();
-const credentials = new SessionCredentialStore();
 
 createRoot(root).render(
   <StrictMode>
-    <SessionProvider>
-      <ApiProvider baseUrl="/api" credentials={credentials}>
-        <QueryClientProvider client={queryClient}>
+    <QueryClientProvider client={queryClient}>
+      <SessionProvider client={sessionClient} queryClient={queryClient}>
+        <ApiProvider baseUrl={apiBase}>
           <RouterProvider router={router} />
-        </QueryClientProvider>
-      </ApiProvider>
-    </SessionProvider>
+        </ApiProvider>
+      </SessionProvider>
+    </QueryClientProvider>
   </StrictMode>,
 );

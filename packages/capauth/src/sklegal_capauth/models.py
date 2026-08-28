@@ -352,7 +352,7 @@ CAPABILITY_RULES: dict[Capability, CapabilityRule] = {
         operation=Operation.READ,
         resource_type=ResourceType.AUDIT,
         purposes=frozenset({Purpose.AUDIT_REVIEW}),
-        matter_required=False,
+        matter_required=True,
     ),
 }
 

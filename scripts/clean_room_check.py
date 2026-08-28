@@ -70,6 +70,7 @@ LANDLOCK_EXECUTABLES = tuple(
     Path(path)
     for path in (
         "/usr/bin/bash",
+        "/usr/bin/cat",
         "/usr/bin/chmod",
         "/usr/bin/curl",
         "/usr/bin/cut",

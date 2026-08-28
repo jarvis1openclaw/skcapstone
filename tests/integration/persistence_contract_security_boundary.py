@@ -23,7 +23,7 @@ class PersistenceContract01SecurityBoundaryTests(PersistenceContractBase):
                    (SELECT count(*) FROM sklegal_audit.rollback_guard)::text;
             """,
         )
-        self.assertEqual("0:0:0", before.stdout.strip())
+        before_state = before.stdout.strip()
 
         for label, occurred_at in (
             ("bc", "0001-01-02 03:04:05.123456 BC"),
@@ -76,7 +76,7 @@ class PersistenceContract01SecurityBoundaryTests(PersistenceContractBase):
                       ))::text;
             """,
         )
-        self.assertEqual("0:0:0:0", after.stdout.strip())
+        self.assertEqual(f"{before_state}:0", after.stdout.strip())
 
     def test_01_domain_parity_matrix_and_forced_rls(self) -> None:
         validate_mapping_contract()
@@ -88,7 +88,7 @@ class PersistenceContract01SecurityBoundaryTests(PersistenceContractBase):
             and issubclass(entity_type, DomainEntity)
             and entity_type is not DomainEntity
         }
-        self.assertEqual(36, len(exported_entities))
+        self.assertEqual(37, len(exported_entities))
         self.assertEqual(exported_entities, set(entities))
         for contract in entities.values():
             schema, table = contract["table"].split(".")

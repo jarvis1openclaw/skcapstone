@@ -1,0 +1,31 @@
+{
+  "contract_version": "sklegal-artifact-intake-fixture/v1",
+  "truth_boundary": "public_synthetic",
+  "source": {
+    "source_system": "hammertime_contract",
+    "source_identity": "hammertime-contract-synthetic-001",
+    "source_version": "synthetic-v1",
+    "observed_at": "2099-01-02T03:04:05Z"
+  },
+  "original": {
+    "filename": "synthetic-course-exhibit.txt",
+    "media_type": "text/plain",
+    "content_utf8": "Public synthetic course exhibit for deterministic artifact intake."
+  },
+  "governance": {
+    "classification": "public",
+    "privilege_state": "not_privileged",
+    "retention_policy_id": "40000000-0000-4000-8000-000000000001",
+    "legal_hold_ids": ["40000000-0000-4000-8000-000000000002"],
+    "ethical_wall_ids": []
+  },
+  "requested_derivations": ["text_extraction", "ocr"],
+  "expected": {
+    "scan_state": "clean",
+    "quarantine_state": "released",
+    "duplicate": false,
+    "derived_kinds": ["text_extraction", "ocr"],
+    "custody_actions": ["acquired"],
+    "external_effect": false
+  }
+}

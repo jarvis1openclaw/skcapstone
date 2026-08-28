@@ -21,7 +21,7 @@ from datetime import datetime
 from typing import Any, Literal, Protocol
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException, Request, status
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from pydantic import BaseModel, ConfigDict
 from pydantic.alias_generators import to_camel
 from sklegal_capauth import (
@@ -524,6 +524,8 @@ def build_workspace_router(
             raise _membership_denied() from None
 
     async def list_clients(
+        offset: int = Query(default=0, ge=0),
+        limit: int = Query(default=50, ge=1, le=100),
         authorized: AuthorizedContext = Depends(
             dependency(Capability.CLIENT_READ, Purpose.CLIENT_SERVICE, "clients.list")
         ),
@@ -534,7 +536,7 @@ def build_workspace_router(
             )
         except Exception:
             raise _unavailable() from None
-        return _dump(clients)
+        return _dump(clients[offset : offset + limit])
 
     async def get_client(
         request: Request,
@@ -556,6 +558,8 @@ def build_workspace_router(
         return _dump(client)
 
     async def list_matters(
+        offset: int = Query(default=0, ge=0),
+        limit: int = Query(default=50, ge=1, le=100),
         authorized: AuthorizedContext = Depends(
             dependency(Capability.CLIENT_READ, Purpose.CLIENT_SERVICE, "matters.list")
         ),
@@ -566,7 +570,7 @@ def build_workspace_router(
             )
         except Exception:
             raise _unavailable() from None
-        return _dump(matters)
+        return _dump(matters[offset : offset + limit])
 
     async def get_matter(
         request: Request,

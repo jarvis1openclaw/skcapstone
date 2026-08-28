@@ -1,0 +1,50 @@
+{
+  "reservation_id": "sklegal-mvp-handoff-02-migration-namespace",
+  "version": 1,
+  "card_id": "0a5e4e0c",
+  "baseline": {
+    "commit": "8177c88c5fd371a487e2c206c53b24e3619c1855",
+    "tree": "a23e08dc6edfde8397298b3d1ee0b354434c3bcd",
+    "last_migration": "0019_sentence_groundings.sql",
+    "last_migration_sha256": "734ee0e00b76778f1e0a3098e77c729d6f9ec5ee803abcb3f77c2acdc8958376"
+  },
+  "applied_history_rule": "Migration bytes already present in an applied registry are immutable. No filename, byte, digest, order, or registry value may be rewritten. A semantic delta is always a new forward migration.",
+  "collision_resolution": [
+    {
+      "observed_file": "0019_capauth_applied_history_delta.sql",
+      "observed_sha256": "edfe09a1e709256ebd559d70ee90cc65bc22a483e3a67441d80db3b74b2d16e0",
+      "observed_live_state": "not_applied_live_database_was_12_of_19",
+      "reserved_reissue": "0020_capauth_applied_history_delta.sql",
+      "owner": "new_attributable_migration_reconciliation_owner",
+      "decision": "old_uncommitted_0019_excluded_reissue_required"
+    },
+    {
+      "observed_file": "0020_skgateway_qualification_scope.sql",
+      "observed_sha256": "0eb9c37626c469fc060060184c7a1cd4d7f7e631d7845bd8e965c136afcdc2a4",
+      "observed_state": "offline_only_not_applied_live",
+      "reserved_reissue": "0021_skgateway_qualification_scope.sql",
+      "owner": "new_attributable_qualification_database_owner",
+      "depends_on": "0020_capauth_applied_history_delta.sql",
+      "decision": "old_uncommitted_0020_excluded_reissue_required"
+    }
+  ],
+  "feature_lane_ranges": [
+    {"range": "0022-0029", "lane_card": "929c6ada", "lane": "joined-analysis"},
+    {"range": "0030-0039", "lane_card": "85967293", "lane": "agent-runs"},
+    {"range": "0040-0049", "lane_card": "6894d326", "lane": "artifact-intake"},
+    {"range": "0050-0059", "lane_card": "0d1d81ce", "lane": "work-products"},
+    {"range": "0060-0069", "lane_card": "519832c7", "lane": "tasks-deadlines"},
+    {"range": "0070-0079", "lane_card": "ec0763b9", "lane": "activity"},
+    {"range": "0080-0089", "lane_card": "e0ad0f06", "lane": "corpus"},
+    {"range": "0090-0099", "lane_card": "c1ee25da", "lane": "integration-only-reconciliation"}
+  ],
+  "reservation_rules": [
+    "A lane may use only its reserved range.",
+    "A reservation is not permission to create a migration or edit migrations/manifest.json.",
+    "Each migration requires its own card ownership, immutable commit and tree, tests, evidence, rollback, and independent review.",
+    "The integration owner regenerates migrations/manifest.json from reviewed immutable files and never imports the shared dirty manifest.",
+    "Fresh install, historical 0012 upgrade, candidate 0019 upgrade, up/down/up, digest-prefix, dependency-order, and duplicate-number tests must pass.",
+    "Qualification migration 0021 cannot precede CapAuth delta 0020.",
+    "Unused numbers remain reserved and are not compacted or reassigned without a new reviewed reservation version."
+  ]
+}

@@ -72,6 +72,46 @@
     {
       "file": "0018_policy_authorization_use.sql",
       "sha256": "877ca73f682bbec2f3d0b4f33300ca5c18f5a1a3e0615b55d13ab3cf8da227b5"
+    },
+    {
+      "file": "0019_sentence_groundings.sql",
+      "sha256": "734ee0e00b76778f1e0a3098e77c729d6f9ec5ee803abcb3f77c2acdc8958376"
+    },
+    {
+      "file": "0020_capauth_applied_history_delta.sql",
+      "sha256": "0df322d4f48bb8e637f306a4fc7e73e121294e6da428f1a8a24bbc027fc3be48"
+    },
+    {
+      "file": "0021_skgateway_qualification_scope.sql",
+      "sha256": "0eb9c37626c469fc060060184c7a1cd4d7f7e631d7845bd8e965c136afcdc2a4"
+    },
+    {
+      "file": "0022_joined_analysis_snapshots.sql",
+      "sha256": "c9866eaec404d40b0e3d71119dc8d7b8e1393ff7a221ad84a80c9e113fa5a1c9"
+    },
+    {
+      "file": "0023_governed_agent_runs.sql",
+      "sha256": "08a6e009d23bcaa83e4cef45bff4a12dd9139eabc989530080e9edcf137f71ab"
+    },
+    {
+      "file": "0024_artifact_intake.sql",
+      "sha256": "2676c3e64d74da9390eaca6ed58403a7a34a973ceffac70183026abb6a8deee5"
+    },
+    {
+      "file": "0025_work_product_feature_lane.sql",
+      "sha256": "f7eb851342da7ad24934120414e95025e869e58c58d5db8041c04ba7439fc7a6"
+    },
+    {
+      "file": "0026_task_deadlines.sql",
+      "sha256": "b1b64e35ef8de4585c992680686868e6dfad3d0aea3e80372887b2079ce8fda5"
+    },
+    {
+      "file": "0027_matter_activity_projection.sql",
+      "sha256": "377790f8977554c76bac02252458d840168a05c179220ec360ac81586320f9fb"
+    },
+    {
+      "file": "0028_governed_corpus.sql",
+      "sha256": "75395b1a100fe032628a997bfbe509a3556b7318f6b1d06c6b0d840d02b61964"
     }
   ]
 }

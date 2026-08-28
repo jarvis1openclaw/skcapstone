@@ -450,3 +450,288 @@ Every task begins by loading SK context, reading `AGENTS.md`, checking the SKCap
 - **Tests:** Dry-run no-write proof, missing source, unrelated file, Inbox path rejection, quarantined rights, changed normalized hash, missing or stale decomposition, projection mismatch, existing release collision, and alias immutability.
 - **Acceptance:** One exact 14-source candidate is reproducible, source-complete, profile-linked, and ready for the parent S6-05 qualification gates without changing a runtime alias.
 - **Prohibited:** Do not scan or process HammerTime Inbox, discover the repository corpus implicitly, change processing state, rebuild shared stores, promote an alias, or include unrelated sources.
+
+## Internal public-synthetic MVP
+
+### SKL-MVP-01: Compose fail-closed internal application API
+
+- **Card:** `bb5cb31d`
+- **Agent:** Internal MVP API engineering
+- **Size:** M
+- **Dependencies:** `SKL-S1-02`, `SKL-S1-03`, `SKL-S1-04`, `SKL-S1-05`, `SKL-S1-04A`, `SKL-S2-04`, `SKL-S3-05`, `SKL-S4-05`
+- **Objective:** Compose one explicit FastAPI application for the existing workspace, corpus, claim, governance, task, deadline, Work Product, Approval, and audit boundaries using only public synthetic data.
+- **Implementation:** Add an application factory that mounts an explicit reviewed router set and accepts durable authentication, Tenant and Matter policy, audit, persistence, and provenance dependencies. Production-mode construction must fail closed when any dependency is absent or synthetic. Development mode may use deterministic public-synthetic adapters only when explicitly selected. Authenticate before resource lookup, authorize Tenant and Matter membership plus conflicts, privilege, ethical walls, retention, hold, capability, and operation policy, then emit correlation and append-only audit records with bounded redacted detail. Health may report only bounded component state and must not expose protected fields or trigger unbounded scans.
+- **Tests:** Application construction, OpenAPI route inventory, health bounds, missing dependency startup denial, explicit development mode, missing authentication, expired or revoked capability, cross-Tenant and cross-Matter denial before lookup, conflict and wall denial, audit outage, persistence outage, provenance requirements, redaction, correlation, pagination, public-synthetic fixture validation, and deterministic rollback.
+- **Acceptance:** The public-synthetic internal API starts only with the complete reviewed dependency composition, every protected route enforces policy before lookup, audit and provenance remain reconstructable, relevant focused and integration tests pass, and completion evidence records exact files, results, limitations, and rollback.
+- **Prohibited:** No HammerTime `Inbox/` access, protected Matter content, provider request, production credential, external action, host deployment, merge, or push. Do not weaken authentication, Tenant or Matter isolation, custody, audit, provenance, provider-purity, rollback, or external-action gates.
+
+### SKL-MVP-02: Wire bounded browser authentication and live API sessions
+
+- **Card:** `431c4fbf`
+- **Agent:** Internal browser session engineering
+- **Size:** M
+- **Dependencies:** `SKL-MVP-01` immutable commit `8291ffab4021c568850cd389c692783b8666c41a`, `SKL-S4-01`, `SKL-S1-03`, `SKL-S1-04A`
+- **Objective:** Replace fixture-only browser startup with a bounded internal authentication and session flow wired to the exact reviewed MVP API while keeping server authorization authoritative.
+- **Implementation:** Define an internal public-synthetic session bootstrap, current-session, expiry, refresh-failure, revocation, and sign-out contract. Use only approved credential references or bounded public-synthetic development credentials. Keep raw capabilities out of localStorage, URLs, browser history, logs, analytics, and committed files. Carry exact Tenant context and correlation identity on every API request. Invalidate incompatible session state and cached data on Tenant switching. Use a configurable same-origin API base with deny-by-default CORS, CSP, sanitized errors, CSRF protection where cookies are used, and secure cookie or memory-only credential posture. Client route guards are usability controls only.
+- **Tests:** Sign-in, sign-out, expiry, revocation, refresh failure, Tenant switch, wrong Tenant, wrong Matter, insufficient capability, direct URL navigation, back button, multi-tab invalidation, API outage, `401`, `403`, correlation propagation, browser storage and telemetry leakage, CSP, CSRF, CORS, public-synthetic fixture bounds, and deterministic rollback to the fixture-only development shell.
+- **Acceptance:** The reviewed React application establishes only a server-verifiable bounded session, every live request reaches the immutable MVP API contract, all denial and outage states fail closed without leaking credentials or protected fields, relevant browser and API integration tests pass, and completion evidence records exact files, results, limitations, and rollback.
+- **Prohibited:** No protected Matter content, HammerTime `Inbox/` access, provider request, production credential issuance, external action, host deployment, merge, or push. Do not store raw capability material in browser persistence or weaken server-side Tenant, Matter, policy, audit, provenance, or revocation enforcement.
+
+### SKL-MVP-03: Complete the internal Matter workbench vertical slice
+
+- **Card:** `9dcda941`
+- **Agent:** Internal Matter workbench engineering
+- **Size:** L
+- **Dependencies:** `SKL-MVP-02` immutable commit `398c414b670d2c60630e55891a4daa43a0dbe089`, `SKL-S4-02`, `SKL-S4-03`, `SKL-S4-04`, `SKL-S4-04A`, `SKL-S4-04B`, `SKL-S4-04C`, `SKL-S4-06`
+- **Objective:** Deliver the smallest coherent internal public-synthetic Matter workbench across the existing React application and reviewed API without inventing legal, workflow, approval, execution, provider, or audit state.
+- **Implementation:** Replace navigation placeholders with typed live read-only or simulation-first views for Client and Matter navigation, Matter activity, artifact provenance, Evidence Items, Fact Assertions and tensions, Issues and Claims, Authorities, corpus search, Tasks and Deadlines, Work Products, Approvals, simulated Execution Events and receipts, and audit replay. Show exact Tenant, Matter, source, content hash, classification, provenance, proposal, uncertainty, contradiction, contrary Authority, human decision, Work Product version, Approval, Execution Event, correlation, and audit state when available. Clearly label safely unavailable and post-MVP functions. Keep every mutation behind an idempotency key and its reviewed state machine. External actions stop at simulation or draft unless their separately approved exact validation and human gates exist.
+- **Tests:** Public-synthetic end-to-end workbench flow, cross-Tenant denial, cross-Matter denial, missing Evidence Item, contradictory Fact Assertion, contrary Authority, stale Work Product Approval invalidation, audit outage denial, API outage recovery, direct navigation, keyboard navigation, WCAG AA checks, responsive layouts, visual regression, contract compatibility, secret and browser leakage checks, deterministic fixture reset, and rollback to the immutable SKL-MVP-02 handoff.
+- **Acceptance:** One public-synthetic Client and Matter can be navigated end to end through the coherent workbench with source-grounded and reconstructable state, all unavailable functions are explicit, every denial and outage fails closed, no external action progresses beyond simulation or draft, the exact feature matrix separates complete, unavailable, and post-MVP behavior, relevant web, API, contract, integration, accessibility, visual, secret, and leakage checks pass, and completion evidence records exact files, results, limitations, and rollback.
+- **Prohibited:** No protected Matter content, HammerTime `Inbox/` access, provider request, production credential issuance, host deployment, external dispatch, filing, service, email, calendar, client communication, merge, or push. Do not weaken authentication, Tenant or Matter isolation, conflicts, privilege, ethical walls, retention, legal hold, audit, provenance, exact-version Approval, revocation, rollback, provider-purity, or external-action gates.
+
+### SKL-MVP-04R1: Repair MVP audit, persistence, and static blockers
+
+- **Card:** `6f3cd09d`
+- **Agent:** `jarvis`
+- **Base:** Exact blocked MVP head `51cb9c3301c69737bf727c8d46360ab95a9d9e6f` in a fresh isolated worktree.
+- **Objective:** Repair only the blockers proven by independent review `78277c6b`: append-only fail-closed browser-session audit and provenance, missing `SentenceGrounding` persistence parity, and exact Ruff and format failures.
+- **Implementation:** Inject a canonical bounded session audit sink into the MVP composition and record bootstrap, refresh, Tenant switch, revoke, and denial outcomes with correlation and non-secret identity metadata. State-changing operations fail before mutation when audit is unavailable. Add the exact `SentenceGrounding` mapping, decomposition, reconstruction, and write-contract coverage without changing unrelated domain semantics. Apply only the proven static formatting repairs.
+- **Tests:** Cover success, denial, audit outage, mutation ordering, rotation, replay, and value leakage for every session operation. Run browser/API authorization matrices, domain and persistence mapping tests, security, audit, workflow, Ruff, format, typecheck, build, dependency audit, and available secret scans.
+- **Acceptance:** Produce an immutable commit, tree, source, test, lock, evidence, and rollback hash set ready for browser qualification `1e39b105` and independent rereview `bdb1bd1b`, leaving both unclaimed.
+- **Rollback:** Revert only this candidate to `51cb9c3301c69737bf727c8d46360ab95a9d9e6f`; no data or host rollback exists.
+- **Prohibited:** No deployment, service, database, credential, protected data, provider traffic, external action, merge, push, or cleanup.
+
+### SKL-MVP-03A: Implement the V2 AI-first Matter cockpit in React
+
+- **Card:** `b18fed11`
+- **Agent:** `codex-skl-mvp-v2-react`
+- **Base:** Exact repaired MVP evidence commit `cc20a130fc1f61ad34ca0f12ceb62f1fea08b35a`, implementation `9d6fad3afd0893a62d7bd0b1138c84a48bdc03c7`, and tree `b150cb207af2be09687daf30271b18a16ab8ab63` in isolated worktree `/tmp/sklegal-swarm-20260823/b18fed11`.
+- **Objective:** Port the reviewed `docs/planning/wireframes/index-v2.html` information architecture and visual hierarchy into the existing public-synthetic React MVP without inventing backend state or weakening the reviewed API and browser-session boundaries.
+- **Implementation:** Keep `/matters/$matterId` as the authorized center and implement compact and expanded Matter cockpit navigation. Render the decision and AI operating model, corpus map, AI intake, artifacts and lineage, essential Elements matrix, ranked recommendation, strategy and Authority lanes, bounded agent team, provider-neutral model routing, Work Product assembly, Tasks and Deadlines, source and run evidence, Matter activity log, failure states, and delivery map. Bind only existing workspace, Claim, corpus, Work Product, Approval, audit, and provenance fields. Render every unimplemented proposal, agent, Authority, artifact intake, model, Deadline, connector, and external-action capability as explicit inert or safely unavailable state.
+- **Tests:** Extend public-synthetic component and route tests for the full cockpit hierarchy, source-role separation, existing API-bound Matter records, exact unavailable labels, no direct model or connector action, Approval invalidation, compact and expanded layouts, keyboard and landmark semantics, sanitized failures, and browser-storage leakage. Run complete web tests, typecheck, lint, build, API contract checks, Ruff for touched Python if any, format, diff, ASCII dash, dependency audit, and available secret scans.
+- **Acceptance:** One public-synthetic Client and Matter navigate through a coherent working V2 React cockpit with source-grounded Claims, Evidence Items, Authority, recommendation, Work Product, audit, and explicit unavailable states. The implementation reproduces the reviewed hierarchy at compact and expanded sizes, preserves every server-side authorization boundary, and produces immutable commit, tree, source, test, evidence, and rollback hashes for API-backed browser qualification `9212ef10`.
+- **Rollback:** Revert only the V2 cockpit candidate to `cc20a130fc1f61ad34ca0f12ceb62f1fea08b35a`. No data or host rollback exists.
+- **Prohibited:** No protected content, HammerTime `Inbox/` access, provider request, credential, external action, deployment, service, merge, push, or cleanup. Do not invent an endpoint, treat a model proposal as workflow state, expose private route or host details, or weaken Tenant, Matter, policy, audit, provenance, exact-version Approval, revocation, or simulation-only external-action gates.
+
+### SKL-MVP-SUPPORT-06: Build a reversible local public-synthetic MVP preview launcher
+
+- **Card:** `b53c02bd`
+- **Agent:** `codex-skl-mvp-preview-launcher`
+- **Base:** Exact sealed 6f3cd09d evidence handoff `cc20a130fc1f61ad34ca0f12ceb62f1fea08b35a` in a fresh isolated worktree.
+- **Objective:** Add one bounded launcher and teardown contract for the reviewed public-synthetic FastAPI composition and React production build without editing V2 UI implementation files.
+- **Implementation:** Accept an exact candidate root, validate immutable source and lock hashes, require explicit public-synthetic mode, seed only deterministic public data, bind API and web only to configurable loopback ports, record process identities and launch hashes in an instance-scoped runtime directory, refuse collisions, stale or foreign PID ownership, protected or production dependencies, and serve direct browser routes through the production build fallback. Stop only processes whose recorded identity still matches and reset only the named public-synthetic instance.
+- **Tests:** Exercise health and readiness, session bootstrap, Client and Matter reads, browser route fallback, API outage, restart, deterministic fixture reset, occupied ports, stale PID records, process ownership, loopback enforcement, hash drift, bounded logs, teardown, and secret or protected-data leakage. Run relevant Python tests, web typecheck, lint, unit tests, production build, dependency audit, static checks, and repository diff checks.
+- **Acceptance:** One command starts the exact public-synthetic API and web build on loopback, one command stops only its recorded processes, all required probes pass, exact files and hashes are sealed, and the stopped rollback state is proven for downstream V2 browser work.
+- **Rollback:** Stop the named instance through the launcher, verify its recorded PIDs and ports are gone, then revert only this candidate to `cc20a130fc1f61ad34ca0f12ceb62f1fea08b35a`. No persistent host or data rollback exists.
+- **Prohibited:** No V2 UI file edit owned by `b18fed11`, protected data, credential, provider request, external action, persistent deployment, merge, push, or unrelated cleanup.
+
+### SKL-MVP-03B: Integrate enriched V2 API fixture into the working cockpit
+
+- **Card:** `b69f0c97`
+- **Agent:** `codex-skl-mvp-v2-api-integration`
+- **Base:** Exact V2 React candidate `48502082fe3be7c115b88937ab222844a4f6f5ff` with exact enriched API fixture implementation `ead05bcc44c589a82a6e1556b68a9726d31b16c7`, synthesized in a fresh isolated worktree.
+- **Objective:** Produce one immutable candidate whose explicitly flagged loopback preview bootstraps in real Chrome and renders coherent non-empty reviewed public-synthetic Client, Matter, Claim, Evidence Item, Authority, corpus, Work Product, audit, provenance, and simulated execution data.
+- **Implementation:** Preserve the exact V2 React UI and launcher boundaries. Integrate the reviewed fixture, exact routed capabilities, fixture hash guard, and API composition without weakening browser session, CSRF, Tenant, Matter, audit, provenance, persistence, simulation, or external-action boundaries. Keep absent contracts explicit and safely unavailable.
+- **Tests:** Run all b18 and 0457 focused tests, web unit tests, typecheck, lint, production build, API boundary tests, Ruff, format, dependency audits, diff, ASCII dash, leakage, reset, teardown, and a separate loopback real Chrome bootstrap and navigation proof. Confirm the existing b18 instance and card `9212ef10` remain untouched.
+- **Acceptance:** Real Chrome reaches the exact Client and Matter through reviewed APIs and displays non-empty enriched data for every available contract, while missing contracts remain explicit. Seal commit, tree, fixture, build, browser, test, evidence, and rollback hashes.
+- **Rollback:** Stop only the synthesis card's named launcher instance, prove its loopback ports closed, and revert only this candidate to `48502082fe3be7c115b88937ab222844a4f6f5ff`. No persistent data migration exists.
+- **Prohibited:** No disturbance of the live b18 instance or `9212ef10`, protected data, credential, provider request, external action, persistent deployment, merge, push, or unrelated cleanup.
+
+### SKL-MVP-03D: Synthesize the final working V2 MVP candidate
+
+- **Card:** `6417165c`
+- **Agent:** `codex-skl-mvp-v2-final-synthesis`
+- **Base:** Exact enriched API candidate `ca60896554fbe36a64e08d6b81a1aa92e717a0df`, exact session reload and CSP evidence candidate `498a22747944afaa5b7cea3c88fbde20f4a1117f`, and exact truthful UX candidate `334b0b1c156761d66776675a2a8f22f48364b422` in a fresh isolated worktree.
+- **Objective:** Produce one clean immutable final candidate that preserves every reviewed API, session hydration, CSP, truthful UX, accessibility, launcher, and browser qualification boundary without adding product scope.
+- **Implementation:** Integrate only the pinned candidate ranges and resolve only direct integration conflicts. Preserve exact public synthetic identities, process-local fixture state, fail-closed authorization, session reload, script-free CSP, truthful unavailable states, accessible responsive groups, and reversible loopback launcher ownership.
+- **Tests:** Run the complete combined web, API, browser session, persistence, audit, fixture, launcher, type, lint, production build, dependency audit, diff, ASCII dash, leakage, reset, teardown, rollback, and committed Node Chrome reload and CSP harness gates. Prove the exact enriched Client, Matter, Claims, Evidence Items, Authority, corpus, Work Product, audit, provenance, simulated execution, reload, responsive, and accessibility states in real Chrome.
+- **Acceptance:** Seal the exact commit, tree, archive, locks, fixture, distribution, browser, test, evidence, and rollback hashes. Leave one exact loopback-only final preview live with its recorded stop command and no unexpected browser, network, storage, accessibility, CSP, or truthfulness failure.
+- **Rollback:** Stop only the final synthesis instance through its recorded launcher state, verify its exact PIDs and loopback ports close, reset only that instance, and revert to `ca60896554fbe36a64e08d6b81a1aa92e717a0df`. No persistent data migration exists.
+- **Prohibited:** No merge, push, persistent deployment, protected data, credential, provider request, external action, unrelated service mutation, or cleanup.
+
+### SKL-MVP-03E: Repair compact exact-version identifier presentation
+
+- **Card:** `b68e3337`
+- **Agent:** `codex-skl-mvp-compact-id-repair`
+- **Base:** Exact final V2 MVP candidate `236eb6a794adf59c67119cd0e3807254aee1e6fc`, tree `b29e231d9827598be2097db5fb559723441d4411`.
+- **Objective:** Repair only the real-Chrome 390x844 clipping of exact hashes and other provenance identifiers while preserving the expanded V2 cockpit and every public-synthetic authorization and evidence boundary.
+- **Implementation:** Apply a narrowly scoped responsive presentation rule so long exact identifiers wrap inside their owning surface or use explicitly labeled bounded horizontal access. Preserve identifier bytes, selectability, copyability, labels, desktop layout, document width, and all existing semantics. Do not alter records, API contracts, session behavior, workflow state, or unrelated visual design.
+- **Tests:** Add focused component or style-contract coverage for exact 64-character hashes and provenance identifiers. Run the complete web tests, typecheck, lint, production build, dependency audit, diff and ASCII-dash checks. In real Google Chrome, capture 390x844 and 1440x1000 evidence, verify no global horizontal overflow, exact identifier visibility and selection, keyboard behavior, and axe WCAG 2A, 2AA, 2.1A, and 2.1AA with zero violations.
+- **Acceptance:** At 390x844 every exact 64-character hash and other provenance identifier is fully available without clipping, document scroll width equals client width, keyboard and selection behavior remains usable, and desktop presentation is materially unchanged. Seal immutable implementation and evidence commits, trees, screenshot hashes, exact results, limitations, and rollback for independent rereview `da66ab30`.
+- **Rollback:** Revert only this repair candidate to `236eb6a794adf59c67119cd0e3807254aee1e6fc`. No data, service, deployment, or host rollback exists.
+- **Prohibited:** Do not modify the live owner preview, deploy, merge, push, access protected content or credentials, make a provider request, advance an external action, edit unrelated product behavior, or clean another worktree.
+
+### SKL-MVP-SUPPORT-07: Populate the live V2 public-synthetic API composition
+
+- **Card:** `0457ea71`
+- **Agent:** `codex-skl-mvp-v2-api-fixture`
+- **Base:** Exact sealed launcher evidence handoff `4777de8b91914bac4ebe70cae260e7ee241ce98e` in a fresh isolated worktree, with only the required acceptance bindings from fixture candidate `196cb7e35098a89dcfec895a1b9d077023b6e878`.
+- **Objective:** Populate only the loopback preview composition with coherent non-empty public-synthetic records for every existing reviewed V2 read contract and explicit safely-unavailable states for absent contracts.
+- **Implementation:** Bind one deterministic Client and Matter across Matter Events, provenance, Evidence Items, Fact Assertions and tensions, Issues and Claims with support and counter-support, Authority, corpus results, Work Product versions and Approval state, simulated Execution Event and receipt state, audit replay, uncertainty, contradiction, and model or run attribution. Preserve exact cross-record identifiers and source hashes. Do not invent a Task or Deadline API when the reviewed router has none.
+- **Tests:** Cover authenticated navigation and repeatable reads, cross-Tenant and cross-Matter denial, unauthenticated denial before lookup, audit and persistence outage, deterministic reset and replay, fixture-to-contract bindings, non-empty V2 sections, exact source and audit linkage, safe unavailable states, external-action ceiling, leakage, Ruff, format, diff, and Unicode dash checks.
+- **Acceptance:** The immutable fixture candidate is ready for launcher and V2 UI synthesis, all existing read APIs return coherent public-synthetic data, absent APIs remain explicit and fail closed, no unbound or cross-Tenant record exists, and exact evidence and rollback are linked.
+- **Rollback:** Revert only this candidate to `4777de8b91914bac4ebe70cae260e7ee241ce98e`. The preview fixture is process-local, so launcher teardown discards it without data migration.
+- **Prohibited:** No file under `apps/web`, protected data, credential, provider request, external action, persistent deployment, merge, push, or unrelated cleanup.
+
+### SKL-MVP-SUPPORT-05: Build the V2 cockpit fixture and acceptance matrix
+
+- **Card:** `7e244214`
+- **Agent:** `codex-skl-mvp-v2-fixtures`
+- **Base:** Reviewed public-synthetic fixture handoff `f676aabe9ca52bebf154fc625f4f2c9a99d80d5d`; parallel React implementation card `b18fed11` owns its application files.
+- **Objective:** Create an additive deterministic public-synthetic V2 cockpit fixture and executable acceptance matrix derived from `docs/planning/wireframes/index-v2.html` and `docs/planning/wireframes/COMPONENT-API-MAP-V2.md` without editing the parallel React implementation.
+- **Implementation:** Extend the reviewed V1 fixture through a distinct V2 fixture and schema-aware acceptance contract. Map every V2 navigation section to an exact React component name, API contract, fixture identity, complete or safely-unavailable state, accessibility expectation, and evidence assertion. Preserve legal-domain vocabulary, typed-proposal ownership, source-lane separation, immutable provenance, Tenant and Matter scope, and simulation-only external actions.
+- **Tests:** Execute deterministic fixture and matrix validation. Reject missing or extra navigation sections, invented or cross-Tenant records, contract drift, unbound source or audit state, non-simulated external-action progression, duplicate identities, broken references, missing accessibility expectations, and unsupported completion claims. Run the reviewed V1 fixture tests plus focused V2 tests, formatting, JSON, diff, ASCII dash, and scoped leakage scans.
+- **Acceptance:** Every V2 navigation section has a public-synthetic fixture binding or an explicit safely-unavailable state and an executable assertion. Produce immutable candidate, tree, parent, fixture, matrix, validator, tests, evidence, and rollback hashes suitable for direct consumption by `b18fed11` without modifying its files.
+- **Rollback:** Revert only the additive V2 fixture, matrix, validator, tests, evidence, and this TDD to base `f676aabe9ca52bebf154fc625f4f2c9a99d80d5d`. The reviewed V1 fixture and all application, service, database, and runtime state remain unchanged.
+- **Prohibited:** Do not edit files owned by `b18fed11`; deploy or start a live service; use protected Matter data; make a provider request; advance an external action; read credentials; merge; push; or clean another worktree.
+
+### SKL-MVP-02A: Preserve browser session reload and deliver preview CSP correctly
+
+- **Card:** `cc214fff`
+- **Agent:** Browser session and preview response engineering
+- **Size:** M
+- **Dependencies:** Exact V2 React candidate `48502082fe3be7c115b88937ab222844a4f6f5ff`
+- **Objective:** Repair the direct-route reload and CSP delivery defects reproduced by real-browser qualification without broadening authentication, routing, or preview authority.
+- **Implementation:** Hydrate the current same-origin server session before the protected router first evaluates. A valid current session initializes the in-memory usability guard, while missing, expired, revoked, malformed, denied, or unavailable session state initializes no client authorization and routes fail closed. Remove the unsupported `frame-ancestors` meta delivery and make the loopback preview server add the complete CSP as an HTTP response header for every static asset and history fallback. Preserve HttpOnly cookie custody, CSRF handling, server-side authorization, exact public-synthetic opt-in, and production denial.
+- **Tests:** Valid bootstrap and direct Matter reload, missing and expired session, malformed response, API outage, cross-Tenant and cross-Matter denial, cleared session, no browser-storage secret, exact CSP on index, asset, direct-route fallback, HEAD and error responses, no CSP console warning, web and launcher regressions, typecheck, lint, build, audit, diff, ASCII dash, leakage, teardown, and rollback.
+- **Acceptance:** Real Chrome stays on the exact authorized Matter after reload, every denial remains sanitized and fail closed, browser storage contains no credential or capability, and all static responses deliver the reviewed CSP by HTTP header including `frame-ancestors 'none'`.
+- **Prohibited:** No protected Matter content, HammerTime `Inbox/`, credential read or persistence, provider request, external action, production deployment, unrelated UI change, merge, push, or cleanup outside the named preview instance.
+
+### SKL-MVP-03A-R1: Repair V2 cockpit UX fidelity and state integrity
+
+- **Card:** `4d960572`
+- **Agent:** `codex-skl-mvp-v2-ux-repair`
+- **Base:** Exact V2 implementation `48502082fe3be7c115b88937ab222844a4f6f5ff` in isolated worktree `/tmp/sklegal-swarm-20260823/4d960572`.
+- **Objective:** Repair every P0 and P1 finding and the bounded P2 findings recorded by independent review `ca896fb0`, without inventing legal or workflow state or changing the public-synthetic API composition.
+- **Implementation:** Remove client-derived ranking and proof scoring until their typed contracts exist. Reuse exact-version Approval validation. Make compact navigation bounded and keyboard operable. Add the missing Decision and blind-challenge regions, complete source-role and model-evidence unavailable treatments, consistent empty states, and a collapsed underlying-record disclosure. Preserve all server authorization, provenance, safe-state, and external-action boundaries.
+- **Tests:** Add focused tests for zero-data recommendation state, stale and current Approval binding, section order, challenge and source-role surfaces, compact navigation disclosure, bounded responsive height, underlying-record disclosure, and consistent empty states. Run the complete web suite, lint, typecheck, production build, dependency audit, diff checks, and real Chrome expanded and compact screenshot review.
+- **Acceptance:** The repaired immutable React candidate matches the reviewed V2 hierarchy at expanded and compact sizes, never fabricates score, rank, recommendation, Approval, source-role, or execution state, preserves reconstructable records on demand, and provides implementation, evidence, screenshots, limitations, and rollback hashes for qualification.
+- **Prohibited:** No API fixture edit, live candidate mutation, deployment, protected data, credential, provider request, external action, merge, push, or unrelated cleanup.
+
+### SKL-MVP-ARCH-02F: Repair canonical V2 contract invariants
+
+- **Card:** `09c527da`
+- **Dependency:** `b417bc62`
+- **Base:** Blocked contract candidate `d03305180c050f90243a63dee866cf657612f033`.
+- **Objective:** Repair only the independently proven Claim, Approval, executable surface-manifest, and mypy evidence blockers. Enforce outer Claim identity and version equality with its LedgerClaim projection, preserve explicit status and migration mapping, and make complete operative Approval validity require an allowed capability decision outcome, current subject and scope equality, non-revocation, and non-supersession. Make the canonical ordered 18-surface manifest drive legacy fixture and React contract assertions without creating a second product truth.
+- **Tests and acceptance:** The prior 46 focused tests remain green. Exhaustive negative probes reject mismatched Claim identity, version, status, and migration mappings, plus Approval decision, subject, scope, revocation, supersession, and current-version failures. Schema, type, OpenAPI, manifest-consumer, diff, ASCII dash, and secret checks pass. The immutable candidate, tree, parent, evidence, and rollback are pinned for independent review `cf83cb57`.
+- **Prohibited:** Live cockpit or central application edits; shared-main edits; runtime, database, migration, deployment, credential, protected-content, provider, HammerTime `Inbox/`, external-action, merge, push, or cleanup work.
+
+### SKL-MVP-HANDOFF-02: Seal overlap ownership and migration namespace handoffs
+
+- **Card:** `0a5e4e0c`
+- **Agent:** `codex-mvp-handoff-02`
+- **Size:** M inventory and remediation handoff
+- **Dependencies:** independently reviewed owner inventory `539344d7`
+- **Objective:** Resolve only the seven integration blockers proven by `539344d7`: the disputed multi-owner TDD, unowned `migrations/manifest.json`, unowned `tests/integration/persistence_contract_security_boundary.py`, missing aggregate commit and tree pins for `51ed3820`, `78c95e1f`, and `c4dfd1df`, the migration `0019` semantic collision, stale `e7a3d02e`, and scoped MVP board consistency. Produce attributable immutable include or fail-closed exclude decisions and a collision-free migration reservation map.
+- **Implementation:** Work only in a fresh isolated evidence and reconciliation worktree. Read the exact HANDOFF-01 and HANDOFF-01R evidence. Query card events, links, Git objects, branches, worktrees, and attributable owner receipts without modifying foreign bytes. Preserve TDD sections by exact owned range. Treat an observed hash as evidence of bytes, never Git custody. Reserve new migration numbers append-only without renaming or rewriting an applied migration. Record scoped board consistency separately from broader pre-existing parity debt.
+- **Tests and acceptance:** Every disputed overlap has an attributable owner receipt plus immutable commit and tree, or is explicitly excluded from BASE-01. Aggregate cards have exact include manifests or remain excluded. The migration reservation map has unique numbers, compatibility rules, fresh-install and historical-upgrade test ownership, and no applied-history rewrite. Stale ownership receives a current immutable receipt or remains excluded without takeover. Scoped dependency, duplicate-scope, link, hash, tree, clean-worktree, diff, ASCII dash, and secret checks pass. Seal immutable evidence and link independent review `7c2c9e20`.
+- **Rollback:** Revert only this exact TDD section and HANDOFF-02 evidence. Board events remain append-only. Do not alter or delete a foreign file, branch, worktree, runtime, database, listener, credential, protected record, provider result, or external-action record.
+- **Prohibited:** No foreign source or migration edit, central product source, shared main mutation, live preview mutation, database mutation, deployment, merge, push, cleanup, credential access, protected data, provider request, HammerTime `Inbox/`, or external action.
+
+### SKL-MVP-HANDOFF-02R: Independently review immutable overlap handoffs
+
+- **Card:** `7c2c9e20`
+- **Dependencies:** `0a5e4e0c`
+- **Objective:** Independently recompute every HANDOFF-02 owner receipt, immutable commit and tree, include or exclude decision, migration namespace reservation, scoped board projection, rollback, and safe state. Return PASS only if BASE-01 can consume a complete immutable allowlist without importing disputed or unowned bytes.
+- **Tests and acceptance:** Read this exact TDD before review. Recompute hashes, Git objects, ownership, section boundaries, exclusions, migration reservations, dependency closure, duplicate scope, and scoped board consistency. Return PASS or BLOCKED without repair.
+- **Prohibited:** No repair, foreign source or migration edit, runtime, database, deployment, merge, push, cleanup, credential, protected data, provider, HammerTime `Inbox/`, or external action.
+
+### SKL-MVP-BASE-01: Reconcile reviewed V2 candidate with current main
+
+- **Card:** `91988c9e`
+- **Dependencies:** `b417bc62`, `539344d7`, `7c2c9e20`, `cf83cb57`, `21349dd8`
+- **Objective:** Produce one clean isolated integration base from current origin/main, the reviewed V2 lineage, and every approved immutable owner handoff.
+- **Ownership:** Isolated integration worktree, conflict ledger, lock and migration reconciliation, test evidence, and rollback. Do not mutate the shared main worktree.
+- **Tests and acceptance:** Full repository, API, web, migrations, persistence, policy, audit, browser, lint, type, build, dependency audit, diff, dash, and secret gates. Record included and excluded work exactly.
+- **Prohibited:** In-place main edit, push, deployment, cleanup, protected content, provider, credential, HammerTime `Inbox/`, or external action.
+
+### SKL-MVP-BASE-01R: Independently review reconciled MVP base
+
+- **Card:** `855ef00a`
+- **Dependencies:** `91988c9e`
+- **Objective:** Review the immutable reconciled base and collision ownership map without repair.
+- **Tests and acceptance:** Recompute lineage, conflicts, handoffs, feature ownership, all regression gates, rollback, and exclusions. PASS only if seven feature lanes can edit without central-file collision.
+- **Prohibited:** Repair, main mutation, merge, push, cleanup, deployment, protected content, provider, credential, or external action.
+
+### SKL-MVP-BASE-01F4: Integrate independently reviewed BASE gate repairs
+
+- **Card:** `c9162ae6`
+- **Agent:** `codex-skl-mvp-base-integration`
+- **Base:** Immutable BASE candidate `bfd1a973510d327c26f05096350a38a3d0cedaf1`, tree `f75fde4cdcb747278a122f473f5717af826aed74`.
+- **Dependencies:** Independently reviewed F1, F2, and F3 candidates under cards `e7fdf28d`, `0040b661`, and `ebf37535`.
+- **Objective:** Integrate only reviewed repair candidates `b734feeb946a3d139fbdfbe10ec315838a89fd8a`, `abf01e6f7ef4a8b2d195327ff7352dacb1478a14`, and `7f8abf808f680d720a58a143527a2783d3dc3ae5` onto the immutable BASE. Preserve all BASE allowlist exclusions, migration reservations, product behavior, security controls, and provider boundaries.
+- **Implementation:** Verify every candidate commit, tree, parent, review PASS, evidence hash, changed-file ownership, and rollback before integration. Apply only the reviewed bytes in deterministic F1, F2, F3 order. Resolve only genuine merge conflicts with an attributable conflict ledger. Do not import producer evidence commits, shared-main bytes, or unrelated changes.
+- **Tests and acceptance:** Full Python regression, focused API, policy, audit and persistence suites, web test, typecheck, lint, format and build gates, repository Ruff, intended mypy gates, official secret scan with planted negative controls, migrations, dependency and lock integrity, real-browser public-synthetic qualification, fixture teardown, hashes, diff, ASCII dash, rollback, clean worktree, and owner-preview preservation. Seal an immutable replacement candidate and evidence for independent review `dd4bb79d`.
+- **Rollback:** Reverse only the exact integrated candidate to `bfd1a973510d327c26f05096350a38a3d0cedaf1`. Test fixtures must be disposable and fully removed by their owners. Shared main and owner preview require no rollback because they remain untouched.
+- **Prohibited:** No shared-main edit, deployment, non-test database mutation, credential, protected content, provider traffic, HammerTime `Inbox/`, external action, merge, push, broad cleanup, or mutation of another agent's runtime or fixture.
+
+### SKL-MVP-BASE-01F1: Repair hermetic full-regression gate failures
+
+- **Card:** `b0e71aae`
+- **Dependency:** `91988c9e`
+- **Base:** Immutable BASE candidate `bfd1a973510d327c26f05096350a38a3d0cedaf1`.
+- **Objective:** Repair only the three full Python regression failures reproduced by independent review `855ef00a`: pre-existing `sklegal-dev` container interference, the missing exact `cat` Landlock utility allowance, and the `candidate_release.py` package-source write detector finding.
+- **Implementation:** Make container assertions ownership-aware without stopping or weakening checks, add only the exact required `cat` executable path to Landlock, and preserve candidate release creation through a read-only package source by moving any temporary output custody outside that package. Keep test fixtures public-synthetic, uniquely attributable, and exactly torn down.
+- **Tests and acceptance:** Reproduce the three original failures and their negative controls. Run focused foundation, clean-room, release, containment, diff, ASCII dash, secret, and rollback gates. Prove every pre-existing container, service, listener, and volume is unchanged and no card-created fixture remains. Seal exact candidate, tree, parent, evidence, hashes, limitations, and rollback for review `e7fdf28d`.
+- **Prohibited:** No shared-main or live-preview mutation, deployment, credential or protected-data access, provider traffic, HammerTime `Inbox/`, external action, merge, push, foreign cleanup, or database mutation outside disposable public-synthetic tests.
+
+### SKL-MVP-BASE-01F1R: Independently review hermetic regression repairs
+
+- **Card:** `e7fdf28d`
+- **Dependency:** `b0e71aae`
+- **Objective:** Independently reproduce the exact repair and negative controls without changing it.
+- **Tests and acceptance:** Recompute hashes and prove the three original failures, focused regression, containment, secret, diff, ASCII dash, safe-state, teardown, and rollback gates. Return PASS or BLOCKED.
+- **Prohibited:** No repair, merge, push, cleanup, runtime mutation, protected data, provider, credential, or external action.
+
+### SKL-MVP-BASE-01F2: Repair inherited BASE static gates
+
+- **Card:** `f34239e4`
+- **Agent:** `codex-mvp-base-static-repair`
+- **Base:** Immutable BASE candidate `bfd1a973510d327c26f05096350a38a3d0cedaf1`, tree `f75fde4cdcb747278a122f473f5717af826aed74`.
+- **Dependencies:** `91988c9e`
+- **Objective:** Repair only the mypy assignment mismatch at `tests/support/mvp_v2_cockpit.py:389` and the origin-identical Ruff import-order failure at `vendor/capauth/src/capauth/__init__.py:220`, without changing behavior.
+- **Implementation:** Give the loop-local failure tuple a non-conflicting typed name and reorder only the exact vendor CapAuth imports. Do not add ignores or `noqa` markers, weaken configuration, or format unrelated files.
+- **Tests and acceptance:** Reproduce both failures before repair. Make focused and repository mypy and Ruff gates pass. Run the affected contract, CapAuth import, web fixture, API, diff, ASCII dash, secret, dependency, and rollback checks. Pin exact candidate and evidence commits, trees, hashes, results, limitations, and rollback for independent review `0040b661`.
+- **Rollback:** Revert only the two named static repairs, this TDD, and its evidence to exact base `bfd1a973510d327c26f05096350a38a3d0cedaf1`.
+- **Prohibited:** No central integration, migration, runtime, preview, shared main, database, credential, protected content, provider, HammerTime `Inbox/`, external action, merge, push, or cleanup work.
+
+### SKL-MVP-BASE-01F3: Reconcile repository secret-scan baseline
+
+- **Card:** `622b3e61`
+- **Agent:** `codex-mvp-base-secret-reconcile`
+- **Base:** Immutable BASE commit `bfd1a973510d327c26f05096350a38a3d0cedaf1`, tree `f75fde4cdcb747278a122f473f5717af826aed74`.
+- **Dependency:** independent BASE review `855ef00a`.
+- **Objective:** Reconcile only the official repository-wide secret-scanner failure. Classify all 248 unreviewed findings into unchanged historical debt, candidate-introduced legitimate immutable hashes or synthetic fixture markers, candidate-introduced real secret material, or unresolved material. Produce a deterministic green scan only for findings proven nonsecret without weakening detection.
+- **Implementation:** Inventory every finding by path, line, detector, opaque finding identity, classification, disposition, reviewer state, source commit, source blob or file hash, and introduction boundary. Never record or print the detected value. Compare exact BASE findings with its parent and reviewed source lineage. Update only the existing official baseline or narrowly scoped scanner configuration for individually reviewed nonsecret artifacts. Do not use path-wide, detector-wide, entropy-threshold, or credential-pattern exclusions. Any real or unresolved secret fails closed for a separate incident and rotation authority.
+- **Tests and acceptance:** All 248 initial findings receive a complete classification and no finding disappears without a recorded disposition. Repository-wide and changed-file scans pass against the reviewed baseline. Historical-diff, fixture, immutable-hash, baseline-integrity, dependency, JSON, diff, ASCII dash, and leakage checks pass. Planted AWS, GitHub, bearer, private-key, password, and high-entropy controls remain detected and make the gate fail. The baseline contains no secret values beyond the official scanner's required opaque fingerprints. Seal candidate, evidence, limitations, and rollback, then link independent review `ebf37535`.
+- **Rollback:** Revert only this exact TDD section, reviewed scanner baseline or configuration delta, tests, and evidence to BASE `bfd1a973510d327c26f05096350a38a3d0cedaf1`. No runtime, data, credential, or deployment rollback exists.
+- **Prohibited:** No deletion or concealment of findings, broad exclusion, detector disablement, threshold weakening, secret-value output, product behavior, shared main, live preview, runtime, deployment, database, credential access, protected content, provider, HammerTime `Inbox/`, external action, merge, push, or cleanup.
+
+### SKL-MVP-BASE-01F3R: Independently review secret-baseline reconciliation
+
+- **Card:** `ebf37535`
+- **Dependencies:** `622b3e61`
+- **Objective:** Independently recompute every secret-finding classification, source hash, introduction boundary, baseline entry, repository scan, changed-file scan, negative control, rollback, and safe state without repair or secret-value exposure.
+- **Tests and acceptance:** Read this exact TDD before review. Confirm every baseline entry is individually attributable and nonsecret, all 248 initial findings have dispositions, no broad exclusion or detector weakening exists, the exact repository scan is green, and every planted real-secret pattern still fails. Return PASS or BLOCKED.
+- **Prohibited:** No repair, finding deletion, secret-value output, scanner weakening, source change, runtime, preview, deployment, database, credential access, protected content, provider, HammerTime `Inbox/`, external action, merge, push, or cleanup.
+
+### SKL-MVP-INTEG-01: Assemble joined API migrations and public-synthetic composition
+
+- **Card:** `c1ee25da`
+- **Agent:** Central MVP API integration
+- **Base:** Accepted repaired base `0a293dd1afe9d5b4150468057e4ed8e552d7221b`, tree `5cccf34afa4653bf9bcfd59ebdad1b6eb3f61caa`, plus only independently reviewed lane candidates and the canonical contract candidate `eade7626fb6190924e80d73b79473f685e1c2531`, tree `f003bd74f665465e8396255947dcd30e72d2dec5`.
+- **Dependencies:** Resolve the current CardStore fold at claim time. The final 2026-08-24 HANDOFF-03 capture has 26 direct gates: `519c01cf`, `91cd4ff5`, `9a06fcf7`, `38d27d89`, `07f79e8d`, `083855d4`, `38d61700`, `8a8b2d19`, `6074b95b`, `93e92ab0`, `17b8f330`, `bf730a76`, `083ffcef`, `5432d636`, `00e4bced`, `7c9a4e1d`, `1b3e9ab2`, `a112f22c`, `e67ac604`, `8415b92a`, `980fb58e`, `deb2aba8`, `a6c7fd2f`, `9dd76c45`, `d0c03aae`, and `54d68b41`. Do not claim until every formal dependency, including any later append-only gate, is DONE.
+- **Objective:** Assemble the reviewed horizontal lanes into one joined FastAPI, migration, OpenAPI, fixture, and public-synthetic composition without rewriting lane internals or importing a blocked or superseded candidate.
+- **Implementation:** Fetch all remotes immediately before claim. Resolve every accepted commit and tree locally. Own the sole edits to `services/api/src/sklegal_api/app.py`, `migrations/manifest.json`, shared API dependency metadata and locks, central router registration, OpenAPI snapshot, canonical fixture registry, and integration-owned compatibility adapters. Preserve attributable TDD ranges. Match the canonical V2 manifest exactly for all 18 surfaces and 21 operations, including method, path, operation ID, capability, purpose, scope, idempotency, audit, provenance, request, response, mutation receipt, and closed error envelope. Use explicit central compatibility adapters for reviewed lane drift and prove semantic parity. Reject duplicate method and path registration before startup. Replace or delegate base corpus routes to the reviewed governed corpus binding. Consume only the independently reviewed contiguous migration reissue after exact `0020` and `0021` custody. Preserve two PostgreSQL failure domains: canonical legal, policy, audit, outbox, workflow-reference, and projection-registry state on dedicated `sklegal-core-pg`; governed full-text, native pgvector, and optional AGE projections on separate `sklegal-retrieval-pg`, with separate databases, volumes, roles, credentials, resource controls, restart and backup lifecycles, and private network identities. Never share a superuser, transaction, or failure domain.
+- **Tests and acceptance:** Add manifest perturbations that fail. Pass every mounted router against real PostgreSQL and deterministic public-synthetic composition, RLS, policy, CapAuth, mutation idempotency, exact Approval binding, atomic audit and outbox, sanitized outage, independent database restart, deterministic retrieval rebuild, migration fresh install, `0012` and `0019` upgrade, down, absence, reapply, reset, and rollback. Prove core continuity or deterministic fail-closed behavior during retrieval outage. Regenerate exact OpenAPI and fixture hashes for frontend handoff `7334b7e5`. Preserve per-principal runtime identity and the single Tenant audit chain.
+- **Prohibited:** No shared runtime login lease or audit-chain sharding without separately approved numeric gates. No deployment, merge, push, protected content, provider request, credential access, HammerTime `Inbox/`, connector dispatch, or external action.
+
+### SKL-MVP-REVIEW-01: Independently review exact complete durable MVP
+
+- **Card:** `13473fb6`
+- **Agent:** Reviewer distinct from every implementation and qualification producer
+- **Dependency:** `465e000f`
+- **Objective:** Independently review the exact fully joined, durable, browser-qualified public-synthetic MVP without repair. Return PASS or BLOCKED.
+- **Tests and acceptance:** Recompute exact source and tree, contract manifest, 18 surfaces, 21 operations, OpenAPI, migrations, dual PostgreSQL database seed and boundaries, build, browser and API result hashes, fixtures, audit and outbox, backup and restore, reset, rollback, and stopped safe state. Independently prove full functionality, Tenant and Matter isolation, capability revocation, policy outage, idempotency, activity replay, independent core and retrieval failure behavior, deterministic retrieval rebuild, and no durable claim backed only by the browser fixture.
+- **Prohibited:** No repair, deployment, merge, push, cleanup, protected content, provider request, credential access, HammerTime `Inbox/`, connector dispatch, or external action.

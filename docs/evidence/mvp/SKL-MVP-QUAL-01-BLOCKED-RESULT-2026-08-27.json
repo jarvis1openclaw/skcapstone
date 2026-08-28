@@ -1,0 +1,32 @@
+{
+  "candidate_commit": "464e6b7de45dd51c93eb68d9edcbf95c934ca7fb",
+  "candidate_tree": "4d55cfbd93127683a534941f8c38dfe3b995416d",
+  "card": "465e000f",
+  "cleanup": {
+    "task_containers_absent": true,
+    "task_loopback_listeners_absent": true,
+    "task_processes_absent": true,
+    "task_volumes_absent": true
+  },
+  "failure": {
+    "actual": "Access not permitted",
+    "correlation_id": "f16f5a34-6944-44d2-90d0-2218ffc4fdf0",
+    "expected": "AI Matter cockpit",
+    "matter_id": "44444444-4444-4444-8444-444444444441",
+    "path": "/matters/44444444-4444-4444-8444-444444444441",
+    "phase": "first real Chrome pass after public-synthetic sign-in",
+    "session_correlation_id": "eb2ca9d0-587a-4223-b3a1-07956aeba128"
+  },
+  "implementation_commit": "fee1514bcaca6b305ae5fb2e8b9ea2697a4f1ece",
+  "implementation_tree": "2921b158ae9f2823a33b2f71628b915d42ea43cf",
+  "pins": {
+    "contracts_sha256": "af766d16974506f14a4242a8016018c2a7ca1c1d891f477fc6af6a9245cc5bac",
+    "fixture_sha256": "4b14516539289255daca9065dd28060a9e96aea365faec9ecbd1a679bdb47742",
+    "migrations_sha256": "be4e14723627eca23638b10da6dd3ad438db18045e5b98207e7ba515023fae1b",
+    "topology_sha256": "094c4e49ce3b9aa03d85be350aaa5ead8d24ae94d0d407d73e746ff5f5efed61",
+    "web_build_sha256": "cfa544dfe6c5a44ca6f29d004f147b5724edc1582eaeceee5adea5c7143802c0"
+  },
+  "retries": 0,
+  "status": "BLOCKED",
+  "verdict": "BLOCKED_PRODUCT_AUTHORIZATION_BOUNDARY"
+}

@@ -214,6 +214,37 @@ export function CorpusSpanView(props: { span: CorpusSpan }) {
 }
 
 /** Presentational corpus research view; data loading lives in CorpusPage. */
+export function CorpusSearchForm(props: {
+  queryDraft: string;
+  onQueryDraftChange: (value: string) => void;
+  onSubmitQuery: () => void;
+}) {
+  return (
+    <form
+      role="search"
+      aria-label="Corpus search"
+      onSubmit={(event) => {
+        event.preventDefault();
+        props.onSubmitQuery();
+      }}
+    >
+      <label htmlFor="corpus-search-input">Search the matter corpus</label>
+      <input
+        id="corpus-search-input"
+        name="query"
+        type="search"
+        value={props.queryDraft}
+        onChange={(event) =>
+          props.onQueryDraftChange(event.currentTarget.value)
+        }
+      />
+      <button className="sl-button" type="submit">
+        Search
+      </button>
+    </form>
+  );
+}
+
 export function CorpusResearchView(props: {
   query: string;
   response: CorpusSearchResponse;
@@ -227,28 +258,11 @@ export function CorpusResearchView(props: {
   return (
     <div className="sl-corpus-research">
       <h1>Corpus research</h1>
-      <form
-        role="search"
-        aria-label="Corpus search"
-        onSubmit={(event) => {
-          event.preventDefault();
-          props.onSubmitQuery?.();
-        }}
-      >
-        <label htmlFor="corpus-search-input">Search the matter corpus</label>
-        <input
-          id="corpus-search-input"
-          name="query"
-          type="search"
-          value={props.queryDraft ?? props.query}
-          onChange={(event) =>
-            props.onQueryDraftChange?.(event.currentTarget.value)
-          }
-        />
-        <button className="sl-button" type="submit">
-          Search
-        </button>
-      </form>
+      <CorpusSearchForm
+        queryDraft={props.queryDraft ?? props.query}
+        onQueryDraftChange={props.onQueryDraftChange ?? (() => undefined)}
+        onSubmitQuery={props.onSubmitQuery ?? (() => undefined)}
+      />
       <section aria-label="Search scope">
         <h2>Scope</h2>
         <ScopeChips options={response.scopeOptions} />
@@ -916,25 +930,39 @@ export function CorpusPage(props: { matterId: string | null }) {
       >
         {(result) => <ClaimLedgerView ledger={result.data} />}
       </QueryBoundary>
-      <QueryBoundary
-        query={searchQuery}
-        loadingLabel="Searching the matter corpus"
-      >
-        {(result) => (
-          <CorpusResearchView
-            query={submittedQuery}
-            response={result.data}
-            span={
-              spanQuery.status === "success"
-                ? (spanQuery.data?.data ?? null)
-                : null
-            }
+      {submittedQuery.length === 0 ? (
+        <div className="sl-corpus-research">
+          <h1>Corpus research</h1>
+          <CorpusSearchForm
             queryDraft={query}
             onQueryDraftChange={setQuery}
             onSubmitQuery={() => setSubmittedQuery(query)}
           />
-        )}
-      </QueryBoundary>
+          <p>
+            Enter a Matter-scoped query to retrieve public synthetic records.
+          </p>
+        </div>
+      ) : (
+        <QueryBoundary
+          query={searchQuery}
+          loadingLabel="Searching the matter corpus"
+        >
+          {(result) => (
+            <CorpusResearchView
+              query={submittedQuery}
+              response={result.data}
+              span={
+                spanQuery.status === "success"
+                  ? (spanQuery.data?.data ?? null)
+                  : null
+              }
+              queryDraft={query}
+              onQueryDraftChange={setQuery}
+              onSubmitQuery={() => setSubmittedQuery(query)}
+            />
+          )}
+        </QueryBoundary>
+      )}
     </div>
   );
 }

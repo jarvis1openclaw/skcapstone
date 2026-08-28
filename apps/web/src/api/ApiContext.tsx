@@ -1,30 +1,32 @@
-/**
- * Provides the ApiClient to the React tree. The client is rebuilt when
- * the active tenant changes so every request carries the current tenant
- * scope; the server still authorizes each request independently.
- */
-
 import { createContext, useContext, useMemo, type ReactNode } from "react";
 
 import { ApiClient } from "./client";
-import type { SessionCredentialStore } from "./credentials";
 import { getSession } from "../auth/sessionStore";
+import { useSession } from "../auth/SessionProvider";
+
+const publicSyntheticCorpusPins =
+  import.meta.env.VITE_SKLEGAL_PUBLIC_SYNTHETIC_PREVIEW === "1"
+    ? {
+        releaseId: "public-synthetic-release-v1",
+        projectionGeneration: 1,
+        coreWatermark: 1,
+      }
+    : undefined;
 
 const ApiContext = createContext<ApiClient | null>(null);
 
-export function ApiProvider(props: {
-  baseUrl: string;
-  credentials: SessionCredentialStore;
-  children: ReactNode;
-}) {
+export function ApiProvider(props: { baseUrl: string; children: ReactNode }) {
+  const { csrfToken, invalidate } = useSession();
   const client = useMemo(
     () =>
       new ApiClient({
         baseUrl: props.baseUrl,
-        credentials: props.credentials,
         tenantId: () => getSession()?.activeTenantId ?? "",
+        csrfToken: () => csrfToken,
+        onAuthenticationFailure: invalidate,
+        corpusProjectionPins: publicSyntheticCorpusPins,
       }),
-    [props.baseUrl, props.credentials],
+    [csrfToken, invalidate, props.baseUrl],
   );
   return (
     <ApiContext.Provider value={client}>{props.children}</ApiContext.Provider>

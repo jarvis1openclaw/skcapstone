@@ -1,0 +1,73 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:sklegal:v2-mvp:claim-projection:v1",
+  "title": "Canonical Claim and ledger projection reconciliation",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["tenant_id", "matter_id", "claim_id", "claim_version", "claim_status", "statement", "issue_id", "element_ids", "evidence_item_ids", "authority_ids", "ledger_projection"],
+  "properties": {
+    "tenant_id": {"type": "string", "format": "uuid"},
+    "matter_id": {"type": "string", "format": "uuid"},
+    "claim_id": {"type": "string", "format": "uuid"},
+    "claim_version": {"type": "integer", "minimum": 1},
+    "claim_status": {"enum": ["proposed", "under_review", "accepted", "challenged", "rejected", "withdrawn"]},
+    "statement": {"type": "string", "minLength": 1},
+    "issue_id": {"type": "string", "format": "uuid"},
+    "element_ids": {"type": "array", "items": {"type": "string", "format": "uuid"}, "uniqueItems": true},
+    "evidence_item_ids": {"type": "array", "items": {"type": "string", "format": "uuid"}, "uniqueItems": true},
+    "authority_ids": {"type": "array", "items": {"type": "string", "format": "uuid"}, "uniqueItems": true},
+    "ledger_projection": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["tenant_id", "matter_id", "claim_id", "projected_claim_version", "projected_claim_status", "legacy_migration", "policy_revision", "support", "counter_support", "applicability", "challenges", "review_history", "gate", "projection_state"],
+      "properties": {
+        "tenant_id": {"type": "string", "format": "uuid"},
+        "matter_id": {"type": "string", "format": "uuid"},
+        "claim_id": {"type": "string", "format": "uuid"},
+        "projected_claim_version": {"type": "integer", "minimum": 1},
+        "projected_claim_status": {"enum": ["proposed", "under_review", "accepted", "challenged", "rejected", "withdrawn"]},
+        "legacy_migration": {
+          "anyOf": [
+            {"$ref": "#/$defs/legacy_migration"},
+            {"type": "null"}
+          ]
+        },
+        "policy_revision": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+        "support": {"type": "array", "items": {"$ref": "#/$defs/source_span"}},
+        "counter_support": {"type": "array", "items": {"$ref": "#/$defs/source_span"}},
+        "applicability": {"type": "array", "items": {"type": "object"}},
+        "challenges": {"type": "array", "items": {"type": "object"}},
+        "review_history": {"type": "array", "items": {"type": "object"}},
+        "gate": {"type": ["object", "null"]},
+        "projection_state": {"enum": ["current", "stale", "unavailable"]}
+      }
+    }
+  },
+  "$defs": {
+    "legacy_migration": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["legacy_ledger_claim_id", "legacy_status", "mapped_claim_status", "mapping_revision"],
+      "properties": {
+        "legacy_ledger_claim_id": {"type": "string", "format": "uuid"},
+        "legacy_status": {"enum": ["proposed", "under_review", "supported", "challenged", "withdrawn"]},
+        "mapped_claim_status": {"enum": ["proposed", "under_review", "accepted", "challenged", "withdrawn"]},
+        "mapping_revision": {"const": "ledger-claim-to-claim-v1"}
+      }
+    },
+    "source_span": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["support_id", "source_id", "source_version", "content_sha256", "span_start", "span_end", "excerpt_sha256"],
+      "properties": {
+        "support_id": {"type": "string", "format": "uuid"},
+        "source_id": {"type": "string", "minLength": 1},
+        "source_version": {"type": "string", "minLength": 1},
+        "content_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+        "span_start": {"type": "integer", "minimum": 0},
+        "span_end": {"type": "integer", "minimum": 1},
+        "excerpt_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"}
+      }
+    }
+  }
+}

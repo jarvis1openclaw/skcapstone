@@ -9,10 +9,12 @@ from uuid import UUID, uuid4
 
 from fastapi import HTTPException, Request, status
 from sklegal_capauth import (
+    ApiCapabilityBoundary,
     AuditSink,
     AuthorizationDenied,
     AuthorizedContext,
     BoundaryScope,
+    Capability,
     CapabilityAuthorizer,
     CredentialFormatError,
     InMemoryAuditSink,
@@ -22,6 +24,7 @@ from sklegal_capauth import (
     PresentedCapability,
     PrincipalContext,
     ProtectedBoundary,
+    Purpose,
     SignatureVerificationCache,
     StaticTrustedIssuerBackend,
     TrustedIssuerBackend,
@@ -123,6 +126,26 @@ class ProtectedRouteDependency:
         self._principal_resolver = principal_resolver
         self._scope_resolver = scope_resolver
 
+    def for_api_operation(
+        self,
+        *,
+        operation_id: str,
+        capability: Capability,
+        purpose: Purpose,
+    ) -> ProtectedRouteDependency:
+        """Rebind a composed route to its reviewed canonical operation."""
+
+        return type(self)(
+            boundary=ApiCapabilityBoundary(
+                authorizer=self._boundary._authorizer,
+                route_name=operation_id,
+                capability=capability,
+                purpose=purpose,
+            ),
+            principal_resolver=self._principal_resolver,
+            scope_resolver=self._scope_resolver,
+        )
+
     async def __call__(self, request: Request) -> AuthorizedContext:
         try:
             principal = await _resolve(self._principal_resolver(request))
@@ -180,8 +203,16 @@ class ProtectedRouteDependency:
             return self._boundary.authorize(
                 principal=principal,
                 scope=scope,
-                correlation_id=uuid4(),
-                presented=presented,
+                correlation_id=getattr(request.state, "correlation_id", uuid4()),
+                presented=(
+                    presented
+                    if presented is not None
+                    else getattr(request.state, "browser_session", None).presented_for(
+                        request
+                    )
+                    if getattr(request.state, "browser_session", None) is not None
+                    else None
+                ),
             )
         except AuthorizationDenied as exc:
             raise HTTPException(
