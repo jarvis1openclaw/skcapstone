@@ -11,6 +11,27 @@ Fixes two defects found 03:50Z:
 import json,os,glob,subprocess,sys,time,fcntl,datetime,hashlib,collections,re,importlib.util
 from pathlib import Path
 
+def _required_lane_target(name, env=None):
+    values = os.environ if env is None else env
+    try:
+        value = int(values.get(name))
+    except (TypeError, ValueError):
+        value = -1
+    if value < 0:
+        raise SystemExit(
+            "BLOCKED|%s|missing or invalid non-negative integer" % name
+        )
+    return value
+
+
+def _slot_summary(lanes):
+    slots = " ".join(
+        "%s=%d/%d" % (lane["name"], len(lane["busy"]), lane["target"])
+        for lane in lanes
+    )
+    return "%s|total_free=%d" % (slots, sum(lane["free"] for lane in lanes))
+
+
 # Load this dependency-free module directly so the system Python job does not
 # initialize optional skcoord API dependencies such as CapAuth.
 _LIFECYCLE_PATH=Path(os.environ.get("SKCOORD_SRC",os.path.join(os.path.expanduser("~"),"work/skcoord/src")))/"skcoord/lifecycle_reassessment.py"
@@ -35,7 +56,8 @@ if not _LIFECYCLE_OK:
 HOST=os.uname().nodename
 ROTATION_HOSTS=("chiap01", "chiap02", "chiap03", "chiap04", "chiap08")
 SKC=os.path.expanduser("~/.skenv/bin/skcapstone")
-TARGET=8
+TARGET=_required_lane_target("SKFLEET_TARGET")
+GLM_TARGET=_required_lane_target("SKFLEET_GLM_TARGET")
 MAX_LAUNCH=int(os.environ.get("SKFLEET_MAX_LAUNCH","11"))
 DRY = "--go" not in sys.argv
 HOME=os.path.expanduser("~")
@@ -166,9 +188,9 @@ except (OSError,ValueError,TypeError):
 # idle legacy glm panes did nothing. A lane is a prefix, a model alias, a target.
 LANES=[
     {"name":"codex","prefix":"codex-auto-","model":"sk-codex",
-     "target":8},
+     "target":TARGET},
     {"name":"glm","prefix":"glm-auto-","model":os.environ.get("SKFLEET_GLM_MODEL","glm-4.6"),
-     "target":0 if glm_held else 3},
+     "target":0 if glm_held else GLM_TARGET},
     # Restored. needs_escalation() still exists and still marks a card whose
     # worker reported blocked_on=capability, but the lane it routes to had been
     # dropped, so those cards were marked for a destination that did not exist
@@ -186,8 +208,7 @@ for _L in LANES:
     _L["busy"]=[s for s in sessions if s.startswith(_L["prefix"])]
     _L["free"]=max(0,_L["target"]-len(_L["busy"]))
 free=sum(_L["free"] for _L in LANES)
-log(d,"SLOTS|%s|%s|total_free=%d"%(HOST,
-    " ".join("%s=%d/%d"%(L["name"],len(L["busy"]),L["target"]) for L in LANES),free))
+log(d, "SLOTS|%s|%s" % (HOST, _slot_summary(LANES)))
 
 # ---- worker liveness -------------------------------------------------------
 # A claim used to be reaped from elapsed time alone, which is wrong in both

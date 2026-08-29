@@ -22,9 +22,62 @@ def _load_functions(*names: str) -> dict[str, object]:
     }
     assert set(wanted) == set(names)
     module = ast.Module(body=[wanted[name] for name in names], type_ignores=[])
-    namespace: dict[str, object] = {}
+    namespace: dict[str, object] = {"os": os}
     exec(compile(module, str(ROTATE), "exec"), namespace)
     return namespace
+
+
+def test_exact_five_host_lane_targets_and_chiap08_dry_summary() -> None:
+    """Host profiles drive exact Codex and GLM ceilings."""
+    helpers = _load_functions("_required_lane_target", "_slot_summary")
+    target = helpers["_required_lane_target"]
+    profiles = {
+        "chiap01": (8, 3),
+        "chiap02": (8, 3),
+        "chiap03": (8, 3),
+        "chiap04": (4, 0),
+        "chiap08": (3, 0),
+    }
+    for host, expected in profiles.items():
+        env = {
+            "SKFLEET_TARGET": str(expected[0]),
+            "SKFLEET_GLM_TARGET": str(expected[1]),
+        }
+        actual = (target("SKFLEET_TARGET", env), target("SKFLEET_GLM_TARGET", env))
+        assert actual == expected, host
+
+    codex, glm = profiles["chiap08"]
+    lanes = [
+        {"name": name, "busy": [], "target": ceiling, "free": ceiling}
+        for name, ceiling in (("codex", codex), ("glm", glm), ("escalate", 2))
+    ]
+    assert helpers["_slot_summary"](lanes) == ("codex=0/3 glm=0/0 escalate=0/2|total_free=5")
+
+    source = ROTATE.read_text(encoding="utf-8")
+    assert 'TARGET=_required_lane_target("SKFLEET_TARGET")' in source
+    assert 'GLM_TARGET=_required_lane_target("SKFLEET_GLM_TARGET")' in source
+    assert '"target":TARGET' in source
+    assert '"target":0 if glm_held else GLM_TARGET' in source
+    assert '"target":int(os.environ.get("SKFLEET_ESC_TARGET","2"))' in source
+
+
+def test_lane_targets_fail_closed_when_missing_or_invalid() -> None:
+    """Missing, empty, non-integer, and negative targets stop rotation."""
+    target = _load_functions("_required_lane_target")["_required_lane_target"]
+    valid = {"SKFLEET_TARGET": "3", "SKFLEET_GLM_TARGET": "0"}
+    for name in valid:
+        for invalid in (None, "", "three", "-1"):
+            env = dict(valid)
+            if invalid is None:
+                env.pop(name)
+            else:
+                env[name] = invalid
+            try:
+                target(name, env)
+            except SystemExit as exc:
+                assert str(exc) == (f"BLOCKED|{name}|missing or invalid non-negative integer")
+            else:
+                raise AssertionError(f"{name}={invalid!r} did not fail closed")
 
 
 def test_task_only_coord_claim_excludes_itil_ids() -> None:
