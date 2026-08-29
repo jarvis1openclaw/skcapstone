@@ -34,7 +34,7 @@ def test_task_only_coord_claim_excludes_itil_ids() -> None:
     assert claimable({"id": "inc-0e190b2f", "kind": "incident"}) is False
     assert claimable({"id": "prb-41b9fb96", "kind": "problem"}) is False
     source = ROTATE.read_text(encoding="utf-8")
-    assert "if not _coord_task_claimable(core): continue" in source
+    assert "if not _coord_task_claimable(core):" in source
 
 
 def test_claim_refusal_is_not_a_race() -> None:
@@ -188,9 +188,9 @@ def test_existing_holds_reservations_capacity_and_cadence_remain() -> None:
     """The repair retains the scheduler's existing structural safety rails."""
     rotate = ROTATE.read_text(encoding="utf-8")
     watch = WATCH.read_text(encoding="utf-8")
-    assert '_NOT_CLAIMABLE = {"not-claimable", "sprint-container"}' in rotate
-    assert "if non_implementation(core,labels): continue" in rotate
-    assert "_pin = host_pin(core,labels)" in rotate
+    assert '_NOT_CLAIMABLE = {"not-claimable", "sprint-container", "do-not-claim"}' in rotate
+    assert "if non_implementation(folded_core, labels):" in rotate
+    assert "pin = host_pin(folded_core, labels)" in rotate
     assert 'MAX_LAUNCH=int(os.environ.get("SKFLEET_MAX_LAUNCH","11"))' in rotate
     assert 'remaining={lane["name"]:lane["free"] for lane in LANES}' in rotate
     assert "hosts=(chiap01 chiap02 chiap03 chiap04 chiap08)" in watch

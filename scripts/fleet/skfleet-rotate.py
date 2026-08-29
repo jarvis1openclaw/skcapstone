@@ -314,48 +314,242 @@ for _f in glob.glob(os.path.join(EVID,"*","actions.log")):
 # workers, which then spent ~80 seconds each discovering the card was already
 # done and correctly refusing. That was the real "stale pool" cost, and the race
 # was a symptom rather than the cause.
-_LC = {"claim": "claimed", "release_claim": "open", "unassign": "open",
-       "archive": "void", "complete": "complete", "void": "void"}
+_COLUMNS = {"backlog", "ready", "doing", "review", "done"}
+_NOT_CLAIMABLE = {"not-claimable", "sprint-container", "do-not-claim"}
+_OVERLAY_ACTIONS = {
+    "move": "move", "assign": "assign", "unassign": "unassign",
+    "add_label": "add_label", "remove_label": "remove_label",
+    "describe": "describe",
+}
+_claim_rows = {}
+_legacy_claim_rows = None
+
+
+def _strict_card_events(cid, fresh=False):
+    """Read one native CardStore stream, failing closed on malformed data."""
+    if not fresh and cid in _claim_rows:
+        return _claim_rows[cid]
+    path = os.path.join(CARDS, cid, "events")
+    rows = []
+    if os.path.isdir(path):
+        for name in sorted(os.listdir(path)):
+            if not name.endswith(".jsonl"):
+                continue
+            with open(os.path.join(path, name), encoding="utf-8") as fh:
+                for line in fh:
+                    if not line.strip():
+                        continue
+                    event = json.loads(line)
+                    if not isinstance(event, dict):
+                        raise ValueError("event is not an object")
+                    rows.append(event)
+    rows.sort(key=lambda e: (str(e.get("ts") or ""),
+                             str(e.get("writer") or ""), e.get("seq", 0)))
+    if not fresh:
+        _claim_rows[cid] = rows
+    return rows
+
+
+def _legacy_claimability_events(fresh=False):
+    """Return the sanctioned Board overlay and archive events by card ID."""
+    global _legacy_claim_rows
+    if _legacy_claim_rows is not None and not fresh:
+        return _legacy_claim_rows
+    out = {}
+    overlay = os.path.join(HOME, ".skcapstone/coordination/card_events")
+    for path in sorted(glob.glob(os.path.join(overlay, "*.jsonl"))):
+        try:
+            lines = open(path, encoding="utf-8", errors="replace")
+        except OSError:
+            continue
+        with lines:
+            for line in lines:
+                try:
+                    event = json.loads(line)
+                except Exception:
+                    continue
+                if not isinstance(event, dict):
+                    continue
+                action = _OVERLAY_ACTIONS.get(event.get("action"))
+                cid = event.get("card_id")
+                if action and isinstance(cid, str) and cid:
+                    row = dict(event)
+                    row["action"] = action
+                    out.setdefault(cid, []).append(row)
+    archive = os.path.join(HOME, ".skcapstone/coordination/archive")
+    for path in sorted(glob.glob(os.path.join(archive, "*.jsonl"))):
+        try:
+            lines = open(path, encoding="utf-8", errors="replace")
+        except OSError:
+            continue
+        with lines:
+            for line in lines:
+                try:
+                    entry = json.loads(line)
+                except Exception:
+                    continue
+                cid = entry.get("id") if isinstance(entry, dict) else None
+                if isinstance(cid, str) and cid:
+                    out.setdefault(cid, []).append({
+                        "ts": entry.get("archived_at", ""),
+                        "writer": entry.get("archived_by") or "archive",
+                        "seq": 0,
+                        "action": "archive",
+                    })
+    for rows in out.values():
+        rows.sort(key=lambda e: (str(e.get("ts") or ""),
+                                 str(e.get("writer") or ""), e.get("seq", 0)))
+    if not fresh:
+        _legacy_claim_rows = out
+    return out
+
+
+def _fold_claimability(core, rows):
+    """Fold only fields used by Board.claim_task and scheduler policy."""
+    state = {
+        "status": "backlog", "owner": None, "claim_revision": None,
+        "archived": False, "voided": False,
+        "title": str(core.get("title") or ""),
+        "labels": [str(x) for x in (core.get("initial_labels") or [])],
+        "dependencies": [str(x) for x in (core.get("dependencies") or [])],
+    }
+    ordered = sorted(rows, key=lambda e: (str(e.get("ts") or ""),
+                                          str(e.get("writer") or ""), e.get("seq", 0)))
+    for event in ordered:
+        action = event.get("action")
+        if action == "move":
+            column = str(event.get("column") or "").strip().lower()
+            if column in _COLUMNS:
+                state["status"] = column
+        elif action == "assign":
+            state["owner"] = event.get("owner")
+            state["claim_revision"] = None
+        elif action == "unassign":
+            state["owner"] = None
+            state["claim_revision"] = None
+        elif action == "release_claim":
+            owner = event.get("released_owner")
+            revision = event.get("expected_claim_revision")
+            if (
+                owner == state["owner"]
+                and revision == state["claim_revision"]
+                and owner
+                and revision
+            ):
+                state["owner"] = None
+                state["status"] = "backlog"
+                state["claim_revision"] = None
+        elif action == "claim":
+            owner = event.get("owner")
+            if not isinstance(owner, str) or not owner:
+                raise ValueError("claim owner is missing")
+            if (state["owner"] and state["owner"] != owner and
+                    state["status"] in {"ready", "doing", "review"}):
+                continue
+            state["owner"] = owner
+            state["status"] = "doing"
+            state["claim_revision"] = event.get("claim_revision") or event.get("event_id")
+        elif action == "complete":
+            state["status"] = "done"
+            state["owner"] = None
+            state["claim_revision"] = None
+        elif action == "void":
+            state["voided"] = True
+        elif action == "archive":
+            state["archived"] = True
+        elif action == "reopen":
+            state["archived"] = False
+            column = str(event.get("column") or "").strip().lower()
+            if column in _COLUMNS:
+                state["status"] = column
+        elif action == "add_label":
+            label = event.get("label")
+            if isinstance(label, str) and label and label not in state["labels"]:
+                state["labels"].append(label)
+        elif action == "remove_label":
+            label = event.get("label")
+            state["labels"] = [x for x in state["labels"] if x != label]
+        elif action == "describe" and event.get("title") is not None:
+            state["title"] = str(event.get("title"))
+        elif action in ("add_dependency", "remove_dependency"):
+            dep = _dependency_value(event)
+            if action == "add_dependency" and dep and dep not in state["dependencies"]:
+                state["dependencies"].append(dep)
+            elif action == "remove_dependency" and dep:
+                state["dependencies"] = [x for x in state["dependencies"] if x != dep]
+    return state
+
+
+def _claimability_reason(core, state):
+    """Return the exact reason Board or scheduler policy rejects this state."""
+    folded_core = dict(core)
+    folded_core["title"] = state["title"]
+    labels = state["labels"]
+    if not _coord_task_claimable(core):
+        return "non-task"
+    if state["voided"]:
+        return "void"
+    if state["archived"]:
+        return "archive"
+    if state["status"] == "done":
+        return "done"
+    if state["owner"] and state["status"] in {"ready", "doing", "review"}:
+        return "owned-%s" % state["status"]
+    if non_implementation(folded_core, labels):
+        return "human-gate"
+    if "foreign-project" in {str(x).strip().lower() for x in labels}:
+        return "foreign-project"
+    if _NOT_CLAIMABLE & ({str(x).strip().lower() for x in labels} |
+                         {str(x).strip().lower() for x in (core.get("tags") or [])}):
+        return "not-claimable"
+    if any(not _dep_satisfied(dep) for dep in state["dependencies"]):
+        return "dependency"
+    pin = host_pin(folded_core, labels)
+    return "host-pin:%s" % pin if pin and pin != HOST else "claimable"
+
+
+def _authoritative_card_state(cid, core=None, fresh=False):
+    """Read and fold one card without applying dependency or scheduler policy."""
+    if core is None:
+        with open(os.path.join(CARDS, cid, "core.json"), encoding="utf-8") as fh:
+            core = json.load(fh)
+    if (not isinstance(core, dict) or not isinstance(core.get("id"), str) or
+            core.get("id") != cid):
+        raise ValueError("core identity mismatch")
+    rows = list(_strict_card_events(cid, fresh=fresh))
+    rows.extend(_legacy_claimability_events(fresh=fresh).get(cid, []))
+    return core, _fold_claimability(core, rows)
+
+
+def authoritative_claimability(cid, core=None, fresh=False):
+    """Return the one claimability decision used by pool and preclaim."""
+    try:
+        core, state = _authoritative_card_state(cid, core=core, fresh=fresh)
+    except Exception as exc:
+        return {"claimable": False, "reason": "malformed:%s" % type(exc).__name__}
+
+    folded_core = dict(core)
+    folded_core["title"] = state["title"]
+    labels = state["labels"]
+    reason = _claimability_reason(core, state)
+    state.update({"claimable": reason == "claimable", "reason": reason,
+                  "core": folded_core, "host_pin": host_pin(folded_core, labels)})
+    return state
 
 
 def lifecycle_state(cid):
-    """Last lifecycle state, honouring the kanban column as well as the actions.
-
-    A card can be finished two ways: a `complete` action, or a `move` into the
-    `done` column. This fold used to read only the actions, so anything finished
-    via the column still looked OPEN and got launched again and again. Every
-    worker then correctly refused it, because the coordination CLI does know:
-
-        Card 128ce1c2 is already marked as DONE and cannot be claimed.
-        Error: Task 128ce1c2 already done by unknown owner
-
-    The worker burns a slot, records that, and stops exactly as instructed.
-    Three of those and the card is banned by the launch-count backoff, so the
-    rotation ends up punishing a card for being finished. Measured 2026-08-27:
-    322 cards read as not-finished here while their column said done.
-
-    The column is folded as a LAST VALUE, not as a sticky terminal, so moving a
-    card back out of `done` reopens it. An explicit `complete` or `void` action
-    still wins over the column, which keeps those genuinely terminal.
-    """
-    st = "open"
-    col = None
-    for e in event_rows(cid):
-        a = e.get("action")
-        if a == "move":
-            c = str(e.get("column") or "").strip().lower()
-            if c:
-                col = c
-            continue
-        if a in _LC:
-            if st == "void":
-                continue
-            if st == "complete" and a not in ("void", "archive"):
-                continue
-            st = _LC[a]
-    if st not in ("complete", "void") and col == "done":
+    """Return the scheduler lifecycle derived from the authoritative fold."""
+    try:
+        _core, decision = _authoritative_card_state(cid)
+    except Exception:
+        return "ambiguous"
+    if decision["status"] == "done":
         return "complete"
-    return st
+    if decision["archived"] or decision["voided"]:
+        return "void"
+    if decision["owner"] and decision["status"] in {"ready", "doing", "review"}:
+        return "claimed"
+    return "open"
 
 
 # ---- BLOCKED backoff ---------------------------------------------------------
@@ -521,28 +715,8 @@ def _acts_fresh(cid):
     return out
 
 def _still_assignable(cid):
-    """True if the card is still open right now, re-read from disk."""
-    rows = _acts_fresh(cid)
-    # seq is per-writer-file, so cross-writer ordering must use ts
-    rows.sort(key=lambda e: (e.get("ts", ""), str(e.get("writer", "")), str(e.get("event_id", ""))))
-    st = "open"
-    for e in rows:
-        a = e.get("action")
-        if a in _LC:
-            if st == "void":
-                continue
-            if st == "complete" and a not in ("void", "archive"):
-                continue
-            st = _LC[a]
-    if st != "open": return False
-    try: core=json.load(open(os.path.join(CARDS,cid,"core.json")))
-    except Exception: return False
-    labels=folded_labels(cid,core)
-    if non_implementation(core,labels): return False
-    if "foreign-project" in {str(item).strip().lower() for item in labels}: return False
-    pin=host_pin(core,labels)
-    if pin and pin != HOST: return False
-    return not any(not _dep_satisfied(dep) for dep in folded_dependencies(cid,core,fresh=True))
+    """Return the fresh result from the same predicate used by the pool."""
+    return authoritative_claimability(cid, fresh=True)["claimable"]
 
 _BLOCKED_CATEGORIES = ("dependency", "card", "human", "capability")
 _BLOCKED_ON_RE = re.compile(r"blocked[_\s-]?on", re.I)
@@ -1214,14 +1388,22 @@ def close_reviewed_parents():
 if not DRY:
     close_reviewed_parents()
 
-_NOT_CLAIMABLE = {"not-claimable", "sprint-container"}
 _PINNED_IDS=set()
-pool=[]; blocked=0; foreign_skipped=0; skipped_unclaimable=0; skipped_terminal=0; skipped_blocked=0; skipped_review=0; not_claimable_skipped=0; pinned_elsewhere=0
+pool=[]
+blocked=0
+foreign_skipped=0
+skipped_unclaimable=0
+skipped_terminal=0
+skipped_blocked=0
+skipped_review=0
+not_claimable_skipped=0
+pinned_elsewhere=0
+skipped_claimed=0
+claimability_errors=[]
 for cd in sorted(glob.glob(CARDS+"/*")):
     cid=os.path.basename(cd)
     core_p=os.path.join(cd,"core.json")
     if not os.path.exists(core_p): continue
-    if lifecycle_state(cid) != "open": continue   # LAST state, not "ever claimed"
     if cid in excluded: continue
     if unclaimable(cid): skipped_unclaimable+=1; continue
     if itil_terminal(cid): skipped_terminal+=1; continue
@@ -1233,56 +1415,33 @@ for cd in sorted(glob.glob(CARDS+"/*")):
         else: skipped_blocked+=1
         continue
     try: core=json.load(open(core_p))
-    except: continue
-    # coord claim is a task command. ITIL incidents and problems have their own
-    # lifecycle and must not be sent through a command that rejects their IDs.
-    if not _coord_task_claimable(core): continue
-    # Keep the closed kind allowlist as a stable integration seam for adjacent
-    # selector guards. The task-only check above is the stricter claim boundary.
-    if core.get("kind") not in ("task","incident","problem"): continue
-    title=str(core.get("title") or "")
-    labels=folded_labels(cid,core)
+    except Exception:
+        claimability_errors.append("%s:malformed-core"%cid)
+        continue
+    decision=authoritative_claimability(cid,core)
+    if not decision["claimable"]:
+        reason=decision["reason"]
+        if reason.startswith("malformed:"):
+            claimability_errors.append("%s:%s"%(cid,reason))
+        elif reason in ("done","void","archive"):
+            skipped_terminal+=1
+        elif reason.startswith("owned-"):
+            skipped_claimed+=1
+        elif reason=="dependency":
+            blocked+=1
+        elif reason.startswith("host-pin:"):
+            pinned_elsewhere+=1
+        elif reason=="foreign-project":
+            foreign_skipped+=1
+        elif reason=="not-claimable":
+            not_claimable_skipped+=1
+        continue
+    core=decision["core"]
+    title=decision["title"]
+    labels=decision["labels"]
     blob=(title+" "+json.dumps(labels)).upper()
-    # Match the [HUMAN] TAG, not the word anywhere in the title. The loose test
-    # excluded any card whose title merely mentioned humans, which on 2026-08-27
-    # was 5 cards, 3 of them ordinary agent work that had been silently skipped:
-    #   b7668c11 [SKCP-05F8-ACT][M] Activate approved durable human session envelope
-    #   a813e6a0 [QWEN38-POOL-CUTOVER-PACKET-01][REVIEW] Prepare no-action human ...
-    #   f0940676 [SKGW-REPLICA-ADOPTION-PACKET][REVIEW] Prepare no-action human ...
-    # Those three PREPARE a packet for a human. They are not themselves gates, and
-    # a starved pool cannot afford to skip work because of a word in its title.
-    if non_implementation(core,labels): continue
-    # Cards belonging to a different project that merely share this board. Casey's
-    # GREG-BREAK-HOUSE tree is 35 cards and our fleet spent 33 claims on it between
-    # 2026-08-26 and 2026-08-27 before anyone noticed it was not our work. The label
-    # is deliberately generic rather than a GBH string match, so the next foreign
-    # tree can be fenced by labelling it instead of by editing this file.
-    if "foreign-project" in {str(item).strip().lower() for item in labels}: foreign_skipped+=1; continue
-    # A card the board has explicitly marked unworkable. Sprint containers say so
-    # in their own descriptions, e.g. 9535bc80: "Planning and review container
-    # only. Do not claim as implementation work." The tags existed and the rotation
-    # had never read them. 28 cards carry one.
-    #
-    # 2b614910 is the consequence: a sprint-container tagged not-claimable that a
-    # worker claimed on 2026-08-22 and never released. The Board claim store has no
-    # record of it, correctly, so `coord release-claim` answers "Already released"
-    # and the CardStore claim cannot be cleared through a supported command at all.
-    # The reaper then retried it 455 times.
-    #
-    # Skipping these stops the fleet spending slots on work it has been told not to
-    # do, and stops it manufacturing claims that nothing can release.
-    _nc = {str(x).strip().lower() for x in (labels or ())} | \
-          {str(x).strip().lower() for x in (core.get("tags") or ())}
-    if _NOT_CLAIMABLE & _nc:
-        not_claimable_skipped += 1; continue
     if title.startswith("CMDB drift"): continue
-    deps=folded_dependencies(cid,core)
-    if any(not _dep_satisfied(str(dp)) for dp in deps):
-        blocked+=1; continue          # <-- the defect fixed here
-    # narrow to the owning host when the card names one that actually runs workers
-    _pin = host_pin(core,labels)
-    if _pin and _pin != HOST:
-        pinned_elsewhere += 1; continue
+    _pin=decision["host_pin"]
     if _pin == HOST:
         _PINNED_IDS.add(cid)
     up=title.upper().lstrip("[")
@@ -1293,7 +1452,7 @@ for cd in sorted(glob.glob(CARDS+"/*")):
     if up.startswith("SKLEGAL") or "SKLEGAL" in blob: lane=0
     elif any(up.startswith(e) for e in ENG): lane=1
     else: lane=2
-    pool.append([lane,PRI.get(str(core.get("initial_priority")),4),cid,core])
+    pool.append([lane,PRI.get(str(core.get("initial_priority")),4),cid,core,labels])
 
 # How many OTHER cards would this card unblock if it completed? A card sitting at
 # the head of a dependency chain is worth far more than an isolated one, because
@@ -1312,12 +1471,19 @@ for row in pool: row.append(unblocks.get(row[2],0))
 pool_ids=",".join(sorted(row[2] for row in pool)) or "-"
 log(d,"POOL_IDS|%s|ids=%s"%(HOST,pool_ids))
 # lane, then most-unblocking first, then priority, then stable id
-pool.sort(key=lambda x:(x[0],-x[4],x[1],x[2]))
+pool.sort(key=lambda x:(x[0],-x[5],x[1],x[2]))
 lc={0:0,1:0,2:0}
 for x in pool: lc[x[0]]+=1
-top=pool[0][4] if pool else 0
-log(d,"POOL|%s|ready=%d sklegal=%d eng=%d biz=%d dep_blocked=%d unclaimable=%d itil_closed=%d blocked_backoff=%d awaiting_review=%d pinned_elsewhere=%d foreign=%d not_claimable=%d top_unblocks=%d"
-      %(HOST,len(pool),lc[0],lc[1],lc[2],blocked,skipped_unclaimable,skipped_terminal,skipped_blocked,skipped_review,pinned_elsewhere,foreign_skipped,not_claimable_skipped,top))
+top=pool[0][5] if pool else 0
+if claimability_errors:
+    log(d,"CLAIMABILITY_EXCLUDED|%s|%s"%(HOST,",".join(claimability_errors)))
+log(d,"POOL|%s|ready=%d sklegal=%d eng=%d biz=%d dep_blocked=%d "
+      "unclaimable=%d claimed=%d itil_closed=%d blocked_backoff=%d "
+      "awaiting_review=%d pinned_elsewhere=%d foreign=%d not_claimable=%d "
+      "top_unblocks=%d"
+      %(HOST,len(pool),lc[0],lc[1],lc[2],blocked,skipped_unclaimable,
+        skipped_claimed,skipped_terminal,skipped_blocked,skipped_review,
+        pinned_elsewhere,foreign_skipped,not_claimable_skipped,top))
 
 # Partition the CARD SPACE by hash, not by pool index. Index striding assumes all
 # three hosts see an identical pool at the same instant; ~/.skcapstone is Syncthing
@@ -1342,11 +1508,42 @@ owned=[x for x in pool if owns(x[2])]
 # one identity, and one worker. Safe work stealing requires a separate centralized
 # admission design.
 _ESCALATE_LABEL="needs-stronger-model"
+_LANE_ONLY_LABELS={
+    "codex-only":"codex",
+    "glm-only":"glm",
+    "escalation-only":"escalate",
+}
 
 _CAPABILITY_VERDICT_RE = re.compile(
     r"blocked_on[=: |]+\s*capability\b|^\s*BLOCKED\s*\|\s*capability\b", re.I)
 
-def needs_escalation(cid, core=None):
+def lane_compatibility(labels, escalation_required=False):
+    """Return compatible lanes and a stable routing reason."""
+    normalized={str(label).strip().lower() for label in (labels or [])}
+    required={lane for label,lane in _LANE_ONLY_LABELS.items() if label in normalized}
+    if escalation_required:
+        required.add("escalate")
+    if len(required)>1:
+        return (),"conflicting-lane-only:%s"%",".join(sorted(required))
+    if required:
+        lane=next(iter(required))
+        return (lane,),"required-lane:%s"%lane
+    return ("glm","codex"),"ordinary"
+
+
+def select_compatible_lane(labels, escalation_required, lane_order, remaining):
+    """Choose the first free compatible lane without consuming another lane."""
+    compatible,reason=lane_compatibility(labels,escalation_required)
+    if not compatible:
+        return None,reason
+    for lane in lane_order:
+        name=lane["name"] if isinstance(lane,dict) else str(lane)
+        if name in compatible and remaining.get(name,0)>0:
+            return name,"compatible"
+    return None,"no-free-lane:%s"%",".join(compatible)
+
+
+def needs_escalation(cid, core=None, labels=None):
     """True if this card has exhausted the ordinary lanes and needs a stronger model.
 
     Two ways to qualify, and the second is the one that matters.
@@ -1362,8 +1559,9 @@ def needs_escalation(cid, core=None):
     handed back to the model that refused them, one of them eight times, because
     nothing converted the signal into a routing decision.
     """
-    try: labels=folded_labels(cid, core or {})
-    except Exception: labels=[]
+    if labels is None:
+        try: labels=folded_labels(cid, core or {})
+        except Exception: labels=[]
     if _ESCALATE_LABEL in {str(x).strip().lower() for x in (labels or [])}:
         return True
     try:
@@ -1376,6 +1574,7 @@ picks=[]; _i=0
 remaining={lane["name"]:lane["free"] for lane in LANES}
 lane_order=sorted(LANES,key=lambda lane:0 if lane["name"]=="glm" else 1)
 _esc_waiting=0
+_lane_deferred=collections.Counter()
 # Lane affinity, in both directions. An escalation card may go ONLY to the escalate
 # lane, because returning it to a lane that already refused it just re-derives the
 # same verdict. The escalate lane takes ONLY escalation cards, because the strong
@@ -1387,26 +1586,27 @@ _esc_waiting=0
 # card queued behind it.
 while _i<len(owned) and len(picks)<MAX_LAUNCH:
     _card=owned[_i]; _i+=1
-    _esc=needs_escalation(_card[2], _card[3])
-    _lane=None
-    card_lane_order=(sorted(LANES,key=lambda lane:0 if lane["name"]=="codex" else 1)
-                     if _esc else lane_order)
-    for lane in card_lane_order:
-        if remaining[lane["name"]]<=0: continue
-        _lane=lane; break
-    if _lane is None:
-        if _esc: _esc_waiting+=1
+    _labels=_card[4]
+    _esc=needs_escalation(_card[2], _card[3], _labels)
+    _lane_name,_defer=select_compatible_lane(_labels,_esc,lane_order,remaining)
+    if _lane_name is None:
+        _lane_deferred[_defer]+=1
+        if _defer=="no-free-lane:escalate": _esc_waiting+=1
         continue
+    _lane=next(lane for lane in LANES if lane["name"]==_lane_name)
     picks.append((_lane,_card)); remaining[_lane["name"]]-=1
+if _lane_deferred:
+    log(d,"LANE_DEFER|%s|%s"%(HOST,",".join(
+        "%s=%d"%(reason,_lane_deferred[reason]) for reason in sorted(_lane_deferred))))
 if _esc_waiting:
     log(d,"ESCALATE_QUEUED|%s|%d card(s) need the stronger model; escalate lane full"
         %(HOST,_esc_waiting))
 if not picks:
     log(d,"NOOP|%s|no dependency-clear cards"%HOST); sys.exit(0)
 
-raced=0; claim_refused=0
+raced=0; lane_drift=0; claim_refused=0
 logdir=os.path.join(HOME,".skcapstone/fleet/logs"); os.makedirs(logdir,exist_ok=True)
-for _LANE,(_,_,cid,core,_nb) in picks:
+for _LANE,(_,_,cid,core,_labels,_nb) in picks:
     ac="\n".join("  %d. %s"%(i+1,x) for i,x in enumerate(core.get("acceptance_criteria") or []))
     brief=("Work only SKCapstone card %s. The fleet selector has already claimed it "
       "for your exact agent identity. Verify that ownership before working and never "
@@ -1491,17 +1691,28 @@ for _LANE,(_,_,cid,core,_nb) in picks:
       "absence of a PR is a recorded decision rather than an omission.\n"
       "- Never use an em dash or en dash.\n") % (cid,cid,core.get("kind"),core.get("title"),core.get("description"),ac)
     name="pi-%s-%s-%s"%(_LANE["name"],HOST,cid); sess="%s%s"%(_LANE["prefix"],cid)
-    model=ESC_MODEL if _LANE["name"]=="codex" and needs_escalation(cid,core) else _LANE["model"]
+    model=_LANE["model"]
     workspace=os.path.join(HOME,".skcapstone/fleet/workspaces",name)
     os.makedirs(workspace,exist_ok=True)
     bf=os.path.join(logdir,"brief-%s.txt"%cid); open(bf,"w").write(brief)
     lf=os.path.join(logdir,"%s-%s.log"%(cid,STAMP))
     if DRY:
         log(d,"WOULD_LAUNCH|%s|%s|%s|lane=%s|model=%s|%s"%(HOST,sess,cid,_LANE["name"],model,str(core.get("title"))[:40])); continue
-    # last-moment re-check: the pool may be a minute old by now
-    if _classify_claim_outcome(_still_assignable(cid)) == "raced":
+    # Last-moment re-check through the same fold that built the pool.
+    fresh_claimability=authoritative_claimability(cid,fresh=True)
+    if _classify_claim_outcome(fresh_claimability["claimable"]) == "raced":
         raced += 1
-        log(d,"SKIPPED_RACED|%s|%s|%s|another writer finished or claimed it since the pool was built"%(HOST,sess,cid))
+        log(d,"SKIPPED_RACED|%s|%s|%s|reason=%s"%
+            (HOST,sess,cid,fresh_claimability["reason"]))
+        continue
+    fresh_escalation=needs_escalation(
+        cid,fresh_claimability["core"],fresh_claimability["labels"])
+    compatible,affinity_reason=lane_compatibility(
+        fresh_claimability["labels"],fresh_escalation)
+    if _LANE["name"] not in compatible:
+        lane_drift += 1
+        log(d,"SKIPPED_LANE_RACE|%s|%s|%s|selected=%s|reason=%s"%
+            (HOST,sess,cid,_LANE["name"],affinity_reason))
         continue
     claim=subprocess.run([SKC,"coord","claim",cid,"--agent",name],capture_output=True,text=True)
     claimed_owner,_claimed_at,claimed_revision=_current_claim_identity_fresh(cid)
@@ -1558,5 +1769,8 @@ except Exception as _exc:
 
 if raced:
     log(d,"RACED|%s|%d card(s) finished between pool build and launch"%(HOST,raced))
+if lane_drift:
+    log(d,"LANE_RACED|%s|%d card(s) changed lane compatibility before claim"%
+        (HOST,lane_drift))
 if claim_refused:
     log(d,"CLAIM_REFUSED_TOTAL|%s|%d claim command(s) refused or not visible in the authoritative fold"%(HOST,claim_refused))
