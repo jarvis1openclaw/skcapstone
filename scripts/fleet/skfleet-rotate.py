@@ -715,13 +715,13 @@ def _load_outcomes():
             _outcomes[cid]=(ts,value)
 
     for cid,rows in _load_evidence_events().items():
-        blocked_category=None; blocked_referent=None; blocked_artifact=None
-        blocked_digest=None; blocked_events=[]
+        blocked_parts={}
         for e in rows:
             if e.get("action") != "link": continue
             fk = _fold_key(e.get("link_key"))
             val = str(e.get("link_value") or "")
             if any(o in fk for o in _OUTCOME_KEYS):
+                blocked_parts.clear()
                 # A link named verdict_artifact is not an outcome. Several such
                 # paths and hashes sort after the real verdict and used to erase it.
                 match=_OUTCOME_VALUE_RE.match(val) or _PIPE_OUTCOME_RE.search(val)
@@ -729,23 +729,32 @@ def _load_outcomes():
                 if not _OUTCOME_VALUE_RE.match(val): val=match.group(1)
                 record(cid,e,val,0)
                 continue
-            if fk=="blocked_on" and val.lower() in _BLOCKED_CATEGORIES:
-                blocked_category=val.lower(); blocked_events.append(e)
-            elif fk=="referent" or "blocked_referent" in fk:
-                blocked_referent=val.lower(); blocked_events.append(e)
-            elif fk in ("evidence","blocked_evidence") and val:
-                blocked_artifact=val; blocked_events.append(e)
-            elif fk in ("evidence_sha256","blocked_evidence_sha256"):
-                blocked_digest=val.lower(); blocked_events.append(e)
-        # Some validators correctly refused a bare verdict link, leaving the
-        # four authoritative BLOCKED links. Join that complete evidence bundle
-        # here instead of rerunning the card forever. Partial bundles do nothing.
-        if (blocked_category and blocked_referent and blocked_artifact and
-                re.fullmatch(r"[0-9a-f]{64}",blocked_digest or "")):
-            event=max(blocked_events,key=lambda item:(_ts_epoch(item.get("ts")),
-                      str(item.get("writer") or ""),str(item.get("event_id") or "")))
-            record(cid,event,"BLOCKED blocked_on=%s referent=%s"%
-                   (blocked_category,blocked_referent),1)
+            writer=str(e.get("writer") or "")
+            if not writer:
+                continue
+            if fk=="blocked_on":
+                if val.lower() in _BLOCKED_CATEGORIES:
+                    blocked_parts[writer]={"blocked_on":val.lower()}
+                else:
+                    blocked_parts.pop(writer,None)
+                continue
+            field=("referent" if fk=="referent" or "blocked_referent" in fk else
+                   "evidence" if fk in ("evidence","blocked_evidence") else
+                   "evidence_sha256" if fk in (
+                       "evidence_sha256","blocked_evidence_sha256") else None)
+            part=blocked_parts.get(writer)
+            expected=("referent","evidence","evidence_sha256")
+            if not part or field!=expected[len(part)-1] or not val:
+                blocked_parts.pop(writer,None)
+                continue
+            if field=="evidence_sha256" and not re.fullmatch(r"[0-9a-fA-F]{64}",val):
+                blocked_parts.pop(writer,None)
+                continue
+            part[field]=val.lower() if field!="evidence" else val
+            if field=="evidence_sha256":
+                record(cid,e,"BLOCKED blocked_on=%s referent=%s"%
+                       (part["blocked_on"],part["referent"]),1)
+                blocked_parts.pop(writer,None)
     native_ids=set(_load_evidence_events())
     native_ids.update(os.path.basename(path) for path in glob.glob(os.path.join(CARDS,"*"))
                       if os.path.isdir(path))

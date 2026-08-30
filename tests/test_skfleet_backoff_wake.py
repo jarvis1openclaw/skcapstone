@@ -267,6 +267,58 @@ def test_regression_cd4f9506_split_blocked_evidence_and_reopen(tmp_path: Path) -
     assert namespace["blocked_backoff"](card) is False
 
 
+def test_later_pass_does_not_complete_stale_blocked_fragments(tmp_path: Path) -> None:
+    card = "abcd1234"
+    for pass_writer in ("blocked-worker", "pass-worker"):
+        case = tmp_path / pass_writer
+        case.mkdir()
+        legacy = [
+            {
+                "card_id": card,
+                "action": "link",
+                "writer": "blocked-worker",
+                "ts": "2026-08-30T01:00:00+00:00",
+                "link_key": "blocked_on",
+                "link_value": "dependency",
+            },
+            {
+                "card_id": card,
+                "action": "link",
+                "writer": "blocked-worker",
+                "ts": "2026-08-30T01:00:01+00:00",
+                "link_key": "referent",
+                "link_value": "card:deadbeef",
+            },
+            {
+                "card_id": card,
+                "action": "link",
+                "writer": pass_writer,
+                "ts": "2026-08-30T02:00:00+00:00",
+                "link_key": "verdict",
+                "link_value": "PASS_FOR_REVIEW",
+            },
+            {
+                "card_id": card,
+                "action": "link",
+                "writer": pass_writer,
+                "ts": "2026-08-30T02:00:01+00:00",
+                "link_key": "evidence",
+                "link_value": "evidence/new-pass.json",
+            },
+            {
+                "card_id": card,
+                "action": "link",
+                "writer": pass_writer,
+                "ts": "2026-08-30T02:00:02+00:00",
+                "link_key": "evidence_sha256",
+                "link_value": "a" * 64,
+            },
+        ]
+        namespace = _native_namespace(case, {card: []}, legacy)
+        assert namespace["_load_outcomes"]()[card][1] == "PASS_FOR_REVIEW"
+        assert namespace["awaiting_review"](card) is True
+
+
 def test_actionable_reason_requires_one_category_and_exact_referents(
     board: BackoffHarness,
 ) -> None:
