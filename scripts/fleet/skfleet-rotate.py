@@ -647,6 +647,21 @@ def _load_evidence_events():
 def _native_outcome_value(event):
     """Return one safe outcome value from a native CardStore verdict event."""
     payload=event.get("payload") if isinstance(event.get("payload"),dict) else {}
+    # Early BLOCKED writers used action=blocked and put the complete contract in
+    # the blocked_on object. Treat that object as evidence only when it carries
+    # the category, referent, artifact, and artifact hash together. Lifecycle
+    # state and a bare link never manufacture a verdict.
+    if event.get("action")=="blocked" and isinstance(event.get("blocked_on"),dict):
+        blocked=event["blocked_on"]
+        digest=str(blocked.get("evidence_sha256") or "")
+        artifact=str(blocked.get("evidence") or "")
+        if (str(blocked.get("verdict") or "").upper()=="BLOCKED" and artifact and
+                re.fullmatch(r"[0-9a-fA-F]{64}",digest)):
+            payload=blocked
+            event={"verdict":"BLOCKED","blocked_on":blocked.get("blocked_on"),
+                   "referent":blocked.get("referent")}
+        else:
+            return _INVALID_NATIVE_OUTCOME
 
     def field(name):
         values=[]
@@ -700,17 +715,37 @@ def _load_outcomes():
             _outcomes[cid]=(ts,value)
 
     for cid,rows in _load_evidence_events().items():
+        blocked_category=None; blocked_referent=None; blocked_artifact=None
+        blocked_digest=None; blocked_events=[]
         for e in rows:
             if e.get("action") != "link": continue
             fk = _fold_key(e.get("link_key"))
-            if not any(o in fk for o in _OUTCOME_KEYS): continue
             val = str(e.get("link_value") or "")
-            # A link named verdict_artifact is not an outcome. Several such
-            # paths and hashes sort after the real verdict and used to erase it.
-            match=_OUTCOME_VALUE_RE.match(val) or _PIPE_OUTCOME_RE.search(val)
-            if not match: continue
-            if not _OUTCOME_VALUE_RE.match(val): val=match.group(1)
-            record(cid,e,val,0)
+            if any(o in fk for o in _OUTCOME_KEYS):
+                # A link named verdict_artifact is not an outcome. Several such
+                # paths and hashes sort after the real verdict and used to erase it.
+                match=_OUTCOME_VALUE_RE.match(val) or _PIPE_OUTCOME_RE.search(val)
+                if not match: continue
+                if not _OUTCOME_VALUE_RE.match(val): val=match.group(1)
+                record(cid,e,val,0)
+                continue
+            if fk=="blocked_on" and val.lower() in _BLOCKED_CATEGORIES:
+                blocked_category=val.lower(); blocked_events.append(e)
+            elif fk=="referent" or "blocked_referent" in fk:
+                blocked_referent=val.lower(); blocked_events.append(e)
+            elif fk in ("evidence","blocked_evidence") and val:
+                blocked_artifact=val; blocked_events.append(e)
+            elif fk in ("evidence_sha256","blocked_evidence_sha256"):
+                blocked_digest=val.lower(); blocked_events.append(e)
+        # Some validators correctly refused a bare verdict link, leaving the
+        # four authoritative BLOCKED links. Join that complete evidence bundle
+        # here instead of rerunning the card forever. Partial bundles do nothing.
+        if (blocked_category and blocked_referent and blocked_artifact and
+                re.fullmatch(r"[0-9a-f]{64}",blocked_digest or "")):
+            event=max(blocked_events,key=lambda item:(_ts_epoch(item.get("ts")),
+                      str(item.get("writer") or ""),str(item.get("event_id") or "")))
+            record(cid,event,"BLOCKED blocked_on=%s referent=%s"%
+                   (blocked_category,blocked_referent),1)
     native_ids=set(_load_evidence_events())
     native_ids.update(os.path.basename(path) for path in glob.glob(os.path.join(CARDS,"*"))
                       if os.path.isdir(path))
@@ -721,7 +756,7 @@ def _load_outcomes():
                       str(event.get("event_id") or ""))
             identities[identity].append(event)
         for rows in identities.values():
-            verdicts=[event for event in rows if event.get("action")=="verdict"]
+            verdicts=[event for event in rows if event.get("action") in ("verdict","blocked")]
             if not verdicts: continue
             signatures={json.dumps({
                 "event":{
@@ -1024,6 +1059,12 @@ def blocked_backoff(cid):
     # Missing or mixed blocker metadata fails closed. Guessing at its meaning
     # would turn an unresolved human or dependency hold into execution.
     if ts and re.match(r"^\s*BLOCKED", val, re.I):
+        verdict_epoch=_ts_epoch(ts)
+        # Reopen is the explicit operator escape hatch. It must be newer than
+        # the authoritative BLOCKED evidence, not merely present in history.
+        if any(event.get("action")=="reopen" and
+               _ts_epoch(event.get("ts"))>verdict_epoch for event in event_rows(cid)):
+            return False
         reason=_latest_blocked_reason(cid,ts,val)
         if not reason: return True
         # Capability is a routing signal, not a dependency or approval hold. It
@@ -1643,6 +1684,9 @@ for cd in sorted(glob.glob(CARDS+"/*")):
     if unclaimable(cid): skipped_unclaimable+=1; continue
     if itil_terminal(cid): skipped_terminal+=1; continue
     if blocked_backoff(cid):
+        if DRY:
+            log(d,"DRY_SELECTION|%s|%s|excluded=authoritative-blocked-unchanged"%
+                (HOST,cid))
         # Split the two, because one of them is success. A card that recorded
         # PASS_FOR_REVIEW is waiting on a reviewer, not refusing to work, and
         # reporting it as blocked hides a finished candidate in the failure count.
@@ -1755,10 +1799,42 @@ _LANE_ONLY_LABELS={
 _CAPABILITY_VERDICT_RE = re.compile(
     r"blocked_on[=: |]+\s*capability\b|^\s*BLOCKED\s*\|\s*capability\b", re.I)
 
-def lane_compatibility(labels, escalation_required=False, qwen_allowed=True):
+_SEMANTIC_COMPLETE_ACTION="semantic_stage_complete"
+
+
+def semantic_stage_completed(cid):
+    """Require a completed artifact or an explicit separate implementation card."""
+    for event in event_rows(cid):
+        if event.get("action")==_SEMANTIC_COMPLETE_ACTION:
+            payload=event.get("payload") if isinstance(event.get("payload"),dict) else event
+            artifact=str(payload.get("artifact") or "")
+            digest=str(payload.get("artifact_sha256") or payload.get("sha256") or "")
+            if artifact and re.fullmatch(r"[0-9a-fA-F]{64}",digest):
+                return True
+    for event in _load_evidence_events().get(cid,[]):
+        if event.get("action")!="link":
+            continue
+        if _fold_key(event.get("link_key"))!="semantic_downstream_implementation":
+            continue
+        match=_CARD_REFERENT_RE.match(str(event.get("link_value") or ""))
+        if match and match.group(1).lower()!=cid and os.path.exists(
+                os.path.join(CARDS,match.group(1).lower(),"core.json")):
+            return True
+    return False
+
+
+def qwen_first_exclusive(cid,labels):
+    normalized={str(label).strip().lower() for label in (labels or [])}
+    return "qwen-first" in normalized and not semantic_stage_completed(cid)
+
+
+def lane_compatibility(labels, escalation_required=False, qwen_allowed=True,
+                       qwen_exclusive=False):
     """Return compatible lanes and a stable routing reason."""
     normalized={str(label).strip().lower() for label in (labels or [])}
     required={lane for label,lane in _LANE_ONLY_LABELS.items() if label in normalized}
+    if qwen_exclusive:
+        required.add("qwen")
     if escalation_required:
         required.add("escalate")
     if len(required)>1:
@@ -1771,9 +1847,11 @@ def lane_compatibility(labels, escalation_required=False, qwen_allowed=True):
 
 
 def select_compatible_lane(
-        labels, escalation_required, lane_order, remaining, qwen_allowed=True):
+        labels, escalation_required, lane_order, remaining, qwen_allowed=True,
+        qwen_exclusive=False):
     """Choose the first free compatible lane without consuming another lane."""
-    compatible,reason=lane_compatibility(labels,escalation_required,qwen_allowed)
+    compatible,reason=lane_compatibility(
+        labels,escalation_required,qwen_allowed,qwen_exclusive)
     if not compatible:
         return None,reason
     for lane in lane_order:
@@ -1837,13 +1915,19 @@ while _i<len(owned) and len(picks)<MAX_LAUNCH:
     _card=owned[_i]; _i+=1
     _labels=_card[4]
     _esc=needs_escalation(_card[2], _card[3], _labels)
+    _qwen_exclusive=qwen_first_exclusive(_card[2],_labels)
     _lane_name,_defer=select_compatible_lane(
-        _labels,_esc,lane_order,remaining,qwen_suitable(_card[3]))
+        _labels,_esc,lane_order,remaining,qwen_suitable(_card[3]),_qwen_exclusive)
     if _lane_name is None:
         _lane_deferred[_defer]+=1
+        if DRY:
+            log(d,"DRY_SELECTION|%s|%s|excluded=%s"%(HOST,_card[2],_defer))
         if _defer=="no-free-lane:escalate": _esc_waiting+=1
         continue
     _lane=next(lane for lane in LANES if lane["name"]==_lane_name)
+    if DRY:
+        log(d,"DRY_SELECTION|%s|%s|selected=%s|reason=%s"%
+            (HOST,_card[2],_lane_name,"qwen-first" if _qwen_exclusive else "compatible"))
     picks.append((_lane,_card)); remaining[_lane["name"]]-=1
 if _lane_deferred:
     log(d,"LANE_DEFER|%s|%s"%(HOST,",".join(
@@ -1959,7 +2043,8 @@ for _LANE,(_,_,cid,core,_labels,_nb) in picks:
         cid,fresh_claimability["core"],fresh_claimability["labels"])
     compatible,affinity_reason=lane_compatibility(
         fresh_claimability["labels"],fresh_escalation,
-        qwen_suitable(fresh_claimability["core"]))
+        qwen_suitable(fresh_claimability["core"]),
+        qwen_first_exclusive(cid,fresh_claimability["labels"]))
     if _LANE["name"] not in compatible:
         lane_drift += 1
         log(d,"SKIPPED_LANE_RACE|%s|%s|%s|selected=%s|reason=%s"%
