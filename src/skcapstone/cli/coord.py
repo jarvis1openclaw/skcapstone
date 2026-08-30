@@ -701,7 +701,10 @@ def register_coord_commands(main: click.Group) -> None:
                 order=order,
             )
         except (OSError, RuntimeError, ValueError) as exc:
-            raise click.ClickException(str(exc)) from None
+            message = str(exc)
+            if message == f"CardStore card {task_id} has no foldable core":
+                message = f"Task {task_id} not found"
+            raise click.ClickException(message) from None
         pos = f" at order {order}" if order is not None else ""
         console.print(f"\n  [green]Moved {task_id} to '{column}'{pos}.[/]\n")
         if receipt.actions:

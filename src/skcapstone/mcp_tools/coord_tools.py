@@ -388,7 +388,10 @@ async def _handle_coord_move(args: dict) -> list[TextContent]:
             order=args.get("order"),
         )
     except (OSError, RuntimeError, ValueError) as exc:
-        return _error_response(str(exc))
+        message = str(exc)
+        if message == f"CardStore card {task_id} has no foldable core":
+            message = f"Task {task_id} not found"
+        return _error_response(message)
     return _json_response(
         {
             "moved": True,

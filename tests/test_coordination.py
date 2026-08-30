@@ -171,7 +171,10 @@ class TestBoard:
         assert agent.current_task == "t1"
 
     def test_claim_nonexistent_task(self, board: Board):
-        with pytest.raises(ValueError, match="not found"):
+        with pytest.raises(
+            ValueError,
+            match=r"^CardStore card nonexistent has no foldable core$",
+        ):
             board.claim_task("jarvis", "nonexistent")
 
     def test_claim_already_claimed_by_other(self, board: Board):
@@ -535,6 +538,10 @@ class TestReleaseStaleClaims:
     def test_releases_when_agent_stale(self, board: Board):
         from datetime import datetime, timedelta, timezone
 
+        board.create_task(Task(id="aa11", title="First stale claim"))
+        board.create_task(Task(id="bb22", title="Second stale claim"))
+        board.claim_task("jarvis", "aa11")
+        board.claim_task("jarvis", "bb22")
         old = (datetime.now(timezone.utc) - timedelta(hours=5)).isoformat()
         self._write_agent_last_seen(board, "jarvis", old, claimed=["aa11", "bb22"], current="aa11")
         released = board.release_stale_claims("jarvis", older_than_seconds=3600)

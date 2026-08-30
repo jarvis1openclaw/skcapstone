@@ -108,9 +108,10 @@ def amend_criteria(home: Path, task_id: str, criteria: list[str], agent: str = "
     if not criteria:
         raise ValueError("at least one criterion is required")
     home = Path(home).expanduser()
-    CardStore(home).append_event(
-        task_id, "amend_criteria", agent or "mcp", criteria=list(criteria)
-    )
+    store = CardStore(home)
+    if store.fold(task_id) is None:
+        raise ValueError(f"CardStore card {task_id} has no foldable core")
+    store.append_event(task_id, "amend_criteria", agent or "mcp", criteria=list(criteria))
 
 
 def _base_acceptance_criteria(home: Path, task_id: str) -> list[str]:
