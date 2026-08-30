@@ -16,6 +16,8 @@ def _load_lane_helpers() -> dict[str, object]:
     names = {
         "_dependency_value",
         "_fold_claimability",
+        "semantic_stage_completed",
+        "qwen_first_exclusive",
         "lane_compatibility",
         "select_compatible_lane",
     }
@@ -25,13 +27,21 @@ def _load_lane_helpers() -> dict[str, object]:
         if (
             isinstance(node, ast.Assign)
             and any(
-                isinstance(target, ast.Name) and target.id == "_LANE_ONLY_LABELS"
+                isinstance(target, ast.Name)
+                and target.id in {"_LANE_ONLY_LABELS", "_SEMANTIC_COMPLETE_ACTION"}
                 for target in node.targets
             )
         )
         or (isinstance(node, ast.FunctionDef) and node.name in names)
     ]
-    namespace: dict[str, object] = {}
+    namespace: dict[str, object] = {
+        "re": __import__("re"),
+        "os": __import__("os"),
+        "CARDS": "/missing",
+        "event_rows": lambda cid: [],
+        "_load_evidence_events": lambda: {},
+        "_fold_key": lambda value: str(value),
+    }
     exec(compile(ast.Module(body=body, type_ignores=[]), str(ROTATE), "exec"), namespace)
     assert names <= namespace.keys()
     return namespace
@@ -103,6 +113,50 @@ def test_no_compatible_slot_does_not_consume_another_lane() -> None:
     assert selected is None
     assert reason == "no-free-lane:codex"
     assert remaining == {"codex": 0, "glm": 3, "escalate": 2}
+
+
+def test_qwen_first_is_exclusive_until_hash_bound_semantic_completion() -> None:
+    namespace = _load_lane_helpers()
+    namespace["event_rows"] = lambda cid: []
+    labels = ["qwen-first", "qwen-suitable"]
+    exclusive = namespace["qwen_first_exclusive"]("04acd4b0", labels)
+    assert exclusive is True
+    assert namespace["lane_compatibility"](labels, False, True, exclusive) == (
+        ("qwen",),
+        "required-lane:qwen",
+    )
+    selected, reason = namespace["select_compatible_lane"](
+        labels,
+        False,
+        ["glm", "codex", "escalate"],
+        {"qwen": 0, "glm": 1, "codex": 1, "escalate": 1},
+        True,
+        exclusive,
+    )
+    assert selected is None
+    assert reason == "no-free-lane:qwen"
+
+    namespace["event_rows"] = lambda cid: [
+        {
+            "action": "semantic_stage_complete",
+            "artifact": "evidence/semantic.json",
+            "artifact_sha256": "a" * 64,
+        }
+    ]
+    assert namespace["qwen_first_exclusive"]("04acd4b0", labels) is False
+    assert namespace["lane_compatibility"](labels, False) == (
+        ("qwen", "glm", "codex"),
+        "ordinary",
+    )
+
+
+def test_qwen_suitable_is_nonexclusive() -> None:
+    namespace = _load_lane_helpers()
+    assert namespace["qwen_first_exclusive"]("suitable", ["qwen-suitable"]) is False
+    assert namespace["lane_compatibility"](["qwen-suitable"], False) == (
+        ("qwen", "glm", "codex"),
+        "ordinary",
+    )
 
 
 def test_qwen_gets_first_refusal_only_when_category_allows_it() -> None:
@@ -203,5 +257,7 @@ def test_pool_and_immediate_preclaim_use_the_same_affinity_predicate() -> None:
     assert 'fresh_claimability["labels"]' in source
     assert "SKIPPED_LANE_RACE|" in source
     assert "LANE_DEFER|" in source
-    assert "qwen_suitable(_card[3])" in source
-    assert 'qwen_suitable(fresh_claimability["core"])' in source
+    assert "qwen_suitable(_card[3]),_qwen_exclusive" in source
+    assert 'qwen_suitable(fresh_claimability["core"]),' in source
+    assert 'qwen_first_exclusive(cid,fresh_claimability["labels"])' in source
+    assert "DRY_SELECTION|" in source

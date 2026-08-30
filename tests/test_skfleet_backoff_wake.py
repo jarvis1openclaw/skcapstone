@@ -203,6 +203,122 @@ def _native_file_namespace(
     return namespace
 
 
+def test_regression_c4ef2a90_native_blocked_event_is_authoritative(
+    tmp_path: Path,
+) -> None:
+    card = "c4ef2a90"
+    event = {
+        "event_id": "b9c2e4d1a3f70b2c8e6d4a1f5c3b0d9e",
+        "ts": "2026-08-30T17:05:00+00:00",
+        "writer": "pi-qwen-chiap03-c4ef2a90",
+        "action": "blocked",
+        "blocked_on": {
+            "verdict": "BLOCKED",
+            "blocked_on": "dependency",
+            "referent": "card:8137c2f5",
+            "evidence": "/evidence/work/c4ef2a90/blocked-verdict.json",
+            "evidence_sha256": "1" * 64,
+        },
+    }
+    namespace = _native_namespace(tmp_path, {card: [event]})
+    namespace.update(
+        {
+            "_dep_satisfied": lambda cid: False,
+            "folded_dependencies": lambda cid, core=None: ["8137c2f5"],
+        }
+    )
+    assert namespace["_load_outcomes"]()[card][1] == (
+        "BLOCKED blocked_on=dependency referent=card:8137c2f5"
+    )
+    assert namespace["blocked_backoff"](card) is True
+
+
+def test_regression_cd4f9506_split_blocked_evidence_and_reopen(tmp_path: Path) -> None:
+    card = "cd4f9506"
+    links = [
+        ("blocked_on", "dependency"),
+        ("referent", "card:2e9a5909"),
+        ("evidence", "evidence/cd4f9506-VERDICT-BLOCKED.md"),
+        ("evidence_sha256", "e" * 64),
+    ]
+    legacy = [
+        {
+            "card_id": card,
+            "action": "link",
+            "writer": "pi-qwen-chiap01-cd4f9506",
+            "ts": f"2026-08-30T16:39:4{index}+00:00",
+            "link_key": key,
+            "link_value": value,
+        }
+        for index, (key, value) in enumerate(links)
+    ]
+    native = {card: []}
+    namespace = _native_namespace(tmp_path, native, legacy)
+    namespace.update(
+        {
+            "_dep_satisfied": lambda cid: False,
+            "folded_dependencies": lambda cid, core=None: ["2e9a5909"],
+        }
+    )
+    assert namespace["blocked_backoff"](card) is True
+    native[card].append(
+        {"action": "reopen", "ts": "2026-08-30T17:00:00+00:00", "writer": "jarvis"}
+    )
+    assert namespace["blocked_backoff"](card) is False
+
+
+def test_later_pass_does_not_complete_stale_blocked_fragments(tmp_path: Path) -> None:
+    card = "abcd1234"
+    for pass_writer in ("blocked-worker", "pass-worker"):
+        case = tmp_path / pass_writer
+        case.mkdir()
+        legacy = [
+            {
+                "card_id": card,
+                "action": "link",
+                "writer": "blocked-worker",
+                "ts": "2026-08-30T01:00:00+00:00",
+                "link_key": "blocked_on",
+                "link_value": "dependency",
+            },
+            {
+                "card_id": card,
+                "action": "link",
+                "writer": "blocked-worker",
+                "ts": "2026-08-30T01:00:01+00:00",
+                "link_key": "referent",
+                "link_value": "card:deadbeef",
+            },
+            {
+                "card_id": card,
+                "action": "link",
+                "writer": pass_writer,
+                "ts": "2026-08-30T02:00:00+00:00",
+                "link_key": "verdict",
+                "link_value": "PASS_FOR_REVIEW",
+            },
+            {
+                "card_id": card,
+                "action": "link",
+                "writer": pass_writer,
+                "ts": "2026-08-30T02:00:01+00:00",
+                "link_key": "evidence",
+                "link_value": "evidence/new-pass.json",
+            },
+            {
+                "card_id": card,
+                "action": "link",
+                "writer": pass_writer,
+                "ts": "2026-08-30T02:00:02+00:00",
+                "link_key": "evidence_sha256",
+                "link_value": "a" * 64,
+            },
+        ]
+        namespace = _native_namespace(case, {card: []}, legacy)
+        assert namespace["_load_outcomes"]()[card][1] == "PASS_FOR_REVIEW"
+        assert namespace["awaiting_review"](card) is True
+
+
 def test_actionable_reason_requires_one_category_and_exact_referents(
     board: BackoffHarness,
 ) -> None:
