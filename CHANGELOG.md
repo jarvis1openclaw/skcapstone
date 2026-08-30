@@ -22,5 +22,5 @@ and versions follow Semantic Versioning.
   append-only audit/outbox contracts, and reproducible engineering gates.
 - Loopback-only development dependencies and initial chiap01 deployment definitions.
 
-[Unreleased]: https://github.com/smilinTux/sklegal/compare/v0.1.0...HEAD
-[0.1.0]: https://github.com/smilinTux/sklegal/releases/tag/v0.1.0
+[Unreleased]: https://skgit.skstack01.douno.it/smilinTux/sklegal/compare/v0.1.0...main
+[0.1.0]: https://skgit.skstack01.douno.it/smilinTux/sklegal/releases/tag/v0.1.0

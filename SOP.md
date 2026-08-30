@@ -4,7 +4,7 @@ SKLegal is the governed legal operations platform for the SK sovereign stack. Th
 document is the operational source of truth for building, testing, reviewing, and
 deploying the repository without bypassing its authorization or evidence boundaries.
 
-Canonical home: <https://github.com/smilinTux/sklegal>
+Canonical home: <https://skgit.skstack01.douno.it/smilinTux/sklegal>
 
 Canonical local workspace: `/mnt/cloud/onedrive/projects/DAVE-AI/sklegal`. The former
 `DAVE-AI/hammerTime-OS` directory is retired. HammerTime corpus data and shared source
