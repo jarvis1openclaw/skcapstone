@@ -32,32 +32,46 @@ def test_exact_five_host_lane_targets_and_chiap08_dry_summary() -> None:
     helpers = _load_functions("_required_lane_target", "_slot_summary")
     target = helpers["_required_lane_target"]
     profiles = {
-        "chiap01": (8, 3),
-        "chiap02": (8, 3),
-        "chiap03": (8, 3),
-        "chiap04": (4, 0),
-        "chiap08": (3, 0),
+        "chiap01": (8, 3, 6),
+        "chiap02": (8, 3, 6),
+        "chiap03": (8, 3, 6),
+        "chiap04": (4, 0, 6),
+        "chiap08": (3, 0, 6),
     }
     for host, expected in profiles.items():
         env = {
             "SKFLEET_TARGET": str(expected[0]),
             "SKFLEET_GLM_TARGET": str(expected[1]),
+            "SKFLEET_QWEN_TARGET": str(expected[2]),
         }
-        actual = (target("SKFLEET_TARGET", env), target("SKFLEET_GLM_TARGET", env))
+        actual = (
+            target("SKFLEET_TARGET", env),
+            target("SKFLEET_GLM_TARGET", env),
+            target("SKFLEET_QWEN_TARGET", env),
+        )
         assert actual == expected, host
 
-    codex, glm = profiles["chiap08"]
+    codex, glm, qwen = profiles["chiap08"]
     lanes = [
         {"name": name, "busy": [], "target": ceiling, "free": ceiling}
-        for name, ceiling in (("codex", codex), ("glm", glm), ("escalate", 2))
+        for name, ceiling in (
+            ("codex", codex),
+            ("glm", glm),
+            ("qwen", qwen),
+            ("escalate", 2),
+        )
     ]
-    assert helpers["_slot_summary"](lanes) == ("codex=0/3 glm=0/0 escalate=0/2|total_free=5")
+    assert helpers["_slot_summary"](lanes) == (
+        "codex=0/3 glm=0/0 qwen=0/6 escalate=0/2|total_free=11"
+    )
 
     source = ROTATE.read_text(encoding="utf-8")
     assert 'TARGET=_required_lane_target("SKFLEET_TARGET")' in source
     assert 'GLM_TARGET=_required_lane_target("SKFLEET_GLM_TARGET")' in source
+    assert 'QWEN_TARGET=_required_lane_target("SKFLEET_QWEN_TARGET", default="6")' in source
     assert '"target":TARGET' in source
     assert '"target":0 if glm_held else GLM_TARGET' in source
+    assert '"target":QWEN_TARGET' in source
     assert '"target":int(os.environ.get("SKFLEET_ESC_TARGET","2"))' in source
 
 
@@ -246,5 +260,7 @@ def test_existing_holds_reservations_capacity_and_cadence_remain() -> None:
     assert "pin = host_pin(folded_core, labels)" in rotate
     assert 'MAX_LAUNCH=int(os.environ.get("SKFLEET_MAX_LAUNCH","11"))' in rotate
     assert 'remaining={lane["name"]:lane["free"] for lane in LANES}' in rotate
+    assert "off = ROTATION_HOSTS.index(HOST) if HOST in ROTATION_HOSTS else 0" in rotate
+    assert '_LANE_RANK={"qwen":0,"glm":1,"codex":2,"escalate":3}' in rotate
     assert "hosts=(chiap01 chiap02 chiap03 chiap04 chiap08)" in watch
     assert "sleep 300" in watch

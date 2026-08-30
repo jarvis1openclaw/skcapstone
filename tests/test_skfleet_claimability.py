@@ -5,6 +5,7 @@ from __future__ import annotations
 import ast
 import json
 import os
+import re
 from pathlib import Path
 
 import pytest
@@ -35,6 +36,12 @@ def _load_claimability() -> dict[str, object]:
         "CARDS": "/unused",
         "_COLUMNS": {"backlog", "ready", "doing", "review", "done"},
         "_NOT_CLAIMABLE": {"not-claimable", "sprint-container", "do-not-claim"},
+        "_SENSITIVE_CATEGORY": re.compile(
+            r"(capauth|credential|custody|issuer|secret|\bkey\b|rollback|"
+            r"deploy|production|release|migrat)",
+            re.I,
+        ),
+        "_CATEGORY_OPT_IN": "dispatch-approved",
         "_dep_satisfied": lambda _dep: True,
         "host_pin": lambda _core, _labels: None,
         "json": json,
@@ -242,6 +249,17 @@ def test_pool_and_preclaim_call_the_same_predicate() -> None:
     )
     assert "CLAIMABILITY_EXCLUDED|" in source
     assert '"do-not-claim"' in source
+
+
+def test_sensitive_category_requires_explicit_dispatch_approval() -> None:
+    namespace = _load_claimability()
+    core = {**_core("guard001"), "title": "Deploy production candidate"}
+    state = namespace["_fold_claimability"](core, [])
+    assert namespace["_claimability_reason"](core, state) == "sensitive-category"
+
+    approved = {**core, "initial_labels": ["dispatch-approved"]}
+    state = namespace["_fold_claimability"](approved, [])
+    assert namespace["_claimability_reason"](approved, state) == "claimable"
 
 
 def test_malformed_lifecycle_fails_closed_with_reason() -> None:

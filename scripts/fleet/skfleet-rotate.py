@@ -11,10 +11,10 @@ Fixes two defects found 03:50Z:
 import json,os,glob,subprocess,sys,time,fcntl,datetime,hashlib,collections,re,importlib.util
 from pathlib import Path
 
-def _required_lane_target(name, env=None):
+def _required_lane_target(name, env=None, default=None):
     values = os.environ if env is None else env
     try:
-        value = int(values.get(name))
+        value = int(values.get(name, default))
     except (TypeError, ValueError):
         value = -1
     if value < 0:
@@ -58,6 +58,7 @@ ROTATION_HOSTS=("chiap01", "chiap02", "chiap03", "chiap04", "chiap08")
 SKC=os.path.expanduser("~/.skenv/bin/skcapstone")
 TARGET=_required_lane_target("SKFLEET_TARGET")
 GLM_TARGET=_required_lane_target("SKFLEET_GLM_TARGET")
+QWEN_TARGET=_required_lane_target("SKFLEET_QWEN_TARGET", default="6")
 MAX_LAUNCH=int(os.environ.get("SKFLEET_MAX_LAUNCH","11"))
 DRY = "--go" not in sys.argv
 HOME=os.path.expanduser("~")
@@ -198,6 +199,9 @@ LANES=[
     #
     # It takes ONLY escalation cards and escalation cards go ONLY here, so the
     # stronger model is never spent on work the cheap lanes can do.
+    {"name":"qwen","prefix":"qwen-auto-",
+     "model":os.environ.get("SKFLEET_QWEN_MODEL","qwen3.8-27b-huihui-abliterated-q4_k_m"),
+     "target":QWEN_TARGET},
     {"name":"escalate","prefix":"esc-auto-",
      "model":os.environ.get("SKFLEET_ESC_MODEL", ESC_MODEL if "ESC_MODEL" in dir() else "gpt-5.6-sol"),
      "target":int(os.environ.get("SKFLEET_ESC_TARGET","2"))},
@@ -304,6 +308,7 @@ if free==0:
 # cycle forever: measured 78 of 162 launches wasted, 48 percent, before this gate.
 _launched=collections.Counter()
 _launched_at={}
+_wake_launch_times=collections.defaultdict(list)
 _strong_launched_at={}
 for _f in glob.glob(os.path.join(EVID,"*","actions.log")):
     try:
@@ -317,6 +322,12 @@ for _f in glob.glob(os.path.join(EVID,"*","actions.log")):
                 if len(_p)>=4:
                     _launched[_p[3]]+=1
                     _launched_at[_p[3]]=max(_launched_at.get(_p[3],0),_launch_epoch)
+                    if len(_p)==8:
+                        _fields=[part.partition("=") for part in _p[4:]]
+                        if [(key,sep) for key,sep,_value in _fields]==[
+                                ("lane","="),("model","="),("owner","="),
+                                ("claim_revision","=")] and all(value for _key,_sep,value in _fields):
+                            _wake_launch_times[_p[3]].append(_launch_epoch)
                     if "model=%s"%ESC_MODEL in _p:
                         _strong_launched_at[_p[3]]=max(_strong_launched_at.get(_p[3],0),_launch_epoch)
     except OSError: pass
@@ -337,6 +348,10 @@ for _f in glob.glob(os.path.join(EVID,"*","actions.log")):
 # was a symptom rather than the cause.
 _COLUMNS = {"backlog", "ready", "doing", "review", "done"}
 _NOT_CLAIMABLE = {"not-claimable", "sprint-container", "do-not-claim"}
+_SENSITIVE_CATEGORY = re.compile(
+    r"(capauth|credential|custody|issuer|secret|\bkey\b|rollback|"
+    r"deploy|production|release|migrat)", re.I)
+_CATEGORY_OPT_IN = "dispatch-approved"
 _OVERLAY_ACTIONS = {
     "move": "move", "assign": "assign", "unassign": "unassign",
     "add_label": "add_label", "remove_label": "remove_label",
@@ -523,6 +538,9 @@ def _claimability_reason(core, state):
     if _NOT_CLAIMABLE & ({str(x).strip().lower() for x in labels} |
                          {str(x).strip().lower() for x in (core.get("tags") or [])}):
         return "not-claimable"
+    if (_SENSITIVE_CATEGORY.search(state["title"]) and
+            _CATEGORY_OPT_IN not in {str(x).strip().lower() for x in labels}):
+        return "sensitive-category"
     if any(not _dep_satisfied(dep) for dep in state["dependencies"]):
         return "dependency"
     pin = host_pin(folded_core, labels)
@@ -591,6 +609,13 @@ def lifecycle_state(cid):
 #     outcome events. Evidence-only logic would never see it.
 _EVID_DIR = os.path.join(HOME, ".skcapstone/coordination/card_events")
 _OUTCOME_KEYS = ("verdict", "result", "disposition", "review_decision")
+_OUTCOME_VALUE_RE = re.compile(
+    r"^\s*(BLOCKED|PASS(?:_FOR_[A-Z_]+)?|FAIL|DENY|HOLD|VOID|APPROVE(?:D)?)"
+    r"(?:\b|_)", re.I)
+_PIPE_OUTCOME_RE = re.compile(
+    r"(?:^|\|)\s*(BLOCKED|PASS(?:_FOR_[A-Z_]+)?|FAIL|DENY|HOLD|VOID|APPROVE(?:D)?)"
+    r"\s*(?:\||$)", re.I)
+_INVALID_NATIVE_OUTCOME = "BLOCKED native_outcome_invalid=true"
 
 def _fold_key(k):
     k = str(k or "").strip().lower().replace("-", "_")
@@ -598,28 +623,121 @@ def _fold_key(k):
     k = re.sub(r"_[0-9a-f]{8,64}$", "", k)
     return re.sub(r"__+", "_", k).strip("_")
 
+_evidence_events = None
 _outcomes = None
 _label_events = None
+
+def _load_evidence_events():
+    global _evidence_events
+    if _evidence_events is not None: return _evidence_events
+    _evidence_events={}
+    for f in sorted(glob.glob(os.path.join(_EVID_DIR,"*.jsonl"))):
+        try:
+            for line in open(f,encoding="utf-8",errors="replace"):
+                try: event=json.loads(line)
+                except Exception: continue
+                if not isinstance(event,dict): continue
+                cid=event.get("card_id")
+                if cid: _evidence_events.setdefault(str(cid),[]).append(event)
+        except OSError: pass
+    for rows in _evidence_events.values():
+        rows.sort(key=lambda e:(e.get("ts",""),str(e.get("writer","")),str(e.get("event_id",""))))
+    return _evidence_events
+
+def _native_outcome_value(event):
+    """Return one safe outcome value from a native CardStore verdict event."""
+    payload=event.get("payload") if isinstance(event.get("payload"),dict) else {}
+
+    def field(name):
+        values=[]
+        for source in (event,payload):
+            if name not in source: continue
+            value=source.get(name)
+            if not isinstance(value,str) or not value.strip(): return None,False
+            values.append(value.strip())
+        if not values: return None,True
+        if len({value.lower() for value in values})!=1: return None,False
+        return values[0],True
+
+    value,value_ok=field("verdict")
+    category,category_ok=field("blocked_on")
+    referent,referent_ok=field("referent")
+    if not value_ok or not value: return _INVALID_NATIVE_OUTCOME
+    match=_OUTCOME_VALUE_RE.match(value) or _PIPE_OUTCOME_RE.search(value)
+    if not match: return _INVALID_NATIVE_OUTCOME
+    if not _OUTCOME_VALUE_RE.match(value): value=match.group(1)
+
+    is_blocked=bool(re.match(r"^\s*BLOCKED\b",value,re.I))
+    has_blocker=any(name in event or name in payload
+                    for name in ("blocked_on","referent"))
+    if has_blocker and (not category_ok or not referent_ok or not category or not referent):
+        return _INVALID_NATIVE_OUTCOME
+    if not is_blocked:
+        return _INVALID_NATIVE_OUTCOME if has_blocker else value
+
+    embedded=_blocked_reason(value)
+    structured=_blocked_reason(
+        "BLOCKED blocked_on=%s referent=%s"%(category,referent)) if has_blocker else None
+    if has_blocker and not structured: return _INVALID_NATIVE_OUTCOME
+    if embedded and structured and embedded!=structured: return _INVALID_NATIVE_OUTCOME
+    reason=structured or embedded
+    if not reason: return _INVALID_NATIVE_OUTCOME
+    return "BLOCKED blocked_on=%s %s"%(
+        reason[0]," ".join("referent="+item for item in reason[1]))
+
 def _load_outcomes():
     global _outcomes
     if _outcomes is not None: return _outcomes
     _outcomes = {}
-    if os.path.isdir(_EVID_DIR):
-        for f in sorted(glob.glob(os.path.join(_EVID_DIR, "*.jsonl"))):
-            try:
-                for l in open(f, encoding="utf-8", errors="replace"):
-                    try: e = json.loads(l)
-                    except Exception: continue
-                    if e.get("action") != "link": continue
-                    fk = _fold_key(e.get("link_key"))
-                    if not any(o in fk for o in _OUTCOME_KEYS): continue
-                    cid = e.get("card_id")
-                    ts = str(e.get("ts") or "")
-                    val = str(e.get("link_value") or "")
-                    prev = _outcomes.get(cid)
-                    if prev is None or ts > prev[0]:
-                        _outcomes[cid] = (ts, val)
-            except OSError: pass
+    orders={}
+
+    def record(cid,event,value,source_rank):
+        ts=str(event.get("ts") or "")
+        order=(_ts_epoch(ts),ts,str(event.get("writer") or ""),
+               str(event.get("event_id") or ""),source_rank)
+        if cid not in orders or order>orders[cid]:
+            orders[cid]=order
+            _outcomes[cid]=(ts,value)
+
+    for cid,rows in _load_evidence_events().items():
+        for e in rows:
+            if e.get("action") != "link": continue
+            fk = _fold_key(e.get("link_key"))
+            if not any(o in fk for o in _OUTCOME_KEYS): continue
+            val = str(e.get("link_value") or "")
+            # A link named verdict_artifact is not an outcome. Several such
+            # paths and hashes sort after the real verdict and used to erase it.
+            match=_OUTCOME_VALUE_RE.match(val) or _PIPE_OUTCOME_RE.search(val)
+            if not match: continue
+            if not _OUTCOME_VALUE_RE.match(val): val=match.group(1)
+            record(cid,e,val,0)
+    native_ids=set(_load_evidence_events())
+    native_ids.update(os.path.basename(path) for path in glob.glob(os.path.join(CARDS,"*"))
+                      if os.path.isdir(path))
+    for cid in sorted(native_ids):
+        identities=collections.defaultdict(list)
+        for event in event_rows(cid):
+            identity=(str(event.get("ts") or ""),str(event.get("writer") or ""),
+                      str(event.get("event_id") or ""))
+            identities[identity].append(event)
+        for rows in identities.values():
+            verdicts=[event for event in rows if event.get("action")=="verdict"]
+            if not verdicts: continue
+            signatures={json.dumps({
+                "event":{
+                    key:event.get(key)
+                    for key in ("action","verdict","blocked_on","referent")
+                    if key in event
+                },
+                "payload":{
+                    key:event["payload"].get(key)
+                    for key in ("verdict","blocked_on","referent")
+                    if isinstance(event.get("payload"),dict) and key in event["payload"]
+                },
+            },sort_keys=True,separators=(",",":")) for event in rows}
+            value=(_native_outcome_value(verdicts[0]) if len(signatures)==1
+                   else _INVALID_NATIVE_OUTCOME)
+            record(cid,verdicts[0],value,1)
     return _outcomes
 
 def _ts_epoch(value):
@@ -640,17 +758,9 @@ def _load_label_events():
     global _label_events
     if _label_events is not None: return _label_events
     _label_events={}
-    for f in sorted(glob.glob(os.path.join(_EVID_DIR,"*.jsonl"))):
-        try:
-            for line in open(f,encoding="utf-8",errors="replace"):
-                try: event=json.loads(line)
-                except Exception: continue
-                if event.get("action") not in ("add_label","remove_label"): continue
-                cid=event.get("card_id")
-                if cid: _label_events.setdefault(cid,[]).append(event)
-        except OSError: pass
-    for rows in _label_events.values():
-        rows.sort(key=lambda e:(e.get("ts",""),str(e.get("writer","")),str(e.get("event_id",""))))
+    for cid,rows in _load_evidence_events().items():
+        _label_events[cid]=[event for event in rows
+                            if event.get("action") in ("add_label","remove_label")]
     return _label_events
 
 def folded_labels(cid,core):
@@ -678,21 +788,6 @@ def non_implementation(core, labels):
         return True
     blob=(str(core.get("title") or "")+" "+json.dumps(labels)).upper()
     return "[HUMAN]" in blob
-
-def _latest_material_change(cid, verdict_ts):
-    threshold=_ts_epoch(verdict_ts); latest=0
-    for event in event_rows(cid):
-        if event.get("action") in ("add_dependency","remove_dependency"):
-            latest=max(latest,_ts_epoch(event.get("ts")))
-    for dep in folded_dependencies(cid):
-        if lifecycle_state(dep)!="complete": continue
-        for event in event_rows(dep):
-            if event.get("action")=="complete":
-                latest=max(latest,_ts_epoch(event.get("ts")))
-    for event in _load_label_events().get(cid,[]):
-        latest=max(latest,_ts_epoch(event.get("ts")))
-    return latest if latest>threshold else 0
-
 
 # A dependency is satisfied only if it completed AND did not complete BLOCKED.
 # "complete" is a lifecycle fact; the outcome lives in the evidence store. Checking
@@ -742,86 +837,209 @@ def _still_assignable(cid):
 _BLOCKED_CATEGORIES = ("dependency", "card", "human", "capability")
 _BLOCKED_ON_RE = re.compile(r"blocked[_\s-]?on", re.I)
 _BLOCKED_CAT_RE = re.compile(r"\b(%s)\b" % "|".join(_BLOCKED_CATEGORIES), re.I)
-_BLOCKED_TOK_RE = re.compile(r"[A-Za-z0-9][\w:.\-/@]{2,}")
-_BLOCKED_FILLER = set(_BLOCKED_CATEGORIES) | {
-    "referent", "value", "is", "to", "on", "the", "a", "an", "of", "for",
-    "blocked", "blocked_on", "none", "null", "unknown", "tbd", "pending",
-    "true", "false",
-}
 
 _PIPE_VERDICT_RE = re.compile(
     r"^\s*BLOCKED\s*\|\s*(dependency|card|human|capability)\s*\|\s*([^|]+)", re.I)
-_CAPABILITY_BLOCK_RE = re.compile(
-    r"blocked[_\s-]?on[=: |]+\s*capability\b|^\s*BLOCKED\s*\|\s*capability\b", re.I)
+_REFERENT_RE = re.compile(
+    r"\breferent\b[\"']?\s*(?:[=:]\s*|\s+)[\"']?([A-Za-z0-9][\w:./@-]*)", re.I)
+_CARD_REFERENT_RE = re.compile(r"^card:([0-9a-f]{8})$", re.I)
+_AC_REFERENT_RE = re.compile(r"^ac:(\d+)$", re.I)
+_AC_MENTION_RE = re.compile(r"\bac:(\d+)\b", re.I)
+_WAKE_RETRY_LIMIT = 1
 
-def _verdict_is_actionable(val):
-    """True if a BLOCKED verdict names a category AND the thing it refers to.
+def _blocked_reason(val):
+    """Return one actionable (category, referents), or None.
 
-    A bare BLOCKED buys the card an exemption while telling nobody how to lift
-    it, which is the worst possible trade: out of the pool and un-actionable.
-    Measured 2026-08-27: of 39 open cards whose latest outcome was BLOCKED, 18
-    were the literal word and 20 more named no blocked_on at all. That pool did
-    not drain all day.
-
-    An unexplained refusal therefore earns NO backoff here. The card returns to
-    the pool. This is not a licence to churn: skcapstone now refuses to WRITE a
-    bare BLOCKED at all, so a worker must either explain itself or record
-    nothing, and recording nothing is still caught by the launch-attempt count
-    below after three tries.
+    The category and referent are a pair. Mixing categories, omitting a
+    referent, or using a non-exact card id fails closed instead of buying a
+    speculative retry.
     """
-    text = str(val or "")
-    # Workers also write the verdict pipe-delimited, as BLOCKED|category|referent.
-    # That names a category AND a referent, which is everything this function is
-    # asking for, and it was being rejected purely on punctuation. Measured
-    # 2026-08-27: BLOCKED|card|ac:1|bf3ffd12 read as unexplained, so the card got
-    # no backoff, went round again, and re-derived the identical verdict. A
-    # validator that refuses a truthful verdict on format teaches workers to
-    # fight the validator instead of to explain themselves.
-    pipe = _PIPE_VERDICT_RE.match(text)
-    if pipe and pipe.group(2).strip():
-        return True
-    anchor = _BLOCKED_ON_RE.search(text)
-    if not anchor:
-        return False
-    tail = text[anchor.end():]
-    for cat in _BLOCKED_CAT_RE.finditer(tail):
-        window = tail[cat.end(): cat.end() + 80]
-        for tok in _BLOCKED_TOK_RE.finditer(window):
-            cand = tok.group(0).strip().strip(".,;:\"'")
-            if cand and cand.lower() not in _BLOCKED_FILLER:
-                return True
-    return False
+    text=str(val or "")
+    if not re.match(r"^\s*BLOCKED\b",text,re.I): return None
+    pipe=_PIPE_VERDICT_RE.match(text)
+    categories=[]; direct=[]
+    if pipe:
+        categories.append(pipe.group(1).lower())
+        direct.append(pipe.group(2).strip())
+    for anchor in _BLOCKED_ON_RE.finditer(text):
+        match=_BLOCKED_CAT_RE.search(text[anchor.end():anchor.end()+80])
+        if match: categories.append(match.group(1).lower())
+    categories=list(dict.fromkeys(categories))
+    if len(categories)!=1: return None
+    refs=[m.group(1).rstrip(".,;|\"'") for m in _REFERENT_RE.finditer(text)]
+    refs.extend(x.rstrip(".,;|\"'") for x in direct)
+    refs=[x.lower() for x in dict.fromkeys(x for x in refs if x)]
+    if not refs:
+        refs=["ac:"+m.group(1) for m in _AC_MENTION_RE.finditer(text)]
+    return (categories[0],tuple(dict.fromkeys(refs))) if refs else None
 
-_PASS_RE = re.compile(r"^\s*PASS(_FOR_REVIEW)?\b", re.I)
+def _latest_blocked_reason(cid,verdict_ts,val):
+    """Fold split blocked_on and referent links for the latest verdict."""
+    if str(val or "")==_INVALID_NATIVE_OUTCOME: return None
+    reason=_blocked_reason(val)
+    if reason: return reason
+    category=None; referents=[]
+    for event in reversed(_load_evidence_events().get(cid,[])):
+        if str(event.get("ts") or "")>=str(verdict_ts or ""): continue
+        if event.get("action")!="link": continue
+        key=_fold_key(event.get("link_key"))
+        value=str(event.get("link_value") or "")
+        if any(o in key for o in _OUTCOME_KEYS) and _OUTCOME_VALUE_RE.match(value):
+            break
+        if key=="referent" or "blocked_referent" in key:
+            referents.extend(m.group(1).lower() for m in _REFERENT_RE.finditer("referent="+value))
+        elif key=="blocked_on":
+            fragment=_blocked_reason("BLOCKED blocked_on="+value)
+            if fragment:
+                category=fragment[0]
+                referents.extend(fragment[1])
+            else:
+                match=_BLOCKED_CAT_RE.search(value)
+                if match: category=match.group(1).lower()
+        if category and referents:
+            return category,tuple(dict.fromkeys(referents))
+    return None
+
+_PASS_RE = re.compile(r"^\s*PASS(?:_FOR_[A-Z_]+)?\b", re.I)
+
+def _completion_epoch(cid):
+    latest=0
+    for event in event_rows(cid):
+        if event.get("action")=="complete" or (
+                event.get("action")=="move" and str(event.get("column") or "").lower()=="done"):
+            latest=max(latest,_ts_epoch(event.get("ts")))
+    return latest
+
+def _material_label(event):
+    label=str(_label_value(event) or "").strip().lower().replace("_","-")
+    return label in {
+        "needs-stronger-model","do-not-claim","not-claimable","human-gate",
+        "sprint-container","foreign-project"}
+
+def _authored_change_epoch(cid,threshold):
+    latest=0
+    for event in event_rows(cid):
+        if event.get("action") in (
+                "describe","amend_criteria","add_dependency","remove_dependency"):
+            latest=max(latest,_ts_epoch(event.get("ts")))
+    for event in _load_label_events().get(cid,[]):
+        if _material_label(event): latest=max(latest,_ts_epoch(event.get("ts")))
+    return latest if latest>threshold else 0
+
+def _human_gate(cid):
+    try: core=json.load(open(os.path.join(CARDS,cid,"core.json")))
+    except Exception: return False
+    labels={str(x).strip().lower().replace("_","-") for x in folded_labels(cid,core)}
+    return "human-gate" in labels or "[HUMAN]" in str(core.get("title") or "").upper()
+
+def _human_resolution_epoch(cid,referent,threshold):
+    target_match=_CARD_REFERENT_RE.match(referent)
+    target=target_match.group(1).lower() if target_match else cid
+    needle=re.sub(r"[^a-z0-9]+","",referent.lower())
+    latest=0
+    for event in event_rows(target):
+        if event.get("action")!="void": continue
+        actor=str(event.get("writer") or "").lower()
+        if actor in ("chef","human") or "human-decision-recorder" in actor:
+            latest=max(latest,_ts_epoch(event.get("ts")))
+    for event in _load_evidence_events().get(target,[]):
+        if event.get("action") not in ("link","add_label"): continue
+        blob=" ".join(str(event.get(key) or "") for key in ("link_key","link_value","label"))
+        flat=re.sub(r"[^a-z0-9]+","",blob.lower())
+        actor=str(event.get("writer") or "").lower()
+        authorized=actor in ("chef","human") or "human-decision-recorder" in actor
+        key=str(event.get("link_key") or "").lower().replace("-","_")
+        direct=bool(re.search(r"\b(APPROVE(?:D)?|VOID)\b",blob,re.I))
+        gate_decision=("human" in key and ("approval" in key or "void" in key)
+                       and "no_approval" not in blob.lower())
+        if authorized and (direct or gate_decision) and (
+                target_match is not None or (needle and needle in flat)):
+            latest=max(latest,_ts_epoch(event.get("ts")))
+    return latest if latest>threshold else 0
+
+def _blocker_change_epoch(cid,verdict_ts,val):
+    """Return the exact blocker generation that can fund one retry."""
+    reason=_latest_blocked_reason(cid,verdict_ts,val)
+    if not reason: return 0
+    category,referents=reason
+    threshold=_ts_epoch(verdict_ts)
+    if category=="dependency":
+        if len(referents)!=1: return 0
+        match=_CARD_REFERENT_RE.match(referents[0])
+        if not match: return 0
+        dep=match.group(1).lower()
+        exact_events=[event for event in event_rows(cid)
+                      if event.get("action") in ("add_dependency","remove_dependency")
+                      and str(_dependency_value(event) or "").lower()==dep]
+        removed=max((_ts_epoch(event.get("ts")) for event in exact_events
+                     if event.get("action")=="remove_dependency"),default=0)
+        if dep not in {str(x).lower() for x in folded_dependencies(cid)}:
+            return removed if removed>threshold else 0
+        if not _dep_satisfied(dep): return 0
+        changed=max(_completion_epoch(dep),*(
+            [_ts_epoch(event.get("ts")) for event in exact_events] or [0]))
+        return changed if changed>threshold else 0
+    if category=="human":
+        if not referents: return 0
+        changes=[_human_resolution_epoch(cid,ref,threshold) for ref in referents]
+        return max(changes) if changes and all(changes) else 0
+    if category=="capability":
+        if not all(_AC_REFERENT_RE.match(ref) or ref=="free" for ref in referents):
+            return 0
+        return _authored_change_epoch(cid,threshold)
+    if category!="card": return 0
+    card_refs=[]; ac_refs=[]
+    for ref in referents:
+        match=_CARD_REFERENT_RE.match(ref)
+        if match: card_refs.append(match.group(1).lower())
+        elif _AC_REFERENT_RE.match(ref): ac_refs.append(ref)
+        else: return 0
+    criteria=["ac:"+m.group(1) for m in _AC_MENTION_RE.finditer(str(val or ""))]
+    if card_refs and all(ref==cid for ref in card_refs) and criteria:
+        card_refs=[]; ac_refs.extend(criteria)
+    if ac_refs and not card_refs:
+        return _authored_change_epoch(cid,threshold)
+    if not card_refs or ac_refs: return 0
+    generations=[]
+    for ref in dict.fromkeys(card_refs):
+        if not os.path.exists(os.path.join(CARDS,ref,"core.json")): return 0
+        if lifecycle_state(ref)!="complete": return 0
+        if _human_gate(ref):
+            generation=_human_resolution_epoch(cid,"card:"+ref,threshold)
+        else:
+            if not _dep_satisfied(ref): return 0
+            generation=_completion_epoch(ref)
+        if generation<=threshold: return 0
+        generations.append(generation)
+    return max(generations) if generations else 0
+
+def _wake_retry_available(cid,generation):
+    """One exact claim-fenced retry per blocker generation."""
+    retries=sum(1 for launched in _wake_launch_times.get(cid,()) if launched>generation)
+    return retries<_WAKE_RETRY_LIMIT
 
 def blocked_backoff(cid):
     """True if this card should stay out of the pool for now."""
     ts, val = _load_outcomes().get(cid, (None, None))
-    # An UNEXPLAINED refusal earns no verdict-based protection, but it must NOT
-    # short-circuit out of this function. Returning False here would skip the
-    # launch-attempt fallback below and let the card be relaunched forever,
-    # burning a slot every cycle with nothing accumulating to stop it. That is a
-    # black hole, and it was briefly live on 2026-08-27 until Chef spotted it.
-    #
-    # So an unactionable BLOCKED is treated as NO VERDICT and falls through. The
-    # card returns to the pool, gets a real attempt, and if three attempts pass
-    # with nothing recorded the launch-attempt rule below parks it anyway. There
-    # is always a counter that ends the loop.
-    if ts and re.match(r"^\s*BLOCKED", val, re.I) and _verdict_is_actionable(val):
+    # Missing or mixed blocker metadata fails closed. Guessing at its meaning
+    # would turn an unresolved human or dependency hold into execution.
+    if ts and re.match(r"^\s*BLOCKED", val, re.I):
+        reason=_latest_blocked_reason(cid,ts,val)
+        if not reason: return True
         # Capability is a routing signal, not a dependency or approval hold. It
         # must reach needs_escalation() below, which preferentially assigns it to
         # Codex. After that stronger route has also returned capability, park the
         # card until authored state changes so the fleet does not loop forever.
-        if _CAPABILITY_BLOCK_RE.search(str(val)):
+        if reason[0]=="capability":
+            if not all(_AC_REFERENT_RE.match(ref) or ref=="free" for ref in reason[1]):
+                return True
             strong_at=_strong_launched_at.get(cid,0)
-            if strong_at and _ts_epoch(ts)>=strong_at:
-                change=_latest_material_change(cid,ts)
-                if not change: return True
-                return strong_at>=change
-            return False
-        change=_latest_material_change(cid,ts)
+            if not strong_at: return False
+            change=_blocker_change_epoch(cid,ts,val)
+            return not (change and strong_at<change)
+        change=_blocker_change_epoch(cid,ts,val)
         if not change: return True
-        return _launched_at.get(cid,0) >= change
+        return not _wake_retry_available(cid,change)
     # No recorded outcome: fall back to launch history so mail-only BLOCKED
     # reporters are still caught. Three attempts with nothing to show is enough.
     #
@@ -878,18 +1096,13 @@ def blocked_backoff(cid):
 
 def _material_change_since(cid, epoch):
     """Latest material change strictly after `epoch`, or 0 if there is none."""
-    latest = 0
-    for event in event_rows(cid):
-        if event.get("action") in ("add_dependency", "remove_dependency"):
-            latest = max(latest, _ts_epoch(event.get("ts")))
+    latest = _authored_change_epoch(cid,epoch)
     for dep in folded_dependencies(cid):
         if lifecycle_state(dep) != "complete":
             continue
         for event in event_rows(dep):
             if event.get("action") == "complete":
                 latest = max(latest, _ts_epoch(event.get("ts")))
-    for event in _load_label_events().get(cid, []):
-        latest = max(latest, _ts_epoch(event.get("ts")))
     return latest if latest > epoch else 0
 
 
@@ -1421,6 +1634,7 @@ not_claimable_skipped=0
 pinned_elsewhere=0
 skipped_claimed=0
 claimability_errors=[]
+sensitive_withheld=0
 for cd in sorted(glob.glob(CARDS+"/*")):
     cid=os.path.basename(cd)
     core_p=os.path.join(cd,"core.json")
@@ -1456,6 +1670,8 @@ for cd in sorted(glob.glob(CARDS+"/*")):
             foreign_skipped+=1
         elif reason=="not-claimable":
             not_claimable_skipped+=1
+        elif reason=="sensitive-category":
+            sensitive_withheld+=1
         continue
     core=decision["core"]
     title=decision["title"]
@@ -1501,17 +1717,18 @@ if claimability_errors:
 log(d,"POOL|%s|ready=%d sklegal=%d eng=%d biz=%d dep_blocked=%d "
       "unclaimable=%d claimed=%d itil_closed=%d blocked_backoff=%d "
       "awaiting_review=%d pinned_elsewhere=%d foreign=%d not_claimable=%d "
-      "top_unblocks=%d"
+      "category_withheld=%d top_unblocks=%d"
       %(HOST,len(pool),lc[0],lc[1],lc[2],blocked,skipped_unclaimable,
         skipped_claimed,skipped_terminal,skipped_blocked,skipped_review,
-        pinned_elsewhere,foreign_skipped,not_claimable_skipped,top))
+        pinned_elsewhere,foreign_skipped,not_claimable_skipped,
+        sensitive_withheld,top))
 
 # Partition the CARD SPACE by hash, not by pool index. Index striding assumes all
 # three hosts see an identical pool at the same instant; ~/.skcapstone is Syncthing
 # shared and claims land continuously, so the pools drift and strides collide.
 # A hash partition is stable no matter what the local pool looks like.
-off={"chiap01":0,"chiap02":1,"chiap03":2}.get(HOST,0)
-_NHOST=3
+off = ROTATION_HOSTS.index(HOST) if HOST in ROTATION_HOSTS else 0
+_NHOST = len(ROTATION_HOSTS)
 def owns(cid):
     # A host-pinned card is owned by its pinned host, full stop. Letting the hash
     # partition also apply would strand any card whose pin and hash slice disagree:
@@ -1538,7 +1755,7 @@ _LANE_ONLY_LABELS={
 _CAPABILITY_VERDICT_RE = re.compile(
     r"blocked_on[=: |]+\s*capability\b|^\s*BLOCKED\s*\|\s*capability\b", re.I)
 
-def lane_compatibility(labels, escalation_required=False):
+def lane_compatibility(labels, escalation_required=False, qwen_allowed=True):
     """Return compatible lanes and a stable routing reason."""
     normalized={str(label).strip().lower() for label in (labels or [])}
     required={lane for label,lane in _LANE_ONLY_LABELS.items() if label in normalized}
@@ -1549,12 +1766,14 @@ def lane_compatibility(labels, escalation_required=False):
     if required:
         lane=next(iter(required))
         return (lane,),"required-lane:%s"%lane
-    return ("glm","codex"),"ordinary"
+    ordinary=("qwen","glm","codex") if qwen_allowed else ("glm","codex")
+    return ordinary,"ordinary"
 
 
-def select_compatible_lane(labels, escalation_required, lane_order, remaining):
+def select_compatible_lane(
+        labels, escalation_required, lane_order, remaining, qwen_allowed=True):
     """Choose the first free compatible lane without consuming another lane."""
-    compatible,reason=lane_compatibility(labels,escalation_required)
+    compatible,reason=lane_compatibility(labels,escalation_required,qwen_allowed)
     if not compatible:
         return None,reason
     for lane in lane_order:
@@ -1591,9 +1810,18 @@ def needs_escalation(cid, core=None, labels=None):
         return False
     return bool(_ts and _CAPABILITY_VERDICT_RE.search(str(_val or "")))
 
+_QWEN_UNSUITABLE = re.compile(
+    r"(capauth|credential|custody|issuer|secret|\bkey\b|rollback|deploy|"
+    r"production|release|migrat|schema|architecture|\[HUMAN\]|\[XL\])", re.I)
+
+def qwen_suitable(core):
+    """Return whether Qwen may receive this card before a paid lane."""
+    return not _QWEN_UNSUITABLE.search(str((core or {}).get("title") or ""))
+
 picks=[]; _i=0
 remaining={lane["name"]:lane["free"] for lane in LANES}
-lane_order=sorted(LANES,key=lambda lane:0 if lane["name"]=="glm" else 1)
+_LANE_RANK={"qwen":0,"glm":1,"codex":2,"escalate":3}
+lane_order=sorted(LANES,key=lambda lane:_LANE_RANK.get(lane["name"],9))
 _esc_waiting=0
 _lane_deferred=collections.Counter()
 # Lane affinity, in both directions. An escalation card may go ONLY to the escalate
@@ -1609,7 +1837,8 @@ while _i<len(owned) and len(picks)<MAX_LAUNCH:
     _card=owned[_i]; _i+=1
     _labels=_card[4]
     _esc=needs_escalation(_card[2], _card[3], _labels)
-    _lane_name,_defer=select_compatible_lane(_labels,_esc,lane_order,remaining)
+    _lane_name,_defer=select_compatible_lane(
+        _labels,_esc,lane_order,remaining,qwen_suitable(_card[3]))
     if _lane_name is None:
         _lane_deferred[_defer]+=1
         if _defer=="no-free-lane:escalate": _esc_waiting+=1
@@ -1729,7 +1958,8 @@ for _LANE,(_,_,cid,core,_labels,_nb) in picks:
     fresh_escalation=needs_escalation(
         cid,fresh_claimability["core"],fresh_claimability["labels"])
     compatible,affinity_reason=lane_compatibility(
-        fresh_claimability["labels"],fresh_escalation)
+        fresh_claimability["labels"],fresh_escalation,
+        qwen_suitable(fresh_claimability["core"]))
     if _LANE["name"] not in compatible:
         lane_drift += 1
         log(d,"SKIPPED_LANE_RACE|%s|%s|%s|selected=%s|reason=%s"%

@@ -54,7 +54,7 @@ def _core(card_id: str, labels: list[str]) -> dict[str, object]:
         (["glm-only"], False, (("glm",), "required-lane:glm")),
         (["escalation-only"], False, (("escalate",), "required-lane:escalate")),
         ([], True, (("escalate",), "required-lane:escalate")),
-        ([], False, (("glm", "codex"), "ordinary")),
+        ([], False, (("qwen", "glm", "codex"), "ordinary")),
     ],
 )
 def test_exact_lane_compatibility(
@@ -103,6 +103,18 @@ def test_no_compatible_slot_does_not_consume_another_lane() -> None:
     assert selected is None
     assert reason == "no-free-lane:codex"
     assert remaining == {"codex": 0, "glm": 3, "escalate": 2}
+
+
+def test_qwen_gets_first_refusal_only_when_category_allows_it() -> None:
+    namespace = _load_lane_helpers()
+    order = ["qwen", "glm", "codex", "escalate"]
+    remaining = {"qwen": 1, "glm": 1, "codex": 1, "escalate": 1}
+
+    selected, reason = namespace["select_compatible_lane"]([], False, order, remaining, True)
+    assert (selected, reason) == ("qwen", "compatible")
+
+    selected, reason = namespace["select_compatible_lane"]([], False, order, remaining, False)
+    assert (selected, reason) == ("glm", "compatible")
 
 
 def test_simultaneous_workers_respect_the_same_remaining_capacity() -> None:
@@ -191,3 +203,5 @@ def test_pool_and_immediate_preclaim_use_the_same_affinity_predicate() -> None:
     assert 'fresh_claimability["labels"]' in source
     assert "SKIPPED_LANE_RACE|" in source
     assert "LANE_DEFER|" in source
+    assert "qwen_suitable(_card[3])" in source
+    assert 'qwen_suitable(fresh_claimability["core"])' in source
