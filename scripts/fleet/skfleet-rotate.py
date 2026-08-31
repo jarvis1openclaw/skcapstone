@@ -94,8 +94,20 @@ def event_rows(cid):
         for f in os.listdir(ev):
             try:
                 for l in open(os.path.join(ev,f),encoding="utf-8",errors="replace"):
-                    try: out.append(json.loads(l))
-                    except: pass
+                    try:
+                        _o=json.loads(l)
+                    except:
+                        continue
+                    # A worker appended four bare JSON STRINGS into card 7b7c990f's
+                    # event log (prose like "Pushed branch to origin and opened PR
+                    # #2"). json.loads accepts those, and the sort below then called
+                    # .get() on a str, so ONE malformed line crashed the rotation on
+                    # ALL FIVE HOSTS for ~40 minutes on 2026-08-30: 46 failures,
+                    # zero dispatch, and nothing alerted. ~/.skcapstone is one
+                    # Syncthing folder, so the poison reached every host in minutes.
+                    # A reader must never let one bad line stop the fleet.
+                    if isinstance(_o, dict):
+                        out.append(_o)
             except OSError: pass
     out.sort(key=lambda e: (e.get("ts", ""), str(e.get("writer", "")), str(e.get("event_id", ""))))
     _rows[cid]=out; return out
@@ -869,8 +881,16 @@ def _acts_fresh(cid):
         for f in os.listdir(ev):
             try:
                 for l in open(os.path.join(ev, f), encoding="utf-8", errors="replace"):
-                    try: out.append(json.loads(l))
-                    except Exception: pass
+                    try:
+                        _o = json.loads(l)
+                    except Exception:
+                        continue
+                    # Second reader, same hazard as event_rows(). A bare JSON
+                    # string parses fine and then kills the sort below. Found
+                    # 2026-08-31 when chiap04 kept failing AFTER event_rows()
+                    # was guarded: one fix on one reader was not enough.
+                    if isinstance(_o, dict):
+                        out.append(_o)
             except OSError: pass
     return out
 
@@ -1313,8 +1333,15 @@ def itil_terminal(cid):
         for f in os.listdir(d):
             try:
                 for l in open(os.path.join(d,f),encoding="utf-8",errors="replace"):
-                    try: evs.append(json.loads(l))
-                    except: pass
+                    try:
+                        _o = json.loads(l)
+                    except Exception:
+                        continue
+                    # A bare JSON string parses fine and then kills the sort that
+                    # follows. Guarded on 2026-08-31 after the SAME exception took
+                    # the fleet down twice from two different readers.
+                    if isinstance(_o, dict):
+                        evs.append(_o)
             except OSError: pass
         evs.sort(key=lambda e:(e.get("ts",""),e.get("seq",0)))
         state=None
@@ -1418,8 +1445,15 @@ def _acts_fresh_rows(cid):
         for f in os.listdir(ev):
             try:
                 for l in open(os.path.join(ev, f), encoding="utf-8", errors="replace"):
-                    try: out.append(json.loads(l))
-                    except Exception: pass
+                    try:
+                        _o = json.loads(l)
+                    except Exception:
+                        continue
+                    # A bare JSON string parses fine and then kills the sort that
+                    # follows. Guarded on 2026-08-31 after the SAME exception took
+                    # the fleet down twice from two different readers.
+                    if isinstance(_o, dict):
+                        out.append(_o)
             except OSError:
                 pass
     out.sort(key=lambda e: (str(e.get("ts") or ""), e.get("seq") or 0))
