@@ -334,6 +334,45 @@ def test_reap_outcome_is_machine_readable_and_idempotent(tmp_path: Path) -> None
     assert len({row["event_id"] for row in rows}) == 2
 
 
+@pytest.mark.parametrize(
+    "mutation",
+    ("crlf", "missing-lf", "duplicate", "extra", "malformed", "noncanonical"),
+)
+def test_preexisting_outcome_requires_exact_canonical_lf_bytes(
+    tmp_path: Path, mutation: str
+) -> None:
+    """Only exact canonical UTF-8 JSONL can make deterministic replay idempotent."""
+    owner = "pi-codex-chiap02-deadbeef"
+    revision = "orphaned-revision"
+    namespace, _released, messages = _reaper_fixture(
+        tmp_path,
+        card_id="deadbeef",
+        owner=owner,
+        claim_revision=revision,
+        launch_revision=revision,
+    )
+    claim_ts = time.time() - 900
+    assert namespace["_record_reap_outcome"]("deadbeef", owner, revision, claim_ts)
+    path = tmp_path / "card_events" / "fleet-liveness-reaper.jsonl"
+    canonical = path.read_bytes()
+    first, second = canonical.splitlines(keepends=True)
+    mutations = {
+        "crlf": canonical.replace(b"\n", b"\r\n"),
+        "missing-lf": canonical[:-1],
+        "duplicate": canonical + first,
+        "extra": canonical + b"extra",
+        "malformed": b"not-json\n" + second,
+        "noncanonical": json.dumps(json.loads(first), sort_keys=True).encode("utf-8")
+        + b"\n"
+        + second,
+    }
+    path.write_bytes(mutations[mutation])
+
+    assert not namespace["_record_reap_outcome"]("deadbeef", owner, revision, claim_ts)
+    assert path.read_bytes() == mutations[mutation]
+    assert any(message.startswith("REAP_OUTCOME_FAILED|") for message in messages)
+
+
 @pytest.mark.parametrize("reported_at", ("future", "not-finite"))
 def test_invalid_live_report_timestamp_cannot_bypass_claim_grace(
     tmp_path: Path, reported_at: str

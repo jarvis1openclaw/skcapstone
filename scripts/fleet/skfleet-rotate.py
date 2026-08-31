@@ -1553,19 +1553,24 @@ def _record_reap_outcome(cid, owner, claim_revision, claim_ts):
     try:
         os.makedirs(_EVID_DIR, exist_ok=True)
         path = os.path.join(_EVID_DIR, "fleet-liveness-reaper.jsonl")
-        with open(path, "a+", encoding="utf-8") as fh:
+        with open(path, "a+b") as fh:
             fcntl.flock(fh.fileno(), fcntl.LOCK_EX)
             try:
                 fh.seek(0)
                 existing = {}
-                for number, line in enumerate(fh, 1):
-                    if not line.endswith("\n"):
+                for number, line in enumerate(fh.read().splitlines(keepends=True), 1):
+                    if not line.endswith(b"\n"):
                         raise ValueError("evidence line %d is partial" % number)
                     if not line.strip():
                         raise ValueError("evidence line %d is blank" % number)
-                    parsed = json.loads(line)
+                    parsed = json.loads(line[:-1].decode("utf-8"))
                     if not isinstance(parsed, dict):
                         raise ValueError("evidence line %d is not an object" % number)
+                    canonical = (
+                        json.dumps(parsed, separators=(",", ":"), sort_keys=True) + "\n"
+                    ).encode("utf-8")
+                    if line != canonical:
+                        raise ValueError("evidence line %d is not canonical" % number)
                     event_id = str(parsed.get("event_id") or "")
                     if not event_id:
                         raise ValueError("evidence line %d has no event ID" % number)
@@ -1574,9 +1579,9 @@ def _record_reap_outcome(cid, owner, claim_revision, claim_ts):
                     existing[event_id] = line
                 pending = []
                 for row in rows:
-                    canonical = json.dumps(
-                        row, separators=(",", ":"), sort_keys=True
-                    ) + "\n"
+                    canonical = (
+                        json.dumps(row, separators=(",", ":"), sort_keys=True) + "\n"
+                    ).encode("utf-8")
                     current = existing.get(row["event_id"])
                     if current is not None and current != canonical:
                         raise ValueError("existing reaper event does not match canonical row")
@@ -1584,13 +1589,13 @@ def _record_reap_outcome(cid, owner, claim_revision, claim_ts):
                         pending.append(canonical)
                 if pending:
                     fh.seek(0, os.SEEK_END)
-                    fh.write("".join(pending))
+                    fh.write(b"".join(pending))
                     fh.flush()
                     os.fsync(fh.fileno())
             finally:
                 fcntl.flock(fh.fileno(), fcntl.LOCK_UN)
         return True
-    except (OSError, ValueError, json.JSONDecodeError) as exc:
+    except (OSError, UnicodeDecodeError, ValueError, json.JSONDecodeError) as exc:
         log(d, "REAP_OUTCOME_FAILED|%s|%s|%s|%s" %
             (HOST, cid, owner, str(exc)[:120]))
         return False
