@@ -302,7 +302,7 @@ def live_report():
             ts = float(snap.get("ts") or 0)
         except (OSError, ValueError, TypeError):
             continue
-        if now - ts > LIVE_FRESH:
+        if not 0 < ts <= now or now - ts > LIVE_FRESH:
             continue
         hosts[str(snap.get("host") or p)] = ts
         running.update(str(c) for c in (snap.get("cards") or ()))
@@ -1557,19 +1557,34 @@ def _record_reap_outcome(cid, owner, claim_revision, claim_ts):
             fcntl.flock(fh.fileno(), fcntl.LOCK_EX)
             try:
                 fh.seek(0)
-                existing = set()
+                existing = {}
                 for number, line in enumerate(fh, 1):
+                    if not line.endswith("\n"):
+                        raise ValueError("evidence line %d is partial" % number)
                     if not line.strip():
-                        continue
+                        raise ValueError("evidence line %d is blank" % number)
                     parsed = json.loads(line)
                     if not isinstance(parsed, dict):
                         raise ValueError("evidence line %d is not an object" % number)
-                    existing.add(str(parsed.get("event_id") or ""))
-                pending = [row for row in rows if row["event_id"] not in existing]
+                    event_id = str(parsed.get("event_id") or "")
+                    if not event_id:
+                        raise ValueError("evidence line %d has no event ID" % number)
+                    if event_id in existing:
+                        raise ValueError("evidence line %d duplicates event ID" % number)
+                    existing[event_id] = line
+                pending = []
+                for row in rows:
+                    canonical = json.dumps(
+                        row, separators=(",", ":"), sort_keys=True
+                    ) + "\n"
+                    current = existing.get(row["event_id"])
+                    if current is not None and current != canonical:
+                        raise ValueError("existing reaper event does not match canonical row")
+                    if current is None:
+                        pending.append(canonical)
                 if pending:
                     fh.seek(0, os.SEEK_END)
-                    fh.write("".join(json.dumps(row, separators=(",", ":"), sort_keys=True) + "\n"
-                                     for row in pending))
+                    fh.write("".join(pending))
                     fh.flush()
                     os.fsync(fh.fileno())
             finally:

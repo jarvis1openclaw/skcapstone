@@ -334,6 +334,114 @@ def test_reap_outcome_is_machine_readable_and_idempotent(tmp_path: Path) -> None
     assert len({row["event_id"] for row in rows}) == 2
 
 
+@pytest.mark.parametrize("reported_at", ("future", "not-finite"))
+def test_invalid_live_report_timestamp_cannot_bypass_claim_grace(
+    tmp_path: Path, reported_at: str
+) -> None:
+    """An invalid host clock cannot make a fresh claim look old enough to reap."""
+    owner = "pi-codex-chiap02-deadbeef"
+    revision = "fresh-revision"
+    namespace, released, _messages = _reaper_fixture(
+        tmp_path,
+        card_id="deadbeef",
+        owner=owner,
+        claim_revision=revision,
+        launch_revision=revision,
+    )
+    fresh_ts = time.time() - 1
+    _replace_fresh_claim(
+        tmp_path,
+        owner=owner,
+        claim_revision=revision,
+        timestamp=datetime.datetime.fromtimestamp(fresh_ts, tz=datetime.timezone.utc).isoformat(),
+    )
+    report_ts = time.time() + 3600 if reported_at == "future" else float("nan")
+    for host in ("chiap01", "chiap02", "chiap03"):
+        (tmp_path / "live" / f"{host}.json").write_text(
+            json.dumps({"host": host, "ts": report_ts, "cards": []}) + "\n",
+            encoding="utf-8",
+        )
+    live_namespace = _load_functions("live_report")
+    live_namespace.update(
+        {
+            "LIVE": str(tmp_path / "live"),
+            "LIVE_FRESH": 1800,
+            "time": time,
+        }
+    )
+    namespace["event_rows"] = namespace["_acts_fresh_rows"]
+    namespace["live_report"] = live_namespace["live_report"]
+
+    assert namespace["live_report"]() == (0.0, set(), 0)
+    assert namespace["reap_dead_claims"]() == 0
+    assert released == []
+
+
+def test_conflicting_existing_outcome_id_prevents_release(tmp_path: Path) -> None:
+    """An event ID collision cannot stand in for the canonical worker verdict."""
+    owner = "pi-codex-chiap02-deadbeef"
+    revision = "orphaned-revision"
+    namespace, released, messages = _reaper_fixture(
+        tmp_path,
+        card_id="deadbeef",
+        owner=owner,
+        claim_revision=revision,
+        launch_revision=revision,
+    )
+    identity = f"deadbeef\0{owner}\0{revision}"
+    verdict_id = hashlib.sha256(("fleet-reap-verdict-v1\0" + identity).encode()).hexdigest()
+    event_dir = tmp_path / "card_events"
+    event_dir.mkdir()
+    conflicting = {
+        "event_id": verdict_id,
+        "card_id": "deadbeef",
+        "action": "verdict",
+        "verdict": "PASS",
+        "writer": "fleet-liveness-reaper",
+        "ts": "2026-08-31T00:00:00+00:00",
+    }
+    (event_dir / "fleet-liveness-reaper.jsonl").write_text(
+        json.dumps(conflicting, separators=(",", ":"), sort_keys=True) + "\n",
+        encoding="utf-8",
+    )
+
+    assert namespace["reap_dead_claims"]() == 0
+    assert released == []
+    assert any(message.startswith("REAP_OUTCOME_FAILED|") for message in messages)
+
+
+@pytest.mark.parametrize(
+    "existing",
+    [
+        "\n",
+        "not-json\n",
+        json.dumps({"event_id": "duplicate"})
+        + "\n"
+        + json.dumps({"event_id": "duplicate"})
+        + "\n",
+        json.dumps({"event_id": "partial"}),
+    ],
+    ids=("blank", "malformed", "duplicate", "partial"),
+)
+def test_malformed_existing_outcome_file_fails_closed(tmp_path: Path, existing: str) -> None:
+    """Malformed or partial reaper evidence never authorizes a release."""
+    namespace, _released, messages = _reaper_fixture(
+        tmp_path,
+        card_id="deadbeef",
+        owner="pi-codex-chiap02-deadbeef",
+        claim_revision="revision-1",
+        launch_revision="revision-1",
+    )
+    event_dir = tmp_path / "card_events"
+    event_dir.mkdir()
+    (event_dir / "fleet-liveness-reaper.jsonl").write_text(existing, encoding="utf-8")
+
+    assert not namespace["_record_reap_outcome"](
+        "deadbeef", "pi-codex-chiap02-deadbeef", "revision-1", time.time() - 900
+    )
+    assert any(message.startswith("REAP_OUTCOME_FAILED|") for message in messages)
+
+
 def test_outcome_failure_prevents_release(tmp_path: Path) -> None:
     """The supervisor never makes a dead claim indistinguishable from no claim."""
     namespace, released, messages = _reaper_fixture(
