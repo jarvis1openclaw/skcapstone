@@ -622,10 +622,10 @@ def lifecycle_state(cid):
 _EVID_DIR = os.path.join(HOME, ".skcapstone/coordination/card_events")
 _OUTCOME_KEYS = ("verdict", "result", "disposition", "review_decision")
 _OUTCOME_VALUE_RE = re.compile(
-    r"^\s*(BLOCKED|PASS(?:_FOR_[A-Z_]+)?|FAIL|DENY|HOLD|VOID|APPROVE(?:D)?)"
+    r"^\s*(BLOCKED|PASS(?:_FOR_[A-Z_]+)?|FAIL|DENY|HOLD|VOID|WORKER_DIED|APPROVE(?:D)?)"
     r"(?:\b|_)", re.I)
 _PIPE_OUTCOME_RE = re.compile(
-    r"(?:^|\|)\s*(BLOCKED|PASS(?:_FOR_[A-Z_]+)?|FAIL|DENY|HOLD|VOID|APPROVE(?:D)?)"
+    r"(?:^|\|)\s*(BLOCKED|PASS(?:_FOR_[A-Z_]+)?|FAIL|DENY|HOLD|VOID|WORKER_DIED|APPROVE(?:D)?)"
     r"\s*(?:\||$)", re.I)
 _INVALID_NATIVE_OUTCOME = "BLOCKED native_outcome_invalid=true"
 
@@ -1499,6 +1499,7 @@ def _fleet_launch_provenance(cid, owner, claim_revision):
                         session_prefix = {
                             "codex": "codex-auto-",
                             "glm": "glm-auto-",
+                            "qwen": "qwen-auto-",
                             "escalate": "esc-auto-",
                         }.get(lane)
                         if (
@@ -1512,6 +1513,72 @@ def _fleet_launch_provenance(cid, owner, claim_revision):
             except OSError:
                 continue
     return _fleet_launch_claims[(str(cid), str(owner), str(claim_revision))] == 1
+
+
+def _record_reap_outcome(cid, owner, claim_revision, claim_ts):
+    """Record the dead worker's outcome and exact generation before release.
+
+    All hosts derive the same event IDs and values. If Syncthing lets two hosts
+    reach this point before either sees the other's append, their rows are
+    byte-equivalent rather than conflicting. A repeated local attempt detects
+    both IDs and appends nothing. The two evidence events remain separate from
+    the structural ``release_claim`` event by design.
+    """
+    identity = "%s\0%s\0%s" % (cid, owner, claim_revision)
+    verdict_id = hashlib.sha256(("fleet-reap-verdict-v1\0" + identity).encode()).hexdigest()
+    evidence_id = hashlib.sha256(("fleet-reap-evidence-v1\0" + identity).encode()).hexdigest()
+    # The claim time is part of the immutable generation. Using it here makes
+    # independently appended rows byte-identical on every host.
+    stamp = datetime.datetime.fromtimestamp(
+        claim_ts, tz=datetime.timezone.utc).isoformat()
+    rows = [
+        {
+            "event_id": verdict_id,
+            "card_id": str(cid),
+            "action": "verdict",
+            "verdict": "WORKER_DIED",
+            "writer": "fleet-liveness-reaper",
+            "ts": stamp,
+        },
+        {
+            "event_id": evidence_id,
+            "card_id": str(cid),
+            "action": "link",
+            "link_key": "worker_died",
+            "link_value": "owner=%s claim_revision=%s" % (owner, claim_revision),
+            "writer": "fleet-liveness-reaper",
+            "ts": stamp,
+        },
+    ]
+    try:
+        os.makedirs(_EVID_DIR, exist_ok=True)
+        path = os.path.join(_EVID_DIR, "fleet-liveness-reaper.jsonl")
+        with open(path, "a+", encoding="utf-8") as fh:
+            fcntl.flock(fh.fileno(), fcntl.LOCK_EX)
+            try:
+                fh.seek(0)
+                existing = set()
+                for number, line in enumerate(fh, 1):
+                    if not line.strip():
+                        continue
+                    parsed = json.loads(line)
+                    if not isinstance(parsed, dict):
+                        raise ValueError("evidence line %d is not an object" % number)
+                    existing.add(str(parsed.get("event_id") or ""))
+                pending = [row for row in rows if row["event_id"] not in existing]
+                if pending:
+                    fh.seek(0, os.SEEK_END)
+                    fh.write("".join(json.dumps(row, separators=(",", ":"), sort_keys=True) + "\n"
+                                     for row in pending))
+                    fh.flush()
+                    os.fsync(fh.fileno())
+            finally:
+                fcntl.flock(fh.fileno(), fcntl.LOCK_UN)
+        return True
+    except (OSError, ValueError, json.JSONDecodeError) as exc:
+        log(d, "REAP_OUTCOME_FAILED|%s|%s|%s|%s" %
+            (HOST, cid, owner, str(exc)[:120]))
+        return False
 
 
 def reap_dead_claims():
@@ -1544,13 +1611,12 @@ def reap_dead_claims():
         if cid in _ineffective:
             continue                      # releasing it does nothing; see above
         if not claim_revision:
-            log(d, "REAP_UNPROVEN|%s|%s|%s|claim revision missing has no exact "
-                   "successful fleet launch record; leaving it for the stale-claim path"
-                % (HOST, cid, owner))
+            log(d, "REAP_EXCLUDED|%s|%s|%s|claim revision missing; exact release "
+                   "fence unavailable" % (HOST, cid, owner))
             continue
         if not cts:
-            log(d, "REAP_UNPROVEN|%s|%s|%s|claim timestamp invalid; leaving it "
-                   "for the stale-claim path" % (HOST, cid, owner))
+            log(d, "REAP_EXCLUDED|%s|%s|%s|claim timestamp invalid; liveness age "
+                   "cannot be proved" % (HOST, cid, owner))
             continue
         if cts > time.time():
             log(d, "REAP_CLOCK_SKEW|%s|%s|%s|cached claim timestamp is in the "
@@ -1571,8 +1637,8 @@ def reap_dead_claims():
                    fresh_revision or "missing"))
             continue
         if not fresh_ts:
-            log(d, "REAP_UNPROVEN|%s|%s|%s|fresh claim timestamp invalid; leaving "
-                   "it for the stale-claim path" % (HOST, cid, fresh_owner))
+            log(d, "REAP_EXCLUDED|%s|%s|%s|fresh claim timestamp invalid; liveness "
+                   "age cannot be proved" % (HOST, cid, fresh_owner))
             continue
         if fresh_ts > time.time():
             log(d, "REAP_CLOCK_SKEW|%s|%s|%s|fresh claim timestamp is in the "
@@ -1582,11 +1648,14 @@ def reap_dead_claims():
             log(d, "REAP_GRACE|%s|%s|%s|fresh claim generation remains inside "
                    "grace; leaving it alone this tick" % (HOST, cid, fresh_owner))
             continue
-        if not _fleet_launch_provenance(cid, fresh_owner, fresh_revision):
-            log(d, "REAP_UNPROVEN|%s|%s|%s|claim revision %s has no exact successful "
-                   "fleet launch record; leaving it for the stale-claim path"
-                % (HOST, cid, fresh_owner, fresh_revision or "missing"))
-            continue
+        # Launch provenance is useful attribution, not a liveness gate. The old
+        # code handed every unproven dead worker to a "stale-claim path" that did
+        # not exist. Quorum plus absence from every report is the proof required
+        # to act, including for hand-dispatched ephemeral workers.
+        provenance = (_fleet_launch_provenance(cid, fresh_owner, fresh_revision)
+                      and "fleet" or "ephemeral")
+        if not _record_reap_outcome(cid, fresh_owner, fresh_revision, fresh_ts):
+            continue                    # never release without a durable outcome
         r = subprocess.run(
             [SKC, "coord", "release-claim", cid, "--owner", str(fresh_owner),
              "--expected-claim-revision", str(fresh_revision),
@@ -1604,7 +1673,9 @@ def reap_dead_claims():
                        "disagree, needs repair" % (HOST, cid, owner))
                 continue
             freed += 1
-            log(d, "REAPED|%s|%s|%s|no host reports this card running" % (HOST, cid, owner))
+            log(d, "REAPED|%s|%s|%s|revision=%s provenance=%s; no reporting host "
+                   "reports this card running" %
+                (HOST, cid, owner, fresh_revision, provenance))
         else:
             # A release that keeps failing is a divergence, not a transient. Record
             # it after the first failure so it does not retry every five minutes

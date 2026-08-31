@@ -5,7 +5,9 @@ from __future__ import annotations
 import ast
 import collections
 import datetime
+import fcntl
 import glob
+import hashlib
 import json
 import os
 import re
@@ -53,7 +55,9 @@ def _load_functions(*names: str) -> dict[str, object]:
     namespace: dict[str, object] = {
         "collections": collections,
         "datetime": datetime,
+        "fcntl": fcntl,
         "glob": glob,
+        "hashlib": hashlib,
         "json": json,
         "os": os,
         "ROTATION_HOSTS": ("chiap01", "chiap02", "chiap03", "chiap04", "chiap08"),
@@ -128,6 +132,7 @@ def _reaper_fixture(
         "_acts_fresh_rows",
         "_current_claim_identity_fresh",
         "_fleet_launch_provenance",
+        "_record_reap_outcome",
         "reap_dead_claims",
     )
     released: list[list[str]] = []
@@ -144,6 +149,7 @@ def _reaper_fixture(
             "CLAIM_GRACE": 300,
             "EVID": str(evidence),
             "HOST": "chiap08",
+            "_EVID_DIR": str(tmp_path / "card_events"),
             "KNOWN_HOST_TTL": 86400,
             "LIVE": str(live),
             "REAP_QUORUM": 3,
@@ -178,8 +184,8 @@ def _replace_fresh_claim(
     path.write_text(json.dumps(event) + "\n", encoding="utf-8")
 
 
-def test_manual_claim_with_no_exact_launch_generation_is_preserved(tmp_path: Path) -> None:
-    """The 93220ffc manual Codex failure mode never reaches release-claim."""
+def test_manual_ephemeral_claim_with_no_launch_generation_is_reaped(tmp_path: Path) -> None:
+    """A dead ephemeral worker no longer falls into a nonexistent stale path."""
     namespace, released, messages = _reaper_fixture(
         tmp_path,
         card_id="93220ffc",
@@ -188,9 +194,10 @@ def test_manual_claim_with_no_exact_launch_generation_is_preserved(tmp_path: Pat
         launch_revision="an-older-claim-generation",
     )
 
-    assert namespace["reap_dead_claims"]() == 0
-    assert released == []
-    assert any(message.startswith("REAP_UNPROVEN|") for message in messages)
+    assert namespace["reap_dead_claims"]() == 1
+    assert len(released) == 1
+    assert any("provenance=ephemeral" in message for message in messages)
+    assert not any("stale-claim path" in message for message in messages)
 
 
 def test_missing_claim_revision_is_never_replaced_by_event_id(tmp_path: Path) -> None:
@@ -205,7 +212,8 @@ def test_missing_claim_revision_is_never_replaced_by_event_id(tmp_path: Path) ->
 
     assert namespace["reap_dead_claims"]() == 0
     assert released == []
-    assert any("claim revision missing" in message for message in messages)
+    assert any(message.startswith("REAP_EXCLUDED|") and "claim revision missing" in message
+               for message in messages)
 
 
 @pytest.mark.parametrize(
@@ -272,9 +280,72 @@ def test_malformed_or_duplicate_launch_evidence_fails_closed(
         launch_lines=launch_lines,
     )
 
+    assert namespace["reap_dead_claims"]() == 1
+    assert len(released) == 1
+    assert any("provenance=ephemeral" in message for message in messages)
+
+
+@pytest.mark.parametrize("lane", ["codex", "qwen"])
+def test_launcher_owner_naming_has_exact_provenance(tmp_path: Path, lane: str) -> None:
+    """The launch lookup accepts the fleet's Codex and Qwen owner names."""
+    owner = f"pi-{lane}-chiap02-deadbeef"
+    namespace, released, messages = _reaper_fixture(
+        tmp_path,
+        card_id="deadbeef",
+        owner=owner,
+        claim_revision="revision-1",
+        launch_revision=None,
+        launch_lines=[
+            f"LAUNCHED|chiap02|{lane}-auto-deadbeef|deadbeef|lane={lane}|"
+            f"model=test-model|owner={owner}|claim_revision=revision-1"
+        ],
+    )
+
+    assert namespace["reap_dead_claims"]() == 1
+    assert len(released) == 1
+    assert any("provenance=fleet" in message for message in messages)
+
+
+def test_reap_outcome_is_machine_readable_and_idempotent(tmp_path: Path) -> None:
+    """An orphaned claim gets one verdict plus one exact-generation evidence link."""
+    owner = "pi-codex-chiap02-deadbeef"
+    revision = "orphaned-revision"
+    namespace, _released, _messages = _reaper_fixture(
+        tmp_path,
+        card_id="deadbeef",
+        owner=owner,
+        claim_revision=revision,
+        launch_revision=revision,
+    )
+
+    claim_ts = time.time() - 900
+    assert namespace["_record_reap_outcome"]("deadbeef", owner, revision, claim_ts)
+    assert namespace["_record_reap_outcome"]("deadbeef", owner, revision, claim_ts)
+    path = tmp_path / "card_events" / "fleet-liveness-reaper.jsonl"
+    rows = [json.loads(line) for line in path.read_text(encoding="utf-8").splitlines()]
+    assert len(rows) == 2
+    verdict = next(row for row in rows if row["action"] == "verdict")
+    evidence = next(row for row in rows if row["action"] == "link")
+    assert verdict["verdict"] == "WORKER_DIED"
+    assert evidence["link_key"] == "worker_died"
+    assert evidence["link_value"] == f"owner={owner} claim_revision={revision}"
+    assert len({row["event_id"] for row in rows}) == 2
+
+
+def test_outcome_failure_prevents_release(tmp_path: Path) -> None:
+    """The supervisor never makes a dead claim indistinguishable from no claim."""
+    namespace, released, messages = _reaper_fixture(
+        tmp_path,
+        card_id="deadbeef",
+        owner="pi-codex-chiap02-deadbeef",
+        claim_revision="revision-1",
+        launch_revision="revision-1",
+    )
+    namespace["_record_reap_outcome"] = lambda *_args: False
+
     assert namespace["reap_dead_claims"]() == 0
     assert released == []
-    assert any(message.startswith("REAP_UNPROVEN|") for message in messages)
+    assert not any(message.startswith("REAPED|") for message in messages)
 
 
 def test_successful_launch_records_exact_claim_generation() -> None:
