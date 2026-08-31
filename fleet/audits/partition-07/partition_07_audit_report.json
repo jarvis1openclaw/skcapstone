@@ -1,0 +1,1612 @@
+{
+  "audit_metadata": {
+    "card_id": "7b7c990f",
+    "partition": 7,
+    "partition_modulus": 33,
+    "timestamp": "2026-08-31T00:26:16.604014Z",
+    "cardstore_path": "/home/skuser01/.skcapstone/cards",
+    "coordination_path": "/home/skuser01/.skcapstone/coordination/tasks",
+    "total_cards": 2119,
+    "in_partition": 70,
+    "excluded_audit_cards": 3,
+    "audited_cards": 67
+  },
+  "selection_algorithm": {
+    "description": "int(card_id, 16) modulo 33 equals 7",
+    "exclude_tags": [
+      "fleet-unblock-audit"
+    ]
+  },
+  "cards": [
+    {
+      "card_id": "07c4ffd7",
+      "lifecycle": {
+        "created_at": null,
+        "created_by": null,
+        "state": "unknown",
+        "state_transitions": [],
+        "last_updated": null
+      },
+      "dependencies": [
+        "ec0763b9"
+      ],
+      "current_claim": null,
+      "obstruction_classification": {
+        "obstruction_type": "dependency",
+        "reason": "Awaits completion of dependency ec0763b9 (state: unknown)",
+        "referent": "card:ec0763b9",
+        "evidence": [
+          "dependency:ec0763b9"
+        ]
+      },
+      "event_count": 3,
+      "evidence_links": []
+    },
+    {
+      "card_id": "083ffcef",
+      "lifecycle": {
+        "created_at": null,
+        "created_by": null,
+        "state": "unknown",
+        "state_transitions": [],
+        "last_updated": null
+      },
+      "dependencies": [
+        "525a00e1"
+      ],
+      "current_claim": null,
+      "obstruction_classification": {
+        "obstruction_type": "dependency",
+        "reason": "Awaits completion of dependency 525a00e1 (state: unknown)",
+        "referent": "card:525a00e1",
+        "evidence": [
+          "dependency:525a00e1"
+        ]
+      },
+      "event_count": 2,
+      "evidence_links": []
+    },
+    {
+      "card_id": "0d6c0fc9",
+      "lifecycle": {
+        "created_at": null,
+        "created_by": null,
+        "state": "unknown",
+        "state_transitions": [],
+        "last_updated": null
+      },
+      "dependencies": [
+        "7deae2fd"
+      ],
+      "current_claim": null,
+      "obstruction_classification": {
+        "obstruction_type": "dependency",
+        "reason": "Awaits completion of dependency 7deae2fd (state: unknown)",
+        "referent": "card:7deae2fd",
+        "evidence": [
+          "dependency:7deae2fd"
+        ]
+      },
+      "event_count": 2,
+      "evidence_links": []
+    },
+    {
+      "card_id": "0e92f2a3",
+      "lifecycle": {
+        "created_at": null,
+        "created_by": null,
+        "state": "unknown",
+        "state_transitions": [],
+        "last_updated": null
+      },
+      "dependencies": [
+        "64119c8a"
+      ],
+      "current_claim": null,
+      "obstruction_classification": {
+        "obstruction_type": "dependency",
+        "reason": "Awaits completion of dependency 64119c8a (state: unknown)",
+        "referent": "card:64119c8a",
+        "evidence": [
+          "dependency:64119c8a"
+        ]
+      },
+      "event_count": 3,
+      "evidence_links": []
+    },
+    {
+      "card_id": "0eceba42",
+      "lifecycle": {
+        "created_at": null,
+        "created_by": null,
+        "state": "unknown",
+        "state_transitions": [],
+        "last_updated": null
+      },
+      "dependencies": [
+        "9b2aeaeb"
+      ],
+      "current_claim": null,
+      "obstruction_classification": {
+        "obstruction_type": "dependency",
+        "reason": "Awaits completion of dependency 9b2aeaeb (state: unknown)",
+        "referent": "card:9b2aeaeb",
+        "evidence": [
+          "dependency:9b2aeaeb"
+        ]
+      },
+      "event_count": 3,
+      "evidence_links": []
+    },
+    {
+      "card_id": "1903595e",
+      "lifecycle": {
+        "created_at": null,
+        "created_by": null,
+        "state": "unknown",
+        "state_transitions": [],
+        "last_updated": null
+      },
+      "dependencies": [
+        "2b71fd2e"
+      ],
+      "current_claim": null,
+      "obstruction_classification": {
+        "obstruction_type": "dependency",
+        "reason": "Awaits completion of dependency 2b71fd2e (state: unknown)",
+        "referent": "card:2b71fd2e",
+        "evidence": [
+          "dependency:2b71fd2e"
+        ]
+      },
+      "event_count": 16,
+      "evidence_links": []
+    },
+    {
+      "card_id": "1c710ddb",
+      "lifecycle": {
+        "created_at": null,
+        "created_by": null,
+        "state": "unknown",
+        "state_transitions": [],
+        "last_updated": null
+      },
+      "dependencies": [],
+      "current_claim": null,
+      "obstruction_classification": {
+        "obstruction_type": "genuinely_assignable",
+        "reason": "No obstruction detected - card can be assigned",
+        "referent": null,
+        "evidence": [
+          "assignable:true"
+        ]
+      },
+      "event_count": 2,
+      "evidence_links": []
+    },
+    {
+      "card_id": "1ee6aac0",
+      "lifecycle": {
+        "created_at": null,
+        "created_by": null,
+        "state": "unknown",
+        "state_transitions": [],
+        "last_updated": null
+      },
+      "dependencies": [],
+      "current_claim": null,
+      "obstruction_classification": {
+        "obstruction_type": "genuinely_assignable",
+        "reason": "No obstruction detected - card can be assigned",
+        "referent": null,
+        "evidence": [
+          "assignable:true"
+        ]
+      },
+      "event_count": 2,
+      "evidence_links": []
+    },
+    {
+      "card_id": "2237c5c0",
+      "lifecycle": {
+        "created_at": null,
+        "created_by": null,
+        "state": "unknown",
+        "state_transitions": [],
+        "last_updated": null
+      },
+      "dependencies": [
+        "95935958"
+      ],
+      "current_claim": null,
+      "obstruction_classification": {
+        "obstruction_type": "dependency",
+        "reason": "Awaits completion of dependency 95935958 (state: unknown)",
+        "referent": "card:95935958",
+        "evidence": [
+          "dependency:95935958"
+        ]
+      },
+      "event_count": 5,
+      "evidence_links": []
+    },
+    {
+      "card_id": "23407930",
+      "lifecycle": {
+        "created_at": null,
+        "created_by": null,
+        "state": "unknown",
+        "state_transitions": [],
+        "last_updated": null
+      },
+      "dependencies": [
+        "2883dd9d"
+      ],
+      "current_claim": null,
+      "obstruction_classification": {
+        "obstruction_type": "dependency",
+        "reason": "Awaits completion of dependency 2883dd9d (state: unknown)",
+        "referent": "card:2883dd9d",
+        "evidence": [
+          "dependency:2883dd9d"
+        ]
+      },
+      "event_count": 2,
+      "evidence_links": []
+    },
+    {
+      "card_id": "24229207",
+      "lifecycle": {
+        "created_at": null,
+        "created_by": null,
+        "state": "unknown",
+        "state_transitions": [],
+        "last_updated": null
+      },
+      "dependencies": [],
+      "current_claim": null,
+      "obstruction_classification": {
+        "obstruction_type": "genuinely_assignable",
+        "reason": "No obstruction detected - card can be assigned",
+        "referent": null,
+        "evidence": [
+          "assignable:true"
+        ]
+      },
+      "event_count": 2,
+      "evidence_links": []
+    },
+    {
+      "card_id": "25df7757",
+      "lifecycle": {
+        "created_at": null,
+        "created_by": null,
+        "state": "unknown",
+        "state_transitions": [],
+        "last_updated": null
+      },
+      "dependencies": [
+        "7fa45dec"
+      ],
+      "current_claim": null,
+      "obstruction_classification": {
+        "obstruction_type": "dependency",
+        "reason": "Awaits completion of dependency 7fa45dec (state: unknown)",
+        "referent": "card:7fa45dec",
+        "evidence": [
+          "dependency:7fa45dec"
+        ]
+      },
+      "event_count": 2,
+      "evidence_links": []
+    },
+    {
+      "card_id": "2970a081",
+      "lifecycle": {
+        "created_at": null,
+        "created_by": null,
+        "state": "unknown",
+        "state_transitions": [],
+        "last_updated": null
+      },
+      "dependencies": [],
+      "current_claim": null,
+      "obstruction_classification": {
+        "obstruction_type": "genuinely_assignable",
+        "reason": "No obstruction detected - card can be assigned",
+        "referent": null,
+        "evidence": [
+          "assignable:true"
+        ]
+      },
+      "event_count": 13,
+      "evidence_links": []
+    },
+    {
+      "card_id": "2cc820df",
+      "lifecycle": {
+        "created_at": null,
+        "created_by": null,
+        "state": "unknown",
+        "state_transitions": [],
+        "last_updated": null
+      },
+      "dependencies": [
+        "9dcba975"
+      ],
+      "current_claim": null,
+      "obstruction_classification": {
+        "obstruction_type": "dependency",
+        "reason": "Awaits completion of dependency 9dcba975 (state: unknown)",
+        "referent": "card:9dcba975",
+        "evidence": [
+          "dependency:9dcba975"
+        ]
+      },
+      "event_count": 2,
+      "evidence_links": []
+    },
+    {
+      "card_id": "30cef3f2",
+      "lifecycle": {
+        "created_at": null,
+        "created_by": null,
+        "state": "unknown",
+        "state_transitions": [],
+        "last_updated": null
+      },
+      "dependencies": [
+        "f362b093"
+      ],
+      "current_claim": null,
+      "obstruction_classification": {
+        "obstruction_type": "dependency",
+        "reason": "Awaits completion of dependency f362b093 (state: unknown)",
+        "referent": "card:f362b093",
+        "evidence": [
+          "dependency:f362b093"
+        ]
+      },
+      "event_count": 5,
+      "evidence_links": []
+    },
+    {
+      "card_id": "33c86902",
+      "lifecycle": {
+        "created_at": null,
+        "created_by": null,
+        "state": "unknown",
+        "state_transitions": [],
+        "last_updated": null
+      },
+      "dependencies": [
+        "91b70875"
+      ],
+      "current_claim": null,
+      "obstruction_classification": {
+        "obstruction_type": "dependency",
+        "reason": "Awaits completion of dependency 91b70875 (state: unknown)",
+        "referent": "card:91b70875",
+        "evidence": [
+          "dependency:91b70875"
+        ]
+      },
+      "event_count": 1,
+      "evidence_links": []
+    },
+    {
+      "card_id": "3907be86",
+      "lifecycle": {
+        "created_at": null,
+        "created_by": null,
+        "state": "unknown",
+        "state_transitions": [],
+        "last_updated": null
+      },
+      "dependencies": [
+        "c6828b8a"
+      ],
+      "current_claim": null,
+      "obstruction_classification": {
+        "obstruction_type": "dependency",
+        "reason": "Awaits completion of dependency c6828b8a (state: unknown)",
+        "referent": "card:c6828b8a",
+        "evidence": [
+          "dependency:c6828b8a"
+        ]
+      },
+      "event_count": 8,
+      "evidence_links": []
+    },
+    {
+      "card_id": "3c6bf794",
+      "lifecycle": {
+        "created_at": null,
+        "created_by": null,
+        "state": "unknown",
+        "state_transitions": [],
+        "last_updated": null
+      },
+      "dependencies": [],
+      "current_claim": null,
+      "obstruction_classification": {
+        "obstruction_type": "genuinely_assignable",
+        "reason": "No obstruction detected - card can be assigned",
+        "referent": null,
+        "evidence": [
+          "assignable:true"
+        ]
+      },
+      "event_count": 2,
+      "evidence_links": []
+    },
+    {
+      "card_id": "3d8ef65f",
+      "lifecycle": {
+        "created_at": null,
+        "created_by": null,
+        "state": "unknown",
+        "state_transitions": [],
+        "last_updated": null
+      },
+      "dependencies": [
+        "df258657"
+      ],
+      "current_claim": null,
+      "obstruction_classification": {
+        "obstruction_type": "dependency",
+        "reason": "Awaits completion of dependency df258657 (state: unknown)",
+        "referent": "card:df258657",
+        "evidence": [
+          "dependency:df258657"
+        ]
+      },
+      "event_count": 4,
+      "evidence_links": []
+    },
+    {
+      "card_id": "4112b138",
+      "lifecycle": {
+        "created_at": null,
+        "created_by": null,
+        "state": "unknown",
+        "state_transitions": [],
+        "last_updated": null
+      },
+      "dependencies": [
+        "eeddee66"
+      ],
+      "current_claim": null,
+      "obstruction_classification": {
+        "obstruction_type": "dependency",
+        "reason": "Awaits completion of dependency eeddee66 (state: unknown)",
+        "referent": "card:eeddee66",
+        "evidence": [
+          "dependency:eeddee66"
+        ]
+      },
+      "event_count": 2,
+      "evidence_links": []
+    },
+    {
+      "card_id": "4aa2b5c7",
+      "lifecycle": {
+        "created_at": null,
+        "created_by": null,
+        "state": "unknown",
+        "state_transitions": [],
+        "last_updated": null
+      },
+      "dependencies": [],
+      "current_claim": null,
+      "obstruction_classification": {
+        "obstruction_type": "genuinely_assignable",
+        "reason": "No obstruction detected - card can be assigned",
+        "referent": null,
+        "evidence": [
+          "assignable:true"
+        ]
+      },
+      "event_count": 3,
+      "evidence_links": []
+    },
+    {
+      "card_id": "4c39be1d",
+      "lifecycle": {
+        "created_at": null,
+        "created_by": null,
+        "state": "unknown",
+        "state_transitions": [],
+        "last_updated": null
+      },
+      "dependencies": [
+        "458a3a70"
+      ],
+      "current_claim": null,
+      "obstruction_classification": {
+        "obstruction_type": "dependency",
+        "reason": "Awaits completion of dependency 458a3a70 (state: unknown)",
+        "referent": "card:458a3a70",
+        "evidence": [
+          "dependency:458a3a70"
+        ]
+      },
+      "event_count": 2,
+      "evidence_links": []
+    },
+    {
+      "card_id": "4c439c6b",
+      "lifecycle": {
+        "created_at": null,
+        "created_by": null,
+        "state": "unknown",
+        "state_transitions": [],
+        "last_updated": null
+      },
+      "dependencies": [],
+      "current_claim": null,
+      "obstruction_classification": {
+        "obstruction_type": "genuinely_assignable",
+        "reason": "No obstruction detected - card can be assigned",
+        "referent": null,
+        "evidence": [
+          "assignable:true"
+        ]
+      },
+      "event_count": 9,
+      "evidence_links": []
+    },
+    {
+      "card_id": "5185714f",
+      "lifecycle": {
+        "created_at": null,
+        "created_by": null,
+        "state": "unknown",
+        "state_transitions": [],
+        "last_updated": null
+      },
+      "dependencies": [],
+      "current_claim": null,
+      "obstruction_classification": {
+        "obstruction_type": "genuinely_assignable",
+        "reason": "No obstruction detected - card can be assigned",
+        "referent": null,
+        "evidence": [
+          "assignable:true"
+        ]
+      },
+      "event_count": 33,
+      "evidence_links": []
+    },
+    {
+      "card_id": "526bb17f",
+      "lifecycle": {
+        "created_at": null,
+        "created_by": null,
+        "state": "unknown",
+        "state_transitions": [],
+        "last_updated": null
+      },
+      "dependencies": [],
+      "current_claim": null,
+      "obstruction_classification": {
+        "obstruction_type": "genuinely_assignable",
+        "reason": "No obstruction detected - card can be assigned",
+        "referent": null,
+        "evidence": [
+          "assignable:true"
+        ]
+      },
+      "event_count": 4,
+      "evidence_links": []
+    },
+    {
+      "card_id": "5858a34f",
+      "lifecycle": {
+        "created_at": null,
+        "created_by": null,
+        "state": "unknown",
+        "state_transitions": [],
+        "last_updated": null
+      },
+      "dependencies": [
+        "d12b8951",
+        "38731952"
+      ],
+      "current_claim": null,
+      "obstruction_classification": {
+        "obstruction_type": "dependency",
+        "reason": "Awaits completion of dependency d12b8951 (state: unknown)",
+        "referent": "card:d12b8951",
+        "evidence": [
+          "dependency:d12b8951"
+        ]
+      },
+      "event_count": 7,
+      "evidence_links": []
+    },
+    {
+      "card_id": "5bcecb3b",
+      "lifecycle": {
+        "created_at": null,
+        "created_by": null,
+        "state": "unknown",
+        "state_transitions": [],
+        "last_updated": null
+      },
+      "dependencies": [
+        "c818148b"
+      ],
+      "current_claim": null,
+      "obstruction_classification": {
+        "obstruction_type": "dependency",
+        "reason": "Awaits completion of dependency c818148b (state: unknown)",
+        "referent": "card:c818148b",
+        "evidence": [
+          "dependency:c818148b"
+        ]
+      },
+      "event_count": 2,
+      "evidence_links": []
+    },
+    {
+      "card_id": "5dbc4f9a",
+      "lifecycle": {
+        "created_at": null,
+        "created_by": null,
+        "state": "unknown",
+        "state_transitions": [],
+        "last_updated": null
+      },
+      "dependencies": [
+        "5ab203ce"
+      ],
+      "current_claim": null,
+      "obstruction_classification": {
+        "obstruction_type": "dependency",
+        "reason": "Awaits completion of dependency 5ab203ce (state: unknown)",
+        "referent": "card:5ab203ce",
+        "evidence": [
+          "dependency:5ab203ce"
+        ]
+      },
+      "event_count": 3,
+      "evidence_links": []
+    },
+    {
+      "card_id": "66eac850",
+      "lifecycle": {
+        "created_at": null,
+        "created_by": null,
+        "state": "unknown",
+        "state_transitions": [],
+        "last_updated": null
+      },
+      "dependencies": [],
+      "current_claim": null,
+      "obstruction_classification": {
+        "obstruction_type": "genuinely_assignable",
+        "reason": "No obstruction detected - card can be assigned",
+        "referent": null,
+        "evidence": [
+          "assignable:true"
+        ]
+      },
+      "event_count": 3,
+      "evidence_links": []
+    },
+    {
+      "card_id": "7b6e97c1",
+      "lifecycle": {
+        "created_at": null,
+        "created_by": null,
+        "state": "unknown",
+        "state_transitions": [],
+        "last_updated": null
+      },
+      "dependencies": [
+        "7e72aca6"
+      ],
+      "current_claim": null,
+      "obstruction_classification": {
+        "obstruction_type": "dependency",
+        "reason": "Awaits completion of dependency 7e72aca6 (state: unknown)",
+        "referent": "card:7e72aca6",
+        "evidence": [
+          "dependency:7e72aca6"
+        ]
+      },
+      "event_count": 2,
+      "evidence_links": []
+    },
+    {
+      "card_id": "7f6141cf",
+      "lifecycle": {
+        "created_at": null,
+        "created_by": null,
+        "state": "unknown",
+        "state_transitions": [],
+        "last_updated": null
+      },
+      "dependencies": [
+        "cb5bad06"
+      ],
+      "current_claim": null,
+      "obstruction_classification": {
+        "obstruction_type": "dependency",
+        "reason": "Awaits completion of dependency cb5bad06 (state: unknown)",
+        "referent": "card:cb5bad06",
+        "evidence": [
+          "dependency:cb5bad06"
+        ]
+      },
+      "event_count": 2,
+      "evidence_links": []
+    },
+    {
+      "card_id": "84bcd928",
+      "lifecycle": {
+        "created_at": null,
+        "created_by": null,
+        "state": "unknown",
+        "state_transitions": [],
+        "last_updated": null
+      },
+      "dependencies": [
+        "9079cf6c"
+      ],
+      "current_claim": null,
+      "obstruction_classification": {
+        "obstruction_type": "dependency",
+        "reason": "Awaits completion of dependency 9079cf6c (state: unknown)",
+        "referent": "card:9079cf6c",
+        "evidence": [
+          "dependency:9079cf6c"
+        ]
+      },
+      "event_count": 3,
+      "evidence_links": []
+    },
+    {
+      "card_id": "85967293",
+      "lifecycle": {
+        "created_at": null,
+        "created_by": null,
+        "state": "unknown",
+        "state_transitions": [],
+        "last_updated": null
+      },
+      "dependencies": [
+        "855ef00a",
+        "f8d425e1",
+        "3e442852",
+        "b0c6495c",
+        "d3514f35",
+        "dd4bb79d",
+        "c917bc40"
+      ],
+      "current_claim": null,
+      "obstruction_classification": {
+        "obstruction_type": "dependency",
+        "reason": "Awaits completion of dependency 855ef00a (state: unknown)",
+        "referent": "card:855ef00a",
+        "evidence": [
+          "dependency:855ef00a"
+        ]
+      },
+      "event_count": 3,
+      "evidence_links": []
+    },
+    {
+      "card_id": "85fc7df1",
+      "lifecycle": {
+        "created_at": null,
+        "created_by": null,
+        "state": "unknown",
+        "state_transitions": [],
+        "last_updated": null
+      },
+      "dependencies": [],
+      "current_claim": null,
+      "obstruction_classification": {
+        "obstruction_type": "genuinely_assignable",
+        "reason": "No obstruction detected - card can be assigned",
+        "referent": null,
+        "evidence": [
+          "assignable:true"
+        ]
+      },
+      "event_count": 3,
+      "evidence_links": []
+    },
+    {
+      "card_id": "910edb7f",
+      "lifecycle": {
+        "created_at": null,
+        "created_by": null,
+        "state": "unknown",
+        "state_transitions": [],
+        "last_updated": null
+      },
+      "dependencies": [],
+      "current_claim": null,
+      "obstruction_classification": {
+        "obstruction_type": "genuinely_assignable",
+        "reason": "No obstruction detected - card can be assigned",
+        "referent": null,
+        "evidence": [
+          "assignable:true"
+        ]
+      },
+      "event_count": 7,
+      "evidence_links": []
+    },
+    {
+      "card_id": "93220ffc",
+      "lifecycle": {
+        "created_at": null,
+        "created_by": null,
+        "state": "unknown",
+        "state_transitions": [],
+        "last_updated": null
+      },
+      "dependencies": [
+        "269f3536"
+      ],
+      "current_claim": null,
+      "obstruction_classification": {
+        "obstruction_type": "dependency",
+        "reason": "Awaits completion of dependency 269f3536 (state: unknown)",
+        "referent": "card:269f3536",
+        "evidence": [
+          "dependency:269f3536"
+        ]
+      },
+      "event_count": 4,
+      "evidence_links": []
+    },
+    {
+      "card_id": "946a0c7d",
+      "lifecycle": {
+        "created_at": null,
+        "created_by": null,
+        "state": "unknown",
+        "state_transitions": [],
+        "last_updated": null
+      },
+      "dependencies": [],
+      "current_claim": null,
+      "obstruction_classification": {
+        "obstruction_type": "genuinely_assignable",
+        "reason": "No obstruction detected - card can be assigned",
+        "referent": null,
+        "evidence": [
+          "assignable:true"
+        ]
+      },
+      "event_count": 2,
+      "evidence_links": []
+    },
+    {
+      "card_id": "96b6607d",
+      "lifecycle": {
+        "created_at": null,
+        "created_by": null,
+        "state": "unknown",
+        "state_transitions": [],
+        "last_updated": null
+      },
+      "dependencies": [
+        "e435b45e",
+        "510f3a0b",
+        "82eabf0c"
+      ],
+      "current_claim": null,
+      "obstruction_classification": {
+        "obstruction_type": "dependency",
+        "reason": "Awaits completion of dependency e435b45e (state: unknown)",
+        "referent": "card:e435b45e",
+        "evidence": [
+          "dependency:e435b45e"
+        ]
+      },
+      "event_count": 1,
+      "evidence_links": []
+    },
+    {
+      "card_id": "97927bfd",
+      "lifecycle": {
+        "created_at": null,
+        "created_by": null,
+        "state": "unknown",
+        "state_transitions": [],
+        "last_updated": null
+      },
+      "dependencies": [
+        "2c35d28b"
+      ],
+      "current_claim": null,
+      "obstruction_classification": {
+        "obstruction_type": "dependency",
+        "reason": "Awaits completion of dependency 2c35d28b (state: unknown)",
+        "referent": "card:2c35d28b",
+        "evidence": [
+          "dependency:2c35d28b"
+        ]
+      },
+      "event_count": 2,
+      "evidence_links": []
+    },
+    {
+      "card_id": "980fb58e",
+      "lifecycle": {
+        "created_at": null,
+        "created_by": null,
+        "state": "unknown",
+        "state_transitions": [],
+        "last_updated": null
+      },
+      "dependencies": [
+        "43ec0596"
+      ],
+      "current_claim": null,
+      "obstruction_classification": {
+        "obstruction_type": "dependency",
+        "reason": "Awaits completion of dependency 43ec0596 (state: unknown)",
+        "referent": "card:43ec0596",
+        "evidence": [
+          "dependency:43ec0596"
+        ]
+      },
+      "event_count": 2,
+      "evidence_links": []
+    },
+    {
+      "card_id": "9a7a2ec9",
+      "lifecycle": {
+        "created_at": null,
+        "created_by": null,
+        "state": "unknown",
+        "state_transitions": [],
+        "last_updated": null
+      },
+      "dependencies": [],
+      "current_claim": null,
+      "obstruction_classification": {
+        "obstruction_type": "genuinely_assignable",
+        "reason": "No obstruction detected - card can be assigned",
+        "referent": null,
+        "evidence": [
+          "assignable:true"
+        ]
+      },
+      "event_count": 2,
+      "evidence_links": []
+    },
+    {
+      "card_id": "9bf2c639",
+      "lifecycle": {
+        "created_at": null,
+        "created_by": null,
+        "state": "unknown",
+        "state_transitions": [],
+        "last_updated": null
+      },
+      "dependencies": [
+        "05c8daea"
+      ],
+      "current_claim": null,
+      "obstruction_classification": {
+        "obstruction_type": "dependency",
+        "reason": "Awaits completion of dependency 05c8daea (state: unknown)",
+        "referent": "card:05c8daea",
+        "evidence": [
+          "dependency:05c8daea"
+        ]
+      },
+      "event_count": 3,
+      "evidence_links": []
+    },
+    {
+      "card_id": "a29aa89c",
+      "lifecycle": {
+        "created_at": null,
+        "created_by": null,
+        "state": "unknown",
+        "state_transitions": [],
+        "last_updated": null
+      },
+      "dependencies": [],
+      "current_claim": null,
+      "obstruction_classification": {
+        "obstruction_type": "genuinely_assignable",
+        "reason": "No obstruction detected - card can be assigned",
+        "referent": null,
+        "evidence": [
+          "assignable:true"
+        ]
+      },
+      "event_count": 6,
+      "evidence_links": []
+    },
+    {
+      "card_id": "a7b7eb8e",
+      "lifecycle": {
+        "created_at": null,
+        "created_by": null,
+        "state": "unknown",
+        "state_transitions": [],
+        "last_updated": null
+      },
+      "dependencies": [
+        "d78fabeb"
+      ],
+      "current_claim": null,
+      "obstruction_classification": {
+        "obstruction_type": "dependency",
+        "reason": "Awaits completion of dependency d78fabeb (state: unknown)",
+        "referent": "card:d78fabeb",
+        "evidence": [
+          "dependency:d78fabeb"
+        ]
+      },
+      "event_count": 4,
+      "evidence_links": []
+    },
+    {
+      "card_id": "ae3abb38",
+      "lifecycle": {
+        "created_at": null,
+        "created_by": null,
+        "state": "unknown",
+        "state_transitions": [],
+        "last_updated": null
+      },
+      "dependencies": [],
+      "current_claim": {
+        "agent": "pi-qwen-chiap01-ae3abb38",
+        "host": "chiap01",
+        "state": "active",
+        "last_seen": "2026-08-30T22:40:04.486804+00:00"
+      },
+      "obstruction_classification": {
+        "obstruction_type": "stale_claim",
+        "reason": "Claim by pi-qwen-chiap01-ae3abb38 stale for 106.3 minutes",
+        "referent": "agent:pi-qwen-chiap01-ae3abb38",
+        "evidence": [
+          "stale_claim:pi-qwen-chiap01-ae3abb38"
+        ]
+      },
+      "event_count": 28,
+      "evidence_links": []
+    },
+    {
+      "card_id": "b0be2a97",
+      "lifecycle": {
+        "created_at": null,
+        "created_by": null,
+        "state": "unknown",
+        "state_transitions": [],
+        "last_updated": null
+      },
+      "dependencies": [
+        "bd3b8927"
+      ],
+      "current_claim": null,
+      "obstruction_classification": {
+        "obstruction_type": "dependency",
+        "reason": "Awaits completion of dependency bd3b8927 (state: unknown)",
+        "referent": "card:bd3b8927",
+        "evidence": [
+          "dependency:bd3b8927"
+        ]
+      },
+      "event_count": 2,
+      "evidence_links": []
+    },
+    {
+      "card_id": "b18fed11",
+      "lifecycle": {
+        "created_at": null,
+        "created_by": null,
+        "state": "unknown",
+        "state_transitions": [],
+        "last_updated": null
+      },
+      "dependencies": [
+        "6f3cd09d"
+      ],
+      "current_claim": null,
+      "obstruction_classification": {
+        "obstruction_type": "dependency",
+        "reason": "Awaits completion of dependency 6f3cd09d (state: unknown)",
+        "referent": "card:6f3cd09d",
+        "evidence": [
+          "dependency:6f3cd09d"
+        ]
+      },
+      "event_count": 2,
+      "evidence_links": []
+    },
+    {
+      "card_id": "b403597a",
+      "lifecycle": {
+        "created_at": null,
+        "created_by": null,
+        "state": "unknown",
+        "state_transitions": [],
+        "last_updated": null
+      },
+      "dependencies": [
+        "bd537b9f"
+      ],
+      "current_claim": null,
+      "obstruction_classification": {
+        "obstruction_type": "dependency",
+        "reason": "Awaits completion of dependency bd537b9f (state: unknown)",
+        "referent": "card:bd537b9f",
+        "evidence": [
+          "dependency:bd537b9f"
+        ]
+      },
+      "event_count": 3,
+      "evidence_links": []
+    },
+    {
+      "card_id": "bf156005",
+      "lifecycle": {
+        "created_at": null,
+        "created_by": null,
+        "state": "unknown",
+        "state_transitions": [],
+        "last_updated": null
+      },
+      "dependencies": [
+        "15eb213d",
+        "e149b03a"
+      ],
+      "current_claim": {
+        "agent": "pi-glm-chiap01-bf156005",
+        "host": "chiap01",
+        "state": "active",
+        "last_seen": "2026-08-29T14:05:17.821395+00:00"
+      },
+      "obstruction_classification": {
+        "obstruction_type": "dependency",
+        "reason": "Awaits completion of dependency 15eb213d (state: unknown)",
+        "referent": "card:15eb213d",
+        "evidence": [
+          "dependency:15eb213d"
+        ]
+      },
+      "event_count": 6,
+      "evidence_links": []
+    },
+    {
+      "card_id": "c0382ebb",
+      "lifecycle": {
+        "created_at": null,
+        "created_by": null,
+        "state": "unknown",
+        "state_transitions": [],
+        "last_updated": null
+      },
+      "dependencies": [],
+      "current_claim": null,
+      "obstruction_classification": {
+        "obstruction_type": "genuinely_assignable",
+        "reason": "No obstruction detected - card can be assigned",
+        "referent": null,
+        "evidence": [
+          "assignable:true"
+        ]
+      },
+      "event_count": 2,
+      "evidence_links": []
+    },
+    {
+      "card_id": "c9f055c3",
+      "lifecycle": {
+        "created_at": null,
+        "created_by": null,
+        "state": "unknown",
+        "state_transitions": [],
+        "last_updated": null
+      },
+      "dependencies": [],
+      "current_claim": null,
+      "obstruction_classification": {
+        "obstruction_type": "genuinely_assignable",
+        "reason": "No obstruction detected - card can be assigned",
+        "referent": null,
+        "evidence": [
+          "assignable:true"
+        ]
+      },
+      "event_count": 4,
+      "evidence_links": []
+    },
+    {
+      "card_id": "ca4ae086",
+      "lifecycle": {
+        "created_at": null,
+        "created_by": null,
+        "state": "unknown",
+        "state_transitions": [],
+        "last_updated": null
+      },
+      "dependencies": [
+        "bca62518",
+        "5c08b767",
+        "04f4fb74"
+      ],
+      "current_claim": null,
+      "obstruction_classification": {
+        "obstruction_type": "dependency",
+        "reason": "Awaits completion of dependency bca62518 (state: unknown)",
+        "referent": "card:bca62518",
+        "evidence": [
+          "dependency:bca62518"
+        ]
+      },
+      "event_count": 4,
+      "evidence_links": []
+    },
+    {
+      "card_id": "cb8796b0",
+      "lifecycle": {
+        "created_at": null,
+        "created_by": null,
+        "state": "unknown",
+        "state_transitions": [],
+        "last_updated": null
+      },
+      "dependencies": [
+        "2632ebc5"
+      ],
+      "current_claim": null,
+      "obstruction_classification": {
+        "obstruction_type": "dependency",
+        "reason": "Awaits completion of dependency 2632ebc5 (state: unknown)",
+        "referent": "card:2632ebc5",
+        "evidence": [
+          "dependency:2632ebc5"
+        ]
+      },
+      "event_count": 8,
+      "evidence_links": []
+    },
+    {
+      "card_id": "d11a97c8",
+      "lifecycle": {
+        "created_at": null,
+        "created_by": null,
+        "state": "unknown",
+        "state_transitions": [],
+        "last_updated": null
+      },
+      "dependencies": [
+        "74b36366"
+      ],
+      "current_claim": null,
+      "obstruction_classification": {
+        "obstruction_type": "dependency",
+        "reason": "Awaits completion of dependency 74b36366 (state: unknown)",
+        "referent": "card:74b36366",
+        "evidence": [
+          "dependency:74b36366"
+        ]
+      },
+      "event_count": 2,
+      "evidence_links": []
+    },
+    {
+      "card_id": "d42e53d1",
+      "lifecycle": {
+        "created_at": null,
+        "created_by": null,
+        "state": "unknown",
+        "state_transitions": [],
+        "last_updated": null
+      },
+      "dependencies": [
+        "476c9af9"
+      ],
+      "current_claim": null,
+      "obstruction_classification": {
+        "obstruction_type": "dependency",
+        "reason": "Awaits completion of dependency 476c9af9 (state: unknown)",
+        "referent": "card:476c9af9",
+        "evidence": [
+          "dependency:476c9af9"
+        ]
+      },
+      "event_count": 2,
+      "evidence_links": []
+    },
+    {
+      "card_id": "d5457c69",
+      "lifecycle": {
+        "created_at": null,
+        "created_by": null,
+        "state": "unknown",
+        "state_transitions": [],
+        "last_updated": null
+      },
+      "dependencies": [],
+      "current_claim": null,
+      "obstruction_classification": {
+        "obstruction_type": "genuinely_assignable",
+        "reason": "No obstruction detected - card can be assigned",
+        "referent": null,
+        "evidence": [
+          "assignable:true"
+        ]
+      },
+      "event_count": 9,
+      "evidence_links": []
+    },
+    {
+      "card_id": "d9f8f889",
+      "lifecycle": {
+        "created_at": null,
+        "created_by": null,
+        "state": "unknown",
+        "state_transitions": [],
+        "last_updated": null
+      },
+      "dependencies": [
+        "d2fbe65b"
+      ],
+      "current_claim": null,
+      "obstruction_classification": {
+        "obstruction_type": "dependency",
+        "reason": "Awaits completion of dependency d2fbe65b (state: unknown)",
+        "referent": "card:d2fbe65b",
+        "evidence": [
+          "dependency:d2fbe65b"
+        ]
+      },
+      "event_count": 2,
+      "evidence_links": []
+    },
+    {
+      "card_id": "dca676cd",
+      "lifecycle": {
+        "created_at": null,
+        "created_by": null,
+        "state": "unknown",
+        "state_transitions": [],
+        "last_updated": null
+      },
+      "dependencies": [
+        "46932cad"
+      ],
+      "current_claim": null,
+      "obstruction_classification": {
+        "obstruction_type": "dependency",
+        "reason": "Awaits completion of dependency 46932cad (state: unknown)",
+        "referent": "card:46932cad",
+        "evidence": [
+          "dependency:46932cad"
+        ]
+      },
+      "event_count": 2,
+      "evidence_links": []
+    },
+    {
+      "card_id": "e2a3ede6",
+      "lifecycle": {
+        "created_at": null,
+        "created_by": null,
+        "state": "unknown",
+        "state_transitions": [],
+        "last_updated": null
+      },
+      "dependencies": [
+        "b71d6d49",
+        "3e442852"
+      ],
+      "current_claim": null,
+      "obstruction_classification": {
+        "obstruction_type": "dependency",
+        "reason": "Awaits completion of dependency b71d6d49 (state: unknown)",
+        "referent": "card:b71d6d49",
+        "evidence": [
+          "dependency:b71d6d49"
+        ]
+      },
+      "event_count": 2,
+      "evidence_links": []
+    },
+    {
+      "card_id": "e6326000",
+      "lifecycle": {
+        "created_at": null,
+        "created_by": null,
+        "state": "unknown",
+        "state_transitions": [],
+        "last_updated": null
+      },
+      "dependencies": [
+        "d12b8951",
+        "94cbf19a"
+      ],
+      "current_claim": null,
+      "obstruction_classification": {
+        "obstruction_type": "dependency",
+        "reason": "Awaits completion of dependency d12b8951 (state: unknown)",
+        "referent": "card:d12b8951",
+        "evidence": [
+          "dependency:d12b8951"
+        ]
+      },
+      "event_count": 14,
+      "evidence_links": []
+    },
+    {
+      "card_id": "ecf1148c",
+      "lifecycle": {
+        "created_at": null,
+        "created_by": null,
+        "state": "unknown",
+        "state_transitions": [],
+        "last_updated": null
+      },
+      "dependencies": [
+        "169028ce",
+        "83a8c40b",
+        "efa9bee8"
+      ],
+      "current_claim": null,
+      "obstruction_classification": {
+        "obstruction_type": "dependency",
+        "reason": "Awaits completion of dependency 169028ce (state: unknown)",
+        "referent": "card:169028ce",
+        "evidence": [
+          "dependency:169028ce"
+        ]
+      },
+      "event_count": 10,
+      "evidence_links": []
+    },
+    {
+      "card_id": "edfae91f",
+      "lifecycle": {
+        "created_at": null,
+        "created_by": null,
+        "state": "unknown",
+        "state_transitions": [],
+        "last_updated": null
+      },
+      "dependencies": [],
+      "current_claim": null,
+      "obstruction_classification": {
+        "obstruction_type": "genuinely_assignable",
+        "reason": "No obstruction detected - card can be assigned",
+        "referent": null,
+        "evidence": [
+          "assignable:true"
+        ]
+      },
+      "event_count": 5,
+      "evidence_links": []
+    },
+    {
+      "card_id": "ee1d0874",
+      "lifecycle": {
+        "created_at": null,
+        "created_by": null,
+        "state": "unknown",
+        "state_transitions": [],
+        "last_updated": null
+      },
+      "dependencies": [
+        "9442b3b3"
+      ],
+      "current_claim": null,
+      "obstruction_classification": {
+        "obstruction_type": "dependency",
+        "reason": "Awaits completion of dependency 9442b3b3 (state: unknown)",
+        "referent": "card:9442b3b3",
+        "evidence": [
+          "dependency:9442b3b3"
+        ]
+      },
+      "event_count": 5,
+      "evidence_links": []
+    },
+    {
+      "card_id": "efde62f9",
+      "lifecycle": {
+        "created_at": null,
+        "created_by": null,
+        "state": "unknown",
+        "state_transitions": [],
+        "last_updated": null
+      },
+      "dependencies": [],
+      "current_claim": null,
+      "obstruction_classification": {
+        "obstruction_type": "genuinely_assignable",
+        "reason": "No obstruction detected - card can be assigned",
+        "referent": null,
+        "evidence": [
+          "assignable:true"
+        ]
+      },
+      "event_count": 10,
+      "evidence_links": []
+    },
+    {
+      "card_id": "f631b685",
+      "lifecycle": {
+        "created_at": null,
+        "created_by": null,
+        "state": "unknown",
+        "state_transitions": [],
+        "last_updated": null
+      },
+      "dependencies": [],
+      "current_claim": null,
+      "obstruction_classification": {
+        "obstruction_type": "genuinely_assignable",
+        "reason": "No obstruction detected - card can be assigned",
+        "referent": null,
+        "evidence": [
+          "assignable:true"
+        ]
+      },
+      "event_count": 10,
+      "evidence_links": []
+    },
+    {
+      "card_id": "f8b7d892",
+      "lifecycle": {
+        "created_at": null,
+        "created_by": null,
+        "state": "unknown",
+        "state_transitions": [],
+        "last_updated": null
+      },
+      "dependencies": [
+        "0a0a66ce"
+      ],
+      "current_claim": null,
+      "obstruction_classification": {
+        "obstruction_type": "dependency",
+        "reason": "Awaits completion of dependency 0a0a66ce (state: unknown)",
+        "referent": "card:0a0a66ce",
+        "evidence": [
+          "dependency:0a0a66ce"
+        ]
+      },
+      "event_count": 1,
+      "evidence_links": []
+    },
+    {
+      "card_id": "fdad0c1f",
+      "lifecycle": {
+        "created_at": null,
+        "created_by": null,
+        "state": "unknown",
+        "state_transitions": [],
+        "last_updated": null
+      },
+      "dependencies": [
+        "29716c9d"
+      ],
+      "current_claim": null,
+      "obstruction_classification": {
+        "obstruction_type": "dependency",
+        "reason": "Awaits completion of dependency 29716c9d (state: unknown)",
+        "referent": "card:29716c9d",
+        "evidence": [
+          "dependency:29716c9d"
+        ]
+      },
+      "event_count": 2,
+      "evidence_links": []
+    }
+  ]
+}
