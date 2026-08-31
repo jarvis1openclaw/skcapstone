@@ -212,8 +212,10 @@ def test_missing_claim_revision_is_never_replaced_by_event_id(tmp_path: Path) ->
 
     assert namespace["reap_dead_claims"]() == 0
     assert released == []
-    assert any(message.startswith("REAP_EXCLUDED|") and "claim revision missing" in message
-               for message in messages)
+    assert any(
+        message.startswith("REAP_EXCLUDED|") and "claim revision missing" in message
+        for message in messages
+    )
 
 
 @pytest.mark.parametrize(
