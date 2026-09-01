@@ -299,10 +299,11 @@ join_csv() {
 }
 
 notify_transition() {
-  local priority=$1 subject=$2 body=$3 recipient
+  local priority=$1 subject=$2 body=$3 recipient failed=0
   for recipient in lumina jarvis; do
-    skmail send jarvis "$recipient" "$priority" "$subject" "$body" >/dev/null || true
+    skmail send jarvis "$recipient" "$priority" "$subject" "$body" >/dev/null || failed=1
   done
+  return "$failed"
 }
 
 sample() {
@@ -419,21 +420,29 @@ sample() {
   fi
   previous=$(cat "$state_file" 2>/dev/null || true)
 
+  if [[ "$current" != "$previous" ]]; then
+    local body delivery_failed=0
+    body="Fleet watcher transition at $now: state=$current workers=$total_workers lanes=codex:$codex_workers,glm:$glm_workers,qwen:$qwen_workers,escalate:$escalate_workers unique_workable_cards=$total_ready candidate_inventory_missing_hosts=$candidate_manifests_missing unavailable_hosts=$unavailable queue_active=$queue_active queue_queued=$queue_queued unmatched_sessions=$(join_csv "$unmatched_sessions") unmatched_claims=$(join_csv "$unmatched_claims") unmatched_gateway=$(join_csv "$unmatched_gateway") conflicts=$(join_csv "$conflicts"). Gateway queue is request activity only and was not counted as workers. Details: $details."
+    case "$current" in
+      zero|unavailable) notify_transition urgent FLEET-DISTRIBUTION-DOWN "$body" || delivery_failed=1 ;;
+      collector_fault) notify_transition urgent FLEET-DISTRIBUTION-COLLECTOR-FAULT "$body" || delivery_failed=1 ;;
+      *)
+        if [[ -n "$previous" ]]; then
+          notify_transition normal FLEET-DISTRIBUTION-RECOVERED "$body" || delivery_failed=1
+        fi
+        ;;
+    esac
+    if (( delivery_failed )); then
+      current=collector_fault
+      conflicts+="${conflicts:+,}notification_delivery_failed"
+    else
+      printf '%s\n' "$current" >"$state_file"
+    fi
+  fi
   printf '%s|state=%s|workers=%d|codex=%d|glm=%d|qwen=%d|escalate=%d|workable=%d|candidate_inventory_missing_hosts=%d|unavailable_hosts=%d|queue_active=%s|queue_queued=%s|gateway_unattributed=%s|unmatched_sessions=%s|unmatched_claims=%s|unmatched_gateway=%s|conflicts=%s|%s\n' \
     "$now" "$current" "$total_workers" "$codex_workers" "$glm_workers" "$qwen_workers" "$escalate_workers" \
     "$total_ready" "$candidate_manifests_missing" "$unavailable" "$queue_active" "$queue_queued" "$gateway_unattributed" \
     "$(join_csv "$unmatched_sessions")" "$(join_csv "$unmatched_claims")" "$(join_csv "$unmatched_gateway")" "$(join_csv "$conflicts")" "$details" >>"$log_dir/watch.log"
-
-  if [[ "$current" != "$previous" ]]; then
-    local body
-    body="Fleet watcher transition at $now: state=$current workers=$total_workers lanes=codex:$codex_workers,glm:$glm_workers,qwen:$qwen_workers,escalate:$escalate_workers unique_workable_cards=$total_ready candidate_inventory_missing_hosts=$candidate_manifests_missing unavailable_hosts=$unavailable queue_active=$queue_active queue_queued=$queue_queued unmatched_sessions=$(join_csv "$unmatched_sessions") unmatched_claims=$(join_csv "$unmatched_claims") unmatched_gateway=$(join_csv "$unmatched_gateway") conflicts=$(join_csv "$conflicts"). Gateway queue is request activity only and was not counted as workers. Details: $details."
-    case "$current" in
-      zero|unavailable) notify_transition urgent FLEET-DISTRIBUTION-DOWN "$body" ;;
-      collector_fault) notify_transition urgent FLEET-DISTRIBUTION-COLLECTOR-FAULT "$body" ;;
-      *) [[ -n "$previous" ]] && notify_transition normal FLEET-DISTRIBUTION-RECOVERED "$body" ;;
-    esac
-    printf '%s\n' "$current" >"$state_file"
-  fi
   printf 'state=%s workers=%d codex=%d glm=%d qwen=%d escalate=%d workable=%d candidate_inventory_missing_hosts=%d unavailable_hosts=%d queue_active=%s queue_queued=%s unmatched_sessions=%s unmatched_claims=%s unmatched_gateway=%s conflicts=%s\n' \
     "$current" "$total_workers" "$codex_workers" "$glm_workers" "$qwen_workers" "$escalate_workers" \
     "$total_ready" "$candidate_manifests_missing" "$unavailable" "$queue_active" "$queue_queued" \

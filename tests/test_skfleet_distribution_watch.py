@@ -77,6 +77,35 @@ def test_zero_workers_with_active_queue_is_collector_fault_and_notifies_both(
     assert "FLEET-DISTRIBUTION-DOWN" not in mail
 
 
+def test_failed_notification_is_reported_and_retried(tmp_path: Path) -> None:
+    result = run_bash(
+        """
+probe_host() {
+  printf '%b\n' \
+    'META\\tchiap08\\tempty\\tsuccess\\n'\
+'POOL\\tchiap08\\tPOOL|chiap08|ready=0 POOL_IDS|chiap08|ids=-'
+}
+collect_claims() { :; }
+collect_gateway_activity() { printf 'GATEWAY_UNATTRIBUTED\\t0\\n'; }
+curl() { printf '%s\\n' '{"pool":{"totalActive":0,"totalQueued":0}}'; }
+skmail() {
+  printf '%s\\n' "$*" >> "$SKFLEET_LOG_DIR/mail.log"
+  [[ "$3" != jarvis ]]
+}
+sample
+sample
+""",
+        tmp_path,
+    )
+
+    assert result.returncode == 0, result.stderr
+    assert result.stdout.count("state=collector_fault") == 2
+    assert result.stdout.count("notification_delivery_failed") == 2
+    assert not (tmp_path / "state" / "distribution-watch.state").exists()
+    mail = (tmp_path / "log" / "mail.log").read_text()
+    assert mail.count("jarvis jarvis urgent FLEET-DISTRIBUTION-DOWN") == 2
+
+
 def test_sessions_claims_and_gateway_join_by_full_identity_without_counting_queue(
     tmp_path: Path,
 ) -> None:
