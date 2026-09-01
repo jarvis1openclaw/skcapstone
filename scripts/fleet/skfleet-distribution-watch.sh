@@ -65,19 +65,29 @@ lane_from_session() {
   esac
 }
 
-has_live_pi_child() {
+live_pi_child() {
   local pane_pid=$1 child comm
   while read -r child; do
     [[ -n "$child" ]] || continue
     comm=$(ps -o comm= -p "$child" 2>/dev/null | xargs)
-    [[ "$comm" == pi ]] && return 0
+    if [[ "$comm" == pi ]]; then
+      printf '%s\n' "$child"
+      return 0
+    fi
   done < <(pgrep -P "$pane_pid" 2>/dev/null || true)
   return 1
 }
 
+worker_identity() {
+  local child=$1 identity
+  identity=$(tr '\0' '\n' <"/proc/$child/environ" 2>/dev/null | sed -n 's/^SKAGENT=//p' | head -1)
+  [[ "$identity" =~ ^pi-(codex|glm|qwen|esc|escalate|escalation)-[^-]+-[0-9a-f]{8}$ ]] || return 1
+  printf '%s\n' "$identity"
+}
+
 probe_host() {
   local host=$1 panes error_file tmux_state=ok result pool pool_ids
-  local session pane_pid command lane card state
+  local session pane_pid command lane card state child identity
   error_file=$(mktemp)
   if panes=$(tmux list-panes -a -F '#{session_name}|#{pane_pid}|#{pane_current_command}' 2>"$error_file"); then
     tmux_state=ok
@@ -103,17 +113,20 @@ probe_host() {
     card=${session##*-}
     [[ "$card" =~ ^[0-9a-f]{8}$ ]] || continue
     state=live
+    child=$(live_pi_child "$pane_pid" || true)
     if [[ "$command" == bash || "$command" == sh ]]; then
       state=shell_only
-      has_live_pi_child "$pane_pid" && state=live
+      [[ -n "$child" ]] && state=live
     fi
-    printf 'SESSION\t%s\t%s\t%s\t%s\t%s\t%s\n' \
-      "$host" "$session" "$card" "$lane" "$state" "$command"
+    identity=$(worker_identity "$child" 2>/dev/null || true)
+    identity=${identity:-unknown@$host/$session}
+    printf 'SESSION\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t-\n' \
+      "$host" "$session" "$card" "$lane" "$state" "$command" "$identity"
   done <<<"$panes"
 }
 
 host_probe_source() {
-  declare -f lane_from_session has_live_pi_child probe_host
+  declare -f lane_from_session live_pi_child worker_identity probe_host
   printf 'probe_host "$1"\n'
 }
 
@@ -128,13 +141,20 @@ for card in CardStore(home).list_cards(include_archived=False):
     owner = card.owner or ""
     revision = card.meta.get("_claim_revision")
     status = getattr(card.status, "value", str(card.status))
-    if not re.match(r"^pi-(?:codex|glm|qwen|esc|escalation)-", owner):
+    match = re.fullmatch(
+        r"pi-(codex|glm|qwen|esc|escalate|escalation)-([^-]+)-([0-9a-f]{8})", owner
+    )
+    if not match:
         continue
     if not isinstance(revision, str) or not revision:
         continue
     if status != "doing":
         continue
-    print("CLAIM\t%s\t%s\t%s\t%s" % (card.id, owner, status, revision))
+    lane = "escalate" if match.group(1) in ("esc", "escalate", "escalation") else match.group(1)
+    print(
+        "CLAIM\t%s\t%s\t%s\t%s\t%s\t%s"
+        % (card.id, owner, status, revision, match.group(2), lane)
+    )
 ' 2>/dev/null
 }
 
@@ -149,18 +169,36 @@ path = os.path.expanduser("~/skgateway-codex/data/metrics.db")
 db = sqlite3.connect("file:" + path + "?mode=ro", uri=True)
 cutoff = int(time.time() * 1000) - 10 * 60 * 1000
 rows = db.execute(
-    "select agent_id, count(*) from request_log "
-    "where started_at > ? and agent_id is not null group by agent_id",
+    "select agent_id, coalesce(backend, ''), count(*) from request_log "
+    "where started_at > ? and agent_id is not null group by agent_id, backend",
     (cutoff,),
 )
 unattributed = db.execute(
     "select count(*) from request_log where started_at > ? and agent_id is null",
     (cutoff,),
 ).fetchone()[0]
-for agent_id, count in rows:
-    match = re.search(r"([0-9a-f]{8})$", agent_id or "")
-    if match and re.match(r"^pi-(?:codex|glm|qwen|esc|escalation)-", agent_id):
-        print("GATEWAY\t%s\t%s\t%s" % (match.group(1), agent_id, count))
+for agent_id, backend, count in rows:
+    match = re.fullmatch(
+        r"pi-(codex|glm|qwen|esc|escalate|escalation)-([^-]+)-([0-9a-f]{8})", agent_id or ""
+    )
+    backend_lane = (
+        "codex" if backend == "codex" else
+        "glm" if backend == "zai" or "glm" in backend else
+        "qwen" if "qwen" in backend else
+        "escalate" if backend in ("esc", "escalate", "escalation") else
+        "unknown"
+    )
+    if match:
+        identity_lane = (
+            "escalate"
+            if match.group(1) in ("esc", "escalate", "escalation")
+            else match.group(1)
+        )
+        lane = backend_lane if backend_lane != "unknown" else identity_lane
+        print(
+            "GATEWAY\t%s\t%s\t%s\t%s\t%s\t%s"
+            % (match.group(3), agent_id, count, match.group(2), lane, backend or "unknown")
+        )
     else:
         unattributed += count
 print("GATEWAY_UNATTRIBUTED\t%s" % unattributed)
@@ -173,6 +211,85 @@ import json, sys
 data = json.load(sys.stdin)
 pool = data.get("pool", data)
 print("%s\t%s" % (pool["totalActive"], pool["totalQueued"]))
+'
+}
+
+join_worker_truth() {
+  python3 -c '
+import sys
+from collections import defaultdict
+
+sessions = defaultdict(list)
+claims = defaultdict(list)
+gateway = defaultdict(list)
+results = []
+for raw in sys.stdin:
+    fields = raw.rstrip("\n").split("\t")
+    if not fields or not fields[0]:
+        continue
+    kind = fields[0]
+    try:
+        if kind == "SESSION":
+            _, host, session, card, lane, state, command, identity, revision = fields
+            if state == "live":
+                sessions[identity].append((host, lane, card, revision, session))
+        elif kind == "CLAIM":
+            _, card, identity, status, revision, host, lane = fields
+            claims[identity].append((host, lane, card, revision, status))
+        elif kind == "GATEWAY":
+            _, card, identity, count, host, lane, backend = fields
+            gateway[identity].append((host, lane, card, backend, count))
+    except ValueError:
+        results.append(("CONFLICT", "malformed_%s=%s" % (kind.lower(), raw.rstrip())))
+
+for identity in sorted(set(sessions) | set(claims) | set(gateway)):
+    identity_sessions = sessions.get(identity, [])
+    identity_claims = claims.get(identity, [])
+    identity_gateway = gateway.get(identity, [])
+    if len(identity_sessions) > 1:
+        results.append(("CONFLICT", "%s:session_count=%d" % (identity, len(identity_sessions))))
+    elif len(identity_sessions) == 1 and len(identity_claims) != 1:
+        results.append(("UNMATCHED_SESSION", "%s:%s" % (identity, identity_sessions[0][4])))
+    if len(identity_claims) > 1:
+        results.append(("CONFLICT", "%s:claim_count=%d" % (identity, len(identity_claims))))
+    elif len(identity_claims) == 1 and len(identity_sessions) != 1:
+        results.append(("UNMATCHED_CLAIM", "%s:%s" % (identity, identity_claims[0][3])))
+    if len(identity_sessions) != 1 or len(identity_claims) != 1:
+        for record in identity_gateway:
+            results.append(("UNMATCHED_GATEWAY", "%s:%s:%s" % (identity, record[3], record[4])))
+        continue
+
+    session = identity_sessions[0]
+    claim = identity_claims[0]
+    if session[:3] != claim[:3]:
+        results.append(
+            (
+                "CONFLICT",
+                "%s:session=%s/%s/%s:claim=%s/%s/%s"
+                % (identity, *session[:3], *claim[:3]),
+            )
+        )
+        continue
+    if session[3] != "-" and claim[3] != "-" and session[3] != claim[3]:
+        results.append(
+            (
+                "CONFLICT",
+                "%s:session_revision=%s:claim_revision=%s"
+                % (identity, session[3], claim[3]),
+            )
+        )
+        continue
+    for record in identity_gateway:
+        if session[:3] != record[:3]:
+            results.append(
+                (
+                    "UNMATCHED_GATEWAY",
+                    "%s:%s/%s/%s:backend=%s" % (identity, *record[:4]),
+                )
+            )
+
+for kind, detail in results:
+    print("%s\t%s" % (kind, detail))
 '
 }
 
@@ -194,8 +311,8 @@ sample() {
   local codex_workers=0 glm_workers=0 qwen_workers=0 escalate_workers=0
   local claims_fault=0 gateway_fault=0 queue_fault=0 gateway_unattributed=0
   local queue queue_active=unavailable queue_queued=unavailable now current previous total_ready
-  local unmatched_sessions="" unmatched_claims="" unmatched_gateway=""
-  declare -A sessions=() claims=() gateway=()
+  local unmatched_sessions="" unmatched_claims="" unmatched_gateway="" conflicts=""
+  local truth_records=""
   reset_candidate_inventory
 
   for host in "${hosts[@]}"; do
@@ -223,10 +340,10 @@ sample() {
           fi
           ;;
         SESSION)
-          local session lane session_state command
-          IFS=$'\t' read -r host session card lane session_state command <<<"$line"
+          local session lane session_state command identity revision
+          IFS=$'\t' read -r host session card lane session_state command identity revision <<<"$line"
+          truth_records+=$'SESSION\t'"$line"$'\n'
           if [[ "$session_state" == live ]]; then
-            sessions["$card"]="$host/$session"
             total_workers=$((total_workers + 1))
             case "$lane" in
               codex) codex_workers=$((codex_workers + 1)) ;;
@@ -245,9 +362,7 @@ sample() {
   if out=$(collect_claims); then
     while IFS=$'\t' read -r kind line; do
       [[ "$kind" == CLAIM ]] || continue
-      local owner status revision
-      IFS=$'\t' read -r card owner status revision <<<"$line"
-      claims["$card"]="$owner/$status/$revision"
+      truth_records+=$'CLAIM\t'"$line"$'\n'
     done <<<"$out"
   else
     claims_fault=1
@@ -257,9 +372,7 @@ sample() {
     while IFS=$'\t' read -r kind line; do
       case "$kind" in
         GATEWAY)
-          local agent count
-          IFS=$'\t' read -r card agent count <<<"$line"
-          gateway["$card"]="$agent/$count"
+          truth_records+=$'GATEWAY\t'"$line"$'\n'
           ;;
         GATEWAY_UNATTRIBUTED) gateway_unattributed=$line ;;
       esac
@@ -275,20 +388,22 @@ sample() {
     queue_fault=1
   fi
 
-  for card in "${!sessions[@]}"; do
-    [[ -n "${claims[$card]:-}" ]] || unmatched_sessions+="${card}@${sessions[$card]},"
-  done
-  for card in "${!claims[@]}"; do
-    [[ -n "${sessions[$card]:-}" ]] || unmatched_claims+="${card}@${claims[$card]},"
-  done
-  for card in "${!gateway[@]}"; do
-    if [[ -z "${sessions[$card]:-}" || -z "${claims[$card]:-}" ]]; then
-      unmatched_gateway+="${card}@${gateway[$card]},"
-    fi
-  done
+  if out=$(join_worker_truth <<<"$truth_records" 2>/dev/null); then
+    while IFS=$'\t' read -r kind line; do
+      case "$kind" in
+        UNMATCHED_SESSION) unmatched_sessions+="$line," ;;
+        UNMATCHED_CLAIM) unmatched_claims+="$line," ;;
+        UNMATCHED_GATEWAY) unmatched_gateway+="$line," ;;
+        CONFLICT) conflicts+="$line," ;;
+      esac
+    done <<<"$out"
+  else
+    claims_fault=1
+  fi
   unmatched_sessions=${unmatched_sessions%,}
   unmatched_claims=${unmatched_claims%,}
   unmatched_gateway=${unmatched_gateway%,}
+  conflicts=${conflicts%,}
 
   total_ready=${#candidate_ids[@]}
   now=$(date -u +%Y-%m-%dT%H:%M:%SZ)
@@ -296,7 +411,7 @@ sample() {
   if (( unavailable >= ${#hosts[@]} )); then
     current=unavailable
   elif (( tmux_fault || claims_fault || gateway_fault || queue_fault )) \
-    || [[ -n "$unmatched_sessions" || -n "$unmatched_claims" || -n "$unmatched_gateway" ]] \
+    || [[ -n "$unmatched_sessions" || -n "$unmatched_claims" || -n "$unmatched_gateway" || -n "$conflicts" ]] \
     || { (( total_workers == 0 )) && [[ "$queue_active" =~ ^[0-9]+$ ]] && (( queue_active > 0 )); }; then
     current=collector_fault
   elif (( total_workers == 0 )); then
@@ -304,14 +419,14 @@ sample() {
   fi
   previous=$(cat "$state_file" 2>/dev/null || true)
 
-  printf '%s|state=%s|workers=%d|codex=%d|glm=%d|qwen=%d|escalate=%d|workable=%d|candidate_inventory_missing_hosts=%d|unavailable_hosts=%d|queue_active=%s|queue_queued=%s|gateway_unattributed=%s|unmatched_sessions=%s|unmatched_claims=%s|unmatched_gateway=%s|%s\n' \
+  printf '%s|state=%s|workers=%d|codex=%d|glm=%d|qwen=%d|escalate=%d|workable=%d|candidate_inventory_missing_hosts=%d|unavailable_hosts=%d|queue_active=%s|queue_queued=%s|gateway_unattributed=%s|unmatched_sessions=%s|unmatched_claims=%s|unmatched_gateway=%s|conflicts=%s|%s\n' \
     "$now" "$current" "$total_workers" "$codex_workers" "$glm_workers" "$qwen_workers" "$escalate_workers" \
     "$total_ready" "$candidate_manifests_missing" "$unavailable" "$queue_active" "$queue_queued" "$gateway_unattributed" \
-    "$(join_csv "$unmatched_sessions")" "$(join_csv "$unmatched_claims")" "$(join_csv "$unmatched_gateway")" "$details" >>"$log_dir/watch.log"
+    "$(join_csv "$unmatched_sessions")" "$(join_csv "$unmatched_claims")" "$(join_csv "$unmatched_gateway")" "$(join_csv "$conflicts")" "$details" >>"$log_dir/watch.log"
 
   if [[ "$current" != "$previous" ]]; then
     local body
-    body="Fleet watcher transition at $now: state=$current workers=$total_workers lanes=codex:$codex_workers,glm:$glm_workers,qwen:$qwen_workers,escalate:$escalate_workers unique_workable_cards=$total_ready candidate_inventory_missing_hosts=$candidate_manifests_missing unavailable_hosts=$unavailable queue_active=$queue_active queue_queued=$queue_queued unmatched_sessions=$(join_csv "$unmatched_sessions") unmatched_claims=$(join_csv "$unmatched_claims") unmatched_gateway=$(join_csv "$unmatched_gateway"). Gateway queue is request activity only and was not counted as workers. Details: $details."
+    body="Fleet watcher transition at $now: state=$current workers=$total_workers lanes=codex:$codex_workers,glm:$glm_workers,qwen:$qwen_workers,escalate:$escalate_workers unique_workable_cards=$total_ready candidate_inventory_missing_hosts=$candidate_manifests_missing unavailable_hosts=$unavailable queue_active=$queue_active queue_queued=$queue_queued unmatched_sessions=$(join_csv "$unmatched_sessions") unmatched_claims=$(join_csv "$unmatched_claims") unmatched_gateway=$(join_csv "$unmatched_gateway") conflicts=$(join_csv "$conflicts"). Gateway queue is request activity only and was not counted as workers. Details: $details."
     case "$current" in
       zero|unavailable) notify_transition urgent FLEET-DISTRIBUTION-DOWN "$body" ;;
       collector_fault) notify_transition urgent FLEET-DISTRIBUTION-COLLECTOR-FAULT "$body" ;;
@@ -319,10 +434,10 @@ sample() {
     esac
     printf '%s\n' "$current" >"$state_file"
   fi
-  printf 'state=%s workers=%d codex=%d glm=%d qwen=%d escalate=%d workable=%d candidate_inventory_missing_hosts=%d unavailable_hosts=%d queue_active=%s queue_queued=%s unmatched_sessions=%s unmatched_claims=%s unmatched_gateway=%s\n' \
+  printf 'state=%s workers=%d codex=%d glm=%d qwen=%d escalate=%d workable=%d candidate_inventory_missing_hosts=%d unavailable_hosts=%d queue_active=%s queue_queued=%s unmatched_sessions=%s unmatched_claims=%s unmatched_gateway=%s conflicts=%s\n' \
     "$current" "$total_workers" "$codex_workers" "$glm_workers" "$qwen_workers" "$escalate_workers" \
     "$total_ready" "$candidate_manifests_missing" "$unavailable" "$queue_active" "$queue_queued" \
-    "$(join_csv "$unmatched_sessions")" "$(join_csv "$unmatched_claims")" "$(join_csv "$unmatched_gateway")"
+    "$(join_csv "$unmatched_sessions")" "$(join_csv "$unmatched_claims")" "$(join_csv "$unmatched_gateway")" "$(join_csv "$conflicts")"
 }
 
 if [[ "${SKFLEET_DISTRIBUTION_WATCH_LIB_ONLY:-0}" == 1 ]]; then

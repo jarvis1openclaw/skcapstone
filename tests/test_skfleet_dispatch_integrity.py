@@ -163,11 +163,11 @@ ssh() {
 }
 probe_host() { record_for "$1"; }
 collect_claims() {
-  local variable line kind host session card lane state command
+  local variable line kind host session card lane state command identity revision
   for variable in CHIAP01_RECORD CHIAP02_RECORD CHIAP03_RECORD CHIAP04_RECORD CHIAP08_RECORD; do
-    while IFS=$'\t' read -r kind host session card lane state command; do
+    while IFS=$'\t' read -r kind host session card lane state command identity revision; do
       [[ "$kind" == SESSION && "$state" == live ]] || continue
-      printf 'CLAIM\t%s\tpi-%s-%s-%s\tdoing\trevision\n' "$card" "$lane" "$host" "$card"
+      printf 'CLAIM\t%s\t%s\tdoing\trevision\t%s\t%s\n' "$card" "$identity" "$host" "$lane"
     done <<<"${!variable}"
   done
 }
@@ -232,6 +232,7 @@ def test_escalation_only_sessions_keep_distribution_watch_up(tmp_path: Path) -> 
     records = _sample_records()
     records["CHIAP01_RECORD"] += (
         "\nSESSION\tchiap01\tesc-auto-deadbeef\tdeadbeef\tescalate\tlive\tpi"
+        "\tpi-escalate-chiap01-deadbeef\t-"
     )
     output = _run_watch_sample(tmp_path / "escalation-only", records)
     assert "state=up workers=1" in output

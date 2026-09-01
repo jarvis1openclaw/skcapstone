@@ -48,7 +48,7 @@ ps() { printf 'pi\\n'; }
 for name in codex-auto-12345678 glm-auto-12345678 qwen-auto-12345678 esc-auto-12345678; do
   lane_from_session "$name"
 done
-has_live_pi_child 100
+live_pi_child 100 >/dev/null
 """,
         tmp_path,
     )
@@ -77,15 +77,19 @@ def test_zero_workers_with_active_queue_is_collector_fault_and_notifies_both(
     assert "FLEET-DISTRIBUTION-DOWN" not in mail
 
 
-def test_sessions_claims_and_gateway_join_by_card_without_counting_queue(
+def test_sessions_claims_and_gateway_join_by_full_identity_without_counting_queue(
     tmp_path: Path,
 ) -> None:
     sessions = "\\n".join(
         [
-            "SESSION\\tchiap08\\tcodex-auto-11111111\\t11111111\\tcodex\\tlive\\tpi",
-            "SESSION\\tchiap08\\tglm-auto-22222222\\t22222222\\tglm\\tlive\\tpi",
-            "SESSION\\tchiap08\\tqwen-auto-33333333\\t33333333\\tqwen\\tlive\\tbash",
-            "SESSION\\tchiap08\\tesc-auto-44444444\\t44444444\\tescalate\\tlive\\tpi",
+            "SESSION\\tchiap08\\tcodex-auto-11111111\\t11111111\\tcodex\\tlive\\tpi"
+            "\\tpi-codex-chiap08-11111111\\t-",
+            "SESSION\\tchiap08\\tglm-auto-22222222\\t22222222\\tglm\\tlive\\tpi"
+            "\\tpi-glm-chiap08-22222222\\t-",
+            "SESSION\\tchiap08\\tqwen-auto-33333333\\t33333333\\tqwen\\tlive\\tbash"
+            "\\tpi-qwen-chiap08-33333333\\t-",
+            "SESSION\\tchiap08\\tesc-auto-44444444\\t44444444\\tescalate\\tlive\\tpi"
+            "\\tpi-esc-chiap08-44444444\\t-",
         ]
     )
     probe = (
@@ -94,13 +98,16 @@ def test_sessions_claims_and_gateway_join_by_card_without_counting_queue(
     )
     claims = "\\n".join(
         [
-            "CLAIM\\t11111111\\tpi-codex-chiap08-11111111\\tdoing\\tr1",
-            "CLAIM\\t22222222\\tpi-glm-chiap08-22222222\\tdoing\\tr2",
-            "CLAIM\\t33333333\\tpi-qwen-chiap08-33333333\\tdoing\\tr3",
-            "CLAIM\\t44444444\\tpi-esc-chiap08-44444444\\tdoing\\tr4",
+            "CLAIM\\t11111111\\tpi-codex-chiap08-11111111\\tdoing\\tr1\\tchiap08\\tcodex",
+            "CLAIM\\t22222222\\tpi-glm-chiap08-22222222\\tdoing\\tr2\\tchiap08\\tglm",
+            "CLAIM\\t33333333\\tpi-qwen-chiap08-33333333\\tdoing\\tr3\\tchiap08\\tqwen",
+            "CLAIM\\t44444444\\tpi-esc-chiap08-44444444\\tdoing\\tr4\\tchiap08\\tescalate",
         ]
     )
-    gateway = "GATEWAY\\t33333333\\tpi-qwen-chiap08-33333333\\t8\\nGATEWAY_UNATTRIBUTED\\t6"
+    gateway = (
+        "GATEWAY\\t33333333\\tpi-qwen-chiap08-33333333\\t8\\tchiap08\\tqwen"
+        "\\tqwen\\nGATEWAY_UNATTRIBUTED\\t6"
+    )
     result = run_bash(
         sample_script(probe=probe, claims=claims, gateway=gateway, active=14),
         tmp_path,
@@ -117,12 +124,31 @@ def test_unmatched_claim_is_explicit_collector_fault(tmp_path: Path) -> None:
         "META\\tchiap08\\tok\\tsuccess\\n"
         "POOL\\tchiap08\\tPOOL|chiap08|ready=0 POOL_IDS|chiap08|ids=-"
     )
-    claims = "CLAIM\\tdeadbeef\\tpi-glm-chiap08-deadbeef\\tdoing\\trevision"
+    claims = "CLAIM\\tdeadbeef\\tpi-glm-chiap08-deadbeef\\tdoing\\trevision\\tchiap08\\tglm"
     result = run_bash(sample_script(probe=probe, claims=claims), tmp_path)
 
     assert result.returncode == 0, result.stderr
     assert "state=collector_fault" in result.stdout
-    assert "unmatched_claims=deadbeef@pi-glm-chiap08-deadbeef/doing/revision" in result.stdout
+    assert "unmatched_claims=pi-glm-chiap08-deadbeef:revision" in result.stdout
+
+
+def test_same_card_across_three_worker_identities_is_never_joined(tmp_path: Path) -> None:
+    probe = (
+        "META\\tchiap08\\tok\\tsuccess\\n"
+        "POOL\\tchiap08\\tPOOL|chiap08|ready=0 POOL_IDS|chiap08|ids=-\\n"
+        "SESSION\\tchiap08\\tqwen-auto-deadbeef\\tdeadbeef\\tqwen\\tlive\\tpi"
+        "\\tpi-qwen-chiap08-deadbeef\\t-"
+    )
+    claims = "CLAIM\\tdeadbeef\\tpi-glm-chiap02-deadbeef\\tdoing\\trevision\\tchiap02\\tglm"
+    gateway = "GATEWAY\\tdeadbeef\\tpi-codex-chiap03-deadbeef\\t4\\tchiap03\\tcodex\\tcodex"
+    result = run_bash(sample_script(probe=probe, claims=claims, gateway=gateway), tmp_path)
+
+    assert result.returncode == 0, result.stderr
+    assert "state=collector_fault" in result.stdout
+    assert "unmatched_sessions=pi-qwen-chiap08-deadbeef:qwen-auto-deadbeef" in result.stdout
+    assert "unmatched_claims=pi-glm-chiap02-deadbeef:revision" in result.stdout
+    assert "unmatched_gateway=pi-codex-chiap03-deadbeef:codex:4" in result.stdout
+    assert "state=up" not in result.stdout
 
 
 def test_host_and_tmux_failure_are_distinct_from_honest_zero(tmp_path: Path) -> None:
