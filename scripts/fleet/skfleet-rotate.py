@@ -1374,6 +1374,14 @@ def awaiting_review(cid):
     ts, val = _load_outcomes().get(cid, (None, None))
     return bool(ts and _PASS_RE.match(str(val or "")))
 
+def terminal_review_verdict(cid, core=None):
+    """True when an independent review card already recorded PASS or FAIL."""
+    labels = folded_labels(cid, core or {})
+    if "review" not in {str(label).strip().lower() for label in labels}:
+        return False
+    ts, value = _load_outcomes().get(cid, (None, None))
+    return bool(ts and re.match(r"^\s*(PASS|FAIL)\s*(?::|$)", str(value or ""), re.I))
+
 # ---- host pinning ------------------------------------------------------------
 # Some cards only work on the host that holds the asset. The skdashboard-read-only
 # signer review failed seven times because private.asc lives ONLY on chiap08 (by
@@ -2155,6 +2163,9 @@ for cd in sorted(glob.glob(CARDS+"/*")):
     try: core=json.load(open(core_p))
     except Exception:
         claimability_errors.append("%s:malformed-core"%cid)
+        continue
+    if terminal_review_verdict(cid, core):
+        skipped_terminal+=1
         continue
     decision=authoritative_claimability(cid,core)
     if not decision["claimable"]:
