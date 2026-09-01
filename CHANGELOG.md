@@ -44,6 +44,12 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ### Fixed
 
+- **Card 0747c8eb: release orphaned authoritative claims.** The supported
+  revision-fenced release command now uses the CardStore claim as authority
+  when a stale compatibility agent projection has already dropped the task,
+  then reconciles that projection. Exact replay remains idempotent and stale
+  owner or revision attempts fail closed.
+
 - **Card fc2d87bf: prevent resurrection of voided cards.** Void now verifies
   that archival reached both legacy and CardStore projections before returning,
   and an append-only repair tool re-archives historical move-after-void cards

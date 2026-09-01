@@ -407,7 +407,12 @@ def register_coord_commands(main: click.Group) -> None:
     @click.option("--home", default=AGENT_HOME, type=click.Path())
     def coord_release_claim(task_id, owner, expected_claim_revision, agent, home):
         """Release one exact claim generation without completing the task."""
-        from skcoord.card_store import card_mutation_lock, current_claim_precondition
+        from skcoord.card_store import (
+            CardStore,
+            card_mutation_lock,
+            current_claim_precondition,
+            mirror_coord_release,
+        )
         from skcoord.coordination import _board_mutation_lock
 
         from ..coordination import Board
@@ -423,11 +428,37 @@ def register_coord_commands(main: click.Group) -> None:
             with _board_mutation_lock(home_path), card_mutation_lock(home_path, task_id):
                 current_revision = current_claim_precondition(home_path, task_id, owner)
                 if current_revision != expected_claim_revision:
-                    raise ValueError(
-                        f"claim revision conflict for {task_id}: expected "
-                        f"{expected_claim_revision}, current {current_revision}"
+                    exact_replay = current_revision is None and any(
+                        event.get("action") == "release_claim"
+                        and event.get("released_owner") == owner
+                        and event.get("expected_claim_revision") == expected_claim_revision
+                        for event in CardStore(home_path)._read_events(task_id)
                     )
-                changed = board._release_claim_locked(owner, task_id, actor=agent)
+                    if not exact_replay:
+                        raise ValueError(
+                            f"claim revision conflict for {task_id}: expected "
+                            f"{expected_claim_revision}, current {current_revision}"
+                        )
+                owner_projection = board.load_agent(owner)
+                if current_revision is not None:
+                    mirror_coord_release(
+                        home_path,
+                        task_id,
+                        owner,
+                        agent,
+                        expected_claim_revision,
+                    )
+                released = CardStore(home_path).fold(task_id)
+                if released is None or released.owner is not None:
+                    raise ValueError(f"CardStore release readback failed for {task_id}")
+                if owner_projection is not None:
+                    owner_projection.claimed_tasks = [
+                        claimed for claimed in owner_projection.claimed_tasks if claimed != task_id
+                    ]
+                    if owner_projection.current_task == task_id:
+                        owner_projection.current_task = None
+                    board.save_agent(owner_projection)
+                changed = True
         except ValueError as exc:
             raise click.ClickException(str(exc)) from None
         outcome = "Released" if changed else "Already released"
