@@ -68,6 +68,16 @@ valid, invalid = [], []
 PRIORITY_ALIASES = {"critical": "urgent", "high": "urgent", "urgent": "urgent",
                     "normal": "normal", "fyi": "fyi", "low": "fyi", "info": "fyi"}
 
+# These exact legacy files contain recipient-layout records even though their
+# names look like writer boxes. Keep the exception closed and code-reviewed:
+# deriving it from record fields would let a forged record disable its own
+# writer check. New mail must use the writer layout documented in the header.
+LEGACY_RECIPIENT_BOXES = frozenset({
+    "jarvis@chiap01.jsonl", "jarvis@chiap03.jsonl", "jarvis@chiap08.jsonl",
+    "lumina@chiap01.jsonl", "lumina@chiap03.jsonl", "lumina@chiap08.jsonl",
+    "jarvis@pi-glm-1856149a.jsonl", "lumina@pi-glm-1856149a.jsonl",
+})
+
 def invalid_record(path, line_no, raw, reason, record=None):
     record = record if isinstance(record, dict) else {}
     recipients = record.get("to", [])
@@ -101,29 +111,10 @@ for path in sorted(glob.glob(os.path.join(d, "*.jsonl"))):
     # file entire. That is 38 real messages, including replies being waited on.
     # There is no writer guarantee to enforce on that layout, so do not invent
     # one: accept the from the record states.
-    if "@" in owner:
+    if base in LEGACY_RECIPIENT_BOXES:
+        expected_writer, expected_host = None, None
+    elif "@" in owner:
         expected_writer, expected_host = owner.rsplit("@", 1)
-        # A name shaped writer@host is not proof the file IS a writer box.
-        # jarvis@chiap03.jsonl and lumina@chiap08.jsonl are RECIPIENT boxes
-        # carrying mail FROM pi-glm-* workers, so the guard cannot apply and
-        # enforcing it rejected every line in them. The bare writer.jsonl case
-        # below already reasons this way; the @host variant fell through.
-        # Decide per file: if that writer never appears as a sender in
-        # the file, this is not a writer box and there is nothing to pin.
-        # A file where the writer DOES appear keeps the forgery guard intact.
-        senders = set()
-        try:
-            for probe in open(path, encoding="utf-8", errors="replace"):
-                probe = probe.strip()
-                if not probe: continue
-                try: probed = json.loads(probe)
-                except ValueError: continue
-                if isinstance(probed, dict) and isinstance(probed.get("from"), str):
-                    senders.add(probed["from"].lower())
-        except OSError:
-            senders = set()
-        if senders and expected_writer.lower() not in senders:
-            expected_writer, expected_host = None, None
     else:
         expected_writer, expected_host = None, None
     for line_no, line in enumerate(open(path, encoding="utf-8"), 1):
