@@ -11,6 +11,14 @@ Fixes two defects found 03:50Z:
 import json,os,glob,subprocess,sys,time,fcntl,datetime,hashlib,collections,re,importlib.util
 from pathlib import Path
 
+from skcapstone.seat_boundaries import BoundaryError
+from skcapstone.seat_runtime import (
+    MeroObservation,
+    append_review_launch_receipt,
+    authorize_review_launch,
+    recommend_reviewer,
+)
+
 def _required_lane_target(name, env=None, default=None):
     values = os.environ if env is None else env
     try:
@@ -81,6 +89,57 @@ def _selection_diagnostic(pool, owned, lanes, owner_for, host_capacity=None):
         % (reason, len(pool), len(owned), total_target, total_free, bounded,
            omitted, owner_counts, owner_free)
     )
+
+
+def _card_process_snapshot(cid):
+    """Return a fresh bounded same-card tmux snapshot."""
+    suffix = "-" + str(cid)
+    return {
+        "sessions": sorted(
+            session
+            for session in sh("tmux", "ls", "-F", "#{session_name}").split()
+            if session.endswith(suffix)
+        )
+    }
+
+
+def _review_assignment(cid, core, labels, reviewer):
+    """Return Link's governed reviewer and recommendation for a review card."""
+    if "review" not in {str(label).strip().lower() for label in labels}:
+        return reviewer, None, None
+    description = str(core.get("description") or "")
+    producer = re.search(r"Producer identity:\s*([^.]*)\.", description)
+    evidence = re.search(r"sha256=([0-9a-f]{64})(?:\.|\s|$)", description)
+    if not producer or not producer.group(1).strip() or not evidence:
+        raise BoundaryError("review card lacks producer identity or candidate evidence hash")
+    recommendation_id = "link-review-" + hashlib.sha256(
+        (cid + "\0" + reviewer + "\0" + evidence.group(1)).encode()
+    ).hexdigest()[:32]
+    observed_process = _card_process_snapshot(cid)
+    if observed_process["sessions"]:
+        raise BoundaryError("review card already has a live same-card process")
+    recommendation = recommend_reviewer(
+        Path(HOME) / ".skcapstone",
+        card_id=cid,
+        recommendation_id=recommendation_id,
+        author=producer.group(1).strip(),
+        candidates=[reviewer],
+        observed_process=observed_process,
+        evidence_sha256=evidence.group(1),
+    )
+    handoff = authorize_review_launch(
+        Path(HOME) / ".skcapstone",
+        recommendation,
+        actor="jarvis",
+        current_process=_card_process_snapshot(cid),
+        used_recommendation_ids={
+            str(event.get("recommendation_id"))
+            for event in event_rows(cid)
+            if event.get("action") == "review_assignment_launch"
+            and event.get("recommendation_id")
+        },
+    )
+    return handoff.reviewer, recommendation, handoff
 
 
 # Load this dependency-free module directly so the system Python job does not
@@ -2671,12 +2730,21 @@ for _LANE,(_,_,cid,core,_labels,_nb) in picks:
         log(d, "SEAT|%s|%s|running under seat %s as %s" % (HOST, cid, _seat, name))
     sess="%s%s"%(_LANE["prefix"],cid)
     model=_LANE["model"]
+    if DRY:
+        log(d,"WOULD_LAUNCH|%s|%s|%s|lane=%s|model=%s|%s"%(HOST,sess,cid,_LANE["name"],model,str(core.get("title"))[:40])); continue
+    _review_recommendation = None
+    _review_handoff = None
+    try:
+        name, _review_recommendation, _review_handoff = _review_assignment(
+            cid, core, _labels, name
+        )
+    except BoundaryError as exc:
+        log(d, "REVIEW_ASSIGNMENT_BLOCKED|%s|%s|%s" % (HOST, cid, exc))
+        continue
     workspace=os.path.join(HOME,".skcapstone/fleet/workspaces",name)
     os.makedirs(workspace,exist_ok=True)
     bf=os.path.join(logdir,"brief-%s.txt"%cid); open(bf,"w").write(brief)
     lf=os.path.join(logdir,"%s-%s.log"%(cid,STAMP))
-    if DRY:
-        log(d,"WOULD_LAUNCH|%s|%s|%s|lane=%s|model=%s|%s"%(HOST,sess,cid,_LANE["name"],model,str(core.get("title"))[:40])); continue
     # Last-moment re-check through the same fold that built the pool.
     fresh_claimability=authoritative_claimability(cid,fresh=True)
     if _classify_claim_outcome(fresh_claimability["claimable"]) == "raced":
@@ -2726,6 +2794,34 @@ for _LANE,(_,_,cid,core,_labels,_nb) in picks:
     launch_action="LAUNCHED" if ok else "LAUNCH_FAILED"
     log(d,"%s|%s|%s|%s|lane=%s|model=%s%s"%
         (launch_action,HOST,sess,cid,_LANE["name"],model,launch_identity))
+    if _review_recommendation is not None:
+        _observation_evidence = hashlib.sha256(
+            (launch_action + "\0" + cid + "\0" + name + "\0" + claimed_revision).encode()
+        ).hexdigest()
+        try:
+            append_review_launch_receipt(
+                Path(HOME) / ".skcapstone",
+                _review_handoff,
+                actor="jarvis",
+                claim_revision=claimed_revision,
+                launched=ok,
+            )
+            MeroObservation(
+                card_id=cid,
+                observation_id=(
+                    "mero-" + _review_recommendation.recommendation_id + "-" + claimed_revision
+                ),
+                state="launched" if ok else "launch_failed",
+                process={"host": HOST, "session": sess, "alive": ok},
+                evidence_sha256=_observation_evidence,
+            ).append(Path(HOME) / ".skcapstone")
+            log(
+                d,
+                "MERO_OBSERVED|%s|%s|state=%s"
+                % (HOST, cid, "launched" if ok else "launch_failed"),
+            )
+        except (BoundaryError, OSError, ValueError) as exc:
+            log(d, "MERO_OBSERVATION_FAILED|%s|%s|%s" % (HOST, cid, exc))
     if not ok:
         subprocess.run([SKC,"coord","release-claim",cid,"--owner",name,
                         "--expected-claim-revision",claimed_revision,"--agent",name],
@@ -2748,6 +2844,72 @@ try:
     publish_live(sh("tmux","ls","-F","#{session_name}").split())
 except Exception as _exc:
     log(d,"WARN|%s|could not republish liveness after launching: %s"%(HOST,_exc))
+
+
+def _observe_assigned_reviews():
+    """Have Mero record current state for reviews launched by this host."""
+    live_sessions = set(sh("tmux", "ls", "-F", "#{session_name}").split())
+    outcomes = _load_outcomes()
+    for card_dir in glob.glob(os.path.join(CARDS, "*")):
+        cid = os.path.basename(card_dir)
+        rows = event_rows(cid)
+        receipts = [
+            event for event in rows
+            if event.get("action") == "review_assignment_launch"
+            and event.get("claim_revision")
+        ]
+        observations = [
+            event for event in rows
+            if event.get("action") == "mero_observation"
+            and isinstance(event.get("process"), dict)
+        ]
+        if not receipts or not observations:
+            continue
+        receipt = receipts[-1]
+        prior = observations[-1]
+        process = dict(prior["process"])
+        if process.get("host") != HOST:
+            continue
+        session = str(process.get("session") or "")
+        lifecycle = lifecycle_state(cid)
+        _outcome_ts, outcome = outcomes.get(cid, (None, None))
+        if lifecycle == "complete":
+            state = "complete"
+        elif re.match(r"^\s*BLOCKED\b", str(outcome or ""), re.I):
+            state = "blocked"
+        elif session in live_sessions:
+            state = "active"
+        elif _current_claim_identity_fresh(cid)[0]:
+            state = "stale"
+        else:
+            state = "waiting"
+        process.update({"session": session, "alive": session in live_sessions})
+        evidence = hashlib.sha256(
+            json.dumps(
+                {
+                    "card_id": cid,
+                    "claim_revision": receipt["claim_revision"],
+                    "state": state,
+                    "process": process,
+                },
+                separators=(",", ":"),
+                sort_keys=True,
+            ).encode()
+        ).hexdigest()
+        observation_id = "mero-monitor-" + evidence[:32]
+        try:
+            MeroObservation(
+                card_id=cid,
+                observation_id=observation_id,
+                state=state,
+                process=process,
+                evidence_sha256=evidence,
+            ).append(Path(HOME) / ".skcapstone")
+        except (BoundaryError, OSError, ValueError) as exc:
+            log(d, "MERO_OBSERVATION_FAILED|%s|%s|%s" % (HOST, cid, exc))
+
+
+_observe_assigned_reviews()
 
 if raced:
     _raced_ids_value, _raced_omitted = _bounded_ids(_raced_ids)

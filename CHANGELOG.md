@@ -15,6 +15,14 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ### Added
 
+- **Card 43c88f26: compose governed seat runtime handoffs.** Link records a
+  distinct-reviewer recommendation bound to fresh card state, Jarvis alone
+  authorizes and records the exact claim-and-launch handoff in fleet rotation,
+  and Mero records read-only worker observations without changing lifecycle or
+  ownership. Card and same-card process drift fail closed. Non-review selection
+  and dry-run behavior remain unchanged. A source-backed service drop-in uses
+  the existing SKCapstone environment without changing the timer schedule.
+
 - **Card 4274eef2: enforce fleet seat boundaries.** Link emits bounded,
   revision-fenced reviewer recommendations, Jarvis remains the only fleet
   mutation principal, and Mero observes and alerts without mutation authority.
