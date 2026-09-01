@@ -15,6 +15,7 @@ name: pytest
 #   Nothing here is masked with `|| true` — a real failure fails the job.
 
 on:
+  workflow_call:
   push:
     branches: [main]
   pull_request:
