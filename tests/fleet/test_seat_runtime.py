@@ -11,6 +11,7 @@ from skcapstone.seat_boundaries import Action, BoundaryError, require_authority
 from skcapstone.seat_runtime import (
     MeroObservation,
     ReviewAssignmentRecommendation,
+    append_review_launch_receipt,
     authorize_review_launch,
     recommend_reviewer,
 )
@@ -52,6 +53,15 @@ def test_link_recommends_and_jarvis_authorizes_fresh_assignment(tmp_path: Path) 
     )
     assert handoff.reviewer == "reviewer-one"
     assert handoff.card_id == "feedface"
+    receipt = append_review_launch_receipt(
+        tmp_path,
+        handoff,
+        actor="jarvis",
+        claim_revision="claim-revision-1",
+        launched=True,
+    )
+    assert receipt["claim_revision"] == "claim-revision-1"
+    assert receipt["launched"] is True
 
 
 @pytest.mark.parametrize("candidate", ["", " ", "producer", "link"])
@@ -112,6 +122,32 @@ def test_only_jarvis_authorizes_launch(tmp_path: Path) -> None:
         with pytest.raises(BoundaryError):
             authorize_review_launch(
                 tmp_path, recommendation, actor=actor, used_recommendation_ids=set()
+            )
+
+
+def test_only_jarvis_records_launch_receipt(tmp_path: Path) -> None:
+    """Link and Mero cannot record a fleet launch outcome."""
+
+    card(tmp_path)
+    recommendation = recommend_reviewer(
+        tmp_path,
+        card_id="feedface",
+        recommendation_id="assignment-1",
+        author="producer",
+        candidates=["reviewer-one"],
+        evidence_sha256=HASH,
+    )
+    handoff = authorize_review_launch(
+        tmp_path, recommendation, actor="jarvis", used_recommendation_ids=set()
+    )
+    for actor in ("link", "mero"):
+        with pytest.raises(BoundaryError):
+            append_review_launch_receipt(
+                tmp_path,
+                handoff,
+                actor=actor,
+                claim_revision="claim-revision-1",
+                launched=True,
             )
 
 

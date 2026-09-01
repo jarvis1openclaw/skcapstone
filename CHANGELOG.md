@@ -17,8 +17,9 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 - **Card 43c88f26: compose governed seat runtime handoffs.** Link records a
   distinct-reviewer recommendation bound to fresh card state, Jarvis alone
-  authorizes the one-use launch handoff, and Mero records read-only worker
-  observations without changing lifecycle or ownership.
+  authorizes and records the exact claim-and-launch handoff in fleet rotation,
+  and Mero records read-only worker observations without changing lifecycle or
+  ownership. Non-review selection and dry-run behavior remain unchanged.
 
 - **Card 4274eef2: enforce fleet seat boundaries.** Link emits bounded,
   revision-fenced reviewer recommendations, Jarvis remains the only fleet

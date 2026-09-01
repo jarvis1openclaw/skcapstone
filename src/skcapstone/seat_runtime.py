@@ -156,6 +156,35 @@ def authorize_review_launch(
     )
 
 
+def append_review_launch_receipt(
+    home: Path,
+    handoff: ReviewLaunchHandoff,
+    *,
+    actor: str,
+    claim_revision: str,
+    launched: bool,
+) -> dict[str, object]:
+    """Record Jarvis's exact claim generation and launch result."""
+
+    require_authority(actor, Action.LAUNCH)
+    if actor.strip().lower() != "jarvis":
+        raise BoundaryError("only jarvis may record a review launch")
+    if not claim_revision.strip():
+        raise BoundaryError("claim revision is required")
+    return CardStore(home).append_event(
+        handoff.card_id,
+        "review_assignment_launch",
+        "jarvis",
+        transition_id=("jarvis-" + handoff.recommendation_id + "-" + claim_revision),
+        schema="skfleet.review-assignment-launch/v1",
+        recommendation_id=handoff.recommendation_id,
+        reviewer=handoff.reviewer,
+        observed_state_revision=handoff.state_revision,
+        claim_revision=claim_revision,
+        launched=bool(launched),
+    )
+
+
 @dataclass(frozen=True)
 class MeroObservation:
     """Read-only worker observation emitted by Mero."""
