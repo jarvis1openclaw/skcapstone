@@ -2,11 +2,13 @@
 
 from pathlib import Path
 
+ROOT = Path(__file__).parents[1]
+
 
 def test_rotation_wires_link_jarvis_and_mero_in_order() -> None:
     """Review launches use all three governed runtime stages."""
 
-    source = (Path(__file__).parents[1] / "scripts/fleet/skfleet-rotate.py").read_text()
+    source = (ROOT / "scripts/fleet/skfleet-rotate.py").read_text()
     link = source.index("recommend_reviewer(")
     jarvis = source.index("authorize_review_launch(", link)
     claim = source.index('claim=subprocess.run([SKC,"coord","claim"', jarvis)
@@ -18,7 +20,7 @@ def test_rotation_wires_link_jarvis_and_mero_in_order() -> None:
 def test_non_review_cards_bypass_assignment() -> None:
     """The integration returns unchanged ownership outside review cards."""
 
-    source = (Path(__file__).parents[1] / "scripts/fleet/skfleet-rotate.py").read_text()
+    source = (ROOT / "scripts/fleet/skfleet-rotate.py").read_text()
     assert 'if "review" not in {str(label).strip().lower() for label in labels}:' in source
     assert "return reviewer, None, None" in source
 
@@ -26,7 +28,7 @@ def test_non_review_cards_bypass_assignment() -> None:
 def test_dry_run_exits_before_link_writes() -> None:
     """A selector dry run never appends a recommendation or observation."""
 
-    source = (Path(__file__).parents[1] / "scripts/fleet/skfleet-rotate.py").read_text()
+    source = (ROOT / "scripts/fleet/skfleet-rotate.py").read_text()
     loop = source.index("for _LANE,")
     dry = source.index("if DRY:", loop)
     assignment = source.index("_review_assignment(", dry)
@@ -36,7 +38,7 @@ def test_dry_run_exits_before_link_writes() -> None:
 def test_link_and_jarvis_use_distinct_fresh_process_reads() -> None:
     """Assignment observes once, then authorization reads the process again."""
 
-    source = (Path(__file__).parents[1] / "scripts/fleet/skfleet-rotate.py").read_text()
+    source = (ROOT / "scripts/fleet/skfleet-rotate.py").read_text()
     assignment = source[
         source.index("def _review_assignment(") : source.index("# Load this dependency-free")
     ]
@@ -47,10 +49,21 @@ def test_link_and_jarvis_use_distinct_fresh_process_reads() -> None:
 def test_mero_tracks_review_lifecycle_without_mutation() -> None:
     """Oversight classifies active, complete, blocked, stale, and waiting."""
 
-    source = (Path(__file__).parents[1] / "scripts/fleet/skfleet-rotate.py").read_text()
+    source = (ROOT / "scripts/fleet/skfleet-rotate.py").read_text()
     monitor = source[source.index("def _observe_assigned_reviews()") :]
     for state in ("complete", "blocked", "active", "stale", "waiting"):
         assert f'state = "{state}"' in monitor
     assert "MeroObservation(" in monitor
     assert "coord claim" not in monitor
     assert "release-claim" not in monitor
+
+
+def test_rotation_uses_the_packaged_runtime_interpreter() -> None:
+    """The source-backed drop-in uses the environment that owns SKCapstone."""
+
+    dropin = ROOT / "scripts/fleet/systemd/skfleet-rotate.service.d/seat-runtime-python.conf"
+    assert dropin.read_bytes() == (
+        b"[Service]\n"
+        b"ExecStart=\n"
+        b"ExecStart=%h/.skenv/bin/python3 %h/.local/bin/skfleet-rotate.py --go\n"
+    )
