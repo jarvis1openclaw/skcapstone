@@ -15,6 +15,12 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ### Added
 
+- **Card 4274eef2: enforce fleet seat boundaries.** Link emits bounded,
+  revision-fenced reviewer recommendations, Jarvis remains the only fleet
+  mutation principal, and Mero observes and alerts without mutation authority.
+  Missing revisions, blank reviewers, stale process state, and replay attempts
+  fail closed.
+
 - **Card ff9b46b4: bound Link merge authority.** A source-only, fail-closed
   evaluator requires a mergeable exact head, zero failed checks, a distinct
   author's independent PASS, resolved lineage, non-Link authorship, and a
