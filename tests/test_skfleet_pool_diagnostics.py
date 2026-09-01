@@ -18,9 +18,7 @@ def _load_helpers() -> dict[str, object]:
     names = {"_bounded_ids", "_partition_owner", "_selection_diagnostic"}
     tree = ast.parse(ROTATE.read_text(encoding="utf-8"))
     nodes = [
-        node
-        for node in tree.body
-        if isinstance(node, ast.FunctionDef) and node.name in names
+        node for node in tree.body if isinstance(node, ast.FunctionDef) and node.name in names
     ]
     namespace: dict[str, object] = {
         "collections": collections,
@@ -80,9 +78,7 @@ def test_empty_selection_classes_are_separate(
     expected: str,
 ) -> None:
     helpers = _load_helpers()
-    detail = helpers["_selection_diagnostic"](
-        pool, owned, lanes, lambda _card_id: "chiap01"
-    )
+    detail = helpers["_selection_diagnostic"](pool, owned, lanes, lambda _card_id: "chiap01")
     assert expected in detail
 
 
@@ -110,12 +106,12 @@ def test_partition_owner_is_unique_and_pins_override_hash() -> None:
 def test_source_preserves_admission_and_reports_selection_races() -> None:
     source = ROTATE.read_text(encoding="utf-8")
     assert 'reason, ids = "foreign-hash-partition", pool_ids' in source
-    assert 'reason=%s pool=%d owned=%d target=%d free=%d' in source
-    assert 'SELECTION_EMPTY|' in source
-    assert 'no dependency-clear cards' not in source
-    assert 'fresh_claimability=authoritative_claimability(cid,fresh=True)' in source
-    assert '_current_claim_identity_fresh(cid)' in source
-    assert 'claimed_owner,' in source
-    assert 'name)' in source
-    assert 'len(picks)<MAX_LAUNCH' in source
-    assert 'RACED|%s|count=%d ids=%s omitted=%d' in source
+    assert "reason=%s pool=%d owned=%d target=%d free=%d" in source
+    assert "SELECTION_EMPTY|" in source
+    assert "no dependency-clear cards" not in source
+    assert "fresh_claimability=authoritative_claimability(cid,fresh=True)" in source
+    assert "_current_claim_identity_fresh(cid)" in source
+    assert "claimed_owner," in source
+    assert "name)" in source
+    assert "len(picks)<MAX_LAUNCH" in source
+    assert "RACED|%s|count=%d ids=%s omitted=%d" in source
