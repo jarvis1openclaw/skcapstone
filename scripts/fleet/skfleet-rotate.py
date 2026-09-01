@@ -377,10 +377,10 @@ def publish_live(sessions):
                 "ts": time.time(),
                 "cards": cards,
                 "lanes": {
-                    lane["name"]: {
-                        "target": lane["target"],
-                        "busy": len(lane["busy"]),
-                        "free": lane["free"],
+                    lane.get("name", lane.get("prefix", "unknown").rstrip("-")): {
+                        "target": lane.get("target", 0),
+                        "busy": len(lane.get("busy", ())),
+                        "free": lane.get("free", 0),
                     }
                     for lane in LANES
                 },
