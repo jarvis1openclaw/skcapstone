@@ -1441,6 +1441,17 @@ def terminal_review_verdict(cid, core=None):
     ts, value = _load_outcomes().get(cid, (None, None))
     return bool(ts and re.match(r"^\s*(PASS|FAIL)\s*(?::|$)", str(value or ""), re.I))
 
+
+def outcome_lifecycle_bucket(lifecycle, historical_review):
+    """Classify outcome accounting without hiding an ambiguous board fold."""
+    if lifecycle == "open":
+        return "open"
+    if lifecycle == "claimed":
+        return "historical_review_claimed" if historical_review else "claimed"
+    if lifecycle in {"complete", "void"}:
+        return "historical_review_terminal" if historical_review else "terminal"
+    return "ambiguous"
+
 # ---- host pinning ------------------------------------------------------------
 # Some cards only work on the host that holds the asset. The skdashboard-read-only
 # signer review failed seven times because private.asc lives ONLY on chiap08 (by
@@ -2336,6 +2347,8 @@ pinned_elsewhere=0
 skipped_claimed=0
 claimability_errors=[]
 sensitive_withheld=0
+historical_review_terminal=0
+historical_review_claimed=0
 for cd in sorted(glob.glob(CARDS+"/*")):
     cid=os.path.basename(cd)
     core_p=os.path.join(cd,"core.json")
@@ -2347,6 +2360,27 @@ for cd in sorted(glob.glob(CARDS+"/*")):
         continue
     if unclaimable(cid): skipped_unclaimable+=1; continue
     if itil_terminal(cid): skipped_terminal+=1; continue
+    # Outcome history outlives lifecycle state. Count a provisional PASS as
+    # awaiting review only while its card is still open. Previously this check
+    # happened after blocked_backoff(), so every completed card whose history
+    # contained PASS_FOR_REVIEW was counted in the live review backlog forever.
+    # The same ordering also mislabeled claimed historical candidates as review
+    # backlog. Use the authoritative lifecycle fold before interpreting outcomes.
+    lifecycle = lifecycle_state(cid)
+    outcome_bucket = outcome_lifecycle_bucket(lifecycle, awaiting_review(cid))
+    if outcome_bucket == "ambiguous":
+        decision = authoritative_claimability(cid)
+        reason = decision.get("reason", "malformed:ambiguous-lifecycle")
+        claimability_errors.append("%s:%s" % (cid, reason))
+        continue
+    if outcome_bucket != "open":
+        if outcome_bucket in {"claimed", "historical_review_claimed"}:
+            skipped_claimed += 1
+            historical_review_claimed += int(outcome_bucket == "historical_review_claimed")
+        else:
+            skipped_terminal += 1
+            historical_review_terminal += int(outcome_bucket == "historical_review_terminal")
+        continue
     if blocked_backoff(cid):
         if DRY:
             log(d,"DRY_SELECTION|%s|%s|excluded=authoritative-blocked-unchanged"%
@@ -2428,10 +2462,12 @@ if claimability_errors:
 log(d,"POOL|%s|ready=%d sklegal=%d eng=%d biz=%d dep_blocked=%d "
       "unclaimable=%d claimed=%d itil_closed=%d blocked_backoff=%d "
       "awaiting_review=%d pinned_elsewhere=%d foreign=%d not_claimable=%d "
+      "historical_review_terminal=%d historical_review_claimed=%d "
       "category_withheld=%d top_unblocks=%d"
       %(HOST,len(pool),lc[0],lc[1],lc[2],blocked,skipped_unclaimable,
         skipped_claimed,skipped_terminal,skipped_blocked,skipped_review,
         pinned_elsewhere,foreign_skipped,not_claimable_skipped,
+        historical_review_terminal,historical_review_claimed,
         sensitive_withheld,top))
 
 # Partition the CARD SPACE by hash, not by pool index. Index striding assumes all
