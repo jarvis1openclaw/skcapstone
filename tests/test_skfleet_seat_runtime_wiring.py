@@ -31,3 +31,15 @@ def test_dry_run_exits_before_link_writes() -> None:
     dry = source.index("if DRY:", loop)
     assignment = source.index("_review_assignment(", dry)
     assert dry < assignment
+
+
+def test_mero_tracks_review_lifecycle_without_mutation() -> None:
+    """Oversight classifies active, complete, blocked, stale, and waiting."""
+
+    source = (Path(__file__).parents[1] / "scripts/fleet/skfleet-rotate.py").read_text()
+    monitor = source[source.index("def _observe_assigned_reviews()") :]
+    for state in ("complete", "blocked", "active", "stale", "waiting"):
+        assert f'state = "{state}"' in monitor
+    assert "MeroObservation(" in monitor
+    assert "coord claim" not in monitor
+    assert "release-claim" not in monitor
