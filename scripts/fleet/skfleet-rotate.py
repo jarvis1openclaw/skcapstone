@@ -2605,7 +2605,73 @@ if _lane_deferred:
 if _esc_waiting:
     log(d,"ESCALATE_QUEUED|%s|%d card(s) need the stronger model; escalate lane full"
         %(HOST,_esc_waiting))
+
+
+def _observe_assigned_reviews():
+    """Have Mero record current state for reviews launched by this host."""
+    live_sessions = set(sh("tmux", "ls", "-F", "#{session_name}").split())
+    outcomes = _load_outcomes()
+    for card_dir in glob.glob(os.path.join(CARDS, "*")):
+        cid = os.path.basename(card_dir)
+        rows = event_rows(cid)
+        receipts = [
+            event for event in rows
+            if event.get("action") == "review_assignment_launch"
+            and event.get("claim_revision")
+        ]
+        observations = [
+            event for event in rows
+            if event.get("action") == "mero_observation"
+            and isinstance(event.get("process"), dict)
+        ]
+        if not receipts or not observations:
+            continue
+        receipt = receipts[-1]
+        prior = observations[-1]
+        process = dict(prior["process"])
+        if process.get("host") != HOST:
+            continue
+        session = str(process.get("session") or "")
+        lifecycle = lifecycle_state(cid)
+        _outcome_ts, outcome = outcomes.get(cid, (None, None))
+        if lifecycle == "complete":
+            state = "complete"
+        elif re.match(r"^\s*BLOCKED\b", str(outcome or ""), re.I):
+            state = "blocked"
+        elif session in live_sessions:
+            state = "active"
+        elif _current_claim_identity_fresh(cid)[0]:
+            state = "stale"
+        else:
+            state = "waiting"
+        process.update({"session": session, "alive": session in live_sessions})
+        evidence = hashlib.sha256(
+            json.dumps(
+                {
+                    "card_id": cid,
+                    "claim_revision": receipt["claim_revision"],
+                    "state": state,
+                    "process": process,
+                },
+                separators=(",", ":"),
+                sort_keys=True,
+            ).encode()
+        ).hexdigest()
+        observation_id = "mero-monitor-" + evidence[:32]
+        try:
+            MeroObservation(
+                card_id=cid,
+                observation_id=observation_id,
+                state=state,
+                process=process,
+                evidence_sha256=evidence,
+            ).append(Path(HOME) / ".skcapstone")
+        except (BoundaryError, OSError, ValueError) as exc:
+            log(d, "MERO_OBSERVATION_FAILED|%s|%s|%s" % (HOST, cid, exc))
+
+
 if not picks:
+    _observe_assigned_reviews()
     detail = _selection_diagnostic(
         pool, owned, LANES, owner_host, reporting_capacity())
     log(d,"SELECTION_EMPTY|%s|%s"%(HOST,detail))
@@ -2844,69 +2910,6 @@ try:
     publish_live(sh("tmux","ls","-F","#{session_name}").split())
 except Exception as _exc:
     log(d,"WARN|%s|could not republish liveness after launching: %s"%(HOST,_exc))
-
-
-def _observe_assigned_reviews():
-    """Have Mero record current state for reviews launched by this host."""
-    live_sessions = set(sh("tmux", "ls", "-F", "#{session_name}").split())
-    outcomes = _load_outcomes()
-    for card_dir in glob.glob(os.path.join(CARDS, "*")):
-        cid = os.path.basename(card_dir)
-        rows = event_rows(cid)
-        receipts = [
-            event for event in rows
-            if event.get("action") == "review_assignment_launch"
-            and event.get("claim_revision")
-        ]
-        observations = [
-            event for event in rows
-            if event.get("action") == "mero_observation"
-            and isinstance(event.get("process"), dict)
-        ]
-        if not receipts or not observations:
-            continue
-        receipt = receipts[-1]
-        prior = observations[-1]
-        process = dict(prior["process"])
-        if process.get("host") != HOST:
-            continue
-        session = str(process.get("session") or "")
-        lifecycle = lifecycle_state(cid)
-        _outcome_ts, outcome = outcomes.get(cid, (None, None))
-        if lifecycle == "complete":
-            state = "complete"
-        elif re.match(r"^\s*BLOCKED\b", str(outcome or ""), re.I):
-            state = "blocked"
-        elif session in live_sessions:
-            state = "active"
-        elif _current_claim_identity_fresh(cid)[0]:
-            state = "stale"
-        else:
-            state = "waiting"
-        process.update({"session": session, "alive": session in live_sessions})
-        evidence = hashlib.sha256(
-            json.dumps(
-                {
-                    "card_id": cid,
-                    "claim_revision": receipt["claim_revision"],
-                    "state": state,
-                    "process": process,
-                },
-                separators=(",", ":"),
-                sort_keys=True,
-            ).encode()
-        ).hexdigest()
-        observation_id = "mero-monitor-" + evidence[:32]
-        try:
-            MeroObservation(
-                card_id=cid,
-                observation_id=observation_id,
-                state=state,
-                process=process,
-                evidence_sha256=evidence,
-            ).append(Path(HOME) / ".skcapstone")
-        except (BoundaryError, OSError, ValueError) as exc:
-            log(d, "MERO_OBSERVATION_FAILED|%s|%s|%s" % (HOST, cid, exc))
 
 
 _observe_assigned_reviews()
