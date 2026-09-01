@@ -50,12 +50,40 @@ def test_mero_tracks_review_lifecycle_without_mutation() -> None:
     """Oversight classifies active, complete, blocked, stale, and waiting."""
 
     source = (ROOT / "scripts/fleet/skfleet-rotate.py").read_text()
-    monitor = source[source.index("def _observe_assigned_reviews()") :]
+    monitor = source[
+        source.index("def _observe_assigned_reviews()") : source.index("if not picks:")
+    ]
     for state in ("complete", "blocked", "active", "stale", "waiting"):
         assert f'state = "{state}"' in monitor
     assert "MeroObservation(" in monitor
     assert "coord claim" not in monitor
     assert "release-claim" not in monitor
+
+
+def test_empty_pool_observes_terminal_reviews_before_exit() -> None:
+    """Mero still records completion when there is no work to launch."""
+
+    source = (ROOT / "scripts/fleet/skfleet-rotate.py").read_text()
+    empty_pool = source.index("if not picks:")
+    observe = source.index("_observe_assigned_reviews()", empty_pool)
+    exit_noop = source.index("sys.exit(0)", empty_pool)
+    assert source.index("def _observe_assigned_reviews()") < empty_pool
+    assert empty_pool < observe < exit_noop
+
+
+def test_mero_blocked_and_stale_states_fail_closed() -> None:
+    """Blocked evidence wins over liveness and a claimed dead worker is stale."""
+
+    source = (ROOT / "scripts/fleet/skfleet-rotate.py").read_text()
+    monitor = source[
+        source.index("def _observe_assigned_reviews()") : source.index("if not picks:")
+    ]
+    complete = monitor.index('if lifecycle == "complete":')
+    blocked = monitor.index('state = "blocked"')
+    active = monitor.index('state = "active"')
+    stale = monitor.index('state = "stale"')
+    waiting = monitor.index('state = "waiting"')
+    assert complete < blocked < active < stale < waiting
 
 
 def test_rotation_uses_the_packaged_runtime_interpreter() -> None:
