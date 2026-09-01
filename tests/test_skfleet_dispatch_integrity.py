@@ -127,12 +127,16 @@ def test_claim_refusal_is_not_a_race() -> None:
 
 def _sample_records() -> dict[str, str]:
     return {
-        "CHIAP01_RECORD": "0|success|POOL|chiap01|ready=2 POOL_IDS|chiap01|ids=aaaaaaaa,bbbbbbbb",
-        "CHIAP02_RECORD": "0|success|POOL|chiap02|ready=2 POOL_IDS|chiap02|ids=aaaaaaaa,bbbbbbbb",
-        "CHIAP03_RECORD": "0|success|POOL|chiap03|ready=2 POOL_IDS|chiap03|ids=bbbbbbbb,cccccccc",
-        "CHIAP04_RECORD": "0|success|POOL|chiap04|ready=1 POOL_IDS|chiap04|ids=cccccccc",
-        "CHIAP08_RECORD": "0|success|POOL|chiap08|ready=3 "
-        "POOL_IDS|chiap08|ids=aaaaaaaa,bbbbbbbb,cccccccc",
+        "CHIAP01_RECORD": "META\tchiap01\tok\tsuccess\nPOOL\tchiap01\t"
+        "POOL|chiap01|ready=2 POOL_IDS|chiap01|ids=aaaaaaaa,bbbbbbbb",
+        "CHIAP02_RECORD": "META\tchiap02\tok\tsuccess\nPOOL\tchiap02\t"
+        "POOL|chiap02|ready=2 POOL_IDS|chiap02|ids=aaaaaaaa,bbbbbbbb",
+        "CHIAP03_RECORD": "META\tchiap03\tok\tsuccess\nPOOL\tchiap03\t"
+        "POOL|chiap03|ready=2 POOL_IDS|chiap03|ids=bbbbbbbb,cccccccc",
+        "CHIAP04_RECORD": "META\tchiap04\tok\tsuccess\nPOOL\tchiap04\t"
+        "POOL|chiap04|ready=1 POOL_IDS|chiap04|ids=cccccccc",
+        "CHIAP08_RECORD": "META\tchiap08\tok\tsuccess\nPOOL\tchiap08\t"
+        "POOL|chiap08|ready=3 POOL_IDS|chiap08|ids=aaaaaaaa,bbbbbbbb,cccccccc",
     }
 
 
@@ -157,8 +161,18 @@ ssh() {
   done
   record_for "$host"
 }
-bash() { record_for chiap08; }
-curl() { printf '{"totalActive":0,"totalQueued":0}\n'; }
+probe_host() { record_for "$1"; }
+collect_claims() {
+  local variable line kind host session card lane state command
+  for variable in CHIAP01_RECORD CHIAP02_RECORD CHIAP03_RECORD CHIAP04_RECORD CHIAP08_RECORD; do
+    while IFS=$'\t' read -r kind host session card lane state command; do
+      [[ "$kind" == SESSION && "$state" == live ]] || continue
+      printf 'CLAIM\t%s\tpi-%s-%s-%s\tdoing\trevision\n' "$card" "$lane" "$host" "$card"
+    done <<<"${!variable}"
+  done
+}
+collect_gateway_activity() { printf 'GATEWAY_UNATTRIBUTED\t0\n'; }
+curl() { printf '{"pool":{"totalActive":0,"totalQueued":0}}\n'; }
 skmail() { :; }
 sample
 """
@@ -184,47 +198,41 @@ def test_five_host_candidate_inventory_counts_unique_ids(tmp_path: Path) -> None
     assert "candidate_inventory_missing_hosts=0" in output
 
     empty_records = _sample_records()
-    empty_records["CHIAP04_RECORD"] = "0|success|POOL|chiap04|ready=0 POOL_IDS|chiap04|ids=-"
+    empty_records["CHIAP04_RECORD"] = (
+        "META\tchiap04\tok\tsuccess\nPOOL\tchiap04\tPOOL|chiap04|ready=0 POOL_IDS|chiap04|ids=-"
+    )
     output = _run_watch_sample(tmp_path / "empty", empty_records)
     assert "workable=3" in output
     assert "candidate_inventory_missing_hosts=0" in output
 
     bad_records = {
-        "missing": "0|success|POOL|chiap04|ready=1",
-        "host-mismatch": "0|success|POOL|chiap04|ready=1 POOL_IDS|chiap03|ids=dddddddd",
-        "pool-host-mismatch": "0|success|POOL|chiap03|ready=1 POOL_IDS|chiap04|ids=dddddddd",
-        "invalid-id": "0|success|POOL|chiap04|ready=2 POOL_IDS|chiap04|ids=dddddddd,NOTHEX",
-        "count-mismatch": "0|success|POOL|chiap04|ready=2 POOL_IDS|chiap04|ids=dddddddd",
+        "missing": "POOL|chiap04|ready=1",
+        "host-mismatch": "POOL|chiap04|ready=1 POOL_IDS|chiap03|ids=dddddddd",
+        "pool-host-mismatch": "POOL|chiap03|ready=1 POOL_IDS|chiap04|ids=dddddddd",
+        "invalid-id": "POOL|chiap04|ready=2 POOL_IDS|chiap04|ids=dddddddd,NOTHEX",
+        "count-mismatch": "POOL|chiap04|ready=2 POOL_IDS|chiap04|ids=dddddddd",
     }
     for name, record in bad_records.items():
         records = _sample_records()
-        records["CHIAP04_RECORD"] = record
+        records["CHIAP04_RECORD"] = f"META\tchiap04\tok\tsuccess\nPOOL\tchiap04\t{record}"
         output = _run_watch_sample(tmp_path / name, records)
         assert "workable=3" in output
         assert "candidate_inventory_missing_hosts=1" in output
 
     assert "POOL_IDS|%s|ids=%s" in ROTATE.read_text(encoding="utf-8")
-    assert 'grep "POOL_IDS|"' in WATCH.read_text(encoding="utf-8")
+    assert "record_candidate_pool" in WATCH.read_text(encoding="utf-8")
 
 
 def test_escalation_only_sessions_keep_distribution_watch_up(tmp_path: Path) -> None:
-    """Both host probes count escalation workers instead of reporting zero."""
+    """The structured probe counts every governed worker lane."""
     source = WATCH.read_text(encoding="utf-8")
-    probe = 'grep -Ec "^(codex-auto-|glm-auto-|esc-auto-)"'
-    assert source.count(probe) == 2
-    assert 'grep -Ec "^(codex-auto-|glm-auto-)"' not in source
-
-    count = subprocess.run(
-        ["grep", "-Ec", "^(codex-auto-|glm-auto-|esc-auto-)"],
-        input="esc-auto-deadbeef\n",
-        check=True,
-        capture_output=True,
-        text=True,
-    )
-    assert count.stdout.strip() == "1"
+    for prefix in ("codex-auto-*", "glm-auto-*", "qwen-auto-*", "esc-auto-*"):
+        assert prefix in source
 
     records = _sample_records()
-    records["CHIAP01_RECORD"] = records["CHIAP01_RECORD"].replace("0|", "1|", 1)
+    records["CHIAP01_RECORD"] += (
+        "\nSESSION\tchiap01\tesc-auto-deadbeef\tdeadbeef\tescalate\tlive\tpi"
+    )
     output = _run_watch_sample(tmp_path / "escalation-only", records)
     assert "state=up workers=1" in output
 
@@ -262,5 +270,5 @@ def test_existing_holds_reservations_capacity_and_cadence_remain() -> None:
     assert 'remaining={lane["name"]:lane["free"] for lane in LANES}' in rotate
     assert "off = ROTATION_HOSTS.index(HOST) if HOST in ROTATION_HOSTS else 0" in rotate
     assert '_LANE_RANK={"qwen":0,"glm":1,"codex":2,"escalate":3}' in rotate
-    assert "hosts=(chiap01 chiap02 chiap03 chiap04 chiap08)" in watch
+    assert "chiap01 chiap02 chiap03 chiap04 chiap08" in watch
     assert "sleep 300" in watch
