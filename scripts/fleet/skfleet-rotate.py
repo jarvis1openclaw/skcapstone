@@ -32,6 +32,57 @@ def _slot_summary(lanes):
     return "%s|total_free=%d" % (slots, sum(lane["free"] for lane in lanes))
 
 
+def _bounded_ids(card_ids, limit=12):
+    """Return deterministic, bounded card IDs suitable for one log record."""
+    values = sorted({str(card_id) for card_id in card_ids})
+    shown = values[:limit]
+    return ",".join(shown) or "-", max(0, len(values) - len(shown))
+
+
+def _partition_owner(card_id, hosts, pinned_host=None):
+    """Return the unique stable owner for one card across host snapshots."""
+    if pinned_host:
+        return pinned_host
+    index = int(hashlib.sha256(str(card_id).encode()).hexdigest()[:8], 16) % len(hosts)
+    return hosts[index]
+
+
+def _selection_diagnostic(pool, owned, lanes, owner_for, host_capacity=None):
+    """Classify why an authoritative pool produced no local selection.
+
+    This is diagnostic only. It never changes ownership or claimability, so the
+    authoritative claim, post-claim readback, and duplicate guards remain the
+    admission mechanism.
+    """
+    pool_ids = [row[2] for row in pool]
+    owned_ids = [row[2] for row in owned]
+    total_target = sum(int(lane.get("target", 0)) for lane in lanes)
+    total_free = sum(int(lane.get("free", 0)) for lane in lanes)
+    if not pool:
+        reason, ids = "empty-pool", []
+    elif total_target == 0:
+        reason, ids = "zero-target", owned_ids or pool_ids
+    elif not owned:
+        reason, ids = "foreign-hash-partition", pool_ids
+    else:
+        reason, ids = "no-compatible-lane", owned_ids
+    bounded, omitted = _bounded_ids(ids)
+    owners = collections.Counter(owner_for(card_id) for card_id in pool_ids)
+    owner_counts = ",".join(
+        "%s:%d" % (owner, owners[owner]) for owner in sorted(owners)
+    ) or "-"
+    capacity = host_capacity or {}
+    owner_free = ",".join(
+        "%s:%d" % (owner, int(capacity.get(owner, 0))) for owner in sorted(owners)
+    ) or "-"
+    return (
+        "reason=%s pool=%d owned=%d target=%d free=%d ids=%s omitted=%d "
+        "owners=%s owner_free=%s"
+        % (reason, len(pool), len(owned), total_target, total_free, bounded,
+           omitted, owner_counts, owner_free)
+    )
+
+
 # Load this dependency-free module directly so the system Python job does not
 # initialize optional skcoord API dependencies such as CapAuth.
 _LIFECYCLE_PATH=Path(os.environ.get("SKCOORD_SRC",os.path.join(os.path.expanduser("~"),"work/skcoord/src")))/"skcoord/lifecycle_reassessment.py"
@@ -321,11 +372,44 @@ def publish_live(sessions):
         p = os.path.join(LIVE, HOST + ".json")
         tmp = p + ".new"
         with open(tmp, "w", encoding="utf-8") as fh:
-            json.dump({"host": HOST, "ts": time.time(), "cards": cards}, fh)
+            json.dump({
+                "host": HOST,
+                "ts": time.time(),
+                "cards": cards,
+                "lanes": {
+                    lane.get("name", lane.get("prefix", "unknown").rstrip("-")): {
+                        "target": lane.get("target", 0),
+                        "busy": len(lane.get("busy", ())),
+                        "free": lane.get("free", 0),
+                    }
+                    for lane in LANES
+                },
+            }, fh, sort_keys=True)
         os.replace(tmp, p)          # atomic, so a reader never sees a half file
     except OSError as exc:
         log(d, "WARN|%s|could not publish liveness: %s" % (HOST, exc))
     return cards
+
+def reporting_capacity():
+    """Return total free lanes advertised by each currently reporting host."""
+    capacity = {}
+    now = time.time()
+    for path in glob.glob(os.path.join(LIVE, "*.json")):
+        try:
+            with open(path, encoding="utf-8") as fh:
+                snap = json.load(fh)
+            ts = float(snap.get("ts") or 0)
+            lanes = snap.get("lanes") or {}
+            if not 0 < ts <= now or now - ts > LIVE_FRESH or not isinstance(lanes, dict):
+                continue
+            capacity[str(snap.get("host") or Path(path).stem)] = sum(
+                max(0, int(lane.get("free", 0)))
+                for lane in lanes.values() if isinstance(lane, dict)
+            )
+        except (OSError, ValueError, TypeError):
+            continue
+    return capacity
+
 
 def live_report():
     """Return (oldest_recent_report, cards_running, reporting_host_count).
@@ -2148,13 +2232,16 @@ log(d,"POOL|%s|ready=%d sklegal=%d eng=%d biz=%d dep_blocked=%d "
 # A hash partition is stable no matter what the local pool looks like.
 off = ROTATION_HOSTS.index(HOST) if HOST in ROTATION_HOSTS else 0
 _NHOST = len(ROTATION_HOSTS)
+def owner_host(cid):
+    """Return the one stable host authorized to select this card."""
+    return _partition_owner(
+        cid, ROTATION_HOSTS, HOST if cid in _PINNED_IDS else None)
+
 def owns(cid):
     # A host-pinned card is owned by its pinned host, full stop. Letting the hash
     # partition also apply would strand any card whose pin and hash slice disagree:
     # pinned to chiap08 but hashed into chiap02's slice means NO host takes it.
-    if cid in _PINNED_IDS:
-        return True
-    return int(hashlib.sha256(cid.encode()).hexdigest()[:8],16)%_NHOST==off
+    return owner_host(cid) == HOST
 owned=[x for x in pool if owns(x[2])]
 
 # Never steal another host's hash slice without an authoritative shared lock.
@@ -2311,9 +2398,12 @@ if _esc_waiting:
     log(d,"ESCALATE_QUEUED|%s|%d card(s) need the stronger model; escalate lane full"
         %(HOST,_esc_waiting))
 if not picks:
-    log(d,"NOOP|%s|no dependency-clear cards"%HOST); sys.exit(0)
+    detail = _selection_diagnostic(
+        pool, owned, LANES, owner_host, reporting_capacity())
+    log(d,"SELECTION_EMPTY|%s|%s"%(HOST,detail))
+    log(d,"NOOP|%s|selection empty: %s"%(HOST,detail)); sys.exit(0)
 
-raced=0; lane_drift=0; claim_refused=0
+raced=0; _raced_ids=[]; lane_drift=0; claim_refused=0
 logdir=os.path.join(HOME,".skcapstone/fleet/logs"); os.makedirs(logdir,exist_ok=True)
 for _LANE,(_,_,cid,core,_labels,_nb) in picks:
     ac="\n".join("  %d. %s"%(i+1,x) for i,x in enumerate(core.get("acceptance_criteria") or []))
@@ -2442,6 +2532,7 @@ for _LANE,(_,_,cid,core,_labels,_nb) in picks:
     fresh_claimability=authoritative_claimability(cid,fresh=True)
     if _classify_claim_outcome(fresh_claimability["claimable"]) == "raced":
         raced += 1
+        _raced_ids.append(cid)
         log(d,"SKIPPED_RACED|%s|%s|%s|reason=%s"%
             (HOST,sess,cid,fresh_claimability["reason"]))
         continue
@@ -2510,7 +2601,9 @@ except Exception as _exc:
     log(d,"WARN|%s|could not republish liveness after launching: %s"%(HOST,_exc))
 
 if raced:
-    log(d,"RACED|%s|%d card(s) finished between pool build and launch"%(HOST,raced))
+    _raced_ids_value, _raced_omitted = _bounded_ids(_raced_ids)
+    log(d,"RACED|%s|count=%d ids=%s omitted=%d selection race between pool build and launch"%
+        (HOST,raced,_raced_ids_value,_raced_omitted))
 if lane_drift:
     log(d,"LANE_RACED|%s|%d card(s) changed lane compatibility before claim"%
         (HOST,lane_drift))
