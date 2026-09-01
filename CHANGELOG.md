@@ -15,6 +15,12 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ### Added
 
+- **Card ff9b46b4: bound Link merge authority.** A source-only, fail-closed
+  evaluator requires a mergeable exact head, zero failed checks, a distinct
+  author's independent PASS, resolved lineage, non-Link authorship, and a
+  non-sensitive category. Denials produce deterministic evidence for Chef and
+  no merge or deployment actuator is exposed.
+
 - **Card c90e1c78: open provisional outcomes for independent review.** Fleet
   rotation now creates one governed review card when an open card records a
   leading `PASS_FOR_*` or `PASS_READY_*` verdict. Stable outcome-generation IDs
