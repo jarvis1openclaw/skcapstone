@@ -270,7 +270,7 @@ KNOWN_HOST_TTL = 24 * 3600   # a host silent this long has left the fleet
 STALL_GRACE = 30 * 60     # a zero-byte log younger than this may still be starting
 
 def _never_started(cid):
-    """True when this card has a launch log that is EXACTLY zero bytes and old.
+    """Return the zero-byte launch log and age when this card never started.
 
     Liveness here used to mean only that the tmux session exists. A launch
     wrapper whose child never starts sits in do_wait forever, keeps its session,
@@ -293,8 +293,9 @@ def _never_started(cid):
     except OSError:
         return False
     if st.st_size > 0:
-        return False
-    return (time.time() - st.st_mtime) > STALL_GRACE
+        return None
+    age = time.time() - st.st_mtime
+    return (newest, age) if age > STALL_GRACE else None
 
 
 def publish_live(sessions):
@@ -303,10 +304,15 @@ def publish_live(sessions):
                     for s in sessions if s.startswith(L["prefix"])})
     kept = []
     for _cid in cards:
-        if _never_started(_cid):
-            log(d, "STALLED|%s|%s|session exists but its launch log is 0 bytes and older "
-                   "than %dm; not reporting it live so the claim can be reaped"
-                % (HOST, _cid, STALL_GRACE // 60))
+        stalled = _never_started(_cid)
+        if stalled:
+            path, age = stalled
+            session = next(
+                s for L in LANES for s in sessions
+                if s.startswith(L["prefix"]) and s[len(L["prefix"]):] == _cid)
+            log(d, "STALLED|%s|%s|session=%s|log=%s|age_seconds=%d|launch log is "
+                   "0 bytes and older than %dm; not reporting it live so the claim can be reaped"
+                % (HOST, _cid, session, path, int(age), STALL_GRACE // 60))
             continue
         kept.append(_cid)
     cards = kept

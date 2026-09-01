@@ -10,8 +10,10 @@ source that runs rather than a paraphrase of it.
 
 Run: python3 tests/test_reaper_stall.py
 """
+
 import ast
 import glob
+import json
 import os
 import sys
 import tempfile
@@ -22,10 +24,14 @@ SRC = os.path.join(os.path.dirname(__file__), "..", "scripts", "fleet", "skfleet
 
 def _load():
     tree = ast.parse(open(SRC, encoding="utf-8").read())
-    fn = next(n for n in tree.body
-              if isinstance(n, ast.FunctionDef) and n.name == "_never_started")
-    grace = next(n for n in tree.body if isinstance(n, ast.Assign)
-                 and getattr(n.targets[0], "id", "") == "STALL_GRACE")
+    fn = next(
+        n for n in tree.body if isinstance(n, ast.FunctionDef) and n.name == "_never_started"
+    )
+    grace = next(
+        n
+        for n in tree.body
+        if isinstance(n, ast.Assign) and getattr(n.targets[0], "id", "") == "STALL_GRACE"
+    )
     home = tempfile.mkdtemp()
     ns = {"glob": glob, "os": os, "time": time, "HOME": home}
     exec(compile(ast.Module(body=[grace, fn], type_ignores=[]), SRC, "exec"), ns)
@@ -54,13 +60,55 @@ def main():
     ]
     failed = 0
     for cid, want, why in cases:
-        got = never_started(cid)
+        got = bool(never_started(cid))
         ok = got == want
         failed += not ok
-        print("  %-9s got=%-5s want=%-5s %s  %s"
-              % (cid, got, want, "PASS" if ok else "FAIL", why))
+        print("  %-9s got=%-5s want=%-5s %s  %s" % (cid, got, want, "PASS" if ok else "FAIL", why))
     print("FAILED" if failed else "PASS")
     return 1 if failed else 0
+
+
+def test_never_started_boundaries():
+    assert main() == 0
+
+
+def test_publish_live_logs_exact_attribution(tmp_path):
+    tree = ast.parse(open(SRC, encoding="utf-8").read())
+    nodes = [
+        n
+        for n in tree.body
+        if (isinstance(n, ast.Assign) and getattr(n.targets[0], "id", "") == "STALL_GRACE")
+        or (isinstance(n, ast.FunctionDef) and n.name in {"_never_started", "publish_live"})
+    ]
+    home = str(tmp_path)
+    live = tmp_path / "live"
+    messages = []
+    ns = {
+        "d": home,
+        "glob": glob,
+        "HOME": home,
+        "HOST": "chiap08",
+        "json": json,
+        "LANES": [{"prefix": "glm-auto-"}],
+        "LIVE": str(live),
+        "log": lambda _directory, message: messages.append(message),
+        "os": os,
+        "time": time,
+    }
+    exec(compile(ast.Module(body=nodes, type_ignores=[]), SRC, "exec"), ns)
+    logs = tmp_path / ".skcapstone" / "fleet" / "logs"
+    logs.mkdir(parents=True)
+    path = logs / "aaaa0001-20260831T000000Z.log"
+    path.touch()
+    old = time.time() - 3600
+    os.utime(path, (old, old))
+
+    assert ns["publish_live"](["glm-auto-aaaa0001"]) == []
+    assert len(messages) == 1
+    assert "|aaaa0001|session=glm-auto-aaaa0001|" in messages[0]
+    assert "|log=%s|" % path in messages[0]
+    assert "|age_seconds=" in messages[0]
+    assert json.loads((live / "chiap08.json").read_text())["cards"] == []
 
 
 if __name__ == "__main__":
