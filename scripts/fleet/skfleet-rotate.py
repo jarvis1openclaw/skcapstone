@@ -1949,41 +1949,172 @@ def _record_review_refusal(review_id, parent, outcome_ts, verdict):
         os.close(fd)
     return True
 
-def open_provisional_reviews():
-    """Create one governed review card for each unreviewed provisional pass."""
-    outcomes = _load_outcomes()
+def _provisional_candidate(parent, outcome_ts, token):
+    """Return exact producer and durable candidate evidence for one outcome.
+
+    Outcome attribution comes from verdict-bearing evidence, never lifecycle or
+    structural links.  Missing, conflicting, inaccessible, or hash-mismatched
+    candidate evidence fails closed.
+    """
+    matching = []
+    rows = list(event_rows(parent)) + list(_load_evidence_events().get(parent, ()))
+    for event in rows:
+        if str(event.get("ts") or "") != str(outcome_ts or ""):
+            continue
+        value = None
+        if event.get("action") in ("verdict", "blocked"):
+            value = _native_outcome_value(event)
+        elif event.get("action") == "evidence":
+            value = event.get("verdict")
+        elif event.get("action") == "link" and any(
+                key in _fold_key(event.get("link_key")) for key in _OUTCOME_KEYS):
+            raw = str(event.get("link_value") or "")
+            match = _OUTCOME_VALUE_RE.match(raw) or _PIPE_OUTCOME_RE.search(raw)
+            value = match.group(1) if match else None
+        match = _PROVISIONAL_PASS_RE.match(str(value or ""))
+        if match and match.group(1).upper() == token:
+            matching.append(event)
+    writers = {str(event.get("writer") or "").strip() for event in matching}
+    if "" in writers or len(writers) != 1:
+        return None
+    producer = next(iter(writers))
+    candidate_bytes = set()
+    artifact_evidence = set()
+    for event in rows:
+        if (str(event.get("ts") or "") != str(outcome_ts or "") or
+                str(event.get("writer") or "").strip() != producer):
+            continue
+        for path_key, digest_key, target in (
+                ("candidate_path", "candidate_sha256", candidate_bytes),
+                ("artifact_path", "artifact_sha256", artifact_evidence)):
+            path = str(event.get(path_key) or "")
+            digest = str(event.get(digest_key) or "").lower()
+            if path and re.fullmatch(r"[0-9a-f]{64}", digest):
+                target.add((path, digest))
+    candidates = candidate_bytes or artifact_evidence
+    verified = []
+    for path, digest in sorted(candidates):
+        try:
+            with open(path, "rb") as fh:
+                actual = hashlib.sha256(fh.read()).hexdigest()
+        except OSError:
+            continue
+        if actual == digest:
+            verified.append((path, digest))
+    if len(verified) != 1:
+        return None
+    return producer, verified[0][0], verified[0][1]
+
+
+def _eligible_provisional_reviews(capacity):
+    """Return a deterministic prefix bounded by initial free review slots."""
+    try:
+        budget = max(0, int(capacity))
+    except (TypeError, ValueError):
+        return []
+    if budget == 0:
+        return []
     reviews = _reviews_by_parent()
-    opened = 0
-    for parent, (outcome_ts, raw_verdict) in sorted(outcomes.items()):
-        if lifecycle_state(parent) != "open": continue
-        verdict = str(raw_verdict or "")
-        match = _PROVISIONAL_PASS_RE.match(verdict)
-        if not match: continue
+    selected = []
+    for parent, (outcome_ts, raw_verdict) in sorted(_load_outcomes().items()):
+        if len(selected) >= budget:
+            break
+        if lifecycle_state(parent) != "open":
+            continue
+        match = _PROVISIONAL_PASS_RE.match(str(raw_verdict or ""))
+        if not match:
+            continue
         if any(lifecycle_state(cid) in {"open", "claimed"}
                for cid in reviews.get(parent, ())):
             continue
         token = match.group(1).upper()
         review_id = _review_card_id(parent, str(outcome_ts or ""), token)
-        if os.path.isdir(os.path.join(CARDS, review_id)): continue
-        refusal_path = os.path.join(_REVIEW_REFUSALS, review_id + ".json")
-        if os.path.exists(refusal_path): continue
+        if os.path.isdir(os.path.join(CARDS, review_id)):
+            continue
+        if os.path.exists(os.path.join(_REVIEW_REFUSALS, review_id + ".json")):
+            continue
+        candidate = _provisional_candidate(parent, outcome_ts, token)
+        if not candidate:
+            log(d, "OPEN_REVIEW_EVIDENCE_BLOCKED|%s|%s|outcome=%s|%s" %
+                (HOST, parent, str(outcome_ts or ""), token))
+            continue
+        selected.append((parent, str(outcome_ts or ""), token, review_id) + candidate)
+    return selected
+
+
+def _authoritative_review_readback(review_id, parent, producer, path, digest):
+    """Fail closed unless CardStore folds the exact newly created review."""
+    try:
+        core_path = os.path.join(CARDS, review_id, "core.json")
+        with open(core_path, encoding="utf-8") as fh:
+            core = json.load(fh)
+        parent_labels = [label for label in folded_labels(review_id, core)
+                         if str(label).startswith("parent-")]
+        description = str(core.get("description") or "")
+        return bool(
+            core.get("id") == review_id and
+            parent_labels == ["parent-%s" % parent] and
+            lifecycle_state(review_id) == "open" and
+            "Producer identity: %s." % producer in description and
+            "Candidate evidence: %s sha256=%s." % (path, digest) in description
+        )
+    except (OSError, ValueError, TypeError):
+        return False
+
+
+_REVIEW_READBACK_BLOCKED = set()
+
+
+def open_provisional_reviews(capacity, dry_run=False):
+    """Plan or create a bounded batch of governed provisional-pass reviews."""
+    selected = _eligible_provisional_reviews(capacity)
+    log(d, "REVIEW_BATCH_PLAN|%s|capacity=%d|eligible=%d|batch=%d|dry_run=%s" %
+        (HOST, max(0, int(capacity)), len(selected), len(selected),
+         str(bool(dry_run)).lower()))
+    if dry_run:
+        for parent, _ts, _token, review_id, _producer, _path, _digest in selected:
+            log(d, "WOULD_OPEN_REVIEW|%s|%s|review=%s" % (HOST, parent, review_id))
+        return len(selected)
+
+    opened = 0
+    for parent, outcome_ts, token, review_id, producer, path, digest in selected:
+        # Each attempted create consumes one unit of the initial capacity budget,
+        # whether it succeeds or fails.  A transient failure stops the batch.
+        description = (
+            "Independently review parent %s at outcome %s (%s). Producer identity: %s. "
+            "Candidate evidence: %s sha256=%s. Reviewer identity must differ."
+            % (parent, outcome_ts or "unknown", token, producer, path, digest)
+        )
         r = subprocess.run(
             [SKC, "coord", "create", "--id", review_id,
              "--title", "[REVIEW] Review provisional outcome for %s" % parent,
-             "--desc", "Independently review parent %s at outcome %s (%s)."
-             % (parent, str(outcome_ts or "unknown"), token),
+             "--desc", description,
              "--priority", "high", "--tag", "parent-%s" % parent,
              "--tag", "review", "--tag", "qwen-suitable",
+             "--tag", "source-implementer-%s" % producer,
              "--by", "fleet-review-opener",
-             "--criteria", "Verify the parent acceptance criteria and evidence independently.",
+             "--criteria", "Verify exact candidate %s at sha256 %s." % (path, digest),
+             "--criteria", "Reviewer identity must differ from source implementer %s." % producer,
              "--criteria", "Record a leading PASS or FAIL verdict with immutable evidence."],
             capture_output=True, text=True,
             env=dict(os.environ, SKCOORD_CARD_STORE="1"))
         if r.returncode == 0:
+            _rows.pop(review_id, None)
+            if not _authoritative_review_readback(
+                    review_id, parent, producer, path, digest):
+                _REVIEW_READBACK_BLOCKED.add(review_id)
+                log(d, "OPEN_REVIEW_STALE_READBACK|%s|%s|review=%s" %
+                    (HOST, parent, review_id))
+                break
             opened += 1
-            reviews.setdefault(parent, set()).add(review_id)
-            log(d, "OPENED_REVIEW|%s|%s|review=%s|%s" %
-                (HOST, parent, review_id, token))
+            reviews = _reviews_by_parent()
+            if review_id not in reviews.get(parent, set()):
+                _REVIEW_READBACK_BLOCKED.add(review_id)
+                log(d, "OPEN_REVIEW_LINEAGE_READBACK_FAILED|%s|%s|review=%s" %
+                    (HOST, parent, review_id))
+                break
+            log(d, "OPENED_REVIEW|%s|%s|review=%s|%s|producer=%s|sha256=%s" %
+                (HOST, parent, review_id, token, producer, digest))
             continue
         current = _reviews_by_parent().get(parent, set())
         if any(lifecycle_state(cid) in {"open", "claimed"} for cid in current):
@@ -1991,12 +2122,13 @@ def open_provisional_reviews():
             continue
         error = ((r.stderr or "") + " " + (r.stdout or "")).strip()
         if _GOVERNOR_REFUSAL_RE.search(error):
-            if _record_review_refusal(review_id, parent, str(outcome_ts or ""), token):
+            if _record_review_refusal(review_id, parent, outcome_ts, token):
                 log(d, "OPEN_REVIEW_REFUSED|%s|%s|review=%s|%s" %
                     (HOST, parent, review_id, error[:110]))
-        else:
-            log(d, "OPEN_REVIEW_FAILED|%s|%s|review=%s|%s" %
-                (HOST, parent, review_id, error[:110]))
+            continue
+        log(d, "OPEN_REVIEW_FAILED|%s|%s|review=%s|%s" %
+            (HOST, parent, review_id, error[:110]))
+        break
     return opened
 
 def close_reviewed_parents():
@@ -2034,8 +2166,10 @@ def close_reviewed_parents():
         log(d, "CLOSE_REVIEWED|%s|closed=%d" % (HOST, closed))
     return closed
 
+review_capacity = min(MAX_LAUNCH, sum(
+    lane["free"] for lane in LANES if lane["name"] != "escalate"))
+open_provisional_reviews(review_capacity, dry_run=DRY)
 if not DRY:
-    open_provisional_reviews()
     close_reviewed_parents()
 
 _PINNED_IDS=set()
@@ -2056,6 +2190,10 @@ for cd in sorted(glob.glob(CARDS+"/*")):
     core_p=os.path.join(cd,"core.json")
     if not os.path.exists(core_p): continue
     if cid in excluded: continue
+    if cid in _REVIEW_READBACK_BLOCKED:
+        if DRY:
+            log(d,"DRY_SELECTION|%s|%s|excluded=stale-review-readback"%(HOST,cid))
+        continue
     if unclaimable(cid): skipped_unclaimable+=1; continue
     if itil_terminal(cid): skipped_terminal+=1; continue
     if blocked_backoff(cid):
