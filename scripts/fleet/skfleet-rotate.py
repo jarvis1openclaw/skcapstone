@@ -875,6 +875,66 @@ def folded_labels(cid,core):
             labels=[item for item in labels if item!=label]
     return labels
 
+_SEAT_LABEL_PREFIX = "seat-"
+_SEAT_RE = re.compile(r"^[a-z][a-z0-9-]{0,31}$")
+
+def seat_for(cid, core):
+    """Return the named seat this card belongs to, or None.
+
+    A card labelled `seat-<name>` is work belonging to a standing seat rather
+    than to whichever lane happened to pick it up. The worker still gets a
+    unique per-card name, but it carries the seat instead of the lane after the
+    standard ``pi-`` worker prefix,
+    so every claim, verdict and skmail this worker writes is attributable to the
+    seat that owns the work.
+
+    Card b2fec032 is the motivating case: it is the Integrator seat's triage
+    card. Dispatched by lane it would have been claimed by pi-qwen-chiap01, and
+    its verdicts would have carried no trace of the seat that owns the trunk.
+
+    The name is validated rather than interpolated blindly. It reaches a shell
+    command line, a tmux session, a claim owner and a mailbox name.
+    """
+    for label in folded_labels(cid, core):
+        text = str(label).strip().lower()
+        if not text.startswith(_SEAT_LABEL_PREFIX):
+            continue
+        seat = text[len(_SEAT_LABEL_PREFIX):]
+        if not _SEAT_RE.match(seat):
+            log(d, "WARN|%s|%s|ignoring malformed seat label %r" % (HOST, cid, text))
+            continue
+        if not _seat_is_provisioned(seat):
+            # A well-formed name is not a seat. Without this check a typo such as
+            # seat-lnik would produce a worker called pi-lnik-<host>-<cid> writing
+            # claims and verdicts under an identity that has no agent home, no
+            # capauth key, no mailbox and no estate entry: a phantom seat whose
+            # outputs look attributable and are not. Fall back to lane naming,
+            # which is always safe, and say so loudly.
+            log(d, "WARN|%s|%s|seat %r is not provisioned (no agent home at %s); "
+                   "falling back to lane naming"
+                % (HOST, cid, seat, os.path.join(HOME, ".skcapstone/agents", seat)))
+            continue
+        return seat
+    return None
+
+
+def _seat_is_provisioned(seat):
+    """True when this seat actually exists as an agent on this host.
+
+    A seat is real when it has an agent home and a public key. The private half
+    lives only where the seat signs, so its absence here is expected and is not
+    evidence against the seat.
+    """
+    home = os.path.join(HOME, ".skcapstone/agents", seat)
+    return os.path.isdir(home) and os.path.isfile(
+        os.path.join(home, "capauth/identity/public.asc"))
+
+
+def _worker_owner(lane, cid, seat=None):
+    """Return the reaper-compatible owner for one fleet worker."""
+    return "pi-%s-%s-%s" % (seat or lane, HOST, cid)
+
+
 _NON_IMPLEMENTATION_LABELS = {
     "planning-only-container",
     "do-not-claim-as-implementation",
@@ -1405,7 +1465,26 @@ def itil_terminal(cid):
 #
 # Only ephemeral one-shot workers are eligible. A named agent (jarvis, lumina) or
 # a human may hold a claim deliberately for as long as they like.
-_EPHEMERAL_OWNER = re.compile(r"^(pi|codex|glm)[-_]")
+def _parse_worker_owner(owner, cid, expected_seat=None):
+    """Return (kind, lane or seat, host) for one exact worker owner."""
+    owner = str(owner or "")
+    cid = str(cid or "")
+    if not re.fullmatch(r"[0-9a-f]{8}", cid):
+        return None
+    for host in ROTATION_HOSTS:
+        for lane in ("codex", "glm", "qwen", "escalate"):
+            if owner == "pi-%s-%s-%s" % (lane, host, cid):
+                return "lane", lane, host
+        for lane in ("codex", "glm"):
+            if owner == "%s-%s-%s" % (lane, host, cid):
+                return "lane", lane, host
+        if (
+            expected_seat
+            and _SEAT_RE.fullmatch(str(expected_seat))
+            and owner == "pi-%s-%s-%s" % (expected_seat, host, cid)
+        ):
+            return "seat", str(expected_seat), host
+    return None
 
 def _current_claim(cid):
     """The claim in force now, as (owner, epoch), or (None, 0)."""
@@ -1522,6 +1601,7 @@ def _fleet_launch_provenance(cid, owner, claim_revision):
         return False
     if _fleet_launch_claims is None:
         _fleet_launch_claims = collections.Counter()
+        expected_seats = {}
         for path in glob.glob(os.path.join(EVID, "*", "actions*.log")):
             try:
                 with open(path, encoding="utf-8", errors="replace") as fh:
@@ -1541,17 +1621,34 @@ def _fleet_launch_provenance(cid, owner, claim_revision):
                         if len(fields) != len(expected):
                             continue
                         lane, _model, launch_owner, launch_revision = fields
+                        launch_cid = parts[3]
+                        if launch_cid not in expected_seats:
+                            try:
+                                with open(
+                                    os.path.join(CARDS, launch_cid, "core.json"),
+                                    encoding="utf-8",
+                                ) as core_fh:
+                                    expected_seats[launch_cid] = seat_for(
+                                        launch_cid, json.load(core_fh)
+                                    )
+                            except (OSError, ValueError):
+                                expected_seats[launch_cid] = None
                         session_prefix = {
                             "codex": "codex-auto-",
                             "glm": "glm-auto-",
                             "qwen": "qwen-auto-",
                             "escalate": "esc-auto-",
                         }.get(lane)
+                        parsed_owner = _parse_worker_owner(
+                            launch_owner, launch_cid, expected_seats[launch_cid]
+                        )
                         if (
                             parts[1] not in ROTATION_HOSTS
                             or session_prefix is None
                             or parts[2] != session_prefix + parts[3]
-                            or launch_owner != f"pi-{lane}-{parts[1]}-{parts[3]}"
+                            or parsed_owner is None
+                            or parsed_owner[2] != parts[1]
+                            or (parsed_owner[0] == "lane" and parsed_owner[1] != lane)
                         ):
                             continue
                         _fleet_launch_claims[(parts[3], launch_owner, launch_revision)] += 1
@@ -1669,7 +1766,12 @@ def reap_dead_claims():
         if lifecycle_state(cid) != "claimed":
             continue
         owner, cts, claim_revision = _claim_identity(event_rows(cid))
-        if not owner or not _EPHEMERAL_OWNER.match(str(owner)):
+        try:
+            with open(os.path.join(cd, "core.json"), encoding="utf-8") as fh:
+                expected_seat = seat_for(cid, json.load(fh))
+        except (OSError, ValueError):
+            expected_seat = None
+        if not _parse_worker_owner(owner, cid, expected_seat):
             continue
         if cid in running:
             continue                      # a host says this is running right now
@@ -2321,7 +2423,14 @@ for _LANE,(_,_,cid,core,_labels,_nb) in picks:
       "claim or substitute another card. If ownership is absent, or a dependency is "
       "incomplete, say so and stop rather than working it anyway.\n\n"
       "CARD %s (%s)\nTITLE: %s\nDESCRIPTION: %s\n\nACCEPTANCE CRITERIA:\n%s\n\n" % (cid,cid,core.get("kind"),core.get("title"),core.get("description"),ac))
-    name="pi-%s-%s-%s"%(_LANE["name"],HOST,cid); sess="%s%s"%(_LANE["prefix"],cid)
+    _seat = seat_for(cid, core)
+    # A seat-owned card runs under the seat's identity, not the lane's. The
+    # session prefix stays lane-based so liveness, reaping and tmux lookup are
+    # unchanged; only the agent identity moves.
+    name = _worker_owner(_LANE["name"], cid, _seat)
+    if _seat:
+        log(d, "SEAT|%s|%s|running under seat %s as %s" % (HOST, cid, _seat, name))
+    sess="%s%s"%(_LANE["prefix"],cid)
     model=_LANE["model"]
     workspace=os.path.join(HOME,".skcapstone/fleet/workspaces",name)
     os.makedirs(workspace,exist_ok=True)
