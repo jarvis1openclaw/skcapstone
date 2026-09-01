@@ -91,6 +91,18 @@ def _selection_diagnostic(pool, owned, lanes, owner_for, host_capacity=None):
     )
 
 
+def _card_process_snapshot(cid):
+    """Return a fresh bounded same-card tmux snapshot."""
+    suffix = "-" + str(cid)
+    return {
+        "sessions": sorted(
+            session
+            for session in sh("tmux", "ls", "-F", "#{session_name}").split()
+            if session.endswith(suffix)
+        )
+    }
+
+
 def _review_assignment(cid, core, labels, reviewer):
     """Return Link's governed reviewer and recommendation for a review card."""
     if "review" not in {str(label).strip().lower() for label in labels}:
@@ -103,18 +115,23 @@ def _review_assignment(cid, core, labels, reviewer):
     recommendation_id = "link-review-" + hashlib.sha256(
         (cid + "\0" + reviewer + "\0" + evidence.group(1)).encode()
     ).hexdigest()[:32]
+    observed_process = _card_process_snapshot(cid)
+    if observed_process["sessions"]:
+        raise BoundaryError("review card already has a live same-card process")
     recommendation = recommend_reviewer(
         Path(HOME) / ".skcapstone",
         card_id=cid,
         recommendation_id=recommendation_id,
         author=producer.group(1).strip(),
         candidates=[reviewer],
+        observed_process=observed_process,
         evidence_sha256=evidence.group(1),
     )
     handoff = authorize_review_launch(
         Path(HOME) / ".skcapstone",
         recommendation,
         actor="jarvis",
+        current_process=_card_process_snapshot(cid),
         used_recommendation_ids={
             str(event.get("recommendation_id"))
             for event in event_rows(cid)

@@ -45,11 +45,16 @@ def test_link_recommends_and_jarvis_authorizes_fresh_assignment(tmp_path: Path) 
         recommendation_id="assignment-1",
         author="producer",
         candidates=["producer", "link", "reviewer-one"],
+        observed_process={"sessions": []},
         evidence_sha256=HASH,
     )
     assert CardStore(tmp_path).fold("feedface").owner is None
     handoff = authorize_review_launch(
-        tmp_path, recommendation, actor="jarvis", used_recommendation_ids=set()
+        tmp_path,
+        recommendation,
+        actor="jarvis",
+        current_process={"sessions": []},
+        used_recommendation_ids=set(),
     )
     assert handoff.reviewer == "reviewer-one"
     assert handoff.card_id == "feedface"
@@ -76,6 +81,7 @@ def test_link_rejects_non_distinct_reviewer(tmp_path: Path, candidate: str) -> N
             recommendation_id="assignment-1",
             author="producer",
             candidates=[candidate],
+            observed_process={"sessions": []},
             evidence_sha256=HASH,
         )
 
@@ -90,6 +96,7 @@ def test_jarvis_rejects_replay_and_state_drift(tmp_path: Path) -> None:
         recommendation_id="assignment-1",
         author="producer",
         candidates=["reviewer-one"],
+        observed_process={"sessions": []},
         evidence_sha256=HASH,
     )
     with pytest.raises(BoundaryError, match="replay"):
@@ -97,12 +104,40 @@ def test_jarvis_rejects_replay_and_state_drift(tmp_path: Path) -> None:
             tmp_path,
             recommendation,
             actor="jarvis",
+            current_process={"sessions": []},
             used_recommendation_ids={"assignment-1"},
         )
     CardStore(tmp_path).append_event("feedface", "add_label", "other", label="changed")
     with pytest.raises(BoundaryError, match="state changed"):
         authorize_review_launch(
-            tmp_path, recommendation, actor="jarvis", used_recommendation_ids=set()
+            tmp_path,
+            recommendation,
+            actor="jarvis",
+            current_process={"sessions": []},
+            used_recommendation_ids=set(),
+        )
+
+
+def test_jarvis_rejects_process_drift(tmp_path: Path) -> None:
+    """A same-card process appearing after Link's read denies launch."""
+
+    card(tmp_path)
+    recommendation = recommend_reviewer(
+        tmp_path,
+        card_id="feedface",
+        recommendation_id="assignment-1",
+        author="producer",
+        candidates=["reviewer-one"],
+        observed_process={"sessions": []},
+        evidence_sha256=HASH,
+    )
+    with pytest.raises(BoundaryError, match="process changed"):
+        authorize_review_launch(
+            tmp_path,
+            recommendation,
+            actor="jarvis",
+            current_process={"sessions": ["codex-auto-feedface"]},
+            used_recommendation_ids=set(),
         )
 
 
@@ -116,12 +151,17 @@ def test_only_jarvis_authorizes_launch(tmp_path: Path) -> None:
         recommendation_id="assignment-1",
         author="producer",
         candidates=["reviewer-one"],
+        observed_process={"sessions": []},
         evidence_sha256=HASH,
     )
     for actor in ("link", "mero"):
         with pytest.raises(BoundaryError):
             authorize_review_launch(
-                tmp_path, recommendation, actor=actor, used_recommendation_ids=set()
+                tmp_path,
+                recommendation,
+                actor=actor,
+                current_process={"sessions": []},
+                used_recommendation_ids=set(),
             )
 
 
@@ -135,10 +175,15 @@ def test_only_jarvis_records_launch_receipt(tmp_path: Path) -> None:
         recommendation_id="assignment-1",
         author="producer",
         candidates=["reviewer-one"],
+        observed_process={"sessions": []},
         evidence_sha256=HASH,
     )
     handoff = authorize_review_launch(
-        tmp_path, recommendation, actor="jarvis", used_recommendation_ids=set()
+        tmp_path,
+        recommendation,
+        actor="jarvis",
+        current_process={"sessions": []},
+        used_recommendation_ids=set(),
     )
     for actor in ("link", "mero"):
         with pytest.raises(BoundaryError):
@@ -187,6 +232,7 @@ def test_assignment_rejects_blank_state_revision() -> None:
         author="producer",
         reviewer="reviewer-one",
         observed_state_revision="",
+        observed_process={"sessions": []},
         evidence_sha256=HASH,
     )
     with pytest.raises(BoundaryError, match="state revision"):

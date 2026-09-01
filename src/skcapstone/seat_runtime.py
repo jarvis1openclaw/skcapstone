@@ -38,6 +38,7 @@ class ReviewAssignmentRecommendation:
     author: str
     reviewer: str
     observed_state_revision: str
+    observed_process: Mapping[str, object]
     evidence_sha256: str
     recommender: str = "link"
 
@@ -72,6 +73,7 @@ class ReviewAssignmentRecommendation:
             "author": self.author,
             "reviewer": self.reviewer,
             "observed_state_revision": self.observed_state_revision,
+            "observed_process": dict(self.observed_process),
             "evidence_sha256": self.evidence_sha256,
         }
 
@@ -83,6 +85,7 @@ def recommend_reviewer(
     recommendation_id: str,
     author: str,
     candidates: list[str],
+    observed_process: Mapping[str, object],
     evidence_sha256: str,
 ) -> ReviewAssignmentRecommendation:
     """Have Link append one revision-bound, distinct-reviewer recommendation."""
@@ -101,6 +104,7 @@ def recommend_reviewer(
         author=author.strip(),
         reviewer=assign_distinct_reviewer(author=author, assigner="link", candidates=candidates),
         observed_state_revision=review_state_revision(card),
+        observed_process=dict(observed_process),
         evidence_sha256=evidence_sha256,
     )
     store.append_event(
@@ -128,6 +132,7 @@ def authorize_review_launch(
     recommendation: ReviewAssignmentRecommendation,
     *,
     actor: str,
+    current_process: Mapping[str, object],
     used_recommendation_ids: set[str],
 ) -> ReviewLaunchHandoff:
     """Let Jarvis validate fresh card state before the existing claim path runs."""
@@ -148,6 +153,8 @@ def authorize_review_launch(
     current_revision = review_state_revision(card)
     if current_revision != recommendation.observed_state_revision:
         raise BoundaryError("review card state changed after assignment")
+    if dict(current_process) != dict(recommendation.observed_process):
+        raise BoundaryError("review card process changed after assignment")
     return ReviewLaunchHandoff(
         card_id=recommendation.card_id,
         reviewer=recommendation.reviewer,
