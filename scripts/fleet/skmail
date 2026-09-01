@@ -68,6 +68,16 @@ valid, invalid = [], []
 PRIORITY_ALIASES = {"critical": "urgent", "high": "urgent", "urgent": "urgent",
                     "normal": "normal", "fyi": "fyi", "low": "fyi", "info": "fyi"}
 
+# These exact legacy files contain recipient-layout records even though their
+# names look like writer boxes. Keep the exception closed and code-reviewed:
+# deriving it from record fields would let a forged record disable its own
+# writer check. New mail must use the writer layout documented in the header.
+LEGACY_RECIPIENT_BOXES = frozenset({
+    "jarvis@chiap01.jsonl", "jarvis@chiap03.jsonl", "jarvis@chiap08.jsonl",
+    "lumina@chiap01.jsonl", "lumina@chiap03.jsonl", "lumina@chiap08.jsonl",
+    "jarvis@pi-glm-1856149a.jsonl", "lumina@pi-glm-1856149a.jsonl",
+})
+
 def invalid_record(path, line_no, raw, reason, record=None):
     record = record if isinstance(record, dict) else {}
     recipients = record.get("to", [])
@@ -101,7 +111,9 @@ for path in sorted(glob.glob(os.path.join(d, "*.jsonl"))):
     # file entire. That is 38 real messages, including replies being waited on.
     # There is no writer guarantee to enforce on that layout, so do not invent
     # one: accept the from the record states.
-    if "@" in owner:
+    if base in LEGACY_RECIPIENT_BOXES:
+        expected_writer, expected_host = None, None
+    elif "@" in owner:
         expected_writer, expected_host = owner.rsplit("@", 1)
     else:
         expected_writer, expected_host = None, None
@@ -125,6 +137,15 @@ for path in sorted(glob.glob(os.path.join(d, "*.jsonl"))):
         if record.get("body") is None: record["body"] = ""
         if isinstance(record.get("priority"), str):
             record["priority"] = PRIORITY_ALIASES.get(record["priority"].strip().lower(), record["priority"])
+        # Measured 2026-08-31: ALL 33 bad_field_type rejections were a missing
+        # priority and nothing else, 55% of every warning the reader emitted.
+        # Mail with no stated urgency is normal mail, not malformed mail.
+        if record.get("priority") is None: record["priority"] = "normal"
+        # Hand-written records use a second vocabulary. The reader already
+        # accepts subject for re; these are the rest of the same family.
+        for _alias, _canon in (("timestamp", "ts"), ("sender", "from"), ("recipient", "to")):
+            if not isinstance(record.get(_canon), str) and isinstance(record.get(_alias), str):
+                record[_canon] = record[_alias]
         required = ("ts", "from", "to", "priority", "re", "body")
         bad = [key for key in required if not isinstance(record.get(key), str)]
         if bad:
