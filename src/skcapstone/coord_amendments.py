@@ -248,12 +248,9 @@ def void_card(
     legacy_archived = task_id in board.archived_ids()
     store = CardStore(home)
     events = store._read_events(task_id)
-    void_positions = [
-        index for index, event in enumerate(events) if event.get("action") == "void"
-    ]
+    void_positions = [index for index, event in enumerate(events) if event.get("action") == "void"]
     store_archived = bool(void_positions) and any(
-        event.get("action") == "archive"
-        for event in events[void_positions[-1] + 1 :]
+        event.get("action") == "archive" for event in events[void_positions[-1] + 1 :]
     )
     if not legacy_archived or not store_archived:
         missing = []
