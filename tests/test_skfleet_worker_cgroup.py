@@ -97,5 +97,5 @@ def test_launch_keeps_exact_claim_release_traps() -> None:
     assert "expected-claim-revision %s --agent %s" in source
     assert 'trap "release_claim; exit 143" HUP INT TERM' in source
     assert "trap release_claim EXIT" in source
-    assert 'subprocess.run(_worker_launch_command(unit,workspace,inner)' in source
+    assert "subprocess.run(_worker_launch_command(unit,workspace,inner)" in source
     assert '["tmux","new-session"' not in source
