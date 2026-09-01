@@ -71,6 +71,65 @@ STAMP=datetime.datetime.now(datetime.timezone.utc).strftime("%Y%m%dT%H%M%SZ")
 
 def sh(*a): return subprocess.run(a,capture_output=True,text=True).stdout
 
+_WORKER_UNIT_RE = re.compile(
+    r"^skfleet-worker-(codex|glm|qwen|escalate)-([0-9a-f]{8})\.service$"
+)
+
+
+def _worker_unit_name(lane, cid):
+    """Return the transient service name for one newly launched worker."""
+    if lane not in {"codex", "glm", "qwen", "escalate"} or not re.fullmatch(
+        r"[0-9a-f]{8}", cid
+    ):
+        raise ValueError("invalid worker unit identity")
+    return "skfleet-worker-%s-%s.service" % (lane, cid)
+
+
+def _parse_worker_units(output):
+    """Return active worker unit identities from systemctl list-units output."""
+    found = []
+    for line in output.splitlines():
+        fields = line.split()
+        match = _WORKER_UNIT_RE.fullmatch(fields[0]) if fields else None
+        if match:
+            found.append({"unit": fields[0], "lane": match.group(1), "card": match.group(2)})
+    return found
+
+
+def active_worker_units():
+    """Read systemd-owned workers without disturbing migration-era tmux workers."""
+    output = sh(
+        "systemctl", "--user", "list-units", "--type=service", "--state=running",
+        "--no-legend", "--plain", "skfleet-worker-*.service"
+    )
+    return _parse_worker_units(output)
+
+
+def _worker_launch_command(unit, workspace, inner):
+    """Build the systemd-supported detached worker launch command."""
+    return [
+        "systemd-run", "--user", "--quiet", "--collect", "--service-type=exec",
+        "--unit", unit, "--property=KillMode=control-group",
+        "--working-directory", workspace, "bash", "-lc", inner,
+    ]
+
+
+def _lane_busy(lane, sessions, units):
+    """Count old tmux and new service workers during the migration window."""
+    legacy = [s for s in sessions if s.startswith(lane["prefix"])]
+    managed = [u["unit"] for u in units if u["lane"] == lane["name"]]
+    return legacy + managed
+
+
+def _worker_cards(sessions, units, lanes):
+    """Return cards represented by either migration-era worker form."""
+    return sorted(
+        {s[len(lane["prefix"]):] for lane in lanes
+         for s in sessions if s.startswith(lane["prefix"])}
+        | {unit["card"] for unit in units}
+    )
+
+
 def _coord_task_claimable(core):
     """Return whether the task-only coord claim command accepts this card kind."""
     return core.get("kind") == "task"
@@ -188,7 +247,10 @@ except Exception as exc:
     sys.exit(2)
 
 # a slot IS a live ephemeral worker; -p workers exit when finished
+# Migration window: existing tmux workers remain authoritative until they exit;
+# new workers are transient user services and never enter this oneshot's cgroup.
 sessions=sh("tmux","ls","-F","#{session_name}").split()
+worker_units=active_worker_units()
 GLM_HOLD_PATH=os.path.join(HOME,".skcapstone/evidence/fleet-glm-dispatch-hold.json")
 glm_held=False
 try:
@@ -221,7 +283,7 @@ LANES=[
 if glm_held:
     log(d,"GLM_HOLD|%s|new GLM dispatch disabled by %s"%(HOST,GLM_HOLD_PATH))
 for _L in LANES:
-    _L["busy"]=[s for s in sessions if s.startswith(_L["prefix"])]
+    _L["busy"]=_lane_busy(_L,sessions,worker_units)
     _L["free"]=max(0,_L["target"]-len(_L["busy"]))
 free=sum(_L["free"] for _L in LANES)
 log(d, "SLOTS|%s|%s" % (HOST, _slot_summary(LANES)))
@@ -298,21 +360,22 @@ def _never_started(cid):
     return (newest, age) if age > STALL_GRACE else None
 
 
-def publish_live(sessions):
-    """Record which cards this host is running, for every other host to read."""
-    cards = sorted({s[len(L["prefix"]):] for L in LANES
-                    for s in sessions if s.startswith(L["prefix"])})
+def publish_live(sessions, units=()):
+    """Record legacy tmux and transient-service workers for every other host."""
+    cards = _worker_cards(sessions,units,LANES)
     kept = []
     for _cid in cards:
         stalled = _never_started(_cid)
         if stalled:
             path, age = stalled
-            session = next(
-                s for L in LANES for s in sessions
-                if s.startswith(L["prefix"]) and s[len(L["prefix"]):] == _cid)
-            log(d, "STALLED|%s|%s|session=%s|log=%s|age_seconds=%d|launch log is "
+            worker = next(
+                (s for L in LANES for s in sessions
+                 if s.startswith(L["prefix"]) and s[len(L["prefix"]):] == _cid),
+                next((u["unit"] for u in units if u["card"] == _cid), "unknown"),
+            )
+            log(d, "STALLED|%s|%s|worker=%s|log=%s|age_seconds=%d|launch log is "
                    "0 bytes and older than %dm; not reporting it live so the claim can be reaped"
-                % (HOST, _cid, session, path, int(age), STALL_GRACE // 60))
+                % (HOST, _cid, worker, path, int(age), STALL_GRACE // 60))
             continue
         kept.append(_cid)
     cards = kept
@@ -353,7 +416,7 @@ def live_report():
         running.update(str(c) for c in (snap.get("cards") or ()))
     return (min(hosts.values()) if hosts else 0.0), running, len(hosts)
 
-publish_live(sessions)
+publish_live(sessions, worker_units)
 
 if free==0:
     log(d,"NOOP|%s|all slots busy"%HOST); sys.exit(0)
@@ -2425,8 +2488,8 @@ for _LANE,(_,_,cid,core,_labels,_nb) in picks:
       "CARD %s (%s)\nTITLE: %s\nDESCRIPTION: %s\n\nACCEPTANCE CRITERIA:\n%s\n\n" % (cid,cid,core.get("kind"),core.get("title"),core.get("description"),ac))
     _seat = seat_for(cid, core)
     # A seat-owned card runs under the seat's identity, not the lane's. The
-    # session prefix stays lane-based so liveness, reaping and tmux lookup are
-    # unchanged; only the agent identity moves.
+    # Worker identity stays lane-based so slot accounting, liveness, and reaping
+    # remain unchanged; only the agent identity moves.
     name = _worker_owner(_LANE["name"], cid, _seat)
     if _seat:
         log(d, "SEAT|%s|%s|running under seat %s as %s" % (HOST, cid, _seat, name))
@@ -2480,8 +2543,9 @@ for _LANE,(_,_,cid,core,_labels,_nb) in picks:
            '--provider skgateway --model %s --thinking off -p "$(cat %s)" >%s 2>&1; '
            'rc=$?; trap - EXIT HUP INT TERM; release_claim; exit $rc'
            % (SKC,cid,name,claimed_revision,name,name,name,workspace,PI,name,model,bf,lf))
-    r=subprocess.run(["tmux","new-session","-d","-s",sess,"-c",workspace,"bash","-lc",inner])
-    ok = r.returncode==0 and sess in sh("tmux","ls","-F","#{session_name}").split()
+    unit=_worker_unit_name(_LANE["name"],cid)
+    r=subprocess.run(_worker_launch_command(unit,workspace,inner),capture_output=True,text=True)
+    ok = r.returncode==0
     launch_identity=_launch_claim_fields(name,claimed_revision,ok)
     launch_action="LAUNCHED" if ok else "LAUNCH_FAILED"
     log(d,"%s|%s|%s|%s|lane=%s|model=%s%s"%
@@ -2492,8 +2556,8 @@ for _LANE,(_,_,cid,core,_labels,_nb) in picks:
                        capture_output=True,text=True)
     time.sleep(2)
 
-# republish after launching, because the first publish is a snapshot of the
-# sessions that existed when this tick STARTED. Publishing only there means a host
+# Republish after launching, because the first publish is a snapshot of the
+# workers that existed when this tick STARTED. Publishing only there means a host
 # never reports the workers it just launched until its next tick, five minutes
 # later, so for those five minutes those cards are invisible to every other host.
 #
@@ -2503,9 +2567,11 @@ for _LANE,(_,_,cid,core,_labels,_nb) in picks:
 # chiap01 ran 3 workers and chiap03 ran 2, purely because each had launched them
 # after its own publish.
 #
-# Re-reading tmux here costs one subprocess and closes the window.
+# Re-reading both migration-era tmux and managed units closes the window.
 try:
-    publish_live(sh("tmux","ls","-F","#{session_name}").split())
+    publish_live(
+        sh("tmux","ls","-F","#{session_name}").split(), active_worker_units()
+    )
 except Exception as _exc:
     log(d,"WARN|%s|could not republish liveness after launching: %s"%(HOST,_exc))
 

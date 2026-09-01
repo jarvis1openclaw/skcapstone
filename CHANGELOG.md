@@ -33,6 +33,10 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ### Fixed
 
+- **Card 3b227de2: isolate fleet workers from the rotation oneshot cgroup.** New
+  workers launch as collected transient user services while slot counting and
+  liveness continue to include migration-era tmux workers.
+
 - **Card fc2d87bf: prevent resurrection of voided cards.** Void now verifies
   that archival reached both legacy and CardStore projections before returning,
   and an append-only repair tool re-archives historical move-after-void cards
