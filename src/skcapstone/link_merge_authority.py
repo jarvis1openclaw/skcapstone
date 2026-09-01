@@ -13,6 +13,8 @@ _SENSITIVE = re.compile(
     re.IGNORECASE,
 )
 _UNRESOLVED = re.compile(r"^\s*(FAIL|BLOCKED)\b", re.IGNORECASE)
+_GIT_SHA = re.compile(r"^[0-9a-f]{40}$", re.IGNORECASE)
+_SHA256 = re.compile(r"^[0-9a-f]{64}$", re.IGNORECASE)
 
 
 @dataclass(frozen=True)
@@ -59,8 +61,8 @@ def evaluate_link_merge(candidate: MergeCandidate) -> MergeDecision:
     review = candidate.review
     author = candidate.author.strip().lower()
 
-    if not candidate.head_sha.strip():
-        failures.append("missing-exact-head")
+    if not _GIT_SHA.fullmatch(candidate.head_sha):
+        failures.append("invalid-exact-head")
     if not candidate.mergeable:
         failures.append("not-mergeable")
     if candidate.failed_checks:
@@ -74,14 +76,18 @@ def evaluate_link_merge(candidate: MergeCandidate) -> MergeDecision:
     if review is None:
         failures.append("missing-independent-pass")
     else:
+        if not review.reviewer.strip():
+            failures.append("missing-reviewer-identity")
         if review.verdict.strip().upper() != "PASS":
             failures.append("missing-independent-pass")
+        if not _GIT_SHA.fullmatch(review.head_sha):
+            failures.append("invalid-review-head")
         if review.head_sha != candidate.head_sha:
             failures.append("review-head-mismatch")
         if review.reviewer.strip().lower() == author:
             failures.append("reviewer-is-author")
-        if not review.evidence_sha256.strip():
-            failures.append("missing-review-evidence")
+        if not _SHA256.fullmatch(review.evidence_sha256):
+            failures.append("invalid-review-evidence")
 
     evidence = (
         f"pr={candidate.repository}#{candidate.number}",

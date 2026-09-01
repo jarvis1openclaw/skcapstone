@@ -42,6 +42,7 @@ def test_exact_head_independent_pass_is_eligible_and_evidenced() -> None:
 @pytest.mark.parametrize(
     ("changes", "failure"),
     [
+        ({"head_sha": "not-a-sha"}, "invalid-exact-head"),
         ({"mergeable": False}, "not-mergeable"),
         ({"failed_checks": 1}, "failed-checks"),
         ({"author": "pi-link-chiap08-card"}, "authored-by-seat-link"),
@@ -53,6 +54,18 @@ def test_exact_head_independent_pass_is_eligible_and_evidenced() -> None:
         (
             {"review": IndependentReview("mero", "PASS", HEAD, "e" * 64)},
             "reviewer-is-author",
+        ),
+        (
+            {"review": IndependentReview("  ", "PASS", HEAD, "e" * 64)},
+            "missing-reviewer-identity",
+        ),
+        (
+            {"review": IndependentReview("reviewer", "PASS", "not-a-sha", "e" * 64)},
+            "invalid-review-head",
+        ),
+        (
+            {"review": IndependentReview("reviewer", "PASS", HEAD, "e")},
+            "invalid-review-evidence",
         ),
         ({"lineage_outcomes": ("PASS", "BLOCKED|needs repair")}, "unresolved-lineage"),
     ],
