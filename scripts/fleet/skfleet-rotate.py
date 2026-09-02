@@ -11,6 +11,8 @@ Fixes two defects found 03:50Z:
 import json,os,glob,subprocess,sys,time,fcntl,datetime,hashlib,collections,re,importlib.util
 from pathlib import Path
 
+from skcapstone.card_store import CardStore
+from skcapstone.coord_eligibility import leaf_eligibility_counts
 from skcapstone.seat_boundaries import BoundaryError
 from skcapstone.seat_runtime import (
     MeroObservation,
@@ -1078,6 +1080,33 @@ def _worker_owner(lane, cid, seat=None):
     return "pi-%s-%s-%s" % (seat or lane, HOST, cid)
 
 
+def _worker_health_snapshot(session_names):
+    """Join local tmux workers to exact current claim identities."""
+    rows = []
+    for session in session_names:
+        lane = next(
+            (item for item in LANES if session.startswith(item["prefix"])), None
+        )
+        if lane is None:
+            continue
+        cid = session[len(lane["prefix"]):]
+        try:
+            with open(os.path.join(CARDS, cid, "core.json"), encoding="utf-8") as fh:
+                seat = seat_for(cid, json.load(fh))
+        except (OSError, ValueError):
+            seat = None
+        expected_owner = _worker_owner(lane["name"], cid, seat)
+        owner, _claimed_at, revision = _current_claim_identity_fresh(cid)
+        rows.append((session, cid, owner == expected_owner and bool(revision)))
+    duplicates = len(rows) - len({cid for _session, cid, _exact in rows})
+    return {
+        "sessions": len(rows),
+        "claims_exact": sum(int(exact) for _session, _cid, exact in rows),
+        "mismatched": sum(int(not exact) for _session, _cid, exact in rows),
+        "duplicates": duplicates,
+    }
+
+
 _NON_IMPLEMENTATION_LABELS = {
     "planning-only-container",
     "do-not-claim-as-implementation",
@@ -1908,6 +1937,13 @@ def _record_reap_outcome(cid, owner, claim_revision, claim_ts):
 def reap_dead_claims():
     """Return claimed cards whose worker no host reports running."""
     oldest, running, nhosts = live_report()
+    health = _worker_health_snapshot(
+        sh("tmux", "ls", "-F", "#{session_name}").split()
+    )
+    log(d, "WORKER_HEALTH|%s|sessions=%d claims_exact=%d mismatched=%d "
+        "duplicates=%d" %
+        (HOST, health["sessions"], health["claims_exact"], health["mismatched"],
+         health["duplicates"]))
     # A host that is merely between runs must still be counted, or the quorum
     # check passes while its workers are invisible. A host that is GONE must
     # eventually stop counting, or one decommissioned machine blocks reaping for
@@ -1983,12 +2019,27 @@ def reap_dead_claims():
         # to act, including for hand-dispatched ephemeral workers.
         provenance = (_fleet_launch_provenance(cid, fresh_owner, fresh_revision)
                       and "fleet" or "ephemeral")
+        health_evidence = hashlib.sha256(
+            ("mero-worker-gone\0%s\0%s\0%s" %
+             (cid, fresh_owner, fresh_revision)).encode()
+        ).hexdigest()
+        try:
+            MeroObservation(
+                card_id=cid,
+                observation_id="mero-worker-gone-" + health_evidence[:32],
+                state="worker_absent_after_quorum",
+                process={"host": HOST, "sessions": [], "claim_revision": fresh_revision},
+                evidence_sha256=health_evidence,
+            ).append(Path(HOME) / ".skcapstone")
+        except (BoundaryError, OSError, ValueError) as exc:
+            log(d, "MERO_OBSERVATION_FAILED|%s|%s|%s" % (HOST, cid, exc))
+            continue
         if not _record_reap_outcome(cid, fresh_owner, fresh_revision, fresh_ts):
             continue                    # never release without a durable outcome
         r = subprocess.run(
             [SKC, "coord", "release-claim", cid, "--owner", str(fresh_owner),
              "--expected-claim-revision", str(fresh_revision),
-             "--agent", "fleet-liveness-reaper"],
+             "--agent", "jarvis"],
             capture_output=True, text=True)
         if r.returncode == 0:
             _rows.pop(cid, None)          # the fold below must re-read from disk
@@ -2014,6 +2065,7 @@ def reap_dead_claims():
     log(d, "REAP|%s|released=%d hosts_reporting=%d cards_running=%d ineffective=%d"
         % (HOST, freed, nhosts, len(running), len(_load_ineffective())))
     return freed
+
 
 # DRY gates every board MUTATION, not only the launch. Before this, --go gated the
 # tmux launch and nothing else, so running the rotation without --go still released
@@ -2345,14 +2397,23 @@ skipped_review=0
 not_claimable_skipped=0
 pinned_elsewhere=0
 skipped_claimed=0
+owned_ready=0
 claimability_errors=[]
 sensitive_withheld=0
 historical_review_terminal=0
 historical_review_claimed=0
+structural_leaf=leaf_eligibility_counts(Path(HOME) / ".skcapstone").leaves
+human_gated=0
 for cd in sorted(glob.glob(CARDS+"/*")):
     cid=os.path.basename(cd)
     core_p=os.path.join(cd,"core.json")
     if not os.path.exists(core_p): continue
+    try:
+        _structural_core = json.load(open(core_p))
+    except Exception:
+        _structural_core = {}
+    if lifecycle_state(cid) == "open":
+        human_gated += int(_human_gate(cid))
     if cid in excluded: continue
     if cid in _REVIEW_READBACK_BLOCKED:
         if DRY:
@@ -2407,6 +2468,7 @@ for cd in sorted(glob.glob(CARDS+"/*")):
             skipped_terminal+=1
         elif reason.startswith("owned-"):
             skipped_claimed+=1
+            owned_ready+=1
         elif reason=="dependency":
             blocked+=1
         elif reason.startswith("host-pin:"):
@@ -2463,12 +2525,16 @@ log(d,"POOL|%s|ready=%d sklegal=%d eng=%d biz=%d dep_blocked=%d "
       "unclaimable=%d claimed=%d itil_closed=%d blocked_backoff=%d "
       "awaiting_review=%d pinned_elsewhere=%d foreign=%d not_claimable=%d "
       "historical_review_terminal=%d historical_review_claimed=%d "
-      "category_withheld=%d top_unblocks=%d"
+      "category_withheld=%d owned_ready=%d "
+      "structural_leaf=%d human_gated=%d "
+      "safety_filtered=%d top_unblocks=%d"
       %(HOST,len(pool),lc[0],lc[1],lc[2],blocked,skipped_unclaimable,
         skipped_claimed,skipped_terminal,skipped_blocked,skipped_review,
         pinned_elsewhere,foreign_skipped,not_claimable_skipped,
         historical_review_terminal,historical_review_claimed,
-        sensitive_withheld,top))
+        sensitive_withheld,owned_ready,
+        structural_leaf,human_gated,
+        skipped_unclaimable+sensitive_withheld+not_claimable_skipped+foreign_skipped,top))
 
 # Partition the CARD SPACE by hash, not by pool index. Index striding assumes all
 # three hosts see an identical pool at the same instant; ~/.skcapstone is Syncthing

@@ -147,10 +147,12 @@ def _reaper_fixture(
 
     namespace.update(
         {
+            "BoundaryError": RuntimeError,
             "CARDS": str(cards),
             "CLAIM_GRACE": 300,
             "EVID": str(evidence),
             "HOST": "chiap08",
+            "HOME": str(tmp_path),
             "_EVID_DIR": str(tmp_path / "card_events"),
             "KNOWN_HOST_TTL": 86400,
             "LIVE": str(live),
@@ -166,6 +168,15 @@ def _reaper_fixture(
             "lifecycle_state": lambda _card: "open" if released else "claimed",
             "live_report": lambda: (time.time(), set(), 3),
             "log": lambda _directory, message: messages.append(message),
+            "MeroObservation": lambda **_kwargs: SimpleNamespace(append=lambda _home: {}),
+            "Path": Path,
+            "_worker_health_snapshot": lambda _sessions: {
+                "sessions": 0,
+                "claims_exact": 0,
+                "mismatched": 0,
+                "duplicates": 0,
+            },
+            "sh": lambda *_args: "",
             "seat_for": lambda card_id, _core: "link" if card_id == "deadbeef" else None,
             "subprocess": SimpleNamespace(run=fake_run),
             "time": time,
@@ -613,7 +624,7 @@ def test_genuine_dead_fleet_claim_with_exact_generation_is_released(
             "--expected-claim-revision",
             revision,
             "--agent",
-            "fleet-liveness-reaper",
+            "jarvis",
         ]
     ]
 
