@@ -13,6 +13,11 @@ from pathlib import Path
 
 from skcapstone.card_store import CardStore
 from skcapstone.coord_eligibility import leaf_eligibility_counts
+from skcapstone.scheduler_decision import (
+    SchedulerFacts,
+    classify_scheduler_population,
+    pool_v2,
+)
 from skcapstone.seat_boundaries import BoundaryError
 from skcapstone.seat_runtime import (
     MeroObservation,
@@ -2380,6 +2385,51 @@ def close_reviewed_parents():
         log(d, "CLOSE_REVIEWED|%s|closed=%d" % (HOST, closed))
     return closed
 
+
+def _legacy_selector_decision(cid, core_p):
+    """Run the legacy selector's authoritative exclusion path for one card."""
+    if cid in excluded:
+        return {"eligible": False, "reason": "lifecycle_excluded"}
+    if cid in _REVIEW_READBACK_BLOCKED:
+        return {"eligible": False, "reason": "selector_excluded"}
+    if unclaimable(cid):
+        return {"eligible": False, "reason": "attempt_limit"}
+    if itil_terminal(cid):
+        return {"eligible": False, "reason": "terminal_itil"}
+    lifecycle = lifecycle_state(cid)
+    outcome_bucket = outcome_lifecycle_bucket(lifecycle, awaiting_review(cid))
+    if outcome_bucket == "ambiguous":
+        decision=authoritative_claimability(cid)
+        return {
+            "eligible": False,
+            "reason": "malformed",
+            "detail": decision.get("reason", "malformed:ambiguous-lifecycle"),
+        }
+    if outcome_bucket != "open":
+        return {"eligible": False, "reason": outcome_bucket}
+    if blocked_backoff(cid):
+        return {
+            "eligible": False,
+            "reason": "awaiting_review" if awaiting_review(cid) else "backoff",
+        }
+    try:
+        with open(core_p, encoding="utf-8") as handle:
+            core = json.load(handle)
+    except Exception:
+        return {"eligible": False, "reason": "malformed", "detail": "malformed-core"}
+    if terminal_review_verdict(cid, core):
+        return {"eligible": False, "reason": "terminal_review"}
+    decision=authoritative_claimability(cid,core)
+    if not decision["claimable"]:
+        return {
+            "eligible": False,
+            "reason": str(decision["reason"]),
+            "decision": decision,
+        }
+    if str(decision["title"]).startswith("CMDB drift"):
+        return {"eligible": False, "reason": "selector_excluded"}
+    return {"eligible": True, "reason": "ready", "decision": decision, "core": core}
+
 review_capacity = min(MAX_LAUNCH, sum(
     lane["free"] for lane in LANES if lane["name"] != "escalate"))
 open_provisional_reviews(review_capacity, dry_run=DRY)
@@ -2414,77 +2464,60 @@ for cd in sorted(glob.glob(CARDS+"/*")):
         _structural_core = {}
     if lifecycle_state(cid) == "open":
         human_gated += int(_human_gate(cid))
-    if cid in excluded: continue
-    if cid in _REVIEW_READBACK_BLOCKED:
+    legacy = _legacy_selector_decision(cid, core_p)
+    legacy_reason = legacy["reason"]
+    if legacy_reason == "selector_excluded" and cid in _REVIEW_READBACK_BLOCKED:
         if DRY:
             log(d,"DRY_SELECTION|%s|%s|excluded=stale-review-readback"%(HOST,cid))
-        continue
-    if unclaimable(cid): skipped_unclaimable+=1; continue
-    if itil_terminal(cid): skipped_terminal+=1; continue
-    # Outcome history outlives lifecycle state. Count a provisional PASS as
-    # awaiting review only while its card is still open. Previously this check
-    # happened after blocked_backoff(), so every completed card whose history
-    # contained PASS_FOR_REVIEW was counted in the live review backlog forever.
-    # The same ordering also mislabeled claimed historical candidates as review
-    # backlog. Use the authoritative lifecycle fold before interpreting outcomes.
-    lifecycle = lifecycle_state(cid)
-    outcome_bucket = outcome_lifecycle_bucket(lifecycle, awaiting_review(cid))
-    if outcome_bucket == "ambiguous":
-        decision = authoritative_claimability(cid)
-        reason = decision.get("reason", "malformed:ambiguous-lifecycle")
-        claimability_errors.append("%s:%s" % (cid, reason))
-        continue
-    if outcome_bucket != "open":
-        if outcome_bucket in {"claimed", "historical_review_claimed"}:
-            skipped_claimed += 1
-            historical_review_claimed += int(outcome_bucket == "historical_review_claimed")
-        else:
+    if not legacy["eligible"]:
+        if legacy_reason in {"lifecycle_excluded", "selector_excluded"}:
+            pass
+        elif legacy_reason == "attempt_limit":
+            skipped_unclaimable += 1
+        elif legacy_reason in {"terminal_itil", "terminal_review"}:
             skipped_terminal += 1
-            historical_review_terminal += int(outcome_bucket == "historical_review_terminal")
+        elif legacy_reason == "malformed":
+            claimability_errors.append("%s:%s" % (cid, legacy.get("detail", "malformed")))
+        elif legacy_reason in {"claimed", "historical_review_claimed"}:
+            skipped_claimed += 1
+            historical_review_claimed += int(legacy_reason == "historical_review_claimed")
+        elif legacy_reason in {
+            "complete",
+            "void",
+            "terminal",
+            "historical_review_terminal",
+        }:
+            skipped_terminal += 1
+            historical_review_terminal += int(legacy_reason == "historical_review_terminal")
+        elif legacy_reason == "awaiting_review":
+            skipped_review += 1
+        elif legacy_reason == "backoff":
+            skipped_blocked += 1
+            if DRY:
+                log(d,"DRY_SELECTION|%s|%s|excluded=authoritative-blocked-unchanged"%
+                    (HOST,cid))
+        elif legacy_reason in ("done", "void", "archive"):
+            skipped_terminal += 1
+        elif legacy_reason.startswith("owned-"):
+            skipped_claimed += 1
+            owned_ready += 1
+        elif legacy_reason == "dependency":
+            blocked += 1
+        elif legacy_reason.startswith("host-pin:"):
+            pinned_elsewhere += 1
+        elif legacy_reason == "foreign-project":
+            foreign_skipped += 1
+        elif legacy_reason == "not-claimable":
+            not_claimable_skipped += 1
+        elif legacy_reason == "sensitive-category":
+            sensitive_withheld += 1
         continue
-    if blocked_backoff(cid):
-        if DRY:
-            log(d,"DRY_SELECTION|%s|%s|excluded=authoritative-blocked-unchanged"%
-                (HOST,cid))
-        # Split the two, because one of them is success. A card that recorded
-        # PASS_FOR_REVIEW is waiting on a reviewer, not refusing to work, and
-        # reporting it as blocked hides a finished candidate in the failure count.
-        if awaiting_review(cid): skipped_review+=1
-        else: skipped_blocked+=1
-        continue
-    try: core=json.load(open(core_p))
-    except Exception:
-        claimability_errors.append("%s:malformed-core"%cid)
-        continue
-    if terminal_review_verdict(cid, core):
-        skipped_terminal+=1
-        continue
-    decision=authoritative_claimability(cid,core)
-    if not decision["claimable"]:
-        reason=decision["reason"]
-        if reason.startswith("malformed:"):
-            claimability_errors.append("%s:%s"%(cid,reason))
-        elif reason in ("done","void","archive"):
-            skipped_terminal+=1
-        elif reason.startswith("owned-"):
-            skipped_claimed+=1
-            owned_ready+=1
-        elif reason=="dependency":
-            blocked+=1
-        elif reason.startswith("host-pin:"):
-            pinned_elsewhere+=1
-        elif reason=="foreign-project":
-            foreign_skipped+=1
-        elif reason=="not-claimable":
-            not_claimable_skipped+=1
-        elif reason=="sensitive-category":
-            sensitive_withheld+=1
-        continue
+    core=legacy["core"]
+    decision=legacy["decision"]
     core=decision["core"]
     title=decision["title"]
     labels=decision["labels"]
     blob=(title+" "+json.dumps(labels)).upper()
-    if title.startswith("CMDB drift"): continue
     _pin=decision["host_pin"]
     if _pin == HOST:
         _PINNED_IDS.add(cid)
@@ -2535,6 +2568,119 @@ log(d,"POOL|%s|ready=%d sklegal=%d eng=%d biz=%d dep_blocked=%d "
         sensitive_withheld,owned_ready,
         structural_leaf,human_gated,
         skipped_unclaimable+sensitive_withheld+not_claimable_skipped+foreign_skipped,top))
+
+# Shadow-only scheduler truth. The legacy selector above remains authoritative
+# until this partition has proven parity across a release. SKCoord contributes
+# read-only lifecycle classes through this adapter; it does not own runtime
+# backoff, worker health, ITIL state, or host routing policy.
+def _shadow_pool_v2():
+    classes = assessment.get("classes", {}) if isinstance(assessment, dict) else {}
+    class_ids = {
+        name: {str(row.get("card_id")) for row in rows if row.get("card_id")}
+        for name, rows in classes.items()
+        if isinstance(rows, list)
+    }
+    all_excluded = set(excluded)
+    population = []
+    for card_dir in sorted(glob.glob(CARDS + "/*")):
+        cid = os.path.basename(card_dir)
+        core_path = os.path.join(card_dir, "core.json")
+        if not os.path.exists(core_path):
+            continue
+        adapter_facets = tuple(
+            sorted("skcoord:" + name for name, ids in class_ids.items() if cid in ids)
+        )
+        try:
+            with open(core_path, encoding="utf-8") as handle:
+                core = json.load(handle)
+            lifecycle = lifecycle_state(cid)
+            claimability = authoritative_claimability(cid, core)
+            reason = str(claimability.get("reason") or "")
+            owner_health = None
+            if reason.startswith("owned-"):
+                if cid in class_ids.get("dead_worker_claims", set()):
+                    owner_health = "dead"
+                elif cid in class_ids.get("stale_claims", set()):
+                    owner_health = "stale"
+                else:
+                    owner_health = "live"
+            superseded = cid in class_ids.get("superseded_cards", set())
+            mapped_exclusion = (
+                superseded
+                or cid in class_ids.get("dead_worker_claims", set())
+                or cid in class_ids.get("stale_claims", set())
+                or cid in class_ids.get("void_dependency_edges", set())
+                or cid in class_ids.get("unreadable_cards", set())
+            )
+            population.append(
+                SchedulerFacts(
+                    card_id=cid,
+                    malformed=lifecycle == "ambiguous"
+                    or reason.startswith("malformed:"),
+                    lifecycle_excluded=cid in all_excluded and not mapped_exclusion,
+                    selector_excluded=(
+                        cid in _REVIEW_READBACK_BLOCKED
+                        or terminal_review_verdict(cid, core)
+                        or str(core.get("title") or "").startswith("CMDB drift")
+                    ),
+                    terminal_cardstore=lifecycle in {"complete", "void"},
+                    terminal_itil=itil_terminal(cid),
+                    superseded=superseded,
+                    owner_health=owner_health,
+                    human_gate=reason == "human-gate",
+                    foreign_project=reason == "foreign-project",
+                    not_claimable=reason in {"not-claimable", "non-task"},
+                    sensitive_category=reason == "sensitive-category",
+                    dependency=(
+                        reason == "dependency"
+                        or cid in class_ids.get("void_dependency_edges", set())
+                    ),
+                    awaiting_review=awaiting_review(cid),
+                    backoff=blocked_backoff(cid),
+                    attempt_limit=unclaimable(cid),
+                    host_pin_elsewhere=reason.startswith("host-pin:"),
+                    adapter_facets=adapter_facets,
+                )
+            )
+        except Exception as exc:
+            population.append(
+                SchedulerFacts(
+                    card_id=cid,
+                    malformed=True,
+                    adapter_facets=("adapter_error:" + type(exc).__name__,),
+                )
+            )
+    decisions = classify_scheduler_population(population)
+    report = pool_v2(HOST, decisions)
+    log(d, report.render())
+    ready_ids = {row.card_id for row in decisions if row.eligible}
+    legacy_ids = {row[2] for row in pool}
+    only_v2 = sorted(ready_ids - legacy_ids)
+    only_legacy = sorted(legacy_ids - ready_ids)
+    log(
+        d,
+        "POOL_V2_PARITY|%s|match=%s only_v2=%d only_legacy=%d "
+        "only_v2_ids=%s only_legacy_ids=%s"
+        % (
+            HOST,
+            str(ready_ids == legacy_ids).lower(),
+            len(only_v2),
+            len(only_legacy),
+            ",".join(only_v2) or "-",
+            ",".join(only_legacy) or "-",
+        ),
+    )
+
+
+def _emit_shadow_pool_v2():
+    try:
+        _shadow_pool_v2()
+    except Exception as exc:
+        # Shadow truth is observational. Its failure must never stop legacy claims.
+        log(d, "SHADOW_ERROR|%s|%s:%s" % (HOST, type(exc).__name__, str(exc)[:160]))
+
+
+_emit_shadow_pool_v2()
 
 # Partition the CARD SPACE by hash, not by pool index. Index striding assumes all
 # three hosts see an identical pool at the same instant; ~/.skcapstone is Syncthing

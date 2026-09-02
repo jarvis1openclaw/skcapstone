@@ -43,16 +43,16 @@ def test_exact_lifecycle_bucket_counts_include_ambiguous() -> None:
 
 def test_authoritative_lifecycle_is_folded_before_outcome_buckets() -> None:
     source = SCRIPT.read_text(encoding="utf-8")
-    lifecycle = source.index("lifecycle = lifecycle_state(cid)")
-    backoff = source.index("if blocked_backoff(cid):", lifecycle)
+    helper = source.index("def _legacy_selector_decision")
+    lifecycle = source.index("lifecycle = lifecycle_state(cid)", helper)
+    outcome = source.index("outcome_bucket = outcome_lifecycle_bucket", lifecycle)
+    backoff = source.index("if blocked_backoff(cid):", outcome)
     claimability = source.index("decision=authoritative_claimability(cid,core)", backoff)
 
-    assert lifecycle < backoff < claimability
-    assert 'if outcome_bucket != "open":' in source[lifecycle:backoff]
-    assert '"historical_review_claimed"' in source[lifecycle:backoff]
-    assert "skipped_terminal += 1" in source[lifecycle:backoff]
-    assert 'if outcome_bucket == "ambiguous":' in source[lifecycle:backoff]
-    assert "claimability_errors.append" in source[lifecycle:backoff]
+    assert lifecycle < outcome < backoff < claimability
+    assert 'if outcome_bucket != "open":' in source[outcome:backoff]
+    assert 'if outcome_bucket == "ambiguous":' in source[outcome:backoff]
+    assert 'legacy_reason in {"claimed", "historical_review_claimed"}' in source
     assert "historical_review_terminal += int(" in source
     assert "historical_review_claimed += int(" in source
 
