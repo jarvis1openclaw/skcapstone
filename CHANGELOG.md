@@ -15,6 +15,11 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ### Added
 
+- **Card 369ca2f8: report canonical shadow scheduler truth.** Fleet rotation
+  emits one exclusive primary reason per card plus diagnostic facets, verifies
+  exact parity with the legacy selector, and fails open to legacy selection if
+  shadow reporting cannot be produced.
+
 - **Card 43c88f26: compose governed seat runtime handoffs.** Link records a
   distinct-reviewer recommendation bound to fresh card state, Jarvis alone
   authorizes and records the exact claim-and-launch handoff in fleet rotation,
