@@ -78,7 +78,10 @@ def test_publish_live_logs_exact_attribution(tmp_path):
         n
         for n in tree.body
         if (isinstance(n, ast.Assign) and getattr(n.targets[0], "id", "") == "STALL_GRACE")
-        or (isinstance(n, ast.FunctionDef) and n.name in {"_never_started", "publish_live"})
+        or (
+            isinstance(n, ast.FunctionDef)
+            and n.name in {"_never_started", "publish_live", "_worker_cards"}
+        )
     ]
     home = str(tmp_path)
     live = tmp_path / "live"
@@ -105,7 +108,7 @@ def test_publish_live_logs_exact_attribution(tmp_path):
 
     assert ns["publish_live"](["glm-auto-aaaa0001"]) == []
     assert len(messages) == 1
-    assert "|aaaa0001|session=glm-auto-aaaa0001|" in messages[0]
+    assert "|aaaa0001|worker=glm-auto-aaaa0001|" in messages[0]
     assert "|log=%s|" % path in messages[0]
     assert "|age_seconds=" in messages[0]
     assert json.loads((live / "chiap08.json").read_text())["cards"] == []
