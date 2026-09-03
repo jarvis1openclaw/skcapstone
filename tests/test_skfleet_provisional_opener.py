@@ -15,6 +15,11 @@ ROOT = Path(__file__).resolve().parents[1]
 ROTATE = ROOT / "scripts" / "fleet" / "skfleet-rotate.py"
 
 FUNCTIONS = {
+    "_event_sort_key",
+    "_generation_invalidated",
+    "_matching_outcome_events",
+    "_outcome_event_value",
+    "_parent_review_generation",
     "_review_parent_ids",
     "_reviews_by_parent",
     "_review_card_id",

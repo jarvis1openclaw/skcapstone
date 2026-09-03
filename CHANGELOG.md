@@ -9,6 +9,10 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ### Fixed
 
+- **Card ea0bc9e1: bind automatic review closeout to exact generations.** A
+  completed review closes only the unchanged producer generation it names;
+  later source or review mutations invalidate the old join.
+
 - **Card 244c215a: restore coordination hub truth.** Fleet digest ignores valid
   JSONL values that are not event objects, and review launch receipts consume a
   deterministic recommendation only for the card's live claim generation.
