@@ -3568,18 +3568,77 @@ def lane_compatibility(labels, escalation_required=False, qwen_allowed=True,
     return ordinary,"ordinary"
 
 
+_LANE_HEALTH_MAX_BYTES=65536
+_LANE_HEALTH_MAX_AGE_S=120
+
+
+def load_lane_health_snapshot(path, max_bytes=_LANE_HEALTH_MAX_BYTES):
+    """Read one bounded authoritative snapshot, returning an unavailable sentinel."""
+    try:
+        with open(path,"rb") as fh:
+            raw=fh.read(max_bytes+1)
+        if len(raw)>max_bytes:
+            raise ValueError("oversize")
+        snapshot=json.loads(raw.decode("utf-8"))
+        if not isinstance(snapshot,dict) or snapshot.get("schema_version")!=1:
+            raise ValueError("schema")
+        if not isinstance(snapshot.get("lanes"),list):
+            raise ValueError("lanes")
+        return snapshot
+    except (OSError,UnicodeError,ValueError,TypeError) as exc:
+        return {"schema_version":1,"lanes":[],"unavailable":type(exc).__name__}
+
+
+def lane_health(snapshot, lane, model, now=None,
+                max_age_s=_LANE_HEALTH_MAX_AGE_S):
+    """Resolve one exact lane and model against a fresh authoritative snapshot."""
+    now=time.time() if now is None else float(now)
+    try:
+        observed_at=float(snapshot["observed_at"])
+        revision=snapshot["runtime_revision"]
+    except (KeyError,TypeError,ValueError):
+        return False,"unknown"
+    if not isinstance(revision,str) or not revision.strip() or observed_at<=0:
+        return False,"unknown"
+    if observed_at>now:
+        return False,"unknown"
+    if now-observed_at>max_age_s:
+        return False,"stale"
+    matches=[entry for entry in snapshot.get("lanes",[]) if isinstance(entry,dict)
+             and entry.get("lane")==lane]
+    exact=[entry for entry in matches if entry.get("model")==model]
+    if len(exact)!=1:
+        if len(exact)>1:
+            return False,"unknown"
+        return False,"model-mismatch" if matches else "unknown"
+    entry=exact[0]
+    if entry.get("quarantine_state")!="clear":
+        return False,"model_claim_quarantined"
+    if entry.get("owner_available") is not True:
+        return False,"model_owner_backend_down"
+    if entry.get("observed_state")!="healthy":
+        return False,"unknown"
+    return True,"healthy"
+
+
 def select_compatible_lane(
         labels, escalation_required, lane_order, remaining, qwen_allowed=True,
-        qwen_exclusive=False):
+        qwen_exclusive=False, lane_health_by_name=None):
     """Choose the first free compatible lane without consuming another lane."""
     compatible,reason=lane_compatibility(
         labels,escalation_required,qwen_allowed,qwen_exclusive)
     if not compatible:
         return None,reason
+    health=lane_health_by_name or {}
+    healthy=[name for name in compatible
+             if health.get(name,(True,"healthy"))[0]]
     for lane in lane_order:
         name=lane["name"] if isinstance(lane,dict) else str(lane)
-        if name in compatible and remaining.get(name,0)>0:
+        admitted=health.get(name,(True,"healthy"))[0]
+        if name in compatible and admitted and remaining.get(name,0)>0:
             return name,"compatible"
+    if not healthy:
+        return None,"no-compatible-healthy-lane:%s"%",".join(compatible)
     return None,"no-free-lane:%s"%",".join(compatible)
 
 
@@ -3618,6 +3677,16 @@ def qwen_suitable(core):
     """Return whether Qwen may receive this card before a paid lane."""
     return not _QWEN_UNSUITABLE.search(str((core or {}).get("title") or ""))
 
+
+def _lane_model(lane, core):
+    return (_glm_model_for(core) or lane["model"]) if lane["name"]=="glm" else lane["model"]
+
+
+_LANE_HEALTH_PATH=os.environ.get(
+    "SKFLEET_LANE_HEALTH_PATH",
+    os.path.join(HOME,".skcapstone/evidence/fleet-lane-health.json"))
+_lane_health_snapshot=load_lane_health_snapshot(_LANE_HEALTH_PATH)
+
 picks=[]; _i=0
 remaining={lane["name"]:lane["free"] for lane in LANES}
 _LANE_RANK={"qwen":0,"glm":1,"codex":2,"escalate":3}
@@ -3638,10 +3707,21 @@ while _i<len(owned) and len(picks)<MAX_LAUNCH:
     _labels=_card[4]
     _esc=needs_escalation(_card[2], _card[3], _labels)
     _qwen_exclusive=qwen_first_exclusive(_card[2],_labels)
+    _card_lane_health={lane["name"]:lane_health(
+        _lane_health_snapshot,lane["name"],_lane_model(lane,_card[3]))
+        for lane in LANES}
     _lane_name,_defer=select_compatible_lane(
-        _labels,_esc,lane_order,remaining,qwen_suitable(_card[3]),_qwen_exclusive)
+        _labels,_esc,lane_order,remaining,qwen_suitable(_card[3]),_qwen_exclusive,
+        _card_lane_health)
     if _lane_name is None:
         _lane_deferred[_defer]+=1
+        if _defer.startswith("no-compatible-healthy-lane:"):
+            details=",".join("%s=%s"%(name,state[1])
+                             for name,state in sorted(_card_lane_health.items()))
+            _log_once_per_hour(
+                d,"lane_admission",_card[2],
+                "LANE_ADMISSION_BLOCKED|%s|%s|%s|snapshot=%s"%
+                (HOST,_card[2],details,_LANE_HEALTH_PATH))
         if DRY:
             log(d,"DRY_SELECTION|%s|%s|excluded=%s"%(HOST,_card[2],_defer))
         if _defer=="no-free-lane:escalate": _esc_waiting+=1
@@ -3884,6 +3964,16 @@ for _LANE,(_,_,cid,core,_labels,_nb) in picks:
         lane_drift += 1
         log(d,"SKIPPED_LANE_RACE|%s|%s|%s|selected=%s|reason=%s"%
             (HOST,sess,cid,_LANE["name"],affinity_reason))
+        continue
+    model=_lane_model(_LANE,fresh_claimability["core"])
+    admitted,health_reason=lane_health(
+        _lane_health_snapshot,_LANE["name"],model)
+    if not admitted:
+        lane_drift += 1
+        _log_once_per_hour(
+            d,"lane_admission",cid,
+            "SKIPPED_LANE_HEALTH|%s|%s|%s|lane=%s|model=%s|reason=%s"%
+            (HOST,sess,cid,_LANE["name"],model,health_reason))
         continue
     claim=subprocess.run([SKC,"coord","claim",cid,"--agent",name],capture_output=True,text=True)
     claimed_owner,_claimed_at,claimed_revision=_current_claim_identity_fresh(cid)

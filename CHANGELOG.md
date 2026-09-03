@@ -9,6 +9,12 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ### Fixed
 
+- **Card 46c6526d: fail closed before fleet lane claims.** Fleet selection and
+  the immediate preclaim gate require one fresh, bounded health snapshot for
+  the exact lane and model. Quarantined, owner-down, stale, unknown, and model
+  mismatches remain unclaimed while compatible healthy lanes may take ordinary
+  work, with hourly deduplicated blocker evidence.
+
 - **Card ea0bc9e1: bind automatic review closeout to exact generations.** A
   completed review closes only the unchanged producer generation it names;
   later source or review mutations invalidate the old join. Chiap08 is the

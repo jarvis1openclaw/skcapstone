@@ -19,6 +19,8 @@ def _load_lane_helpers() -> dict[str, object]:
         "semantic_stage_completed",
         "qwen_first_exclusive",
         "lane_compatibility",
+        "load_lane_health_snapshot",
+        "lane_health",
         "select_compatible_lane",
     }
     body = [
@@ -28,7 +30,13 @@ def _load_lane_helpers() -> dict[str, object]:
             isinstance(node, ast.Assign)
             and any(
                 isinstance(target, ast.Name)
-                and target.id in {"_LANE_ONLY_LABELS", "_SEMANTIC_COMPLETE_ACTION"}
+                and target.id
+                in {
+                    "_LANE_ONLY_LABELS",
+                    "_SEMANTIC_COMPLETE_ACTION",
+                    "_LANE_HEALTH_MAX_BYTES",
+                    "_LANE_HEALTH_MAX_AGE_S",
+                }
                 for target in node.targets
             )
         )
@@ -36,6 +44,8 @@ def _load_lane_helpers() -> dict[str, object]:
     ]
     namespace: dict[str, object] = {
         "re": __import__("re"),
+        "json": __import__("json"),
+        "time": __import__("time"),
         "os": __import__("os"),
         "CARDS": "/missing",
         "event_rows": lambda cid: [],
@@ -45,6 +55,32 @@ def _load_lane_helpers() -> dict[str, object]:
     exec(compile(ast.Module(body=body, type_ignores=[]), str(ROTATE), "exec"), namespace)
     assert names <= namespace.keys()
     return namespace
+
+
+def _snapshot(now: float, entries: list[dict[str, object]]) -> dict[str, object]:
+    return {
+        "schema_version": 1,
+        "observed_at": now,
+        "runtime_revision": "gateway-runtime-123",
+        "lanes": entries,
+    }
+
+
+def _health_entry(
+    lane: str,
+    model: str,
+    *,
+    state: str = "healthy",
+    quarantine: str = "clear",
+    owner_available: bool = True,
+) -> dict[str, object]:
+    return {
+        "lane": lane,
+        "model": model,
+        "observed_state": state,
+        "quarantine_state": quarantine,
+        "owner_available": owner_available,
+    }
 
 
 def _core(card_id: str, labels: list[str]) -> dict[str, object]:
@@ -113,6 +149,86 @@ def test_no_compatible_slot_does_not_consume_another_lane() -> None:
     assert selected is None
     assert reason == "no-free-lane:codex"
     assert remaining == {"codex": 0, "glm": 3, "escalate": 2}
+
+
+@pytest.mark.parametrize(
+    ("entry", "expected_reason"),
+    [
+        (_health_entry("qwen", "qwen-model", quarantine="active"), "model_claim_quarantined"),
+        (_health_entry("qwen", "qwen-model", owner_available=False), "model_owner_backend_down"),
+    ],
+)
+def test_unhealthy_model_lane_is_not_selected(
+    entry: dict[str, object], expected_reason: str
+) -> None:
+    namespace = _load_lane_helpers()
+    now = 2_000_000_000.0
+    health = namespace["lane_health"](_snapshot(now, [entry]), "qwen", "qwen-model", now)
+    assert health == (False, expected_reason)
+    assert namespace["select_compatible_lane"](
+        ["qwen-first"],
+        False,
+        ["qwen", "codex"],
+        {"qwen": 1, "codex": 1},
+        True,
+        True,
+        {"qwen": health, "codex": (True, "healthy")},
+    ) == (None, "no-compatible-healthy-lane:qwen")
+
+
+def test_ordinary_card_reassigns_only_to_compatible_healthy_lane() -> None:
+    namespace = _load_lane_helpers()
+    health = {
+        "qwen": (False, "model_claim_quarantined"),
+        "glm": (False, "model_owner_backend_down"),
+        "codex": (True, "healthy"),
+    }
+    assert namespace["select_compatible_lane"](
+        [], False, ["qwen", "glm", "codex"], {"qwen": 1, "glm": 1, "codex": 1}, True, False, health
+    ) == ("codex", "compatible")
+    assert namespace["select_compatible_lane"](
+        ["qwen-first"], False, ["qwen", "codex"], {"qwen": 1, "codex": 1}, True, True, health
+    ) == (None, "no-compatible-healthy-lane:qwen")
+
+
+def test_stale_snapshot_fails_closed_and_fresh_snapshot_recovers() -> None:
+    namespace = _load_lane_helpers()
+    now = 2_000_000_000.0
+    entry = _health_entry("codex", "sk-codex")
+    assert namespace["lane_health"](_snapshot(now - 121, [entry]), "codex", "sk-codex", now) == (
+        False,
+        "stale",
+    )
+    assert namespace["lane_health"](_snapshot(now, [entry]), "codex", "sk-codex", now) == (
+        True,
+        "healthy",
+    )
+
+
+def test_ambiguous_or_revisionless_snapshot_fails_closed() -> None:
+    namespace = _load_lane_helpers()
+    now = 2_000_000_000.0
+    entry = _health_entry("codex", "sk-codex")
+    ambiguous = _snapshot(now, [entry, entry])
+    assert namespace["lane_health"](ambiguous, "codex", "sk-codex", now) == (
+        False,
+        "unknown",
+    )
+    revisionless = _snapshot(now, [entry])
+    revisionless["runtime_revision"] = None
+    assert namespace["lane_health"](revisionless, "codex", "sk-codex", now) == (
+        False,
+        "unknown",
+    )
+
+
+def test_health_snapshot_read_is_bounded_and_fail_closed(tmp_path: Path) -> None:
+    namespace = _load_lane_helpers()
+    path = tmp_path / "health.json"
+    path.write_bytes(b"x" * 65_537)
+    snapshot = namespace["load_lane_health_snapshot"](path)
+    assert snapshot["lanes"] == []
+    assert namespace["lane_health"](snapshot, "codex", "sk-codex") == (False, "unknown")
 
 
 def test_qwen_first_is_exclusive_until_hash_bound_semantic_completion() -> None:
@@ -261,3 +377,7 @@ def test_pool_and_immediate_preclaim_use_the_same_affinity_predicate() -> None:
     assert 'qwen_suitable(fresh_claimability["core"]),' in source
     assert 'qwen_first_exclusive(cid,fresh_claimability["labels"])' in source
     assert "DRY_SELECTION|" in source
+    health_check = source.index("admitted,health_reason=lane_health(")
+    claim = source.index('claim=subprocess.run([SKC,"coord","claim"')
+    assert health_check < claim
+    assert "SKIPPED_LANE_HEALTH|" in source[health_check:claim]
