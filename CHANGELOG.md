@@ -15,6 +15,10 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ### Added
 
+- **Card ff5336c4: bound five-minute reassessment evidence.** Every fleet host
+  assesses before existing actions, only chiap08 writes the capped shared full
+  report, and other hosts emit compact summaries through existing actions.log.
+
 - **Card 369ca2f8: report canonical shadow scheduler truth.** Fleet rotation
   emits one exclusive primary reason per card plus diagnostic facets, verifies
   exact parity with the legacy selector, and fails open to legacy selection if
