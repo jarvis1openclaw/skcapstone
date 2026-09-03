@@ -9,6 +9,13 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ### Fixed
 
+- **Card 46c6526d: fail closed before fleet lane claims.** Fleet selection and
+  the immediate preclaim gate consume a fresh snapshot that the selector creates
+  by fetching SKGateway health and queue state once in the same cycle. The
+  atomically sealed evidence binds endpoint, capacity domains, exact model, and
+  the Git revision of the active gateway process. An unhealthy or incomplete
+  lane remains unclaimed without suppressing independently healthy lanes.
+
 - **Card ea0bc9e1: bind automatic review closeout to exact generations.** A
   completed review closes only the unchanged producer generation it names;
   later source or review mutations invalidate the old join. Chiap08 is the
