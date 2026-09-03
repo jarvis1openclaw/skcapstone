@@ -3,12 +3,18 @@
 import ast
 import datetime
 import json
+import os
 from pathlib import Path
 
 SCRIPT = Path(__file__).parents[1] / "scripts" / "fleet" / "skfleet-rotate.py"
 
 
-def _helper():
+class OsProxy:
+    def __getattr__(self, name: str):
+        return getattr(os, name)
+
+
+def _helper(os_module=None):
     tree = ast.parse(SCRIPT.read_text(encoding="utf-8"))
     function = next(
         node
@@ -19,7 +25,7 @@ def _helper():
     namespace = {
         "datetime": datetime,
         "json": json,
-        "os": __import__("os"),
+        "os": os_module or os,
         "re": __import__("re"),
         "HOME": "/unused",
         "log": lambda directory, message: emitted.append((directory, message)),
@@ -60,3 +66,59 @@ def test_each_card_keeps_its_first_occurrence(tmp_path: Path) -> None:
     assert emit_once(tmp_path, "OPEN_REVIEW_EVIDENCE_BLOCKED", "card-one", "one", tmp_path, now)
     assert emit_once(tmp_path, "OPEN_REVIEW_EVIDENCE_BLOCKED", "card-two", "two", tmp_path, now)
     assert [message for _, message in emitted] == ["one", "two"]
+
+
+def test_each_reaper_exclusion_reason_keeps_one_occurrence(tmp_path: Path) -> None:
+    emit_once, emitted = _helper()
+    now = datetime.datetime(2026, 9, 3, 18, 59, tzinfo=datetime.timezone.utc)
+
+    assert emit_once(tmp_path, "REAP_EXCLUDED_REVISION", "card-one", "revision", tmp_path, now)
+    assert not emit_once(tmp_path, "REAP_EXCLUDED_REVISION", "card-one", "revision", tmp_path, now)
+    assert emit_once(tmp_path, "REAP_EXCLUDED_TIMESTAMP", "card-one", "timestamp", tmp_path, now)
+    assert [message for _, message in emitted] == ["revision", "timestamp"]
+
+
+def test_marker_write_failure_is_fail_open_and_removes_marker(tmp_path: Path) -> None:
+    mocked_os = OsProxy()
+
+    def fail_write(_fd: int, _payload: bytes) -> int:
+        raise OSError("write failed")
+
+    mocked_os.write = fail_write
+    emit_once, emitted = _helper(mocked_os)
+    now = datetime.datetime(2026, 9, 3, 18, 5, tzinfo=datetime.timezone.utc)
+
+    assert emit_once(tmp_path, "BLOCKED", "card-one", "message", tmp_path, now)
+    assert list(tmp_path.glob("*.json")) == []
+    assert emitted == [(tmp_path, "message")]
+
+
+def test_marker_fsync_failure_is_fail_open_and_removes_marker(tmp_path: Path) -> None:
+    mocked_os = OsProxy()
+
+    def fail_fsync(_fd: int) -> None:
+        raise OSError("fsync failed")
+
+    mocked_os.fsync = fail_fsync
+    emit_once, emitted = _helper(mocked_os)
+    now = datetime.datetime(2026, 9, 3, 18, 5, tzinfo=datetime.timezone.utc)
+
+    assert emit_once(tmp_path, "BLOCKED", "card-one", "message", tmp_path, now)
+    assert list(tmp_path.glob("*.json")) == []
+    assert emitted == [(tmp_path, "message")]
+
+
+def test_marker_close_failure_is_fail_open_and_removes_marker(tmp_path: Path) -> None:
+    mocked_os = OsProxy()
+
+    def close_then_fail(fd: int) -> None:
+        os.close(fd)
+        raise OSError("close failed")
+
+    mocked_os.close = close_then_fail
+    emit_once, emitted = _helper(mocked_os)
+    now = datetime.datetime(2026, 9, 3, 18, 5, tzinfo=datetime.timezone.utc)
+
+    assert emit_once(tmp_path, "BLOCKED", "card-one", "message", tmp_path, now)
+    assert list(tmp_path.glob("*.json")) == []
+    assert emitted == [(tmp_path, "message")]

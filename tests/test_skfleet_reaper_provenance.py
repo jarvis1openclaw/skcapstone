@@ -128,6 +128,7 @@ def _reaper_fixture(
     )
 
     namespace = _load_functions(
+        "_log_once_per_hour",
         "_parse_worker_owner",
         "_claim_identity",
         "_current_claim",

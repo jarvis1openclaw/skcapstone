@@ -418,10 +418,22 @@ def _log_once_per_hour(d, event, cid, message, state_dir=None, now=None):
         log(d, message)
         return True
     try:
-        os.write(fd, payload.encode("utf-8"))
+        encoded = payload.encode("utf-8")
+        if os.write(fd, encoded) != len(encoded):
+            raise OSError("short marker write")
         os.fsync(fd)
-    finally:
         os.close(fd)
+    except OSError:
+        try:
+            os.close(fd)
+        except OSError:
+            pass
+        try:
+            os.unlink(marker)
+        except OSError:
+            pass
+        log(d, message)
+        return True
     log(d, message)
     return True
 
@@ -2460,12 +2472,16 @@ def reap_dead_claims():
         if cid in _ineffective:
             continue                      # releasing it does nothing; see above
         if not claim_revision:
-            log(d, "REAP_EXCLUDED|%s|%s|%s|claim revision missing; exact release "
-                   "fence unavailable" % (HOST, cid, owner))
+            _log_once_per_hour(
+                d, "REAP_EXCLUDED_CLAIM_REVISION_MISSING", cid,
+                "REAP_EXCLUDED|%s|%s|%s|claim revision missing; exact release "
+                "fence unavailable" % (HOST, cid, owner))
             continue
         if not cts:
-            log(d, "REAP_EXCLUDED|%s|%s|%s|claim timestamp invalid; liveness age "
-                   "cannot be proved" % (HOST, cid, owner))
+            _log_once_per_hour(
+                d, "REAP_EXCLUDED_CLAIM_TIMESTAMP_INVALID", cid,
+                "REAP_EXCLUDED|%s|%s|%s|claim timestamp invalid; liveness age "
+                "cannot be proved" % (HOST, cid, owner))
             continue
         if cts > time.time():
             log(d, "REAP_CLOCK_SKEW|%s|%s|%s|cached claim timestamp is in the "
@@ -2486,8 +2502,10 @@ def reap_dead_claims():
                    fresh_revision or "missing"))
             continue
         if not fresh_ts:
-            log(d, "REAP_EXCLUDED|%s|%s|%s|fresh claim timestamp invalid; liveness "
-                   "age cannot be proved" % (HOST, cid, fresh_owner))
+            _log_once_per_hour(
+                d, "REAP_EXCLUDED_FRESH_CLAIM_TIMESTAMP_INVALID", cid,
+                "REAP_EXCLUDED|%s|%s|%s|fresh claim timestamp invalid; liveness "
+                "age cannot be proved" % (HOST, cid, fresh_owner))
             continue
         if fresh_ts > time.time():
             log(d, "REAP_CLOCK_SKEW|%s|%s|%s|fresh claim timestamp is in the "
