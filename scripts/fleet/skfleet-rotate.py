@@ -255,13 +255,13 @@ STAMP=datetime.datetime.now(datetime.timezone.utc).strftime("%Y%m%dT%H%M%SZ")
 def sh(*a): return subprocess.run(a,capture_output=True,text=True).stdout
 
 _WORKER_UNIT_RE = re.compile(
-    r"^skfleet-worker-(codex|glm|qwen|escalate)-([0-9a-f]{8})\.service$"
+    r"^skfleet-worker-(codex|glm|qwen|kimi|escalate)-([0-9a-f]{8})\.service$"
 )
 
 
 def _worker_unit_name(lane, cid):
     """Return the transient service name for one newly launched worker."""
-    if lane not in {"codex", "glm", "qwen", "escalate"} or not re.fullmatch(
+    if lane not in {"codex", "glm", "qwen", "kimi", "escalate"} or not re.fullmatch(
         r"[0-9a-f]{8}", cid
     ):
         raise ValueError("invalid worker unit identity")
@@ -2180,7 +2180,7 @@ def _parse_worker_owner(owner, cid, expected_seat=None):
     if not re.fullmatch(r"[0-9a-f]{8}", cid):
         return None
     for host in ROTATION_HOSTS:
-        for lane in ("codex", "glm", "qwen", "escalate"):
+        for lane in ("codex", "glm", "qwen", "kimi", "escalate"):
             if owner == "pi-%s-%s-%s" % (lane, host, cid):
                 return "lane", lane, host
         for lane in ("codex", "glm"):
@@ -2391,6 +2391,7 @@ def _fleet_launch_provenance(cid, owner, claim_revision):
                             "codex": "codex-auto-",
                             "glm": "glm-auto-",
                             "qwen": "qwen-auto-",
+                            "kimi": "kimi-auto-",
                             "escalate": "esc-auto-",
                         }.get(lane)
                         parsed_owner = _parse_worker_owner(
