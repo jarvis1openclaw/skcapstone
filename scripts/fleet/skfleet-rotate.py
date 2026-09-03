@@ -9,6 +9,7 @@ Fixes two defects found 03:50Z:
      their own, so a slot is simply a live codex-auto-* session. No retire logic.
 """
 import json,os,glob,subprocess,sys,time,fcntl,datetime,hashlib,collections,re,importlib.util,shlex
+import importlib.metadata
 from pathlib import Path
 
 from skcapstone.card_store import CardStore
@@ -562,6 +563,7 @@ LIVE = os.path.join(HOME, ".skcapstone/evidence/fleet-live")
 # pushes reporting below known and disables reaping fleetwide. Observed within
 # one tick of adding it. It lives one level up.
 _INEFFECTIVE_PATH = os.path.join(HOME, ".skcapstone/evidence/reap-ineffective.json")
+REAP_RUNTIME_VERSION = importlib.metadata.version("skcoord")
 LIVE_FRESH = 30 * 60      # a report older than this says nothing about now
 CLAIM_GRACE = 300         # one full rotation period, so every host has reported
 # Reaping needs a quorum, because a card running on chiap04 is invisible in
@@ -2204,22 +2206,68 @@ def _claim_identity(rows):
 def _load_ineffective():
     try:
         with open(_INEFFECTIVE_PATH, encoding="utf-8") as fh:
-            return {str(x) for x in json.load(fh).get("cards") or ()}
+            payload = json.load(fh)
+        entries = payload.get("entries") if isinstance(payload, dict) else None
+        if not isinstance(entries, list):
+            return []
+        return [entry for entry in entries if isinstance(entry, dict)]
     except (OSError, ValueError):
-        return set()
+        return []
 
 
-def _record_ineffective(cid):
+def _write_ineffective(entries):
+    os.makedirs(os.path.dirname(_INEFFECTIVE_PATH), exist_ok=True)
+    tmp = _INEFFECTIVE_PATH + ".new"
+    with open(tmp, "w", encoding="utf-8") as fh:
+        json.dump({"schema_version": 1, "entries": entries}, fh, sort_keys=True)
+        fh.write("\n")
+        fh.flush()
+        os.fsync(fh.fileno())
+    os.replace(tmp, _INEFFECTIVE_PATH)
+
+
+def _ineffective_suppresses(entries, cid, owner, claim_revision):
+    return any(
+        entry.get("card_id") == cid
+        and entry.get("owner") == owner
+        and entry.get("claim_revision") == claim_revision
+        and entry.get("runtime_version") == REAP_RUNTIME_VERSION
+        for entry in entries
+    )
+
+
+def _record_ineffective(cid, owner, claim_revision, failure_class):
     known = _load_ineffective()
-    if cid in known:
+    if _ineffective_suppresses(known, cid, owner, claim_revision):
         return
-    known.add(cid)
+    known.append({
+        "card_id": cid,
+        "owner": owner,
+        "claim_revision": claim_revision,
+        "failure_class": failure_class,
+        "runtime_version": REAP_RUNTIME_VERSION,
+        "timestamp": datetime.datetime.now(datetime.timezone.utc).isoformat(),
+    })
     try:
-        os.makedirs(os.path.dirname(_INEFFECTIVE_PATH), exist_ok=True)
-        tmp = _INEFFECTIVE_PATH + ".new"
-        with open(tmp, "w", encoding="utf-8") as fh:
-            json.dump({"cards": sorted(known)}, fh)
-        os.replace(tmp, _INEFFECTIVE_PATH)
+        _write_ineffective(known)
+    except OSError:
+        pass
+
+
+def _remove_ineffective(cid, owner, claim_revision):
+    known = _load_ineffective()
+    retained = [
+        entry for entry in known
+        if not (
+            entry.get("card_id") == cid
+            and entry.get("owner") == owner
+            and entry.get("claim_revision") == claim_revision
+        )
+    ]
+    if retained == known:
+        return
+    try:
+        _write_ineffective(retained)
     except OSError:
         pass
 
@@ -2469,8 +2517,8 @@ def reap_dead_claims():
             continue
         if cid in running:
             continue                      # a host says this is running right now
-        if cid in _ineffective:
-            continue                      # releasing it does nothing; see above
+        if _ineffective_suppresses(_ineffective, cid, owner, claim_revision):
+            continue                      # exact generation already failed on this runtime
         if not claim_revision:
             _log_once_per_hour(
                 d, "REAP_EXCLUDED_CLAIM_REVISION_MISSING", cid,
@@ -2549,12 +2597,15 @@ def reap_dead_claims():
             # disagree the CLI answers "Already released" and writes nothing, so
             # confirm against the fold rather than trusting the return code.
             if lifecycle_state(cid) == "claimed":
-                _record_ineffective(cid)
+                _record_ineffective(
+                    cid, fresh_owner, fresh_revision, "release_reported_success_noop"
+                )
                 log(d, "REAP_INEFFECTIVE|%s|%s|%s|release reported success but the "
                        "card is still claimed; CardStore and the legacy task store "
                        "disagree, needs repair" % (HOST, cid, owner))
                 continue
             freed += 1
+            _remove_ineffective(cid, fresh_owner, fresh_revision)
             log(d, "REAPED|%s|%s|%s|revision=%s provenance=%s; no reporting host "
                    "reports this card running" %
                 (HOST, cid, owner, fresh_revision, provenance))
@@ -2562,7 +2613,7 @@ def reap_dead_claims():
             # A release that keeps failing is a divergence, not a transient. Record
             # it after the first failure so it does not retry every five minutes
             # forever, which is how 2b614910 accumulated 455 pointless calls.
-            _record_ineffective(cid)
+            _record_ineffective(cid, fresh_owner, fresh_revision, "release_command_failed")
             log(d, "REAP_FAILED|%s|%s|%s" % (HOST, cid, (r.stderr or "").strip()[:120]))
     log(d, "REAP|%s|released=%d hosts_reporting=%d cards_running=%d ineffective=%d"
         % (HOST, freed, nhosts, len(running), len(_load_ineffective())))
@@ -2643,6 +2694,149 @@ def _review_card_id(parent, outcome_ts, verdict):
     """Return one cross-host identity for one parent outcome generation."""
     key = "fleet-review-opener-v1\0%s\0%s\0%s" % (parent, outcome_ts, verdict.upper())
     return hashlib.sha256(key.encode()).hexdigest()[:8]
+
+
+def _outcome_event_value(event):
+    """Return a typed outcome carried by one coordination event."""
+    if event.get("action") in ("verdict", "blocked"):
+        return _native_outcome_value(event)
+    if event.get("action") == "evidence":
+        return event.get("verdict")
+    if event.get("action") == "link" and any(
+            key in _fold_key(event.get("link_key")) for key in _OUTCOME_KEYS):
+        raw = str(event.get("link_value") or "")
+        match = _OUTCOME_VALUE_RE.match(raw) or _PIPE_OUTCOME_RE.search(raw)
+        return match.group(1) if match else None
+    return None
+
+
+def _event_sort_key(event):
+    return (
+        str(event.get("ts") or ""),
+        str(event.get("writer") or ""),
+        str(event.get("event_id") or ""),
+    )
+
+
+def _event_identity(event):
+    """Return the stable identity of one exact CardStore event."""
+    return hashlib.sha256(json.dumps(
+        event, sort_keys=True, separators=(",", ":")
+    ).encode()).hexdigest()
+
+
+def _matching_outcome_events(card_id, outcome_ts, verdict):
+    """Return the exact CardStore events carrying one folded outcome."""
+    wanted = str(verdict or "").strip().upper()
+    return [
+        event for event in event_rows(card_id)
+        if str(event.get("ts") or "") == str(outcome_ts or "")
+        and str(_outcome_event_value(event) or "").strip().upper() == wanted
+    ]
+
+
+def _generation_invalidated(card_id, outcome_event):
+    """Whether later source work made an outcome generation stale."""
+    boundary = _event_sort_key(outcome_event)
+    structural = {"describe", "amend_criteria", "add_dependency", "remove_dependency"}
+    for event in event_rows(card_id):
+        if _event_sort_key(event) <= boundary:
+            continue
+        action = str(event.get("action") or "")
+        if (
+            action == "link"
+            and str(event.get("link_key") or "") == "review_join"
+            and str(event.get("writer") or "") == "fleet-review-closer"
+            and "source_event_sha256=%s" % _event_identity(outcome_event)
+            in str(event.get("link_value") or "")
+        ):
+            continue
+        if (
+            action == "review_candidate_evidence"
+            and str(event.get("source_outcome_ts") or "")
+            == str(outcome_event.get("ts") or "")
+            and str(event.get("source_verdict") or "").upper()
+            == str(_outcome_event_value(outcome_event) or "").upper()
+        ):
+            continue
+        if action in structural or action in {
+                "verdict", "blocked", "evidence", "review_candidate_evidence"}:
+            return True
+        if action == "link":
+            return True
+        if action == "move" and str(event.get("column") or "") in {
+                "backlog", "open", "ready", "doing"}:
+            return True
+    return False
+
+
+def _parent_review_generation(parent, outcome_ts, verdict):
+    """Return the current immutable producer generation, or fail closed."""
+    events = _matching_outcome_events(parent, outcome_ts, verdict)
+    identities = {
+        json.dumps(event, sort_keys=True, separators=(",", ":")) for event in events
+    }
+    if len(identities) != 1:
+        return None
+    outcome_event = events[0]
+    if _generation_invalidated(parent, outcome_event):
+        return None
+    candidate = _provisional_candidate(parent, outcome_ts, str(verdict).upper())
+    if not candidate:
+        return None
+    producer, path, digest, commit, tree, ref = candidate
+    generation = hashlib.sha256(json.dumps({
+        "candidate_sha256": digest,
+        "commit": commit,
+        "outcome_event": json.loads(next(iter(identities))),
+        "parent": parent,
+        "ref": ref,
+        "tree": tree,
+        "verdict": str(verdict).upper(),
+    }, sort_keys=True, separators=(",", ":")).encode()).hexdigest()
+    return generation, producer, path, digest, commit, tree, ref
+
+
+def _review_names_generation(review_id, generation, outcome_ts, verdict):
+    """Require the review's current PASS to name the exact parent generation."""
+    try:
+        with open(os.path.join(CARDS, review_id, "core.json"), encoding="utf-8") as fh:
+            description = str(json.load(fh).get("description") or "")
+    except (OSError, ValueError, TypeError):
+        return False
+    if "Outcome generation: %s." % generation not in description:
+        return False
+    matches = _matching_outcome_events(review_id, outcome_ts, verdict)
+    return bool(
+        len({json.dumps(event, sort_keys=True, separators=(",", ":"))
+             for event in matches}) == 1
+        and not _generation_invalidated(review_id, matches[0])
+    )
+
+
+def _review_join_value(parent, outcome_event, generation, review_id, review_event):
+    """Return deterministic evidence joining exact source and review generations."""
+    return (
+        "generation=%s source=%s source_event_sha256=%s review=%s "
+        "review_event_sha256=%s"
+        % (
+            generation,
+            parent,
+            _event_identity(outcome_event),
+            review_id,
+            _event_identity(review_event),
+        )
+    )
+
+
+def _has_review_join(parent, value):
+    return any(
+        str(event.get("action") or "") == "link"
+        and str(event.get("link_key") or "") == "review_join"
+        and str(event.get("link_value") or "") == value
+        and str(event.get("writer") or "") == "fleet-review-closer"
+        for event in event_rows(parent)
+    )
 
 def _record_review_refusal(review_id, parent, outcome_ts, verdict):
     """Persist one stable refusal key so later rotations do not retry it."""
@@ -2807,8 +3001,8 @@ def _eligible_provisional_reviews(capacity):
             continue
         if os.path.exists(os.path.join(_REVIEW_REFUSALS, review_id + ".json")):
             continue
-        candidate = _provisional_candidate(parent, outcome_ts, token)
-        if not candidate:
+        generation = _parent_review_generation(parent, outcome_ts, token)
+        if not generation:
             _log_once_per_hour(
                 d,
                 "OPEN_REVIEW_EVIDENCE_BLOCKED",
@@ -2817,12 +3011,13 @@ def _eligible_provisional_reviews(capacity):
                 (HOST, parent, str(outcome_ts or ""), token),
             )
             continue
-        selected.append((parent, str(outcome_ts or ""), token, review_id) + candidate)
+        selected.append((parent, str(outcome_ts or ""), token, review_id) + generation)
     return selected
 
 
 def _authoritative_review_readback(
-        review_id, parent, producer, path, digest, commit="", tree="", ref=""):
+        review_id, parent, producer, path, digest, generation,
+        commit="", tree="", ref=""):
     """Fail closed unless CardStore folds the exact newly created review."""
     try:
         core_path = os.path.join(CARDS, review_id, "core.json")
@@ -2844,6 +3039,7 @@ def _authoritative_review_readback(
             lifecycle_state(review_id) == "open" and
             "Producer identity: %s." % producer in description and
             "Candidate evidence: %s sha256=%s." % (path, digest) in description and
+            "Outcome generation: %s." % generation in description and
             typed
         )
     except (OSError, ValueError, TypeError):
@@ -2866,14 +3062,15 @@ def open_provisional_reviews(capacity, dry_run=False):
         return len(selected)
 
     opened = 0
-    for (parent, outcome_ts, token, review_id, producer, path, digest,
+    for (parent, outcome_ts, token, review_id, generation, producer, path, digest,
          commit, tree, ref) in selected:
         # Each attempted create consumes one unit of the initial capacity budget,
         # whether it succeeds or fails.  A transient failure stops the batch.
         description = (
             "Independently review parent %s at outcome %s (%s). Producer identity: %s. "
-            "Candidate evidence: %s sha256=%s. Reviewer identity must differ."
-            % (parent, outcome_ts or "unknown", token, producer, path, digest)
+            "Candidate evidence: %s sha256=%s. Outcome generation: %s. "
+            "Reviewer identity must differ."
+            % (parent, outcome_ts or "unknown", token, producer, path, digest, generation)
         )
         if commit:
             description += (
@@ -2889,6 +3086,7 @@ def open_provisional_reviews(capacity, dry_run=False):
              "--tag", "source-implementer-%s" % producer,
              "--by", "fleet-review-opener",
              "--criteria", "Verify exact candidate %s at sha256 %s." % (path, digest),
+             "--criteria", "Verify exact parent outcome generation %s." % generation,
              "--criteria", "Reviewer identity must differ from source implementer %s." % producer,
              "--criteria", "Record a leading PASS or FAIL verdict with immutable evidence."],
             capture_output=True, text=True,
@@ -2896,7 +3094,8 @@ def open_provisional_reviews(capacity, dry_run=False):
         if r.returncode == 0:
             _rows.pop(review_id, None)
             if not _authoritative_review_readback(
-                    review_id, parent, producer, path, digest, commit, tree, ref):
+                    review_id, parent, producer, path, digest, generation,
+                    commit, tree, ref):
                 _REVIEW_READBACK_BLOCKED.add(review_id)
                 log(d, "OPEN_REVIEW_STALE_READBACK|%s|%s|review=%s" %
                     (HOST, parent, review_id))
@@ -2928,25 +3127,43 @@ def open_provisional_reviews(capacity, dry_run=False):
 
 def close_reviewed_parents():
     """Complete cards whose independent review is complete and PASSED."""
+    if HOST != "chiap08":
+        return 0
     outcomes = _load_outcomes()
     closed = 0
     for parent, reviews in _reviews_by_parent().items():
         if not os.path.isdir(os.path.join(CARDS, parent)): continue
         if lifecycle_state(parent) != "open": continue
         _pts, pval = outcomes.get(parent, (None, None))
-        if not (pval and _PASS_ANY_RE.match(str(pval))): continue
+        match = _PROVISIONAL_PASS_RE.match(str(pval or ""))
+        if not match: continue
+        generation = _parent_review_generation(parent, _pts, match.group(1).upper())
+        if not generation: continue
+        generation_id = generation[0]
         for rev in sorted(reviews):
             if lifecycle_state(rev) != "complete": continue
             _rts, rval = outcomes.get(rev, (None, None))
             rv = str(rval or "")
             if not rv.strip() or not _PASS_ONLY_RE.match(rv):
                 continue          # BLOCKED, or said nothing: the parent stays open
-            r = subprocess.run(
-                [SKC, "coord", "link", parent, "review_join",
-                 "closed on joined evidence: own outcome %s; independent review %s "
-                 "is complete with verdict %s" % (str(pval)[:40], rev, rv[:40]),
-                 "--agent", "fleet-review-closer"],
-                capture_output=True, text=True)
+            if not _review_names_generation(rev, generation_id, _rts, rv):
+                continue
+            parent_event = _matching_outcome_events(
+                parent, _pts, match.group(1).upper()
+            )[0]
+            review_event = _matching_outcome_events(rev, _rts, rv)[0]
+            join_value = _review_join_value(
+                parent, parent_event, generation_id, rev, review_event
+            )
+            if not _has_review_join(parent, join_value):
+                r = subprocess.run(
+                    [SKC, "coord", "link", parent, "review_join", join_value,
+                     "--agent", "fleet-review-closer"],
+                    capture_output=True, text=True)
+                if r.returncode != 0:
+                    log(d, "CLOSE_JOIN_FAILED|%s|%s|%s" % (
+                        HOST, parent, (r.stderr or "").strip()[:110]))
+                    break
             c = subprocess.run(
                 [SKC, "coord", "complete", parent, "--agent", "fleet-review-closer"],
                 capture_output=True, text=True)
