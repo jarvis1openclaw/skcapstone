@@ -33,9 +33,15 @@ def test_repeated_card_blocker_is_emitted_once_per_utc_hour(tmp_path: Path) -> N
     first_hour = datetime.datetime(2026, 9, 3, 18, 5, tzinfo=datetime.timezone.utc)
     next_hour = first_hour + datetime.timedelta(hours=1)
 
-    assert emit_once(tmp_path, "OPEN_REVIEW_EVIDENCE_BLOCKED", "abc12345", "blocked", tmp_path, first_hour)
-    assert not emit_once(tmp_path, "OPEN_REVIEW_EVIDENCE_BLOCKED", "abc12345", "blocked", tmp_path, first_hour)
-    assert emit_once(tmp_path, "OPEN_REVIEW_EVIDENCE_BLOCKED", "abc12345", "blocked", tmp_path, next_hour)
+    assert emit_once(
+        tmp_path, "OPEN_REVIEW_EVIDENCE_BLOCKED", "abc12345", "blocked", tmp_path, first_hour
+    )
+    assert not emit_once(
+        tmp_path, "OPEN_REVIEW_EVIDENCE_BLOCKED", "abc12345", "blocked", tmp_path, first_hour
+    )
+    assert emit_once(
+        tmp_path, "OPEN_REVIEW_EVIDENCE_BLOCKED", "abc12345", "blocked", tmp_path, next_hour
+    )
     assert [message for _, message in emitted] == ["blocked", "blocked"]
 
     markers = sorted(tmp_path.glob("*.json"))

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import ast
+import datetime
 import glob
 import hashlib
 import json
@@ -15,6 +16,7 @@ ROOT = Path(__file__).resolve().parents[1]
 ROTATE = ROOT / "scripts" / "fleet" / "skfleet-rotate.py"
 
 FUNCTIONS = {
+    "_log_once_per_hour",
     "_review_parent_ids",
     "_reviews_by_parent",
     "_review_card_id",
@@ -51,8 +53,10 @@ def _namespace(cards: Path, refusals: Path) -> dict[str, object]:
         "os": os,
         "re": re,
         "CARDS": str(cards),
+        "datetime": datetime,
         "_REVIEW_REFUSALS": str(refusals),
         "HOST": "test-host",
+        "HOME": str(cards.parent),
         "SKC": "skcapstone",
         "d": object(),
         "_OUTCOME_KEYS": ("verdict", "result", "disposition", "review_decision"),
