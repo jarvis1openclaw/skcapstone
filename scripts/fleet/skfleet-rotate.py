@@ -685,8 +685,10 @@ def live_report_health(expected_hosts=None, now=None):
         if age > LIVE_TIMER_CYCLE:
             faults.append({"host": host, "reason": "transport_delayed",
                            "age_seconds": int(age), "detail": ""})
+    expected_set = set(expected)
     return {"oldest": min(stamps) if stamps else 0, "running": running,
-            "reporting": reporting, "expected": set(expected), "faults": faults}
+            "reporting": reporting, "expected": expected_set, "faults": faults,
+            "authoritative": reporting == expected_set and not faults}
 
 
 def live_report():
@@ -2273,9 +2275,9 @@ def reap_dead_claims():
         log(d, "REAP|%s|quorum_shortage reporting=%d known=%d need>=%d; reaped nothing"
             % (HOST, nhosts, known, REAP_QUORUM))
         return 0
-    if nhosts < known:
+    if not report_health.get("authoritative", nhosts >= known):
         missing = ",".join(sorted(report_health["expected"] -
-                                  report_health["reporting"]))
+                                  report_health["reporting"])) or "none"
         log(d, "REAP|%s|known_host_visibility_loss reporting=%d known=%d "
             "need>=%d missing=%s; reaped nothing"
             % (HOST, nhosts, known, REAP_QUORUM, missing))

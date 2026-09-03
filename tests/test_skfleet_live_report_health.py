@@ -43,14 +43,17 @@ def _report(live: Path, host: str, age: int, cards=()) -> None:
 
 
 def test_four_of_five_exposes_missing_host_and_age_without_authoritative_absence(tmp_path) -> None:
-    """A 4/5 view names the missing host and cannot authorize reaping."""
+    """A reporting=4 known=5 need>=3 view names faults but cannot reap."""
     for host, age in zip(HOSTS[:4], (10, 20, 30, 600), strict=True):
         _report(tmp_path, host, age)
 
     health = _load_health(tmp_path)(now=10_000.0)
+    reporting = len(health["reporting"])
+    known = len(health["expected"])
+    need = known // 2 + 1
 
-    assert len(health["reporting"]) == 4
-    assert len(health["expected"]) == 5
+    assert (reporting, known, need) == (4, 5, 3)
+    assert not health["authoritative"]
     assert health["expected"] - health["reporting"] == {"chiap08"}
     assert {fault["host"]: fault for fault in health["faults"]} == {
         "chiap04": {
@@ -106,5 +109,7 @@ def test_reaper_logs_distinct_shortage_and_visibility_loss() -> None:
 
     assert "quorum_shortage reporting=%d known=%d need>=%d" in source
     assert "known_host_visibility_loss reporting=%d known=%d" in source
+    assert "if not oldest or nhosts < REAP_QUORUM:" in source
+    assert 'if not report_health.get("authoritative", nhosts >= known):' in source
     assert "missing=%s; reaped nothing" in source
     assert "FLEET_LIVE_FAULT|%s|host=%s|reason=%s|age_seconds=%s" in source
