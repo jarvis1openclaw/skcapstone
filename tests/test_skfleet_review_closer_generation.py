@@ -9,18 +9,22 @@ from pathlib import Path
 SCRIPT = Path(__file__).parents[1] / "scripts" / "fleet" / "skfleet-rotate.py"
 FUNCTIONS = {
     "_event_sort_key",
+    "_event_identity",
     "_generation_invalidated",
     "_matching_outcome_events",
     "_outcome_event_value",
     "_parent_review_generation",
     "_review_names_generation",
+    "_review_join_value",
+    "_has_review_join",
     "close_reviewed_parents",
 }
 
 
 class Result:
-    returncode = 0
-    stderr = ""
+    def __init__(self, returncode: int = 0, stderr: str = "") -> None:
+        self.returncode = returncode
+        self.stderr = stderr
 
 
 class Harness:
@@ -32,6 +36,7 @@ class Harness:
         self.states: dict[str, str] = {}
         self.reviews: dict[str, set[str]] = {}
         self.calls: list[list[str]] = []
+        self.fail_complete_once = False
         tree = ast.parse(SCRIPT.read_text(encoding="utf-8"))
         nodes = [
             node
@@ -40,7 +45,7 @@ class Harness:
         ]
         self.ns = {
             "CARDS": str(self.cards),
-            "HOST": "test-host",
+            "HOST": "chiap08",
             "SKC": "skcapstone",
             "d": object(),
             "hashlib": hashlib,
@@ -81,7 +86,21 @@ class Harness:
 
     def run(self, command: list[str], **_kwargs: object) -> Result:
         self.calls.append(command)
+        if "link" in command and "review_join" in command:
+            card_id = command[command.index("link") + 1]
+            self.events.setdefault(card_id, []).append(
+                {
+                    "action": "link",
+                    "link_key": "review_join",
+                    "link_value": command[command.index("review_join") + 1],
+                    "writer": "fleet-review-closer",
+                    "ts": "2026-09-03T18:46:00Z",
+                }
+            )
         if "complete" in command:
+            if self.fail_complete_once:
+                self.fail_complete_once = False
+                return Result(1, "transient completion failure")
             self.states[command[command.index("complete") + 1]] = "complete"
         return Result()
 
@@ -184,6 +203,28 @@ def test_unchanged_exact_generation_closes_once(tmp_path: Path) -> None:
     assert harness.ns["close_reviewed_parents"]() == 0
     assert harness.states["aaaabbbb"] == "complete"
     assert sum("complete" in call for call in harness.calls) == 1
+
+
+def test_non_authority_host_never_closes(tmp_path: Path) -> None:
+    harness = Harness(tmp_path)
+    generation = harness.source()
+    harness.review(generation)
+    harness.ns["HOST"] = "chiap01"
+
+    assert harness.ns["close_reviewed_parents"]() == 0
+    assert harness.calls == []
+
+
+def test_exact_join_survives_transient_completion_failure(tmp_path: Path) -> None:
+    harness = Harness(tmp_path)
+    generation = harness.source()
+    harness.review(generation)
+    harness.fail_complete_once = True
+
+    assert harness.ns["close_reviewed_parents"]() == 0
+    assert harness.ns["close_reviewed_parents"]() == 1
+    assert sum("review_join" in call for call in harness.calls) == 1
+    assert sum("complete" in call for call in harness.calls) == 2
 
 
 def test_review_pass_is_invalid_after_review_amendment(tmp_path: Path) -> None:

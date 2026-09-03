@@ -2613,6 +2613,13 @@ def _event_sort_key(event):
     )
 
 
+def _event_identity(event):
+    """Return the stable identity of one exact CardStore event."""
+    return hashlib.sha256(json.dumps(
+        event, sort_keys=True, separators=(",", ":")
+    ).encode()).hexdigest()
+
+
 def _matching_outcome_events(card_id, outcome_ts, verdict):
     """Return the exact CardStore events carrying one folded outcome."""
     wanted = str(verdict or "").strip().upper()
@@ -2631,6 +2638,14 @@ def _generation_invalidated(card_id, outcome_event):
         if _event_sort_key(event) <= boundary:
             continue
         action = str(event.get("action") or "")
+        if (
+            action == "link"
+            and str(event.get("link_key") or "") == "review_join"
+            and str(event.get("writer") or "") == "fleet-review-closer"
+            and "source_event_sha256=%s" % _event_identity(outcome_event)
+            in str(event.get("link_value") or "")
+        ):
+            continue
         if (
             action == "review_candidate_evidence"
             and str(event.get("source_outcome_ts") or "")
@@ -2691,6 +2706,31 @@ def _review_names_generation(review_id, generation, outcome_ts, verdict):
         len({json.dumps(event, sort_keys=True, separators=(",", ":"))
              for event in matches}) == 1
         and not _generation_invalidated(review_id, matches[0])
+    )
+
+
+def _review_join_value(parent, outcome_event, generation, review_id, review_event):
+    """Return deterministic evidence joining exact source and review generations."""
+    return (
+        "generation=%s source=%s source_event_sha256=%s review=%s "
+        "review_event_sha256=%s"
+        % (
+            generation,
+            parent,
+            _event_identity(outcome_event),
+            review_id,
+            _event_identity(review_event),
+        )
+    )
+
+
+def _has_review_join(parent, value):
+    return any(
+        str(event.get("action") or "") == "link"
+        and str(event.get("link_key") or "") == "review_join"
+        and str(event.get("link_value") or "") == value
+        and str(event.get("writer") or "") == "fleet-review-closer"
+        for event in event_rows(parent)
     )
 
 def _record_review_refusal(review_id, parent, outcome_ts, verdict):
@@ -2977,6 +3017,8 @@ def open_provisional_reviews(capacity, dry_run=False):
 
 def close_reviewed_parents():
     """Complete cards whose independent review is complete and PASSED."""
+    if HOST != "chiap08":
+        return 0
     outcomes = _load_outcomes()
     closed = 0
     for parent, reviews in _reviews_by_parent().items():
@@ -2996,12 +3038,22 @@ def close_reviewed_parents():
                 continue          # BLOCKED, or said nothing: the parent stays open
             if not _review_names_generation(rev, generation_id, _rts, rv):
                 continue
-            r = subprocess.run(
-                [SKC, "coord", "link", parent, "review_join",
-                 "closed on joined evidence: own outcome %s; independent review %s "
-                 "is complete with verdict %s" % (str(pval)[:40], rev, rv[:40]),
-                 "--agent", "fleet-review-closer"],
-                capture_output=True, text=True)
+            parent_event = _matching_outcome_events(
+                parent, _pts, match.group(1).upper()
+            )[0]
+            review_event = _matching_outcome_events(rev, _rts, rv)[0]
+            join_value = _review_join_value(
+                parent, parent_event, generation_id, rev, review_event
+            )
+            if not _has_review_join(parent, join_value):
+                r = subprocess.run(
+                    [SKC, "coord", "link", parent, "review_join", join_value,
+                     "--agent", "fleet-review-closer"],
+                    capture_output=True, text=True)
+                if r.returncode != 0:
+                    log(d, "CLOSE_JOIN_FAILED|%s|%s|%s" % (
+                        HOST, parent, (r.stderr or "").strip()[:110]))
+                    break
             c = subprocess.run(
                 [SKC, "coord", "complete", parent, "--agent", "fleet-review-closer"],
                 capture_output=True, text=True)

@@ -11,7 +11,9 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 - **Card ea0bc9e1: bind automatic review closeout to exact generations.** A
   completed review closes only the unchanged producer generation it names;
-  later source or review mutations invalidate the old join.
+  later source or review mutations invalidate the old join. Chiap08 is the
+  sole closer, and an exact deterministic join remains retryable after a
+  transient completion failure.
 
 - **Card 244c215a: restore coordination hub truth.** Fleet digest ignores valid
   JSONL values that are not event objects, and review launch receipts consume a
