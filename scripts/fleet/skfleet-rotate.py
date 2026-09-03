@@ -3646,7 +3646,11 @@ def qwen_suitable(core):
 
 
 def _lane_model(lane, core):
-    return (_glm_model_for(core) or lane["model"]) if lane["name"]=="glm" else lane["model"]
+    if lane["name"]=="glm":
+        return _glm_model_for(core) or lane["model"]
+    if lane["name"]=="kimi":
+        return _kimi_model_for(core) or lane["model"]
+    return lane["model"]
 
 
 _LANE_HEALTH_PATH=os.environ.get(
@@ -3658,12 +3662,27 @@ _CAPACITY_DOMAINS={
     "glm":tuple(os.environ.get("SKFLEET_GLM_CAPACITY_DOMAINS","zai").split(",")),
     "qwen":tuple(os.environ.get(
         "SKFLEET_QWEN_CAPACITY_DOMAINS","chiap01-qwen38,chiap08-qwen38").split(",")),
+    "kimi":tuple(os.environ.get("SKFLEET_KIMI_CAPACITY_DOMAINS","kimi-coding").split(",")),
     "escalate":tuple(os.environ.get("SKFLEET_ESC_CAPACITY_DOMAINS","codex").split(",")),
 }
+_KIMI_K3_CAPACITY_DOMAINS=tuple(
+    os.environ.get("SKFLEET_KIMI_K3_CAPACITY_DOMAINS","kimi-k3").split(","))
+
+
+def _capacity_domains_for(lane,model):
+    if lane=="kimi" and model in {"k3","k3-256k"}:
+        return _KIMI_K3_CAPACITY_DOMAINS
+    return _CAPACITY_DOMAINS[lane]
+
+
 _health_lanes=list(LANES)
 for _glm_model in sorted(set(_GLM_LEVELS.values())):
     if _glm_model!=next(lane for lane in LANES if lane["name"]=="glm")["model"]:
         _health_lanes.append({"name":"glm","model":_glm_model})
+_kimi_xl_model=os.environ.get("SKFLEET_KIMI_MODEL_XL","k3")
+if _kimi_xl_model!=next(lane for lane in LANES if lane["name"]=="kimi")["model"]:
+    _health_lanes.append({"name":"kimi","model":_kimi_xl_model,
+                          "capacity_domains":_KIMI_K3_CAPACITY_DOMAINS})
 _cycle_id=new_cycle_id(HOST,STAMP)
 _lane_health_snapshot=acquire_lane_snapshot(
     _GATEWAY_ENDPOINT,_health_lanes,_CAPACITY_DOMAINS,
@@ -3674,7 +3693,7 @@ _active_gateway_revision=str(_lane_health_snapshot.get("runtime_revision") or ""
 def _health_for(lane,model):
     return lane_health(
         _lane_health_snapshot,lane,model,cycle_id=_cycle_id,
-        endpoint=_GATEWAY_ENDPOINT,capacity_domains=_CAPACITY_DOMAINS[lane],
+        endpoint=_GATEWAY_ENDPOINT,capacity_domains=_capacity_domains_for(lane,model),
         active_revision=_active_gateway_revision)
 
 picks=[]; _i=0
