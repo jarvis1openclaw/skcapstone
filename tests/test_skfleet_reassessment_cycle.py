@@ -70,10 +70,35 @@ def test_incomplete_assessment_fails_closed(report):
 
 def test_report_size_cap_fails_before_writer(tmp_path):
     function = _functions("_write_bounded_report")["_write_bounded_report"]
-    calls = []
+    report_path = tmp_path / "report.json"
     with pytest.raises(ValueError, match="exceeds"):
-        function({"large": "x" * 100}, tmp_path / "report.json", calls.append, limit=20)
-    assert calls == []
+        function({"large": "x" * 100}, report_path, limit=20)
+    assert not report_path.exists()
+
+
+def test_report_size_cap_measures_exact_emitted_bytes(tmp_path):
+    function = _functions("_write_bounded_report")["_write_bounded_report"]
+    report_path = tmp_path / "report.json"
+    report = {"rows": [{"x": value} for value in range(110_000)]}
+    compact_size = len(json.dumps(report, sort_keys=True, separators=(",", ":")).encode())
+    assert compact_size < 2 * 1024 * 1024
+
+    with pytest.raises(ValueError, match="exceeds"):
+        function(report, report_path)
+
+    assert not report_path.exists()
+
+
+def test_report_writer_emits_only_the_validated_payload(tmp_path):
+    function = _functions("_write_bounded_report")["_write_bounded_report"]
+    report_path = tmp_path / "report.json"
+    report = _report(counts={"stale_claims": 2})
+
+    function(report, report_path)
+
+    expected = (json.dumps(report, indent=2, sort_keys=True) + "\n").encode()
+    assert report_path.read_bytes() == expected
+    assert report_path.stat().st_size == len(expected) <= 2 * 1024 * 1024
 
 
 def test_existing_mutations_remain_after_assessment_and_dry_fenced():

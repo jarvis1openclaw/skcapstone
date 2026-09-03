@@ -87,13 +87,17 @@ def _reassessment_summary(host, report, report_path):
     )
 
 
-def _write_bounded_report(report, report_path, writer, limit=2 * 1024 * 1024):
-    """Replace the authority report only when its serializer-built form is bounded."""
-    payload = json.dumps(report, sort_keys=True, separators=(",", ":"))
+def _write_bounded_report(report, report_path, limit=2 * 1024 * 1024):
+    """Atomically replace the authority report with the exact bounded bytes."""
+    payload = (json.dumps(report, indent=2, sort_keys=True) + "\n").encode()
     json.loads(payload)
-    if len(payload.encode()) > limit:
+    if len(payload) > limit:
         raise ValueError("lifecycle reassessment exceeds %d bytes" % limit)
-    writer(report, report_path)
+    report_path.parent.mkdir(parents=True, exist_ok=True)
+    temporary = report_path.with_suffix(report_path.suffix + ".tmp")
+    temporary.write_bytes(payload)
+    json.loads(temporary.read_bytes())
+    temporary.replace(report_path)
 
 
 def _partition_owner(card_id, hosts, pinned_host=None):
@@ -214,12 +218,12 @@ if _LIFECYCLE_OK:
         _lifecycle=importlib.util.module_from_spec(_spec)
         sys.modules[_spec.name]=_lifecycle
         _spec.loader.exec_module(_lifecycle)
-        assess,write_report=_lifecycle.assess,_lifecycle.write_report
+        assess=_lifecycle.assess
     except Exception as _e:
         _LIFECYCLE_OK=False
         print("  WARN lifecycle reassessment unavailable (%s)" % _e)
 if not _LIFECYCLE_OK:
-    assess=write_report=None
+    assess=None
 
 HOST=os.uname().nodename
 ROTATION_HOSTS=("chiap01", "chiap02", "chiap03", "chiap04", "chiap08")
@@ -392,7 +396,7 @@ try:
     assessment=_validate_reassessment(assess(Path(CARDS),[Path(EVID)]))
     report_path=_full_reassessment_path(HOST,EVID)
     if report_path is not None:
-        _write_bounded_report(assessment,report_path,write_report)
+        _write_bounded_report(assessment,report_path)
     # The lifecycle report's unclaimable_cards class is computed from HOST-LOCAL
     # worker logs, which ~/.skcapstone/.stignore excludes from Syncthing. Every
     # host therefore derives a DIFFERENT set from the same shared cards.
