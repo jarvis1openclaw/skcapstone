@@ -240,6 +240,8 @@ HOME=os.path.expanduser("~")
 CARDS=os.path.join(HOME,".skcapstone/cards")
 EVID=os.path.join(HOME,".skcapstone/evidence/fleet-rotation")
 PI="/home/skuser01/.npm-global/bin/pi"
+PI_NATIVE_TOOLS=("read", "bash", "edit", "write", "grep", "find", "ls")
+PI_MCP_PROXY_LABEL="mcp-required"
 ESC_MODEL=os.environ.get("SKFLEET_ESC_MODEL","gpt-5.6-sol")
 PRI={"critical":0,"high":1,"medium":2,"low":3}
 STAMP=datetime.datetime.now(datetime.timezone.utc).strftime("%Y%m%dT%H%M%SZ")
@@ -287,6 +289,14 @@ def _worker_launch_command(unit, workspace, inner):
         "--unit", unit, "--property=KillMode=control-group",
         "--working-directory", workspace, "bash", "-lc", inner,
     ]
+
+
+def pi_tool_allowlist(labels):
+    """Return the bounded Pi tool surface for one fleet card."""
+    tools = list(PI_NATIVE_TOOLS)
+    if PI_MCP_PROXY_LABEL in {str(label).strip().lower() for label in labels}:
+        tools.append("mcp")
+    return ",".join(tools)
 
 
 def _lane_busy(lane, sessions, units):
@@ -1224,6 +1234,39 @@ def folded_labels(cid,core):
 
 _SEAT_LABEL_PREFIX = "seat-"
 _SEAT_RE = re.compile(r"^[a-z][a-z0-9-]{0,31}$")
+_SEAT_PLACEMENT_PATH = os.environ.get(
+    "SKFLEET_SEAT_PLACEMENT",
+    os.path.join(HOME, ".skcapstone/coordination/seat-placement.json"),
+)
+
+
+def _load_seat_placement(path=None):
+    """Read the synchronized public seat-to-host manifest or fail closed."""
+    source = path or _SEAT_PLACEMENT_PATH
+    try:
+        payload = json.loads(Path(source).read_text(encoding="utf-8"))
+    except (OSError, UnicodeError, json.JSONDecodeError) as exc:
+        return {}, "manifest-unavailable:%s" % type(exc).__name__
+    if not isinstance(payload, dict) or payload.get("schema_version") != 1:
+        return {}, "manifest-schema"
+    seats = payload.get("seats")
+    if not isinstance(seats, dict):
+        return {}, "manifest-seats"
+    normalized = {}
+    for raw_seat, raw_hosts in seats.items():
+        seat = str(raw_seat).strip().lower()
+        if not _SEAT_RE.fullmatch(seat):
+            return {}, "manifest-seat:%s" % seat
+        if not isinstance(raw_hosts, list) or not raw_hosts:
+            return {}, "manifest-hosts:%s" % seat
+        hosts = tuple(str(host).strip().lower() for host in raw_hosts)
+        if len(set(hosts)) != len(hosts) or any(host not in ROTATION_HOSTS for host in hosts):
+            return {}, "manifest-hosts:%s" % seat
+        normalized[seat] = tuple(host for host in ROTATION_HOSTS if host in hosts)
+    return normalized, None
+
+
+_SEAT_PLACEMENT, _SEAT_PLACEMENT_ERROR = _load_seat_placement()
 
 def seat_for(cid, core):
     """Return the named seat this card belongs to, or None.
@@ -1250,31 +1293,31 @@ def seat_for(cid, core):
         if not _SEAT_RE.match(seat):
             log(d, "WARN|%s|%s|ignoring malformed seat label %r" % (HOST, cid, text))
             continue
-        if not _seat_is_provisioned(seat):
-            # A well-formed name is not a seat. Without this check a typo such as
-            # seat-lnik would produce a worker called pi-lnik-<host>-<cid> writing
-            # claims and verdicts under an identity that has no agent home, no
-            # capauth key, no mailbox and no estate entry: a phantom seat whose
-            # outputs look attributable and are not. Fall back to lane naming,
-            # which is always safe, and say so loudly.
-            log(d, "WARN|%s|%s|seat %r is not provisioned (no agent home at %s); "
-                   "falling back to lane naming"
-                % (HOST, cid, seat, os.path.join(HOME, ".skcapstone/agents", seat)))
-            continue
         return seat
     return None
 
 
 def _seat_is_provisioned(seat):
-    """True when this seat actually exists as an agent on this host.
+    """True when public placement metadata provisions this seat somewhere."""
+    return not _SEAT_PLACEMENT_ERROR and seat in _SEAT_PLACEMENT
 
-    A seat is real when it has an agent home and a public key. The private half
-    lives only where the seat signs, so its absence here is expected and is not
-    evidence against the seat.
-    """
-    home = os.path.join(HOME, ".skcapstone/agents", seat)
-    return os.path.isdir(home) and os.path.isfile(
-        os.path.join(home, "capauth/identity/public.asc"))
+
+def _seat_owner(card_id, seat, pinned_host=None, placement=None, placement_error=None):
+    """Return one seat host and a diagnostic without falling back to a lane."""
+    if not seat:
+        return _partition_owner(card_id, ROTATION_HOSTS, pinned_host), "ordinary"
+    mapping = _SEAT_PLACEMENT if placement is None else placement
+    error = _SEAT_PLACEMENT_ERROR if placement_error is None else placement_error
+    if error:
+        return None, "seat-manifest:%s" % error
+    hosts = tuple(mapping.get(seat, ()))
+    if not hosts:
+        return None, "seat-unprovisioned:%s" % seat
+    if pinned_host:
+        if pinned_host not in hosts:
+            return None, "seat-pin-conflict:%s:%s" % (seat, pinned_host)
+        return pinned_host, "seat-pin:%s:%s" % (seat, pinned_host)
+    return _partition_owner(card_id, hosts), "seat:%s" % seat
 
 
 def _worker_owner(lane, cid, seat=None):
@@ -1619,6 +1662,10 @@ def blocked_backoff(cid):
     # operator reads as failures.
     if ts and _PASS_RE.match(str(val or "")):
         return True
+    # A pure pre-agent gateway failure is not card work, but retrying on every
+    # timer tick would hammer the same unhealthy lane. Wait one bounded circuit
+    # interval, then allow exactly one recovery probe. A failed probe writes a
+    # fresh structured failure and starts a new bounded interval.
     if _transport_retry_held(cid):
         return True
     if launch_attempts(cid) >= 3 and lifecycle_state(cid)!="complete":
@@ -1733,10 +1780,117 @@ def host_pin(core,labels):
 #      retried instead of being banned for the lifetime of the estate.
 _LAUNCH_TTL_H = float(os.environ.get("SKFLEET_LAUNCH_TTL_H", "6"))
 _LOGDIR = os.path.join(HOME, ".skcapstone/fleet/logs")
-_WORKER_EXIT_DIR = os.path.join(HOME, ".skcapstone/evidence/fleet-worker-exits")
 _TRANSPORT_RETRY_COOLDOWN_S = float(
     os.environ.get("SKFLEET_TRANSPORT_RETRY_COOLDOWN_S", "60")
 )
+_GATEWAY_ERROR_RE = re.compile(r"^\s*(404|408|429|502|504):\s*(\{.*\})\s*$", re.S)
+
+
+def _structured_transport_failure(text):
+    """Return a known pre-agent gateway failure kind, or None.
+
+    The whole report must be one HTTP status plus one JSON object. This keeps
+    arbitrary prose, partial agent output, and mixed reports substantive.
+    """
+    match = _GATEWAY_ERROR_RE.fullmatch(str(text or ""))
+    if not match:
+        return None
+    try:
+        payload = json.loads(match.group(2))
+    except (TypeError, ValueError):
+        return None
+    if not isinstance(payload, dict) or not isinstance(payload.get("message"), str):
+        return None
+    status = int(match.group(1))
+    code = payload.get("code")
+    if status == 404 and code in (404, "404", "not_found", "route_not_found"):
+        return "gateway_404"
+    if status == 429 and code in (429, "429", "rate_limit", "cooldown"):
+        return "gateway_429"
+    if status == 502 and code == "invalid_upstream_tool_calls":
+        return "invalid_upstream_tool_calls"
+    timeout_codes = {
+        "first_token_timeout",
+        "gateway_timeout",
+        "timeout_before_first_token",
+        "upstream_timeout",
+    }
+    if status in (408, 502, 504) and code in timeout_codes:
+        return "first_token_timeout"
+    return None
+
+
+def _is_substantive_worker_report(text, card_mutated):
+    """Fail closed unless this is a pure, known pre-agent transport failure."""
+    if card_mutated:
+        return True
+    if not str(text or ""):
+        return False
+    return _structured_transport_failure(text) is None
+
+
+def _launch_epoch_from_log(cid, filename):
+    prefix = cid + "-"
+    if not filename.startswith(prefix) or not filename.endswith(".log"):
+        return 0
+    stamp = filename[len(prefix):-4]
+    try:
+        return datetime.datetime.strptime(stamp, "%Y%m%dT%H%M%SZ").replace(
+            tzinfo=datetime.timezone.utc
+        ).timestamp()
+    except ValueError:
+        return 0
+
+
+def _card_mutated_during_report(cid, started, finished):
+    """Whether card work, rather than wrapper bookkeeping, occurred."""
+    ignored = {
+        "claim",
+        "release_claim",
+        "mero_observation",
+        "review_assignment_launch",
+        "review_assignment_recommendation",
+    }
+    for event in event_rows(cid):
+        stamp = _ts_epoch(event.get("ts"))
+        if started <= stamp <= finished + 1 and event.get("action") not in ignored:
+            return True
+    return False
+
+
+def _local_launch_evidence(cid):
+    """Return (logs seen, substantive reports, latest transport failure)."""
+    seen = 0
+    reports = 0
+    latest_transport = 0
+    cutoff = time.time() - _LAUNCH_TTL_H * 3600
+    try:
+        filenames = os.listdir(_LOGDIR)
+    except OSError:
+        return seen, reports, latest_transport
+    for filename in filenames:
+        started = _launch_epoch_from_log(cid, filename)
+        if not started:
+            continue
+        fp = os.path.join(_LOGDIR, filename)
+        try:
+            stt = os.stat(fp)
+            if stt.st_mtime < cutoff:
+                continue
+            with open(fp, encoding="utf-8", errors="replace") as fh:
+                text = fh.read()
+        except OSError:
+            continue
+        seen += 1
+        mutated = _card_mutated_during_report(cid, started, stt.st_mtime)
+        if _is_substantive_worker_report(text, mutated):
+            reports += 1
+        elif _structured_transport_failure(text):
+            latest_transport = max(latest_transport, stt.st_mtime)
+    return seen, reports, latest_transport
+
+
+_WORKER_EXIT_DIR = os.path.join(HOME, ".skcapstone/evidence/fleet-worker-exits")
 
 def _latest_transport_failure_epoch(cid):
     """Return the latest claim-scoped pre-agent transport failure time."""
@@ -1896,7 +2050,14 @@ def launch_attempts(cid):
     sees the shared count, so no card is banned on one host and workable on
     another purely because of where its logs happen to live.
     """
-    return max(_reporting_launches(cid), _shared_launch_attempts(cid))
+    local_evidence = globals().get("_local_launch_evidence")
+    if callable(local_evidence):
+        local_seen, local_reports, _latest_transport = local_evidence(cid)
+        if local_seen:
+            # The partition owner has the exact worker bytes. Prefer them over
+            # the synced receipt, which cannot distinguish transport from work.
+            return local_reports
+    return _shared_launch_attempts(cid)
 
 def unclaimable(cid):
     return launch_attempts(cid) >= 2 and "claim" not in acts(cid)
@@ -3044,10 +3205,21 @@ _emit_shadow_pool_v2()
 # A hash partition is stable no matter what the local pool looks like.
 off = ROTATION_HOSTS.index(HOST) if HOST in ROTATION_HOSTS else 0
 _NHOST = len(ROTATION_HOSTS)
+_SEAT_BY_ID = {row[2]: seat_for(row[2], row[3]) for row in pool}
+_SEAT_BLOCKED = set()
+
+
 def owner_host(cid):
     """Return the one stable host authorized to select this card."""
-    return _partition_owner(
-        cid, ROTATION_HOSTS, HOST if cid in _PINNED_IDS else None)
+    owner, reason = _seat_owner(
+        cid, _SEAT_BY_ID.get(cid), HOST if cid in _PINNED_IDS else None
+    )
+    if owner is None:
+        if cid not in _SEAT_BLOCKED:
+            log(d, "SEAT_PLACEMENT_BLOCKED|%s|%s|%s" % (HOST, cid, reason))
+            _SEAT_BLOCKED.add(cid)
+        return "unassigned:%s" % reason
+    return owner
 
 def owns(cid):
     # A host-pinned card is owned by its pinned host, full stop. Letting the hash
@@ -3402,6 +3574,7 @@ for _LANE,(_,_,cid,core,_labels,_nb) in picks:
     model=_LANE["model"]
     if _LANE["name"]=="glm":
         model=_glm_model_for(core) or model
+    pi_tools=pi_tool_allowlist(_labels)
     if DRY:
         log(d,"WOULD_LAUNCH|%s|%s|%s|lane=%s|model=%s|%s"%(HOST,sess,cid,_LANE["name"],model,str(core.get("title"))[:40])); continue
     _review_recommendation = None
@@ -3457,9 +3630,11 @@ for _LANE,(_,_,cid,core,_labels,_nb) in picks:
            '--expected-claim-revision %s --agent %s >/dev/null 2>&1 || true; }; '
            'trap "release_claim; exit 143" HUP INT TERM; trap release_claim EXIT; '
            'env SKAGENT=%s SKCAPSTONE_AGENT=%s SKFLEET_WORKSPACE=%s %s --approve --name %s '
-           '--provider skgateway --model %s --thinking off -p "$(cat %s)"; '
+           '--provider skgateway --model %s --thinking off --tools %s '
+           '-p "$(cat %s)"; '
            'rc=$?; trap - EXIT HUP INT TERM; release_claim; exit $rc'
-           % (SKC,cid,name,claimed_revision,name,name,name,workspace,PI,name,model,bf))
+           % (SKC,cid,name,claimed_revision,name,name,name,workspace,PI,name,model,
+              pi_tools,bf))
     wrapper=os.path.join(os.path.dirname(__file__),"skfleet-worker-wrapper.py")
     inner=shlex.join([
         sys.executable,wrapper,"--card",cid,"--owner",name,
