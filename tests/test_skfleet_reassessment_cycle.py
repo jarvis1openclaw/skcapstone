@@ -14,7 +14,9 @@ def _functions(*names):
     source = ROTATE.read_text(encoding="utf-8")
     tree = ast.parse(source)
     namespace = {"Path": Path, "json": json, "re": __import__("re")}
-    selected = [node for node in tree.body if isinstance(node, ast.FunctionDef) and node.name in names]
+    selected = [
+        node for node in tree.body if isinstance(node, ast.FunctionDef) and node.name in names
+    ]
     exec(compile(ast.Module(body=selected, type_ignores=[]), str(ROTATE), "exec"), namespace)
     return namespace
 
