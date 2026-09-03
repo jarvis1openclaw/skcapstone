@@ -389,6 +389,42 @@ def log(d,msg):
     with open(os.path.join(d,"actions.log"),"a") as f: f.write(msg+"\n")
     print("  "+msg)
 
+
+def _log_once_per_hour(d, event, cid, message, state_dir=None, now=None):
+    """Emit one repeated per-card diagnostic in each UTC hour bucket.
+
+    The O_EXCL marker makes concurrent rotations agree on the first emitter.
+    State failures are fail-open so an observability aid cannot hide a blocker.
+    """
+    state_dir = state_dir or os.path.join(HOME, ".skcapstone/fleet/log-dedup")
+    now = now or datetime.datetime.now(datetime.timezone.utc)
+    if now.tzinfo is None:
+        now = now.replace(tzinfo=datetime.timezone.utc)
+    hour = now.astimezone(datetime.timezone.utc).strftime("%Y%m%dT%H")
+    safe_event = re.sub(r"[^A-Z0-9_]+", "_", str(event).upper()).strip("_")
+    safe_cid = re.sub(r"[^a-zA-Z0-9_-]+", "_", str(cid))
+    marker = os.path.join(state_dir, "%s-%s-%s.json" % (safe_event, safe_cid, hour))
+    payload = json.dumps(
+        {"card_id": str(cid), "event": str(event), "hour_utc": hour},
+        sort_keys=True,
+        separators=(",", ":"),
+    ) + "\n"
+    try:
+        os.makedirs(state_dir, exist_ok=True)
+        fd = os.open(marker, os.O_CREAT | os.O_EXCL | os.O_WRONLY, 0o644)
+    except FileExistsError:
+        return False
+    except OSError:
+        log(d, message)
+        return True
+    try:
+        os.write(fd, payload.encode("utf-8"))
+        os.fsync(fd)
+    finally:
+        os.close(fd)
+    log(d, message)
+    return True
+
 os.makedirs(os.path.join(HOME,".skcapstone/fleet"),exist_ok=True)
 lock=open(os.path.join(HOME,".skcapstone/fleet/rotate.lock"),"w")
 try: fcntl.flock(lock,fcntl.LOCK_EX|fcntl.LOCK_NB)
@@ -2755,8 +2791,13 @@ def _eligible_provisional_reviews(capacity):
             continue
         candidate = _provisional_candidate(parent, outcome_ts, token)
         if not candidate:
-            log(d, "OPEN_REVIEW_EVIDENCE_BLOCKED|%s|%s|outcome=%s|%s" %
-                (HOST, parent, str(outcome_ts or ""), token))
+            _log_once_per_hour(
+                d,
+                "OPEN_REVIEW_EVIDENCE_BLOCKED",
+                parent,
+                "OPEN_REVIEW_EVIDENCE_BLOCKED|%s|%s|outcome=%s|%s" %
+                (HOST, parent, str(outcome_ts or ""), token),
+            )
             continue
         selected.append((parent, str(outcome_ts or ""), token, review_id) + candidate)
     return selected
