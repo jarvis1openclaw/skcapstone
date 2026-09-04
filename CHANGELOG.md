@@ -9,6 +9,15 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ### Fixed
 
+- Review handoff authorization and launch receipt attribution now use the
+  actual worker/reviewer identity instead of hardcoded `actor="jarvis"`.
+  This preserves worker identity in claim and completion events so Joules
+  and evidence are credited to the worker that did the work (card 4c9d7a12).
+
+
+
+### Fixed
+
 - **Card 0e010300: let the fleet bootstrap its own lane admission.** Lane
   admission required each capacity domain's SKGateway `lastCheck` to be within
   the 120 second snapshot bound, which reused a snapshot expiry bound as a
