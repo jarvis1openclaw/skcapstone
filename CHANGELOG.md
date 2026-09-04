@@ -12,6 +12,16 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased]
 
+### Changed
+
+- `fleet_beat.validate_beat_owner` is now an alias of the single shared
+  `heartbeat.validate_agent_name` allowlist (card 77d62d85): one
+  implementation for heartbeat and beat writers, reject-never-sanitize
+  semantics unchanged. `heartbeat.py` carries the deprecation-on-parity
+  note: once Worker Beat Protocol Cards B and D are live, it is deprecated
+  for worker-liveness use in favor of `fleet_beat`.
+
+
 ### Added
 
 - `fleet_beat` module (card ad0c3bfd / A of the Worker Beat Protocol): beat
@@ -28,6 +38,18 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   their canonical `<from>@<host>.jsonl` files and retries the append exactly
   once. Unparseable lines are never deleted; contaminated destinations and
   partial records still fail closed.
+### Added
+
+- Wrapper beat loop in the worker launch command (card e03755ba / B of
+  the Worker Beat Protocol). Every launched worker now runs a background
+  beat loop that writes liveness state to
+  `~/.skcapstone/fleet/beats/<worker>.json` every
+  `SKFLEET_BEAT_INTERVAL` seconds (default 600). The beat carries owner,
+  card_id, claim_revision, emitter=wrapper, disposition=RUNNING, beat_at,
+  and elapsed_s. Killed on every exit path (HUP/INT/TERM/EXIT/normal).
+  A failing beat never fails the worker (`|| true` on every write).
+  Tunable via env without redeploy.
+
 
 
 ### Fixed
