@@ -1,4 +1,5 @@
 """Tests for fleet_beat: writer, reader, classifier (card ad0c3bfd / A)."""
+
 import pytest
 
 from skcapstone.fleet_beat import (
@@ -62,10 +63,17 @@ class TestClassify:
     BASE_TS = 1000000.0
     TH = BeatThresholds(shadow_alert_s=900, actuation_floor_s=3600, startup_grace_s=120)
 
-    def _beat(self, owner="w", emitter="wrapper", disposition="RUNNING",
-              age_s=60, elapsed=100, **kw):
-        return Beat(owner=owner, emitter=emitter, disposition=disposition,
-                    beat_at=self.BASE_TS - age_s, elapsed_s=elapsed, **kw)
+    def _beat(
+        self, owner="w", emitter="wrapper", disposition="RUNNING", age_s=60, elapsed=100, **kw
+    ):
+        return Beat(
+            owner=owner,
+            emitter=emitter,
+            disposition=disposition,
+            beat_at=self.BASE_TS - age_s,
+            elapsed_s=elapsed,
+            **kw,
+        )
 
     def test_live(self):
         r = classify([self._beat(age_s=60)], "w", now=self.BASE_TS, thresholds=self.TH)
@@ -82,8 +90,12 @@ class TestClassify:
         assert r.state == "STALLED"
 
     def test_blocked(self):
-        r = classify([self._beat(disposition="BLOCKED_NEEDS_HUMAN", age_s=60)],
-                     "w", now=self.BASE_TS, thresholds=self.TH)
+        r = classify(
+            [self._beat(disposition="BLOCKED_NEEDS_HUMAN", age_s=60)],
+            "w",
+            now=self.BASE_TS,
+            thresholds=self.TH,
+        )
         assert r.state == "BLOCKED"
         assert r.disposition == "BLOCKED_NEEDS_HUMAN"
 
@@ -97,8 +109,7 @@ class TestClassify:
         assert r.evidence == "none"
 
     def test_startup_grace_unknown(self):
-        r = classify([self._beat(age_s=30, elapsed=0)], "w",
-                     now=self.BASE_TS, thresholds=self.TH)
+        r = classify([self._beat(age_s=30, elapsed=0)], "w", now=self.BASE_TS, thresholds=self.TH)
         assert r.state == "UNKNOWN"
 
     def test_future_beat_clock_skew(self):

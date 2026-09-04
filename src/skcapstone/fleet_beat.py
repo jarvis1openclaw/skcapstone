@@ -20,17 +20,19 @@ from pathlib import Path
 BEAT_OWNER_RE = re.compile(r"^[a-z0-9][a-z0-9-]*$")
 
 # Disposition vocabulary (card C will use these; wrapper uses RUNNING only)
-DISPOSITIONS = frozenset({
-    "RUNNING",
-    "WAITING_DEPENDENCY",
-    "BLOCKED_NEEDS_HUMAN",
-    "DEGRADED_RETRYING",
-})
+DISPOSITIONS = frozenset(
+    {
+        "RUNNING",
+        "WAITING_DEPENDENCY",
+        "BLOCKED_NEEDS_HUMAN",
+        "DEGRADED_RETRYING",
+    }
+)
 
 DEFAULT_BEAT_INTERVAL_S = 600  # 10 minutes
-SHADOW_ALERT_TTL_S = 900       # alert only, never actuate (measured p95 292s)
-ACTUATION_FLOOR_S = 3600       # minimum before any claim-affecting action
-STARTUP_GRACE_S = 120          # wrapper may take this long to first beat
+SHADOW_ALERT_TTL_S = 900  # alert only, never actuate (measured p95 292s)
+ACTUATION_FLOOR_S = 3600  # minimum before any claim-affecting action
+STARTUP_GRACE_S = 120  # wrapper may take this long to first beat
 
 
 def validate_beat_owner(owner: str) -> str:
@@ -39,24 +41,23 @@ def validate_beat_owner(owner: str) -> str:
     if not cleaned:
         raise ValueError("beat owner must be non-empty")
     if not BEAT_OWNER_RE.fullmatch(cleaned):
-        raise ValueError(
-            "beat owner %r outside [a-z0-9-]; rejected, not sanitized" % owner
-        )
+        raise ValueError("beat owner %r outside [a-z0-9-]; rejected, not sanitized" % owner)
     return cleaned
 
 
 @dataclass(frozen=True)
 class Beat:
     """One beat record, parsed from disk."""
+
     owner: str
     card_id: str = ""
     claim_revision: str = ""
-    emitter: str = "wrapper"       # wrapper | agent
+    emitter: str = "wrapper"  # wrapper | agent
     disposition: str = "RUNNING"
     elapsed_s: int = 0
-    beat_at: float = 0.0            # epoch seconds, writer's clock
-    sequence: int = 0               # monotonic per writer
-    progress_token: str = ""        # agent-only, opaque to monitor
+    beat_at: float = 0.0  # epoch seconds, writer's clock
+    sequence: int = 0  # monotonic per writer
+    progress_token: str = ""  # agent-only, opaque to monitor
 
     @property
     def age_s(self) -> float:
@@ -82,9 +83,7 @@ def write_beat(
     if emitter == "wrapper" and progress_token:
         raise ValueError("wrapper beats must not carry progress_token")
     if disposition not in DISPOSITIONS:
-        raise ValueError(
-            "disposition %r not in vocabulary" % disposition
-        )
+        raise ValueError("disposition %r not in vocabulary" % disposition)
 
     beat = Beat(
         owner=owner,
@@ -101,17 +100,22 @@ def write_beat(
     beats_dir.mkdir(parents=True, exist_ok=True)
     path = beats_dir / f"{owner}.json"
     tmp = path.with_suffix(".json.tmp")
-    tmp.write_text(json.dumps({
-        "owner": beat.owner,
-        "card_id": beat.card_id,
-        "claim_revision": beat.claim_revision,
-        "emitter": beat.emitter,
-        "disposition": beat.disposition,
-        "elapsed_s": beat.elapsed_s,
-        "beat_at": beat.beat_at,
-        "sequence": beat.sequence,
-        "progress_token": beat.progress_token,
-    }), encoding="utf-8")
+    tmp.write_text(
+        json.dumps(
+            {
+                "owner": beat.owner,
+                "card_id": beat.card_id,
+                "claim_revision": beat.claim_revision,
+                "emitter": beat.emitter,
+                "disposition": beat.disposition,
+                "elapsed_s": beat.elapsed_s,
+                "beat_at": beat.beat_at,
+                "sequence": beat.sequence,
+                "progress_token": beat.progress_token,
+            }
+        ),
+        encoding="utf-8",
+    )
     tmp.rename(path)  # atomic on same filesystem
     return beat
 
@@ -126,17 +130,19 @@ def read_beats(beats_dir: Path) -> list[Beat]:
             raw = json.loads(path.read_text(encoding="utf-8"))
             if not isinstance(raw, dict):
                 continue
-            out.append(Beat(
-                owner=str(raw.get("owner", path.stem)),
-                card_id=str(raw.get("card_id", "")),
-                claim_revision=str(raw.get("claim_revision", "")),
-                emitter=str(raw.get("emitter", "wrapper")),
-                disposition=str(raw.get("disposition", "RUNNING")),
-                elapsed_s=int(raw.get("elapsed_s", 0)),
-                beat_at=float(raw.get("beat_at", 0)),
-                sequence=int(raw.get("sequence", 0)),
-                progress_token=str(raw.get("progress_token", "")),
-            ))
+            out.append(
+                Beat(
+                    owner=str(raw.get("owner", path.stem)),
+                    card_id=str(raw.get("card_id", "")),
+                    claim_revision=str(raw.get("claim_revision", "")),
+                    emitter=str(raw.get("emitter", "wrapper")),
+                    disposition=str(raw.get("disposition", "RUNNING")),
+                    elapsed_s=int(raw.get("elapsed_s", 0)),
+                    beat_at=float(raw.get("beat_at", 0)),
+                    sequence=int(raw.get("sequence", 0)),
+                    progress_token=str(raw.get("progress_token", "")),
+                )
+            )
         except (json.JSONDecodeError, ValueError, OSError):
             continue  # malformed beat: skip, never hide other workers
     return out
@@ -145,6 +151,7 @@ def read_beats(beats_dir: Path) -> list[Beat]:
 @dataclass(frozen=True)
 class BeatThresholds:
     """Tunable thresholds. Defaults from measured Syncthing p95 (review)."""
+
     shadow_alert_s: float = SHADOW_ALERT_TTL_S
     actuation_floor_s: float = ACTUATION_FLOOR_S
     startup_grace_s: float = STARTUP_GRACE_S
@@ -153,11 +160,12 @@ class BeatThresholds:
 @dataclass(frozen=True)
 class BeatClassification:
     """The result of classifying one worker's beats."""
-    state: str               # LIVE | STALLED | BLOCKED | DEAD | NEVER_STARTED | UNKNOWN
-    evidence: str            # agent_beat | wrapper_beat | none
-    age_s: float             # seconds since last beat (0 if never)
-    disposition: str = ""    # from the beat, if any
-    note: str = ""           # human-readable context
+
+    state: str  # LIVE | STALLED | BLOCKED | DEAD | NEVER_STARTED | UNKNOWN
+    evidence: str  # agent_beat | wrapper_beat | none
+    age_s: float  # seconds since last beat (0 if never)
+    disposition: str = ""  # from the beat, if any
+    note: str = ""  # human-readable context
 
 
 def classify(
@@ -182,7 +190,9 @@ def classify(
 
     if best is None:
         return BeatClassification(
-            state="NEVER_STARTED", evidence="none", age_s=0,
+            state="NEVER_STARTED",
+            evidence="none",
+            age_s=0,
             note="no beat file for this owner",
         )
 
@@ -191,7 +201,9 @@ def classify(
     # Clock skew: a beat in the future is not negative age
     if best.beat_at > _now:
         return BeatClassification(
-            state="UNKNOWN", evidence=evidence, age_s=0,
+            state="UNKNOWN",
+            evidence=evidence,
+            age_s=0,
             disposition=best.disposition,
             note="beat_at is in the future (clock skew); age is unreliable",
         )
@@ -199,31 +211,41 @@ def classify(
     # Within startup grace and never progressed
     if best.elapsed_s == 0 and age < _th.startup_grace_s:
         return BeatClassification(
-            state="UNKNOWN", evidence=evidence, age_s=age,
+            state="UNKNOWN",
+            evidence=evidence,
+            age_s=age,
             note="within startup grace, first beat may not have landed",
         )
 
     if age > _th.actuation_floor_s:
         return BeatClassification(
-            state="DEAD", evidence=evidence, age_s=age,
+            state="DEAD",
+            evidence=evidence,
+            age_s=age,
             disposition=best.disposition,
             note="no beat for %.0fs (above actuation floor)" % age,
         )
 
     if best.disposition != "RUNNING":
         return BeatClassification(
-            state="BLOCKED", evidence=evidence, age_s=age,
+            state="BLOCKED",
+            evidence=evidence,
+            age_s=age,
             disposition=best.disposition,
             note="worker reports %s" % best.disposition,
         )
 
     if age > _th.shadow_alert_s:
         return BeatClassification(
-            state="STALLED", evidence=evidence, age_s=age,
+            state="STALLED",
+            evidence=evidence,
+            age_s=age,
             note="no beat for %.0fs (above shadow alert threshold)" % age,
         )
 
     return BeatClassification(
-        state="LIVE", evidence=evidence, age_s=age,
+        state="LIVE",
+        evidence=evidence,
+        age_s=age,
         disposition=best.disposition,
     )
