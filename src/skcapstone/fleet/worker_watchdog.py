@@ -37,6 +37,8 @@ class WorkerClassification:
     owner: str
     state: str
     reason: str
+    claim_revision: str | None = None
+    expected_claim_revision: str | None = None
 
 
 @dataclass(frozen=True)
@@ -61,6 +63,7 @@ class RequestAttribution:
     state: str
     worker_owner: str | None
     missing: tuple[str, ...]
+    reason: str = ""
 
 
 def _parse_time(value: str | None) -> datetime | None:
@@ -87,27 +90,68 @@ def classify_worker(
     or changed claim is therefore ``claim-mismatch`` and is never silently
     treated as healthy.  This function has no mutation side effects.
     """
+    if not observation.owner or not observation.claim_owner:
+        return WorkerClassification(
+            observation.owner, "claim-mismatch", "owner-missing",
+            observation.claim_revision, observation.expected_claim_revision,
+        )
     if observation.claim_owner != observation.owner:
-        return WorkerClassification(observation.owner, "claim-mismatch", "owner-mismatch")
+        return WorkerClassification(
+            observation.owner, "claim-mismatch", "owner-mismatch",
+            observation.claim_revision, observation.expected_claim_revision,
+        )
     if (
-        observation.expected_claim_revision is None
-        or observation.claim_revision != observation.expected_claim_revision
+        not observation.claim_revision
+        or not observation.expected_claim_revision
     ):
         return WorkerClassification(
-            observation.owner, "claim-mismatch", "claim-revision-mismatch"
+            observation.owner, "claim-mismatch", "claim-revision-missing",
+            observation.claim_revision, observation.expected_claim_revision,
+        )
+    if observation.claim_revision != observation.expected_claim_revision:
+        return WorkerClassification(
+            observation.owner, "claim-mismatch", "claim-revision-mismatch",
+            observation.claim_revision, observation.expected_claim_revision,
         )
     if not observation.process_alive and not observation.session_alive:
         return WorkerClassification(observation.owner, "exited", "no-process-or-session")
     expiry = _parse_time(observation.lease_expires_at)
     if expiry is not None and now.astimezone(timezone.utc) >= expiry:
-        return WorkerClassification(observation.owner, "timed-out", "lease-expired")
+        return WorkerClassification(
+            observation.owner, "timed-out", "lease-expired",
+            observation.claim_revision, observation.expected_claim_revision,
+        )
     heartbeat = _parse_time(observation.heartbeat_at)
     if heartbeat is None:
-        return WorkerClassification(observation.owner, "stalled", "heartbeat-missing")
+        return WorkerClassification(
+            observation.owner, "stalled", "heartbeat-missing",
+            observation.claim_revision, observation.expected_claim_revision,
+        )
     age = (now.astimezone(timezone.utc) - heartbeat).total_seconds()
     if age > heartbeat_timeout_s:
-        return WorkerClassification(observation.owner, "stalled", "heartbeat-expired")
-    return WorkerClassification(observation.owner, "running", "heartbeat-fresh")
+        return WorkerClassification(
+            observation.owner, "stalled", "heartbeat-expired",
+            observation.claim_revision, observation.expected_claim_revision,
+        )
+    return WorkerClassification(
+        observation.owner, "running", "heartbeat-fresh",
+        observation.claim_revision, observation.expected_claim_revision,
+    )
+
+
+def duplicate_worker_owners(
+    observations: Iterable[WorkerObservation],
+) -> tuple[str, ...]:
+    """Return repeated non-empty worker owners in stable order.
+
+    A duplicate owner is only a signal for a separately fenced control
+    operation.  This helper never chooses which worker is authoritative.
+    """
+    counts: dict[str, int] = {}
+    for observation in observations:
+        if observation.owner:
+            counts[observation.owner] = counts.get(observation.owner, 0) + 1
+    return tuple(sorted(owner for owner, count in counts.items() if count > 1))
 
 
 def summarize_workers(
@@ -147,7 +191,32 @@ def correlate_request(
     missing = tuple(name for name, value in fields.items() if not value)
     worker = workers.get(request.agent_id or "")
     if worker is None:
-        return RequestAttribution(request.request_id, "unmatched", None, missing)
+        return RequestAttribution(
+            request.request_id, "unmatched", None, missing, "worker-unmatched"
+        )
     if missing:
-        return RequestAttribution(request.request_id, "incomplete", worker.owner, missing)
-    return RequestAttribution(request.request_id, worker.state, worker.owner, ())
+        return RequestAttribution(
+            request.request_id,
+            "incomplete",
+            worker.owner,
+            missing,
+            "attribution-incomplete",
+        )
+    if (
+        not worker.owner
+        or not worker.claim_revision
+        or not worker.expected_claim_revision
+        or worker.claim_revision != worker.expected_claim_revision
+        or request.agent_id != worker.owner
+        or request.claim_revision != worker.claim_revision
+    ):
+        return RequestAttribution(
+            request.request_id,
+            "claim-mismatch",
+            worker.owner or None,
+            (),
+            "claim-revision-mismatch",
+        )
+    return RequestAttribution(
+        request.request_id, worker.state, worker.owner, (), "attribution-valid"
+    )

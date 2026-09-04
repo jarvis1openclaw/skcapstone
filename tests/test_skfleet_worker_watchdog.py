@@ -10,6 +10,7 @@ from skcapstone.fleet.worker_watchdog import (
     WorkerObservation,
     classify_worker,
     correlate_request,
+    duplicate_worker_owners,
     summarize_workers,
 )
 
@@ -41,6 +42,12 @@ def _worker(**changes: object) -> WorkerObservation:
         ({"process_alive": False, "session_alive": False}, "exited", "no-process-or-session"),
         ({"claim_owner": "other"}, "claim-mismatch", "owner-mismatch"),
         ({"claim_revision": "revision-2"}, "claim-mismatch", "claim-revision-mismatch"),
+        (
+            {"claim_revision": "", "expected_claim_revision": ""},
+            "claim-mismatch",
+            "claim-revision-missing",
+        ),
+        ({"owner": "", "claim_owner": ""}, "claim-mismatch", "owner-missing"),
     ],
 )
 def test_classifies_each_state_without_mutation(
@@ -65,7 +72,9 @@ def test_summary_contains_all_states_and_stable_counts() -> None:
 
 
 def test_request_join_is_explicit_and_value_free() -> None:
-    worker = WorkerClassification("agent-a", "running", "heartbeat-fresh")
+    worker = WorkerClassification(
+        "agent-a", "running", "heartbeat-fresh", "revision-1", "revision-1"
+    )
     request = GatewayRequest(
         "request-1", "agent-a", "session-1", "card-1", "revision-1", "chiap08", "codex", "model-a"
     )
@@ -79,3 +88,73 @@ def test_request_join_is_explicit_and_value_free() -> None:
     )
     assert incomplete.state == "unmatched"
     assert "agent_id" in incomplete.missing
+
+
+def test_request_stale_revision_is_claim_mismatch() -> None:
+    worker = WorkerClassification(
+        "agent-a", "running", "heartbeat-fresh", "current", "current"
+    )
+    result = correlate_request(
+        GatewayRequest(
+            "request-1",
+            "agent-a",
+            "session-1",
+            "card-1",
+            "stale",
+            "chiap08",
+            "codex",
+            "model-a",
+        ),
+        {"agent-a": worker},
+    )
+    assert result.state == "claim-mismatch"
+    assert result.reason == "claim-revision-mismatch"
+
+
+def test_request_partial_claim_identity_is_incomplete() -> None:
+    worker = WorkerClassification(
+        "agent-a", "running", "heartbeat-fresh", "current", "current"
+    )
+    result = correlate_request(
+        GatewayRequest(
+            "request-1",
+            "agent-a",
+            "session-1",
+            "card-1",
+            None,
+            "chiap08",
+            "codex",
+            "model-a",
+        ),
+        {"agent-a": worker},
+    )
+    assert result.state == "incomplete"
+    assert result.missing == ("claim_revision",)
+
+
+def test_duplicate_owner_signal_is_stable_without_selecting_authority() -> None:
+    assert duplicate_worker_owners([_worker(), _worker()]) == (
+        "pi-codex-chiap08-abcd1234",
+    )
+    assert duplicate_worker_owners([_worker(), _worker(owner="other")]) == ()
+
+
+def test_reassignment_revision_fences_old_request() -> None:
+    old = WorkerClassification(
+        "agent-a", "running", "heartbeat-fresh", "old", "old"
+    )
+    reassigned = WorkerClassification(
+        "agent-a", "running", "heartbeat-fresh", "new", "new"
+    )
+    request = GatewayRequest(
+        "request-1",
+        "agent-a",
+        "session-1",
+        "card-1",
+        "old",
+        "chiap08",
+        "codex",
+        "model-a",
+    )
+    assert correlate_request(request, {"agent-a": reassigned}).state == "claim-mismatch"
+    assert correlate_request(request, {"agent-a": old}).state == "running"
