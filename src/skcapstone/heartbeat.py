@@ -25,11 +25,11 @@ Usage:
 
 from __future__ import annotations
 
-import re
 import json
 import logging
 import os
 import platform
+import re
 import shutil
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
