@@ -201,7 +201,7 @@ def _review_assignment(cid, core, labels, reviewer):
     handoff = authorize_review_launch(
         Path(HOME) / ".skcapstone",
         recommendation,
-        actor="jarvis",
+        actor=reviewer,
         current_process=_card_process_snapshot(cid),
         used_recommendation_ids={
             str(event.get("recommendation_id"))
@@ -570,13 +570,13 @@ LIVE = os.path.join(HOME, ".skcapstone/evidence/fleet-live")
 _INEFFECTIVE_PATH = os.path.join(HOME, ".skcapstone/evidence/reap-ineffective.json")
 REAP_RUNTIME_VERSION = importlib.metadata.version("skcoord")
 LIVE_FRESH = 30 * 60      # a report older than this says nothing about now
+LIVE_TIMER_CYCLE = 6 * 60  # five-minute timer plus transport allowance
 CLAIM_GRACE = 300         # one full rotation period, so every host has reported
 # Reaping needs a quorum, because a card running on chiap04 is invisible in
 # chiap08's report. During a rollout the first host to publish is the ONLY
 # reporting host, and without this floor it would read every other host's live
 # worker as absent and reap all of them. Below quorum the reaper does nothing.
 REAP_QUORUM = 3
-KNOWN_HOST_TTL = 24 * 3600   # a host silent this long has left the fleet
 
 STALL_GRACE = 30 * 60     # a zero-byte log younger than this may still be starting
 _NO_PROGRESS = os.path.join(HOME, ".skcapstone/evidence/live-no-progress")
@@ -711,31 +711,54 @@ def reporting_capacity():
     return capacity
 
 
-def live_report():
-    """Return (oldest_recent_report, cards_running, reporting_host_count).
-
-    The first value is the OLDEST report among currently reporting hosts, not the
-    newest, and that choice is the whole safety property. A claim may only be
-    reaped once EVERY reporting host has published since it was made, because a
-    card running on chiap04 is invisible in chiap08's report. Taking the newest
-    would let the first host to start publishing reap every other host's live
-    workers, which is precisely the outage this code exists to prevent.
-    """
-    hosts = {}
+def live_report_health(expected_hosts=None, now=None):
+    """Return fleet reports plus per-host transport and freshness faults."""
+    now = time.time() if now is None else now
+    expected = tuple(expected_hosts or ROTATION_HOSTS)
+    stamps = []
     running = set()
-    now = time.time()
-    for p in glob.glob(os.path.join(LIVE, "*.json")):
+    reporting = set()
+    faults = []
+    for host in expected:
+        path = os.path.join(LIVE, host + ".json")
         try:
-            with open(p, encoding="utf-8") as fh:
+            with open(path, encoding="utf-8") as fh:
                 snap = json.load(fh)
+            if not isinstance(snap, dict):
+                raise ValueError("report is not an object")
             ts = float(snap.get("ts") or 0)
-        except (OSError, ValueError, TypeError):
+            report_host = str(snap.get("host") or "")
+            if report_host != host:
+                raise ValueError("report host=%s" % (report_host or "missing"))
+            if not 0 < ts <= now:
+                raise ValueError("report timestamp is absent or in the future")
+        except (OSError, ValueError, TypeError, json.JSONDecodeError) as exc:
+            reason = "missing" if isinstance(exc, FileNotFoundError) else "invalid"
+            faults.append({"host": host, "reason": reason, "age_seconds": None,
+                           "detail": str(exc)[:120]})
             continue
-        if not 0 < ts <= now or now - ts > LIVE_FRESH:
+        age = now - ts
+        if age > LIVE_FRESH:
+            faults.append({"host": host, "reason": "stale",
+                           "age_seconds": int(age), "detail": ""})
             continue
-        hosts[str(snap.get("host") or p)] = ts
-        running.update(str(c) for c in (snap.get("cards") or ()))
-    return (min(hosts.values()) if hosts else 0.0), running, len(hosts)
+        stamps.append(ts)
+        reporting.add(host)
+        cards = snap.get("cards") or []
+        if isinstance(cards, list):
+            running.update(str(card) for card in cards)
+        if age > LIVE_TIMER_CYCLE:
+            faults.append({"host": host, "reason": "transport_delayed",
+                           "age_seconds": int(age), "detail": ""})
+    expected_set = set(expected)
+    return {"oldest": min(stamps) if stamps else 0, "running": running,
+            "reporting": reporting, "expected": expected_set, "faults": faults,
+            "authoritative": reporting == expected_set and not faults}
+
+
+def live_report():
+    """Return the authoritative cross-host report health snapshot."""
+    return live_report_health()
 
 publish_live(sessions, worker_units)
 
@@ -2484,8 +2507,25 @@ def _record_reap_outcome(cid, owner, claim_revision, claim_ts):
 
 
 def reap_dead_claims():
-    """Return claimed cards whose worker no host reports running."""
-    oldest, running, nhosts = live_report()
+    """Return claims only after every authoritative host reports absence."""
+    report_health = live_report()
+    # Preserve the tuple seam used by focused reaper tests and older callers.
+    # Production returns the richer mapping and therefore never weakens the
+    # fixed all-host visibility gate.
+    if isinstance(report_health, dict):
+        oldest = report_health["oldest"]
+        running = report_health["running"]
+        nhosts = len(report_health["reporting"])
+        known = len(report_health["expected"])
+    else:
+        oldest, running, nhosts = report_health
+        known = nhosts
+        report_health = {"faults": [], "expected": set(), "reporting": set()}
+    for fault in report_health["faults"]:
+        age = ("unknown" if fault["age_seconds"] is None
+               else str(fault["age_seconds"]))
+        log(d, "FLEET_LIVE_FAULT|%s|host=%s|reason=%s|age_seconds=%s|detail=%s"
+            % (HOST, fault["host"], fault["reason"], age, fault["detail"]))
     health = _worker_health_snapshot(
         sh("tmux", "ls", "-F", "#{session_name}").split()
     )
@@ -2493,16 +2533,16 @@ def reap_dead_claims():
         "duplicates=%d" %
         (HOST, health["sessions"], health["claims_exact"], health["mismatched"],
          health["duplicates"]))
-    # A host that is merely between runs must still be counted, or the quorum
-    # check passes while its workers are invisible. A host that is GONE must
-    # eventually stop counting, or one decommissioned machine blocks reaping for
-    # the whole fleet forever. KNOWN_HOST_TTL separates the two.
-    _cut = time.time() - KNOWN_HOST_TTL
-    known = sum(1 for f in glob.glob(os.path.join(LIVE, "*.json"))
-                if os.path.getmtime(f) >= _cut)
-    if not oldest or nhosts < REAP_QUORUM or nhosts < known:
-        log(d, "REAP|%s|below quorum (reporting=%d known=%d need>=%d); reaped nothing"
+    if not oldest or nhosts < REAP_QUORUM:
+        log(d, "REAP|%s|quorum_shortage reporting=%d known=%d need>=%d; reaped nothing"
             % (HOST, nhosts, known, REAP_QUORUM))
+        return 0
+    if not report_health.get("authoritative", nhosts >= known):
+        missing = ",".join(sorted(report_health["expected"] -
+                                  report_health["reporting"])) or "none"
+        log(d, "REAP|%s|known_host_visibility_loss reporting=%d known=%d "
+            "need>=%d missing=%s; reaped nothing"
+            % (HOST, nhosts, known, REAP_QUORUM, missing))
         return 0
     freed = 0
     _ineffective = _load_ineffective()
@@ -3997,7 +4037,7 @@ for _LANE,(_,_,cid,core,_labels,_nb) in picks:
             append_review_launch_receipt(
                 Path(HOME) / ".skcapstone",
                 _review_handoff,
-                actor="jarvis",
+                actor=name,
                 claim_revision=claimed_revision,
                 launched=ok,
             )
