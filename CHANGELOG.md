@@ -1,5 +1,10 @@
 # Changelog
 
+- **Card `3c9aa03f`: review freshness gate.** Added
+  `scripts/fleet/review-freshness-gate.py` plus review guidance: independent
+  PASS requires the reviewed head to contain current main and every check
+  green on that exact head. No PASS on stale heads.
+
 - **Card `c6eeed44`: prevent overlapping Link and Mero recurring cycles.**
   Added per-seat nonblocking guards with immutable cycle receipts and exact Linux
   boot and process-generation evidence for crash recovery. Overlaps now record
