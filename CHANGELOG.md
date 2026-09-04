@@ -1,5 +1,10 @@
 # Changelog
 
+- **Card `c6eeed44`: prevent overlapping Link and Mero recurring cycles.**
+  Added per-seat nonblocking guards with immutable cycle receipts and exact Linux
+  boot and process-generation evidence for crash recovery. Overlaps now record
+  honest no-ops, while old timestamps and quiet output never imply abandonment.
+
 All notable changes to **skcapstone** are documented here.
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
@@ -16,6 +21,15 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   state is derived from beat evidence alone. Shadow alert TTL 900s,
   actuation floor 3600s (measured Syncthing p95 292s). Shared allowlist
   validation with heartbeat.py. 20 tests including agent-beat with disposition vocabulary and skmail emission for non-RUNNING states (Card C).
+
+
+
+### Fixed
+
+- Review handoff authorization and launch receipt attribution now use the
+  actual worker/reviewer identity instead of hardcoded `actor="jarvis"`.
+  This preserves worker identity in claim and completion events so Joules
+  and evidence are credited to the worker that did the work (card 4c9d7a12).
 
 
 
