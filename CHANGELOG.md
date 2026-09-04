@@ -1,5 +1,10 @@
 # Changelog
 
+- **Card `c6eeed44`: prevent overlapping Link and Mero recurring cycles.**
+  Added per-seat nonblocking guards with immutable cycle receipts and exact Linux
+  boot and process-generation evidence for crash recovery. Overlaps now record
+  honest no-ops, while old timestamps and quiet output never imply abandonment.
+
 All notable changes to **skcapstone** are documented here.
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
@@ -9,13 +14,10 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ### Fixed
 
-- Heartbeat agent names are validated against a strict `[a-z0-9-]` allowlist
-  at model construction and beacon initialization. Names containing path
-  separators, `..`, spaces, or other special characters are rejected, never
-  silently rewritten. The malformed file already in the heartbeats directory
-  (`casimir-andrew-junior: house of kobeszko.json`) is this validation gap
-  made visible. Shared `validate_agent_name()` helper is importable by any
-  future beat writer (card 34006183 / F of the Worker Beat Protocol).
+- Review handoff authorization and launch receipt attribution now use the
+  actual worker/reviewer identity instead of hardcoded `actor="jarvis"`.
+  This preserves worker identity in claim and completion events so Joules
+  and evidence are credited to the worker that did the work (card 4c9d7a12).
 
 
 
