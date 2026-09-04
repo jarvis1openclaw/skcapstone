@@ -201,7 +201,7 @@ def _review_assignment(cid, core, labels, reviewer):
     handoff = authorize_review_launch(
         Path(HOME) / ".skcapstone",
         recommendation,
-        actor="jarvis",
+        actor=reviewer,
         current_process=_card_process_snapshot(cid),
         used_recommendation_ids={
             str(event.get("recommendation_id"))
@@ -4037,7 +4037,7 @@ for _LANE,(_,_,cid,core,_labels,_nb) in picks:
             append_review_launch_receipt(
                 Path(HOME) / ".skcapstone",
                 _review_handoff,
-                actor="jarvis",
+                actor=name,
                 claim_revision=claimed_revision,
                 launched=ok,
             )
