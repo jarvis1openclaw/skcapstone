@@ -21,7 +21,13 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   state is derived from beat evidence alone. Shadow alert TTL 900s,
   actuation floor 3600s (measured Syncthing p95 292s). Shared allowlist
   validation with heartbeat.py. 20 tests including agent-beat with disposition vocabulary and skmail emission for non-RUNNING states (Card C).
-
+- `skmail send` self-healing (card 4a3d1119): when a recurring cross-host
+  writer appends foreign records straight into another writer's mailbox
+  (blocking all canonical appends for that writer, observed twice on
+  2026-09-04), the send path now quarantines those records losslessly into
+  their canonical `<from>@<host>.jsonl` files and retries the append exactly
+  once. Unparseable lines are never deleted; contaminated destinations and
+  partial records still fail closed.
 
 
 ### Fixed
