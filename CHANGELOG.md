@@ -31,6 +31,17 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   state is derived from beat evidence alone. Shadow alert TTL 900s,
   actuation floor 3600s (measured Syncthing p95 292s). Shared allowlist
   validation with heartbeat.py. 20 tests including agent-beat with disposition vocabulary and skmail emission for non-RUNNING states (Card C).
+### Added
+
+- Wrapper beat loop in the worker launch command (card e03755ba / B of
+  the Worker Beat Protocol). Every launched worker now runs a background
+  beat loop that writes liveness state to
+  `~/.skcapstone/fleet/beats/<worker>.json` every
+  `SKFLEET_BEAT_INTERVAL` seconds (default 600). The beat carries owner,
+  card_id, claim_revision, emitter=wrapper, disposition=RUNNING, beat_at,
+  and elapsed_s. Killed on every exit path (HUP/INT/TERM/EXIT/normal).
+  A failing beat never fails the worker (`|| true` on every write).
+  Tunable via env without redeploy.
 
 
 
