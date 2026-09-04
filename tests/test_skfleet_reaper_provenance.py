@@ -599,18 +599,24 @@ def test_invalid_live_report_timestamp_cannot_bypass_claim_grace(
             json.dumps({"host": host, "ts": report_ts, "cards": []}) + "\n",
             encoding="utf-8",
         )
-    live_namespace = _load_functions("live_report")
+    live_namespace = _load_functions("live_report_health", "live_report")
     live_namespace.update(
         {
             "LIVE": str(tmp_path / "live"),
             "LIVE_FRESH": 1800,
+            "LIVE_TIMER_CYCLE": 360,
+            "ROTATION_HOSTS": ("chiap01", "chiap02", "chiap03"),
             "time": time,
         }
     )
     namespace["event_rows"] = namespace["_acts_fresh_rows"]
     namespace["live_report"] = live_namespace["live_report"]
 
-    assert namespace["live_report"]() == (0.0, set(), 0)
+    health = namespace["live_report"]()
+    assert health["oldest"] == 0.0
+    assert health["running"] == set()
+    assert health["reporting"] == set()
+    assert {fault["reason"] for fault in health["faults"]} == {"invalid"}
     assert namespace["reap_dead_claims"]() == 0
     assert released == []
 
