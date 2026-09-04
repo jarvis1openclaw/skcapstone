@@ -1,5 +1,10 @@
 # Changelog
 
+- **Card `c6eeed44`: prevent overlapping Link and Mero recurring cycles.**
+  Added per-seat nonblocking guards with immutable cycle receipts and exact Linux
+  boot and process-generation evidence for crash recovery. Overlaps now record
+  honest no-ops, while old timestamps and quiet output never imply abandonment.
+
 All notable changes to **skcapstone** are documented here.
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
