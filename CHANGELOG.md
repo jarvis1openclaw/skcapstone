@@ -1,5 +1,10 @@
 # Changelog
 
+- **Card `83b048fc`: worktree sequencer hygiene.** Added
+  `scripts/fleet/worktree-hygiene.py` plus a worker-wrapper preflight: stale
+  cherry-pick, rebase, or merge state is named, auto-cleared when the tree is
+  clean, and never cleared when the tree is dirty.
+
 - **Card `c6eeed44`: prevent overlapping Link and Mero recurring cycles.**
   Added per-seat nonblocking guards with immutable cycle receipts and exact Linux
   boot and process-generation evidence for crash recovery. Overlaps now record
