@@ -9,6 +9,18 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ### Fixed
 
+- Heartbeat agent names are validated against a strict `[a-z0-9-]` allowlist
+  at model construction and beacon initialization. Names containing path
+  separators, `..`, spaces, or other special characters are rejected, never
+  silently rewritten. The malformed file already in the heartbeats directory
+  (`casimir-andrew-junior: house of kobeszko.json`) is this validation gap
+  made visible. Shared `validate_agent_name()` helper is importable by any
+  future beat writer (card 34006183 / F of the Worker Beat Protocol).
+
+
+
+### Fixed
+
 - **Card 0e010300: let the fleet bootstrap its own lane admission.** Lane
   admission required each capacity domain's SKGateway `lastCheck` to be within
   the 120 second snapshot bound, which reused a snapshot expiry bound as a
