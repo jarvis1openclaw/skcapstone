@@ -5,6 +5,11 @@
   cherry-pick, rebase, or merge state is named, auto-cleared when the tree is
   clean, and never cleared when the tree is dirty.
 
+- **Card `3c9aa03f`: review freshness gate.** Added
+  `scripts/fleet/review-freshness-gate.py` plus review guidance: independent
+  PASS requires the reviewed head to contain current main and every check
+  green on that exact head. No PASS on stale heads.
+
 - **Card `963cab65`: open-PR freshness scan.** Added `scripts/fleet/pr-freshness.py`
   reporting OPEN pull requests whose head no longer contains current main
   (BEHIND/DIRTY), across the fleet repos, exiting nonzero when a refresh is
