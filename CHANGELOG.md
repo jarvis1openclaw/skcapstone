@@ -12,6 +12,16 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased]
 
+### Changed
+
+- `fleet_beat.validate_beat_owner` is now an alias of the single shared
+  `heartbeat.validate_agent_name` allowlist (card 77d62d85): one
+  implementation for heartbeat and beat writers, reject-never-sanitize
+  semantics unchanged. `heartbeat.py` carries the deprecation-on-parity
+  note: once Worker Beat Protocol Cards B and D are live, it is deprecated
+  for worker-liveness use in favor of `fleet_beat`.
+
+
 ### Added
 
 - `fleet_beat` module (card ad0c3bfd / A of the Worker Beat Protocol): beat
