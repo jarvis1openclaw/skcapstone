@@ -13,6 +13,7 @@ Read-only. Prints one JSON verdict. Exit codes:
   2 checks not green on the exact head (failing or still pending)
   3 data or command error
 """
+
 from __future__ import annotations
 
 import argparse
@@ -75,20 +76,32 @@ def evaluate(pr: dict, compare: dict, repo: str, number) -> dict:
 
 def main(argv=None) -> int:
     parser = argparse.ArgumentParser(
-        description="Freshness gate: head contains current main and checks green")
+        description="Freshness gate: head contains current main and checks green"
+    )
     parser.add_argument("--repo", required=True, help="owner/name")
     parser.add_argument("--pr", required=True, type=int, help="PR number")
     args = parser.parse_args(argv)
 
     try:
-        pr = gh_json("pr", "view", str(args.pr), "--repo", args.repo, "--json",
-                     "state,headRefOid,baseRefName,statusCheckRollup")
+        pr = gh_json(
+            "pr",
+            "view",
+            str(args.pr),
+            "--repo",
+            args.repo,
+            "--json",
+            "state,headRefOid,baseRefName,statusCheckRollup",
+        )
         if pr.get("state") != "OPEN":
-            print(json.dumps({"verdict": "NOT_OPEN", "state": pr.get("state"),
-                              "exit_code": 3}, indent=2))
+            print(
+                json.dumps(
+                    {"verdict": "NOT_OPEN", "state": pr.get("state"), "exit_code": 3}, indent=2
+                )
+            )
             return 3
-        compare = gh_json("api",
-                          f"repos/{args.repo}/compare/{pr['baseRefName']}...{pr['headRefOid']}")
+        compare = gh_json(
+            "api", f"repos/{args.repo}/compare/{pr['baseRefName']}...{pr['headRefOid']}"
+        )
     except (RuntimeError, KeyError, ValueError) as exc:
         print(json.dumps({"verdict": "ERROR", "error": str(exc), "exit_code": 3}, indent=2))
         return 3

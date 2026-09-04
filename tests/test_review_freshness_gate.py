@@ -20,10 +20,14 @@ def pr_fixture(state="OPEN", head="abc123", rollup=None):
         "state": state,
         "headRefOid": head,
         "baseRefName": "main",
-        "statusCheckRollup": rollup if rollup is not None else [
-            {"name": "lint", "status": "COMPLETED", "conclusion": "SUCCESS"},
-            {"name": "unit tests (py3.11)", "status": "COMPLETED", "conclusion": "SUCCESS"},
-        ],
+        "statusCheckRollup": (
+            rollup
+            if rollup is not None
+            else [
+                {"name": "lint", "status": "COMPLETED", "conclusion": "SUCCESS"},
+                {"name": "unit tests (py3.11)", "status": "COMPLETED", "conclusion": "SUCCESS"},
+            ]
+        ),
     }
 
 
