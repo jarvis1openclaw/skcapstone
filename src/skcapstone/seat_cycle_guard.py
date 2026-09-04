@@ -118,8 +118,7 @@ class SeatCycleGuard:
                 owner_cycle_id = owner.get("cycle_id")
                 live_id = (
                     owner_cycle_id
-                    if self._owner_is_exactly_live(owner)
-                    and isinstance(owner_cycle_id, str)
+                    if self._owner_is_exactly_live(owner) and isinstance(owner_cycle_id, str)
                     else None
                 )
                 self._append_receipt(

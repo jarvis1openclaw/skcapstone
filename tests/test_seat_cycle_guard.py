@@ -164,9 +164,7 @@ def test_receipts_are_append_only_and_every_existing_line_is_parsed(tmp_path: Pa
 
     with pytest.raises(json.JSONDecodeError):
         guard.run(
-            lambda _cycle_id: pytest.fail(
-                "must not run after malformed CardStore-style receipt"
-            )
+            lambda _cycle_id: pytest.fail("must not run after malformed CardStore-style receipt")
         )
 
 
