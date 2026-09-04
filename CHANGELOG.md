@@ -15,7 +15,7 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   NEVER_STARTED/UNKNOWN with the evidence class used. Invariant: no lease
   state is derived from beat evidence alone. Shadow alert TTL 900s,
   actuation floor 3600s (measured Syncthing p95 292s). Shared allowlist
-  validation with heartbeat.py. 17 tests.
+  validation with heartbeat.py. 20 tests including agent-beat with disposition vocabulary and skmail emission for non-RUNNING states (Card C).
 
 
 

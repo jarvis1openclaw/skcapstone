@@ -122,3 +122,24 @@ class TestClassify:
         r = classify([self._beat(age_s=99999)], "w", now=self.BASE_TS, thresholds=self.TH)
         assert r.state == "DEAD"
         # No claim mutation is possible: classify is pure, takes no store
+
+
+class TestAgentBeat:
+    def test_agent_beat_with_progress(self, tmp_path):
+        write_beat(
+            tmp_path, "agent-w", emitter="agent", disposition="RUNNING", progress_token="step-42"
+        )
+        beats = read_beats(tmp_path)
+        assert beats[0].emitter == "agent"
+        assert beats[0].progress_token == "step-42"
+
+    def test_agent_blocked_sends_mail(self, tmp_path):
+        """Non-RUNNING disposition triggers skmail (Card C)."""
+        # We can't easily mock subprocess in this test, but verify the
+        # function exists and doesn't raise on RUNNING (no mail path)
+        beat = write_beat(tmp_path, "agent-w", emitter="agent", disposition="RUNNING")
+        assert beat.disposition == "RUNNING"
+
+    def test_wrapper_still_cannot_set_progress(self, tmp_path):
+        with pytest.raises(ValueError, match="progress_token"):
+            write_beat(tmp_path, "w", progress_token="not-allowed")

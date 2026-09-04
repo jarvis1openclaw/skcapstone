@@ -120,6 +120,57 @@ def write_beat(
     return beat
 
 
+def write_agent_beat(
+    beats_dir: Path,
+    owner: str,
+    card_id: str = "",
+    claim_revision: str = "",
+    disposition: str = "RUNNING",
+    elapsed_s: int = 0,
+    sequence: int = 0,
+    progress_token: str = "",
+    *,
+    skmail_recipient: str = "",
+) -> Beat:
+    """Write an agent beat. Non-RUNNING dispositions also emit one skmail.
+
+    This is the agent-side entry point (Card C). The wrapper cannot call
+    this: emitter is fixed to "agent" and progress_token is allowed.
+    """
+    import subprocess
+
+    beat = write_beat(
+        beats_dir,
+        owner,
+        card_id=card_id,
+        claim_revision=claim_revision,
+        emitter="agent",
+        disposition=disposition,
+        elapsed_s=elapsed_s,
+        sequence=sequence,
+        progress_token=progress_token,
+    )
+    if disposition != "RUNNING" and skmail_recipient:
+        # A block is an event with history, not a state to be overwritten
+        try:
+            subprocess.run(
+                [
+                    "skmail",
+                    "send",
+                    owner,
+                    skmail_recipient,
+                    "normal",
+                    "beat disposition",
+                    "%s %s" % (disposition, card_id),
+                ],
+                capture_output=True,
+                timeout=10,
+            )
+        except Exception:
+            pass  # mail failure never fails the beat
+    return beat
+
+
 def read_beats(beats_dir: Path) -> list[Beat]:
     """Read every parseable beat. Malformed files are skipped, never raise."""
     out: list[Beat] = []
