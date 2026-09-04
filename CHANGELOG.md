@@ -17,6 +17,16 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased]
 
+### Changed
+
+- `fleet_beat.validate_beat_owner` is now an alias of the single shared
+  `heartbeat.validate_agent_name` allowlist (card 77d62d85): one
+  implementation for heartbeat and beat writers, reject-never-sanitize
+  semantics unchanged. `heartbeat.py` carries the deprecation-on-parity
+  note: once Worker Beat Protocol Cards B and D are live, it is deprecated
+  for worker-liveness use in favor of `fleet_beat`.
+
+
 ### Added
 
 - `fleet_beat` module (card ad0c3bfd / A of the Worker Beat Protocol): beat
@@ -26,6 +36,17 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   state is derived from beat evidence alone. Shadow alert TTL 900s,
   actuation floor 3600s (measured Syncthing p95 292s). Shared allowlist
   validation with heartbeat.py. 20 tests including agent-beat with disposition vocabulary and skmail emission for non-RUNNING states (Card C).
+### Added
+
+- Wrapper beat loop in the worker launch command (card e03755ba / B of
+  the Worker Beat Protocol). Every launched worker now runs a background
+  beat loop that writes liveness state to
+  `~/.skcapstone/fleet/beats/<worker>.json` every
+  `SKFLEET_BEAT_INTERVAL` seconds (default 600). The beat carries owner,
+  card_id, claim_revision, emitter=wrapper, disposition=RUNNING, beat_at,
+  and elapsed_s. Killed on every exit path (HUP/INT/TERM/EXIT/normal).
+  A failing beat never fails the worker (`|| true` on every write).
+  Tunable via env without redeploy.
 
 
 
@@ -35,6 +56,13 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   actual worker/reviewer identity instead of hardcoded `actor="jarvis"`.
   This preserves worker identity in claim and completion events so Joules
   and evidence are credited to the worker that did the work (card 4c9d7a12).
+- Heartbeat agent names are validated against a strict `[a-z0-9-]` allowlist
+  at model construction and beacon initialization. Names containing path
+  separators, `..`, spaces, or other special characters are rejected, never
+  silently rewritten. The malformed file already in the heartbeats directory
+  (`casimir-andrew-junior: house of kobeszko.json`) is this validation gap
+  made visible. Shared `validate_agent_name()` helper is importable by any
+  future beat writer (card 34006183 / F of the Worker Beat Protocol).
 
 
 
