@@ -1,4 +1,5 @@
 """Path traversal rejection in heartbeat agent names (card 34006183 / F)."""
+
 import pytest
 from skcapstone.heartbeat import validate_agent_name
 
