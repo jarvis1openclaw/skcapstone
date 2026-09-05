@@ -234,9 +234,9 @@ class TestBoardMd:
         assert "Open task" in md
         assert "Done (1 hidden)" in md
         assert "Done task" not in md
-        md_full = board.generate_board_md(include_done=True)
+        md_full = board.generate_board_md(include_done=True, include_idle_agents=True)
         assert "Done task" in md_full
-        assert "jarvis" in md_full or "jarvis" in md
+        assert "jarvis" in md_full
 
     def test_write_board_md(self, board: Board):
         board.create_task(Task(id="t1", title="File test"))
