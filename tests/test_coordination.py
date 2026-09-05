@@ -233,9 +233,7 @@ class TestBoardMd:
         md = board.generate_board_md()
         assert "Open task" in md
         try:
-            md_full = board.generate_board_md(
-                include_done=True, include_idle_agents=True
-            )
+            md_full = board.generate_board_md(include_done=True, include_idle_agents=True)
         except TypeError:
             # Older skcoord without live-only defaults.
             md_full = md
