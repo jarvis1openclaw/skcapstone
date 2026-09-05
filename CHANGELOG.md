@@ -31,9 +31,7 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 - Fleet worker exit now idles the ephemeral agent projection after
   `release-claim` (wrapper finally/SIGTERM and rotate stop traps). Killed
-  workers no longer linger as `STALE PROJECTION` rows in `skfleet-working`.
-  The monitor also ignores seat/selector agents that are not named
-  `...-<card>`.
+  workers no longer linger as active agent projections after the unit dies.
 
 ### Changed
 
