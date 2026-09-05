@@ -34,6 +34,7 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased]
 
+<<<<<<< HEAD
 ### Fixed
 
 - `skfleet-working` ignores non-ephemeral seat agents when scanning for STALE PROJECTION ghosts; only `...-<card>` worker names qualify.
@@ -41,8 +42,19 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 - Fleet worker exit now idles the ephemeral agent projection after
   `release-claim` (wrapper finally/SIGTERM and rotate stop traps). Killed
   workers no longer linger as active agent projections after the unit dies.
+=======
+### Added
+
+- Daily `coord-maintain` scheduler job (`config/jobs.d/coord-maintain.yaml`) and
+  `coord maintain --lock-days` wiring for stale coordination lock prune. Cards
+  b0a0d004 / b0a0d005.
+>>>>>>> 4502a82 (docs: changelog for coord live-only maintain job)
 
 ### Changed
+
+- `coord status` hides idle/stale agent projections by default
+  (`--include-idle-agents`); `coord board` / `briefing` accept `--include-done`.
+  Maintain default `--done-days` is 7. Cards b0a0d003 / b0a0d001.
 
 - `fleet_beat.validate_beat_owner` is now an alias of the single shared
   `heartbeat.validate_agent_name` allowlist (card 77d62d85): one
