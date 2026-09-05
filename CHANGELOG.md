@@ -29,6 +29,8 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ### Fixed
 
+- `skfleet-working` ignores non-ephemeral seat agents when scanning for STALE PROJECTION ghosts; only `...-<card>` worker names qualify.
+
 - Fleet worker exit now idles the ephemeral agent projection after
   `release-claim` (wrapper finally/SIGTERM and rotate stop traps). Killed
   workers no longer linger as active agent projections after the unit dies.
