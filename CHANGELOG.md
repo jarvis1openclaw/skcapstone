@@ -37,6 +37,11 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 <<<<<<< HEAD
 ### Fixed
 
+- Card `d9bfecc4`: `worker_watchdog.classify_worker` defaults above measured
+  cross-host Syncthing p95 (292.336s), returns `transport-stale` vs
+  `worker-stale`, and treats beat absence with an active unit as a
+  non-releasable `telemetry-fault`.
+
 - `skfleet-working` ignores non-ephemeral seat agents when scanning for STALE PROJECTION ghosts; only `...-<card>` worker names qualify.
 
 - Fleet worker exit now idles the ephemeral agent projection after
