@@ -322,7 +322,7 @@ def test_launcher_routes_every_lane_through_exit_wrapper() -> None:
     source = ROTATE.read_text(encoding="utf-8")
     assert 'wrapper=os.path.join(os.path.dirname(__file__),"skfleet-worker-wrapper.py")' in source
     assert '"--claim-revision",claimed_revision' in source
-    assert "inner=shlex.join([" in source
+    assert "inner=[" in source
     assert "subprocess.run(_worker_launch_command(unit,workspace,inner)" in source
 
 

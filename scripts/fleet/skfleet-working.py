@@ -160,7 +160,7 @@ for unit in sorted(set(units)-seen_units):
         projection_error=type(exc).__name__
     pid=int(subprocess.run(['systemctl','--user','show',unit,'-p','MainPID','--value'],capture_output=True,text=True).stdout.strip() or 0)
     state=units[unit]
-    print(json.dumps(dict(host=host,agent=owner or 'unit-without-pi',card=card,pid=pid,elapsed=0,cpu=0,log_bytes=-1,log_age=-1,unit=unit,tmux=False,claim_state=claim,card_status=status,unit_missing_process=True,unit_load=state[0],unit_active=state[1],unit_sub=state[2],claim_owner=owner,claim_revision=revision,projection_state=projection_state,projection_error=projection_error),sort_keys=True))
+    print(json.dumps(dict(host=host,agent=owner or 'unit-without-pi',card=card,pid=pid,elapsed=-1,cpu=0,log_bytes=-1,log_age=-1,unit=unit,tmux=False,claim_state=claim,card_status=status,unit_missing_process=True,unit_load=state[0],unit_active=state[1],unit_sub=state[2],claim_owner=owner,claim_revision=revision,projection_state=projection_state,projection_error=projection_error),sort_keys=True))
 idle_projections=0
 sync_conflict_projections=0
 for path in (Path.home()/'.skcapstone/coordination/agents').glob('pi-*.json'):
@@ -254,12 +254,14 @@ def save_samples(samples: dict[str, dict[str, int]], path: Path = STATE_PATH) ->
 
 def assess(worker: Worker, samples: dict[str, dict[str, int]], now: int) -> tuple[str, int]:
     """Classify joined evidence without treating lifecycle state as a verdict."""
+    key = f"{worker.host}/{worker.unit}"
+    if not worker.unit_missing_process:
+        samples.pop(key, None)
     if worker.projection_state == "malformed" or worker.claim_state == "malformed-projection":
-        samples.pop(f"{worker.host}/{worker.unit}", None)
+        samples.pop(key, None)
         return "MALFORMED PROJECTION", now
     if worker.projection_state == "stale":
         return "STALE PROJECTION", now
-    key = f"{worker.host}/{worker.unit}"
     if worker.unit in {"", "not-found"}:
         samples.pop(key, None)
         if worker.claim_state == "exact":
@@ -270,19 +272,16 @@ def assess(worker: Worker, samples: dict[str, dict[str, int]], now: int) -> tupl
     if worker.claim_state == "mismatch":
         return "ACTION REQUIRED", now
     previous = samples.get(key)
+    if previous and not 0 <= now - previous["observed"] <= UNIT_SAMPLE_FRESHNESS:
+        previous = None
     first_seen = previous["first_seen"] if previous else now
     if worker.unit_missing_process:
         samples[key] = {"first_seen": first_seen, "observed": now}
         if worker.unit_active == "failed" and worker.claim_state == "exact":
             return "ACTION REQUIRED", first_seen
-        if (
-            previous
-            and UNIT_GRACE <= now - previous["observed"] <= UNIT_SAMPLE_FRESHNESS
-            and now - first_seen >= UNIT_GRACE
-        ):
+        if now - first_seen >= UNIT_GRACE:
             return "ACTION REQUIRED", first_seen
         return "SETTLING", first_seen
-    samples.pop(key, None)
     return "OK", now
 
 
@@ -344,9 +343,14 @@ def main() -> int:
         for key, value in samples.items()
         if key in live_keys and now - value.get("observed", 0) <= UNIT_SAMPLE_FRESHNESS
     }
-    # Projection-only rows are diagnostics, not workers. Keep them visible below,
-    # but never let stale or malformed projections inflate the worker total.
-    worker_rows = [row for row in rows if not row.evidence_source.startswith("agent-projection")]
+    # Unit-only and projection-only rows remain visible as diagnostics.
+    worker_rows = [
+        row
+        for row in rows
+        if row.pid > 0
+        and not row.unit_missing_process
+        and not row.evidence_source.startswith("agent-projection")
+    ]
     counts = Counter(row.card for row in worker_rows)
     gateway_age: dict[str, int] = {}
     db_path = os.path.expanduser(
@@ -372,7 +376,7 @@ def main() -> int:
     )
     print("-" * 124)
     print(
-        f"  {'host':8} {'pid':>7} {'worker':34} {'elapsed':>9} {'log':>9} "
+        f"  {'host':8} {'pid':>7} {'worker':34} {'Pi elapsed':>10} {'log':>9} "
         f"{'gateway':>9} {'owner':18} state"
     )
     alerts = []
@@ -399,7 +403,7 @@ def main() -> int:
         elif row.card_status in {"done", "archived", "void"}:
             state = f"TERMINAL STILL RUNNING ({row.card_status})"
             alerts.append((row, "terminal"))
-        elif counts[row.card] > 1:
+        elif row in worker_rows and counts[row.card] > 1:
             state = "DUPLICATE card process"
             alerts.append((row, "duplicate"))
         elif owner == "orphan-process":
@@ -410,9 +414,12 @@ def main() -> int:
             alerts.append((row, "claim"))
         log = "absent" if row.log_bytes < 0 else f"{row.log_bytes}B"
         gw_age = gateway_age.get(row.agent, -1)
+        elapsed = "-" if row.unit_missing_process else duration(row.elapsed)
+        if row.unit_missing_process:
+            state += "; diagnostic unit without Pi process"
         print(
             f"  {row.host:8} {row.pid:7d} {row.agent[:34]:34} "
-            f"{duration(row.elapsed):>9} {log:>9} {duration(gw_age):>9} "
+            f"{elapsed:>10} {log:>9} {duration(gw_age):>9} "
             f"{owner[:18]:18} {state}; unit={row.unit}; "
             f"state={row.unit_load}/{row.unit_active}/{row.unit_sub}; "
             f"claim_owner={row.claim_owner or '-'}; revision={row.claim_revision or '-'}; "

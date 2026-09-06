@@ -11,16 +11,96 @@ from skcapstone.fleet.worker_watchdog import (
     HOST_LOCAL_BEAT_NOTICE_S,
     MEASURED_CROSS_HOST_P95_S,
     GatewayRequest,
+    StartupObservation,
     WorkerClassification,
     WorkerGeneration,
     WorkerObservation,
+    classify_startup,
     classify_worker,
     correlate_request,
     duplicate_worker_owners,
+    startup_actuation_fenced,
     summarize_workers,
 )
 
 NOW = datetime(2026, 9, 4, 14, 0, tzinfo=timezone.utc)
+
+
+def _startup(**changes: object) -> StartupObservation:
+    values: dict[str, object] = {
+        "owner": "pi-codex-chiap08-abcd1234",
+        "card_id": "card-1",
+        "session_id": "session-1",
+        "claim_revision": "revision-1",
+        "expected_claim_revision": "revision-1",
+        "heartbeat_seen": True,
+        "executable_evidence_seen": True,
+        "heartbeat_at": "2026-09-04T13:59:30Z",
+        "executable_evidence": {
+            "kind": "executable-work",
+            "owner": "pi-codex-chiap08-abcd1234",
+            "card_id": "card-1",
+            "session_id": "session-1",
+            "claim_revision": "revision-1",
+        },
+    }
+    values.update(changes)
+    return StartupObservation(**values)  # type: ignore[arg-type]
+
+
+@pytest.mark.parametrize(
+    ("changes", "expected"),
+    [
+        ({}, "startup-ready"),
+        ({"heartbeat_seen": False}, "startup-heartbeat-missing"),
+        ({"executable_evidence_seen": False}, "startup-evidence-missing"),
+        ({"claim_revision": "other"}, "startup-claim-mismatch"),
+        ({"session_id": ""}, "startup-invalid-identity"),
+        ({"heartbeat_at": "not-a-time"}, "startup-heartbeat-malformed"),
+        ({"executable_evidence": None}, "startup-evidence-malformed"),
+        (
+            {"heartbeat_at": "2026-09-04T13:00:00Z"},
+            "startup-heartbeat-stale",
+        ),
+    ],
+)
+def test_startup_requires_heartbeat_and_executable_evidence(
+    changes: dict[str, object], expected: str
+) -> None:
+    assert classify_startup(_startup(**changes), now=NOW) == expected
+
+
+def test_startup_release_requires_exact_fence_and_absent_process() -> None:
+    observation = _startup(process_alive=False, session_alive=False)
+    assert (
+        startup_actuation_fenced(
+            observation,
+            owner=observation.owner,
+            claim_revision=observation.claim_revision,
+            now=NOW,
+        )
+        is False
+    )
+    stale = _startup(
+        process_alive=False,
+        session_alive=False,
+        heartbeat_at="2026-09-04T13:00:00Z",
+    )
+    assert (
+        startup_actuation_fenced(
+            stale,
+            owner=stale.owner,
+            claim_revision=stale.claim_revision,
+            now=NOW,
+        )
+        is True
+    )
+    assert (
+        startup_actuation_fenced(stale, owner=stale.owner, claim_revision="wrong", now=NOW)
+        is False
+    )
+
+
 INVARIANT = (
     "No lease state is derived from beat evidence alone; beats only "
     "corroborate preconditioned claim events."

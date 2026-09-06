@@ -36,6 +36,9 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ### Fixed
 
+- Fleet runtime repair: selector claimability, worker startup evidence,
+  heartbeat cleanup, watchdog fencing, and truthful Pi-only monitoring.
+
 - Card `d9bfecc4`: `worker_watchdog.classify_worker` defaults above measured
   cross-host Syncthing p95 (292.336s), returns `transport-stale` vs
   `worker-stale`, and treats beat absence with an active unit as a
