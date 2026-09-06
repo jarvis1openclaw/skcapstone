@@ -34,7 +34,6 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased]
 
-<<<<<<< HEAD
 ### Fixed
 
 - Card `d9bfecc4`: `worker_watchdog.classify_worker` defaults above measured
@@ -47,15 +46,18 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 - Fleet worker exit now idles the ephemeral agent projection after
   `release-claim` (wrapper finally/SIGTERM and rotate stop traps). Killed
   workers no longer linger as active agent projections after the unit dies.
-=======
+
 ### Added
 
 - Daily `coord-maintain` scheduler job (`config/jobs.d/coord-maintain.yaml`) and
   `coord maintain --lock-days` wiring for stale coordination lock prune. Cards
   b0a0d004 / b0a0d005.
->>>>>>> 4502a82 (docs: changelog for coord live-only maintain job)
 
 ### Changed
+
+- Worker briefs now require SKMail checks at startup, before major phases, and
+  at least every five minutes during long-running work. Replies are processed
+  before acknowledgement; unanswered mail is never treated as approval.
 
 - `coord status` hides idle/stale agent projections by default
   (`--include-idle-agents`); `coord board` / `briefing` accept `--include-done`.
