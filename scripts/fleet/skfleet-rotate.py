@@ -241,6 +241,7 @@ SKC=os.path.expanduser("~/.skenv/bin/skcapstone")
 TARGET=_required_lane_target("SKFLEET_TARGET")
 GLM_TARGET=_required_lane_target("SKFLEET_GLM_TARGET")
 QWEN_TARGET=_required_lane_target("SKFLEET_QWEN_TARGET", default="6")
+KIMI_TARGET=_required_lane_target("SKFLEET_KIMI_TARGET", default="0")
 MAX_LAUNCH=int(os.environ.get("SKFLEET_MAX_LAUNCH","11"))
 DRY = "--go" not in sys.argv
 HOME=os.path.expanduser("~")
@@ -256,13 +257,13 @@ STAMP=datetime.datetime.now(datetime.timezone.utc).strftime("%Y%m%dT%H%M%SZ")
 def sh(*a): return subprocess.run(a,capture_output=True,text=True).stdout
 
 _WORKER_UNIT_RE = re.compile(
-    r"^skfleet-worker-(codex|glm|qwen|escalate)-([0-9a-f]{8})\.service$"
+    r"^skfleet-worker-(codex|glm|qwen|kimi|escalate)-([0-9a-f]{8})\.service$"
 )
 
 
 def _worker_unit_name(lane, cid):
     """Return the transient service name for one newly launched worker."""
-    if lane not in {"codex", "glm", "qwen", "escalate"} or not re.fullmatch(
+    if lane not in {"codex", "glm", "qwen", "kimi", "escalate"} or not re.fullmatch(
         r"[0-9a-f]{8}", cid
     ):
         raise ValueError("invalid worker unit identity")
@@ -552,6 +553,11 @@ LANES=[
     {"name":"qwen","prefix":"qwen-auto-",
      "model":os.environ.get("SKFLEET_QWEN_MODEL","qwen3.8-27b-huihui-abliterated-q4_k_m"),
      "target":QWEN_TARGET},
+    # Kimi is explicitly opt-in and defaults to zero slots. Kimi-labelled
+    # cards never fall back to another lane when this lane is unavailable.
+    {"name":"kimi","prefix":"kimi-auto-",
+     "model":os.environ.get("SKFLEET_KIMI_MODEL","kimi-for-coding"),
+     "target":KIMI_TARGET},
     {"name":"escalate","prefix":"esc-auto-",
      "model":os.environ.get("SKFLEET_ESC_MODEL", ESC_MODEL if "ESC_MODEL" in dir() else "gpt-5.6-sol"),
      "target":int(os.environ.get("SKFLEET_ESC_TARGET","2"))},
@@ -560,6 +566,7 @@ _GLM_LEVEL_DEFAULTS={"S":"glm-4.6","M":"glm-4.6","L":"glm-4.7","XL":"glm-5.3"}
 _GLM_LEVELS={key:os.environ.get("SKFLEET_GLM_MODEL_"+key,value)
              for key,value in _GLM_LEVEL_DEFAULTS.items()}
 _GLM_SIZE_RE=re.compile(r"\[(S|M|XL|L)\]")
+_KIMI_SIZE_RE=re.compile(r"\[(S|M|L|XL)\]")
 # The codex lane used a single hardcoded role for every card. sk-codex is the
 # FRONTIER role (registry.yaml: sk-codex -> codex-frontier -> gpt-5.6-sol), so an
 # [S] card was being dispatched to the most expensive model in the estate. It is
@@ -579,6 +586,9 @@ def _codex_model_for(core):
 def _glm_model_for(core):
     match=_GLM_SIZE_RE.search(str((core or {}).get("title") or ""))
     return _GLM_LEVELS.get(match.group(1)) if match else None
+def _kimi_model_for(core):
+    match=_KIMI_SIZE_RE.search(str((core or {}).get("title") or ""))
+    return "k3" if match and match.group(1)=="XL" else "kimi-for-coding"
 if glm_held:
     log(d,"GLM_HOLD|%s|new GLM dispatch disabled by %s"%(HOST,GLM_HOLD_PATH))
 for _L in LANES:
@@ -2311,7 +2321,7 @@ def _parse_worker_owner(owner, cid, expected_seat=None):
     if not re.fullmatch(r"[0-9a-f]{8}", cid):
         return None
     for host in ROTATION_HOSTS:
-        for lane in ("codex", "glm", "qwen", "escalate"):
+        for lane in ("codex", "glm", "qwen", "kimi", "escalate"):
             if owner == "pi-%s-%s-%s" % (lane, host, cid):
                 return "lane", lane, host
         for lane in ("codex", "glm"):
@@ -3782,6 +3792,7 @@ _ESCALATE_LABEL="needs-stronger-model"
 _LANE_ONLY_LABELS={
     "codex-only":"codex",
     "glm-only":"glm",
+    "kimi-only":"kimi",
     "escalation-only":"escalate",
 }
 
@@ -3822,6 +3833,8 @@ def lane_compatibility(labels, escalation_required=False, qwen_allowed=True,
     """Return compatible lanes and a stable routing reason."""
     normalized={str(label).strip().lower() for label in (labels or [])}
     required={lane for label,lane in _LANE_ONLY_LABELS.items() if label in normalized}
+    if normalized & {"kimi", "kimi-only", "kimi-suitable", "kimi-lane"}:
+        required.add("kimi")
     if qwen_exclusive:
         required.add("qwen")
     if escalation_required:
@@ -3897,6 +3910,8 @@ def _lane_model(lane, core):
         return _glm_model_for(core) or lane["model"]
     if lane["name"]=="codex":
         return _codex_model_for(core) or lane["model"]
+    if lane["name"]=="kimi":
+        return _kimi_model_for(core)
     return lane["model"]
 
 
@@ -3909,6 +3924,8 @@ _CAPACITY_DOMAINS={
     "glm":tuple(os.environ.get("SKFLEET_GLM_CAPACITY_DOMAINS","zai").split(",")),
     "qwen":tuple(os.environ.get(
         "SKFLEET_QWEN_CAPACITY_DOMAINS","chiap01-qwen38,chiap08-qwen38").split(",")),
+    "kimi":tuple(os.environ.get(
+        "SKFLEET_KIMI_CAPACITY_DOMAINS","kimi-for-coding,kimi-k3").split(",")),
     "escalate":tuple(os.environ.get("SKFLEET_ESC_CAPACITY_DOMAINS","codex").split(",")),
 }
 _health_lanes=list(LANES)
@@ -3918,6 +3935,8 @@ for _glm_model in sorted(set(_GLM_LEVELS.values())):
 for _codex_model in sorted(set(_CODEX_LEVELS.values())):
     if _codex_model!=next(lane for lane in LANES if lane["name"]=="codex")["model"]:
         _health_lanes.append({"name":"codex","model":_codex_model})
+for _kimi_model in ("kimi-for-coding", "k3"):
+    _health_lanes.append({"name":"kimi","model":_kimi_model})
 _cycle_id=new_cycle_id(HOST,STAMP)
 _lane_health_snapshot=acquire_lane_snapshot(
     _GATEWAY_ENDPOINT,_health_lanes,_CAPACITY_DOMAINS,
@@ -3933,7 +3952,7 @@ def _health_for(lane,model):
 
 picks=[]; _i=0
 remaining={lane["name"]:lane["free"] for lane in LANES}
-_LANE_RANK={"qwen":0,"glm":1,"codex":2,"escalate":3}
+_LANE_RANK={"qwen":0,"glm":1,"codex":2,"kimi":3,"escalate":4}
 lane_order=sorted(LANES,key=lambda lane:_LANE_RANK.get(lane["name"],9))
 _esc_waiting=0
 _lane_deferred=collections.Counter()
@@ -4184,6 +4203,8 @@ for _LANE,(_,_,cid,core,_labels,_nb) in picks:
     model=_LANE["model"]
     if _LANE["name"]=="glm":
         model=_glm_model_for(core) or model
+    if _LANE["name"]=="kimi":
+        model=_kimi_model_for(core) or model
     pi_tools=pi_tool_allowlist(_labels)
     if DRY:
         log(d,"WOULD_LAUNCH|%s|%s|%s|lane=%s|model=%s|%s"%(HOST,sess,cid,_LANE["name"],model,str(core.get("title"))[:40])); continue
