@@ -21,7 +21,8 @@ def _helpers() -> dict[str, object]:
         "select_compatible_lane",
     }
     body = [
-        node for node in tree.body
+        node
+        for node in tree.body
         if (
             isinstance(node, ast.Assign)
             and any(isinstance(t, ast.Name) and t.id in names for t in node.targets)
@@ -35,9 +36,10 @@ def _helpers() -> dict[str, object]:
 
 @pytest.mark.parametrize("size", ["S", "M", "L"])
 def test_kimi_small_through_large_use_coding_model(size: str) -> None:
-    assert _helpers()["_kimi_model_for"](
-        {"title": f"[KIMI][{size}] bounded task"}
-    ) == "kimi-for-coding"
+    assert (
+        _helpers()["_kimi_model_for"]({"title": f"[KIMI][{size}] bounded task"})
+        == "kimi-for-coding"
+    )
 
 
 def test_kimi_xl_uses_k3() -> None:
@@ -49,7 +51,10 @@ def test_kimi_label_is_exclusive_and_has_no_fallback() -> None:
     assert ns["lane_compatibility"](["kimi-suitable"], False) == (("kimi",), "required-lane:kimi")
     remaining = {"kimi": 1, "glm": 1, "codex": 1}
     selected, reason = ns["select_compatible_lane"](
-        ["kimi-suitable"], False, ["kimi", "glm", "codex"], remaining,
+        ["kimi-suitable"],
+        False,
+        ["kimi", "glm", "codex"],
+        remaining,
         lane_health_by_name={
             "kimi": (False, "unknown"),
             "glm": (True, "healthy"),
@@ -63,6 +68,7 @@ def test_kimi_label_is_exclusive_and_has_no_fallback() -> None:
 
 def test_kimi_only_conflicts_with_other_lane_requirements() -> None:
     ns = _helpers()
-    assert ns["lane_compatibility"](
-        ["kimi-only", "codex-only"], False
-    )[1] == "conflicting-lane-only:codex,kimi"
+    assert (
+        ns["lane_compatibility"](["kimi-only", "codex-only"], False)[1]
+        == "conflicting-lane-only:codex,kimi"
+    )
