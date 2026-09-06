@@ -9,6 +9,7 @@ import hashlib
 import json
 import os
 import re
+import signal
 import subprocess
 import sys
 from pathlib import Path
@@ -66,6 +67,35 @@ def redact_stderr(stderr: bytes) -> str:
     return TOKEN_RE.sub("[REDACTED]", text)
 
 
+def idle_owner_projection(owner: str) -> None:
+    """Clear the ephemeral worker agent file so monitors stop listing ghosts.
+
+    release-claim frees the card, but the agent projection can stay
+    state=active with current_task set. skfleet-working then shows
+    STALE PROJECTION after the unit is gone. Fail soft: never block exit.
+    """
+    path = Path.home() / ".skcapstone" / "coordination" / "agents" / f"{owner}.json"
+    try:
+        data = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return
+    if not isinstance(data, dict) or data.get("agent") != owner:
+        return
+    data["state"] = "idle"
+    data["current_task"] = None
+    data["claimed_tasks"] = []
+    data["last_seen"] = datetime.datetime.now(datetime.timezone.utc).isoformat()
+    temporary = path.with_suffix(path.suffix + ".tmp")
+    try:
+        temporary.write_text(json.dumps(data, indent=2) + "\n", encoding="utf-8")
+        temporary.replace(path)
+    except OSError:
+        try:
+            temporary.unlink(missing_ok=True)
+        except OSError:
+            pass
+
+
 def record_terminal_exit(args: argparse.Namespace, stderr: bytes, rc: int) -> None:
     """Create one immutable, claim-scoped terminal evidence record."""
     stdout_size = args.stdout.stat().st_size
@@ -121,15 +151,47 @@ def parse_args() -> argparse.Namespace:
     return args
 
 
+def preflight_worktree() -> int:
+    """Clear safe stale sequencer state; refuse to start on dirty stale state."""
+    helper = Path(__file__).resolve().parent / "worktree-hygiene.py"
+    if not helper.exists():
+        return 0
+    r = subprocess.run(
+        [sys.executable, str(helper), "--clear", os.getcwd()], capture_output=True, text=True
+    )
+    if r.stdout.strip():
+        sys.stderr.write(r.stdout)
+    if r.returncode == 2:
+        sys.stderr.write(
+            "worktree preflight blocked: stale sequencer state with a dirty tree; "
+            "resolve it by hand before starting a worker\n"
+        )
+    return r.returncode
+
+
 def main() -> int:
     """Run the child, tee stderr to the journal, and record terminal evidence."""
     args = parse_args()
+    preflight = preflight_worktree()
+    if preflight == 2:
+        return 2
     args.stdout.parent.mkdir(parents=True, exist_ok=True)
-    with args.stdout.open("wb") as stdout:
-        child = subprocess.run(args.command, stdout=stdout, stderr=subprocess.PIPE)
-    sys.stderr.buffer.write(child.stderr)
-    record_terminal_exit(args, child.stderr, child.returncode)
-    return child.returncode
+
+    def _stop(signum: int, _frame: object) -> None:
+        idle_owner_projection(args.owner)
+        raise SystemExit(128 + signum)
+
+    signal.signal(signal.SIGTERM, _stop)
+    signal.signal(signal.SIGINT, _stop)
+    try:
+        with args.stdout.open("wb") as stdout:
+            child = subprocess.run(args.command, stdout=stdout, stderr=subprocess.PIPE)
+        sys.stderr.buffer.write(child.stderr)
+        record_terminal_exit(args, child.stderr, child.returncode)
+        return child.returncode
+    finally:
+        # Always idle the worker projection on any exit path, including SIGTERM.
+        idle_owner_projection(args.owner)
 
 
 if __name__ == "__main__":

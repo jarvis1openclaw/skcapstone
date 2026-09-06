@@ -14,6 +14,11 @@ from pathlib import Path
 
 from skcapstone.card_store import CardStore
 from skcapstone.coord_eligibility import leaf_eligibility_counts
+from skcapstone.fleet_lane_health import (
+    acquire_lane_snapshot,
+    cycle_id as new_cycle_id,
+    lane_health,
+)
 from skcapstone.scheduler_decision import (
     SchedulerFacts,
     classify_scheduler_population,
@@ -196,7 +201,7 @@ def _review_assignment(cid, core, labels, reviewer):
     handoff = authorize_review_launch(
         Path(HOME) / ".skcapstone",
         recommendation,
-        actor="jarvis",
+        actor=reviewer,
         current_process=_card_process_snapshot(cid),
         used_recommendation_ids={
             str(event.get("recommendation_id"))
@@ -497,8 +502,12 @@ except (OSError,ValueError,TypeError):
 # Two worker lanes. GLM sat unused for six hours because the rotation only managed
 # codex-auto-* sessions, so the z.ai account received no traffic at all while nine
 # idle legacy glm panes did nothing. A lane is a prefix, a model alias, a target.
+def _beat_interval():
+    """Wrapper beat interval in seconds. Tunable via env, no redeploy."""
+    return os.environ.get("SKFLEET_BEAT_INTERVAL", "600")
+
 LANES=[
-    {"name":"codex","prefix":"codex-auto-","model":"sk-codex",
+    {"name":"codex","prefix":"codex-auto-","model":"sk-codex-mid",
      "target":TARGET},
     {"name":"glm","prefix":"glm-auto-","model":os.environ.get("SKFLEET_GLM_MODEL","glm-4.6"),
      "target":0 if glm_held else GLM_TARGET},
@@ -520,6 +529,22 @@ _GLM_LEVEL_DEFAULTS={"S":"glm-4.6","M":"glm-4.6","L":"glm-4.7","XL":"glm-5.3"}
 _GLM_LEVELS={key:os.environ.get("SKFLEET_GLM_MODEL_"+key,value)
              for key,value in _GLM_LEVEL_DEFAULTS.items()}
 _GLM_SIZE_RE=re.compile(r"\[(S|M|XL|L)\]")
+# The codex lane used a single hardcoded role for every card. sk-codex is the
+# FRONTIER role (registry.yaml: sk-codex -> codex-frontier -> gpt-5.6-sol), so an
+# [S] card was being dispatched to the most expensive model in the estate. It is
+# the right default for a hand-run pi session, and the wrong one for a fleet that
+# sizes its own work. Roles are used rather than raw gpt names so the gateway can
+# re-point a bucket without a fleet redeploy.
+#   sk-codex-fast -> codex-fast -> gpt-5.4-mini
+#   sk-codex-mid  -> codex-mid  -> gpt-5.6-luna   (the operator default)
+#   sk-codex      -> codex-frontier -> gpt-5.6-sol
+_CODEX_LEVEL_DEFAULTS={"S":"sk-codex-fast","M":"sk-codex-mid",
+                       "L":"sk-codex","XL":"sk-codex"}
+_CODEX_LEVELS={key:os.environ.get("SKFLEET_CODEX_MODEL_"+key,value)
+               for key,value in _CODEX_LEVEL_DEFAULTS.items()}
+def _codex_model_for(core):
+    match=_GLM_SIZE_RE.search(str((core or {}).get("title") or ""))
+    return _CODEX_LEVELS.get(match.group(1)) if match else None
 def _glm_model_for(core):
     match=_GLM_SIZE_RE.search(str((core or {}).get("title") or ""))
     return _GLM_LEVELS.get(match.group(1)) if match else None
@@ -565,13 +590,13 @@ LIVE = os.path.join(HOME, ".skcapstone/evidence/fleet-live")
 _INEFFECTIVE_PATH = os.path.join(HOME, ".skcapstone/evidence/reap-ineffective.json")
 REAP_RUNTIME_VERSION = importlib.metadata.version("skcoord")
 LIVE_FRESH = 30 * 60      # a report older than this says nothing about now
+LIVE_TIMER_CYCLE = 6 * 60  # five-minute timer plus transport allowance
 CLAIM_GRACE = 300         # one full rotation period, so every host has reported
 # Reaping needs a quorum, because a card running on chiap04 is invisible in
 # chiap08's report. During a rollout the first host to publish is the ONLY
 # reporting host, and without this floor it would read every other host's live
 # worker as absent and reap all of them. Below quorum the reaper does nothing.
 REAP_QUORUM = 3
-KNOWN_HOST_TTL = 24 * 3600   # a host silent this long has left the fleet
 
 STALL_GRACE = 30 * 60     # a zero-byte log younger than this may still be starting
 _NO_PROGRESS = os.path.join(HOME, ".skcapstone/evidence/live-no-progress")
@@ -706,31 +731,54 @@ def reporting_capacity():
     return capacity
 
 
-def live_report():
-    """Return (oldest_recent_report, cards_running, reporting_host_count).
-
-    The first value is the OLDEST report among currently reporting hosts, not the
-    newest, and that choice is the whole safety property. A claim may only be
-    reaped once EVERY reporting host has published since it was made, because a
-    card running on chiap04 is invisible in chiap08's report. Taking the newest
-    would let the first host to start publishing reap every other host's live
-    workers, which is precisely the outage this code exists to prevent.
-    """
-    hosts = {}
+def live_report_health(expected_hosts=None, now=None):
+    """Return fleet reports plus per-host transport and freshness faults."""
+    now = time.time() if now is None else now
+    expected = tuple(expected_hosts or ROTATION_HOSTS)
+    stamps = []
     running = set()
-    now = time.time()
-    for p in glob.glob(os.path.join(LIVE, "*.json")):
+    reporting = set()
+    faults = []
+    for host in expected:
+        path = os.path.join(LIVE, host + ".json")
         try:
-            with open(p, encoding="utf-8") as fh:
+            with open(path, encoding="utf-8") as fh:
                 snap = json.load(fh)
+            if not isinstance(snap, dict):
+                raise ValueError("report is not an object")
             ts = float(snap.get("ts") or 0)
-        except (OSError, ValueError, TypeError):
+            report_host = str(snap.get("host") or "")
+            if report_host != host:
+                raise ValueError("report host=%s" % (report_host or "missing"))
+            if not 0 < ts <= now:
+                raise ValueError("report timestamp is absent or in the future")
+        except (OSError, ValueError, TypeError, json.JSONDecodeError) as exc:
+            reason = "missing" if isinstance(exc, FileNotFoundError) else "invalid"
+            faults.append({"host": host, "reason": reason, "age_seconds": None,
+                           "detail": str(exc)[:120]})
             continue
-        if not 0 < ts <= now or now - ts > LIVE_FRESH:
+        age = now - ts
+        if age > LIVE_FRESH:
+            faults.append({"host": host, "reason": "stale",
+                           "age_seconds": int(age), "detail": ""})
             continue
-        hosts[str(snap.get("host") or p)] = ts
-        running.update(str(c) for c in (snap.get("cards") or ()))
-    return (min(hosts.values()) if hosts else 0.0), running, len(hosts)
+        stamps.append(ts)
+        reporting.add(host)
+        cards = snap.get("cards") or []
+        if isinstance(cards, list):
+            running.update(str(card) for card in cards)
+        if age > LIVE_TIMER_CYCLE:
+            faults.append({"host": host, "reason": "transport_delayed",
+                           "age_seconds": int(age), "detail": ""})
+    expected_set = set(expected)
+    return {"oldest": min(stamps) if stamps else 0, "running": running,
+            "reporting": reporting, "expected": expected_set, "faults": faults,
+            "authoritative": reporting == expected_set and not faults}
+
+
+def live_report():
+    """Return the authoritative cross-host report health snapshot."""
+    return live_report_health()
 
 publish_live(sessions, worker_units)
 
@@ -774,14 +822,22 @@ for _f in glob.glob(os.path.join(EVID,"*","actions.log")):
 # unassign and archive also clear a claim. Omitting them reports an unassigned
 # card as still claimed, which hides it from the pool permanently.
 # TERMINAL states are sticky. complete and void END a card. Later assign,
-# unassign or claim events do NOT resurrect it: unassigning a finished card
-# clears an assignee, it does not un-finish the work. A naive last-write-wins
-# fold gets this wrong and re-offers completed cards forever.
+# unassign, claim or release_claim events do NOT resurrect it: unassigning a
+# finished card clears an assignee, it does not un-finish the work, a late
+# claim from a host whose sync lag predates the complete is a race symptom,
+# not a revival, and the release trap of such a zombie worker must not fold
+# the card back to the assignable pool. A naive last-write-wins fold gets
+# this wrong and re-offers completed cards forever.
 # Measured: 4d98b588 has claim, move, claim, complete, assign, unassign, claim
 # and 92bd87a3 has claim, complete, assign, unassign. Both were being handed to
 # workers, which then spent ~80 seconds each discovering the card was already
 # done and correctly refusing. That was the real "stale pool" cost, and the race
 # was a symptom rather than the cause.
+# Measured again on 56f9d32f: complete at 21:26:13Z, late claim at 21:29:11Z
+# spawned a worker, and that worker's release_claim at 22:25:28Z folded the
+# card to backlog, so the next cycle spawned another worker at 22:29Z. The
+# claim branch had no terminal guard and release_claim reset status
+# unconditionally. reopen is the one explicit path that clears terminality.
 _COLUMNS = {"backlog", "ready", "doing", "review", "done"}
 _NOT_CLAIMABLE = {"not-claimable", "sprint-container", "do-not-claim"}
 _SENSITIVE_CATEGORY = re.compile(
@@ -880,7 +936,7 @@ def _fold_claimability(core, rows):
     """Fold only fields used by Board.claim_task and scheduler policy."""
     state = {
         "status": "backlog", "owner": None, "claim_revision": None,
-        "archived": False, "voided": False,
+        "archived": False, "voided": False, "terminal": False,
         "title": str(core.get("title") or ""),
         "description": str(core.get("description") or ""),
         "acceptance_criteria": [
@@ -914,12 +970,15 @@ def _fold_claimability(core, rows):
                 and revision
             ):
                 state["owner"] = None
-                state["status"] = "backlog"
                 state["claim_revision"] = None
+                if not state["terminal"]:
+                    state["status"] = "backlog"
         elif action == "claim":
             owner = event.get("owner")
             if not isinstance(owner, str) or not owner:
                 raise ValueError("claim owner is missing")
+            if state["terminal"]:
+                continue
             if (state["owner"] and state["owner"] != owner and
                     state["status"] in {"ready", "doing", "review"}):
                 continue
@@ -930,12 +989,15 @@ def _fold_claimability(core, rows):
             state["status"] = "done"
             state["owner"] = None
             state["claim_revision"] = None
+            state["terminal"] = True
         elif action == "void":
             state["voided"] = True
+            state["terminal"] = True
         elif action == "archive":
             state["archived"] = True
         elif action == "reopen":
             state["archived"] = False
+            state["terminal"] = False
             column = str(event.get("column") or "").strip().lower()
             if column in _COLUMNS:
                 state["status"] = column
@@ -2479,8 +2541,25 @@ def _record_reap_outcome(cid, owner, claim_revision, claim_ts):
 
 
 def reap_dead_claims():
-    """Return claimed cards whose worker no host reports running."""
-    oldest, running, nhosts = live_report()
+    """Return claims only after every authoritative host reports absence."""
+    report_health = live_report()
+    # Preserve the tuple seam used by focused reaper tests and older callers.
+    # Production returns the richer mapping and therefore never weakens the
+    # fixed all-host visibility gate.
+    if isinstance(report_health, dict):
+        oldest = report_health["oldest"]
+        running = report_health["running"]
+        nhosts = len(report_health["reporting"])
+        known = len(report_health["expected"])
+    else:
+        oldest, running, nhosts = report_health
+        known = nhosts
+        report_health = {"faults": [], "expected": set(), "reporting": set()}
+    for fault in report_health["faults"]:
+        age = ("unknown" if fault["age_seconds"] is None
+               else str(fault["age_seconds"]))
+        log(d, "FLEET_LIVE_FAULT|%s|host=%s|reason=%s|age_seconds=%s|detail=%s"
+            % (HOST, fault["host"], fault["reason"], age, fault["detail"]))
     health = _worker_health_snapshot(
         sh("tmux", "ls", "-F", "#{session_name}").split()
     )
@@ -2488,16 +2567,16 @@ def reap_dead_claims():
         "duplicates=%d" %
         (HOST, health["sessions"], health["claims_exact"], health["mismatched"],
          health["duplicates"]))
-    # A host that is merely between runs must still be counted, or the quorum
-    # check passes while its workers are invisible. A host that is GONE must
-    # eventually stop counting, or one decommissioned machine blocks reaping for
-    # the whole fleet forever. KNOWN_HOST_TTL separates the two.
-    _cut = time.time() - KNOWN_HOST_TTL
-    known = sum(1 for f in glob.glob(os.path.join(LIVE, "*.json"))
-                if os.path.getmtime(f) >= _cut)
-    if not oldest or nhosts < REAP_QUORUM or nhosts < known:
-        log(d, "REAP|%s|below quorum (reporting=%d known=%d need>=%d); reaped nothing"
+    if not oldest or nhosts < REAP_QUORUM:
+        log(d, "REAP|%s|quorum_shortage reporting=%d known=%d need>=%d; reaped nothing"
             % (HOST, nhosts, known, REAP_QUORUM))
+        return 0
+    if not report_health.get("authoritative", nhosts >= known):
+        missing = ",".join(sorted(report_health["expected"] -
+                                  report_health["reporting"])) or "none"
+        log(d, "REAP|%s|known_host_visibility_loss reporting=%d known=%d "
+            "need>=%d missing=%s; reaped nothing"
+            % (HOST, nhosts, known, REAP_QUORUM, missing))
         return 0
     freed = 0
     _ineffective = _load_ineffective()
@@ -3570,16 +3649,22 @@ def lane_compatibility(labels, escalation_required=False, qwen_allowed=True,
 
 def select_compatible_lane(
         labels, escalation_required, lane_order, remaining, qwen_allowed=True,
-        qwen_exclusive=False):
+        qwen_exclusive=False, lane_health_by_name=None):
     """Choose the first free compatible lane without consuming another lane."""
     compatible,reason=lane_compatibility(
         labels,escalation_required,qwen_allowed,qwen_exclusive)
     if not compatible:
         return None,reason
+    health=lane_health_by_name or {}
+    healthy=[name for name in compatible
+             if health.get(name,(True,"healthy"))[0]]
     for lane in lane_order:
         name=lane["name"] if isinstance(lane,dict) else str(lane)
-        if name in compatible and remaining.get(name,0)>0:
+        admitted=health.get(name,(True,"healthy"))[0]
+        if name in compatible and admitted and remaining.get(name,0)>0:
             return name,"compatible"
+    if not healthy:
+        return None,"no-compatible-healthy-lane:%s"%",".join(compatible)
     return None,"no-free-lane:%s"%",".join(compatible)
 
 
@@ -3618,6 +3703,43 @@ def qwen_suitable(core):
     """Return whether Qwen may receive this card before a paid lane."""
     return not _QWEN_UNSUITABLE.search(str((core or {}).get("title") or ""))
 
+
+def _lane_model(lane, core):
+    if lane["name"]=="glm":
+        return _glm_model_for(core) or lane["model"]
+    if lane["name"]=="codex":
+        return _codex_model_for(core) or lane["model"]
+    return lane["model"]
+
+
+_LANE_HEALTH_PATH=os.environ.get(
+    "SKFLEET_LANE_HEALTH_PATH",
+    os.path.join(HOME,".skcapstone/evidence/fleet-lane-health.json"))
+_GATEWAY_ENDPOINT=os.environ.get("SKFLEET_GATEWAY_URL","http://chiap01:18790").rstrip("/")
+_CAPACITY_DOMAINS={
+    "codex":tuple(os.environ.get("SKFLEET_CODEX_CAPACITY_DOMAINS","codex").split(",")),
+    "glm":tuple(os.environ.get("SKFLEET_GLM_CAPACITY_DOMAINS","zai").split(",")),
+    "qwen":tuple(os.environ.get(
+        "SKFLEET_QWEN_CAPACITY_DOMAINS","chiap01-qwen38,chiap08-qwen38").split(",")),
+    "escalate":tuple(os.environ.get("SKFLEET_ESC_CAPACITY_DOMAINS","codex").split(",")),
+}
+_health_lanes=list(LANES)
+for _glm_model in sorted(set(_GLM_LEVELS.values())):
+    if _glm_model!=next(lane for lane in LANES if lane["name"]=="glm")["model"]:
+        _health_lanes.append({"name":"glm","model":_glm_model})
+_cycle_id=new_cycle_id(HOST,STAMP)
+_lane_health_snapshot=acquire_lane_snapshot(
+    _GATEWAY_ENDPOINT,_health_lanes,_CAPACITY_DOMAINS,
+    Path(_LANE_HEALTH_PATH),_cycle_id)
+_active_gateway_revision=str(_lane_health_snapshot.get("runtime_revision") or "")
+
+
+def _health_for(lane,model):
+    return lane_health(
+        _lane_health_snapshot,lane,model,cycle_id=_cycle_id,
+        endpoint=_GATEWAY_ENDPOINT,capacity_domains=_CAPACITY_DOMAINS[lane],
+        active_revision=_active_gateway_revision)
+
 picks=[]; _i=0
 remaining={lane["name"]:lane["free"] for lane in LANES}
 _LANE_RANK={"qwen":0,"glm":1,"codex":2,"escalate":3}
@@ -3638,10 +3760,21 @@ while _i<len(owned) and len(picks)<MAX_LAUNCH:
     _labels=_card[4]
     _esc=needs_escalation(_card[2], _card[3], _labels)
     _qwen_exclusive=qwen_first_exclusive(_card[2],_labels)
+    _card_lane_health={lane["name"]:_health_for(
+        lane["name"],_lane_model(lane,_card[3]))
+        for lane in LANES}
     _lane_name,_defer=select_compatible_lane(
-        _labels,_esc,lane_order,remaining,qwen_suitable(_card[3]),_qwen_exclusive)
+        _labels,_esc,lane_order,remaining,qwen_suitable(_card[3]),_qwen_exclusive,
+        _card_lane_health)
     if _lane_name is None:
         _lane_deferred[_defer]+=1
+        if _defer.startswith("no-compatible-healthy-lane:"):
+            details=",".join("%s=%s"%(name,state[1])
+                             for name,state in sorted(_card_lane_health.items()))
+            _log_once_per_hour(
+                d,"lane_admission",_card[2],
+                "LANE_ADMISSION_BLOCKED|%s|%s|%s|snapshot=%s"%
+                (HOST,_card[2],details,_LANE_HEALTH_PATH))
         if DRY:
             log(d,"DRY_SELECTION|%s|%s|excluded=%s"%(HOST,_card[2],_defer))
         if _defer=="no-free-lane:escalate": _esc_waiting+=1
@@ -3895,6 +4028,15 @@ for _LANE,(_,_,cid,core,_labels,_nb) in picks:
         log(d,"SKIPPED_LANE_RACE|%s|%s|%s|selected=%s|reason=%s"%
             (HOST,sess,cid,_LANE["name"],affinity_reason))
         continue
+    model=_lane_model(_LANE,fresh_claimability["core"])
+    admitted,health_reason=_health_for(_LANE["name"],model)
+    if not admitted:
+        lane_drift += 1
+        _log_once_per_hour(
+            d,"lane_admission",cid,
+            "SKIPPED_LANE_HEALTH|%s|%s|%s|lane=%s|model=%s|reason=%s"%
+            (HOST,sess,cid,_LANE["name"],model,health_reason))
+        continue
     claim=subprocess.run([SKC,"coord","claim",cid,"--agent",name],capture_output=True,text=True)
     claimed_owner,_claimed_at,claimed_revision=_current_claim_identity_fresh(cid)
     claim_outcome=_classify_claim_outcome(
@@ -3912,15 +4054,40 @@ for _LANE,(_,_,cid,core,_labels,_nb) in picks:
     # returns normally. Releasing only after the Pi command leaves a dead claim
     # in that case and drains the assignable pool. Bind cleanup to this exact
     # claim generation so it cannot release a newer same-owner worker.
-    child=('release_claim() { %s coord release-claim %s --owner %s '
-           '--expected-claim-revision %s --agent %s >/dev/null 2>&1 || true; }; '
-           'trap "release_claim; exit 143" HUP INT TERM; trap release_claim EXIT; '
-           'env SKAGENT=%s SKCAPSTONE_AGENT=%s SKFLEET_WORKSPACE=%s %s --approve --name %s '
-           '--provider skgateway --model %s --thinking off --tools %s '
-           '-p "$(cat %s)"; '
-           'rc=$?; trap - EXIT HUP INT TERM; release_claim; exit $rc'
-           % (SKC,cid,name,claimed_revision,name,name,name,workspace,PI,name,model,
-              pi_tools,bf))
+    _bi = _beat_interval()
+    _bf_path = "~/.skcapstone/fleet/beats/" + name + ".json"
+    child=(
+        "release_claim() { %s coord release-claim %s --owner %s "
+        "--expected-claim-revision %s --agent %s >/dev/null 2>&1 || true; }; "
+        "idle_agent() { python3 -c \"import json,datetime;from pathlib import Path;"
+        "p=Path.home()/'.skcapstone/coordination/agents'/('%s.json');"
+        "d=json.loads(p.read_text());"
+        "d.update(state='idle',current_task=None,claimed_tasks=[],"
+        "last_seen=datetime.datetime.now(datetime.timezone.utc).isoformat());"
+        "t=p.with_suffix('.json.tmp');t.write_text(json.dumps(d,indent=2)+chr(10));"
+        "t.replace(p)\" >/dev/null 2>&1 || true; }; "
+        "beat() { while :; do "
+        "mkdir -p ~/.skcapstone/fleet/beats; "
+        "echo '{\"owner\":\"%s\",\"card_id\":\"%s\",\"claim_revision\":\"%s\","
+        "\"emitter\":\"wrapper\",\"disposition\":\"RUNNING\","
+        "\"beat_at\":'\\$(date +%%s)',\"elapsed_s\":'\\$SECONDS'}' "
+        "> %s.tmp 2>/dev/null && mv %s.tmp %s 2>/dev/null || true; "
+        "sleep %s; done; }; "
+        "beat & BEAT=$!; "
+        "stop_beat() { kill $BEAT 2>/dev/null || true; }; "
+        'trap "stop_beat; release_claim; idle_agent; exit 143" HUP INT TERM; '
+        'trap "stop_beat; release_claim; idle_agent" EXIT; '
+        "env SKAGENT=%s SKCAPSTONE_AGENT=%s SKFLEET_WORKSPACE=%s %s --approve --name %s "
+        "--provider skgateway --model %s --thinking off --no-context-files --no-skills --tools %s "
+        '-p "$(cat %s)"; '
+        "rc=$?; trap - EXIT HUP INT TERM; stop_beat; release_claim; idle_agent; exit $rc"
+        % (SKC, cid, name, claimed_revision, name,
+           name,
+           name, cid, claimed_revision,
+           _bf_path, _bf_path, _bf_path,
+           _bi,
+           name, name, workspace, PI, name, model,
+           pi_tools, bf))
     wrapper=os.path.join(os.path.dirname(__file__),"skfleet-worker-wrapper.py")
     inner=shlex.join([
         sys.executable,wrapper,"--card",cid,"--owner",name,
@@ -3943,7 +4110,7 @@ for _LANE,(_,_,cid,core,_labels,_nb) in picks:
             append_review_launch_receipt(
                 Path(HOME) / ".skcapstone",
                 _review_handoff,
-                actor="jarvis",
+                actor=name,
                 claim_revision=claimed_revision,
                 launched=ok,
             )

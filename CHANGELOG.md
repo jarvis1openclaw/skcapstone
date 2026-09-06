@@ -1,5 +1,32 @@
 # Changelog
 
+- **Card `1b84d7f4`: Cursor Agent YOLO default.** Added `SK_CURSOR_YOLO`
+  (default on) so the SK agent picker launches Cursor Agent CLI (`agent` /
+  `cursor-agent`) with `--yolo`, plus doctor harness checks and docs aligned
+  with Codex/Claude/OpenCode YOLO wiring. Also realigned
+  `tests/test_dashboard_assistant.py` to the scoped read-only skdashboard
+  assistant contract so CI stays green against current sibling main.
+
+- **Card `83b048fc`: worktree sequencer hygiene.** Added
+  `scripts/fleet/worktree-hygiene.py` plus a worker-wrapper preflight: stale
+  cherry-pick, rebase, or merge state is named, auto-cleared when the tree is
+  clean, and never cleared when the tree is dirty.
+
+- **Card `3c9aa03f`: review freshness gate.** Added
+  `scripts/fleet/review-freshness-gate.py` plus review guidance: independent
+  PASS requires the reviewed head to contain current main and every check
+  green on that exact head. No PASS on stale heads.
+
+- **Card `963cab65`: open-PR freshness scan.** Added `scripts/fleet/pr-freshness.py`
+  reporting OPEN pull requests whose head no longer contains current main
+  (BEHIND/DIRTY), across the fleet repos, exiting nonzero when a refresh is
+  needed. Read-only, no auto-merge.
+
+- **Card `c6eeed44`: prevent overlapping Link and Mero recurring cycles.**
+  Added per-seat nonblocking guards with immutable cycle receipts and exact Linux
+  boot and process-generation evidence for crash recovery. Overlaps now record
+  honest no-ops, while old timestamps and quiet output never imply abandonment.
+
 All notable changes to **skcapstone** are documented here.
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
@@ -7,7 +34,113 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased]
 
+<<<<<<< HEAD
 ### Fixed
+
+- Card `d9bfecc4`: `worker_watchdog.classify_worker` defaults above measured
+  cross-host Syncthing p95 (292.336s), returns `transport-stale` vs
+  `worker-stale`, and treats beat absence with an active unit as a
+  non-releasable `telemetry-fault`.
+
+- `skfleet-working` ignores non-ephemeral seat agents when scanning for STALE PROJECTION ghosts; only `...-<card>` worker names qualify.
+
+- Fleet worker exit now idles the ephemeral agent projection after
+  `release-claim` (wrapper finally/SIGTERM and rotate stop traps). Killed
+  workers no longer linger as active agent projections after the unit dies.
+=======
+### Added
+
+- Daily `coord-maintain` scheduler job (`config/jobs.d/coord-maintain.yaml`) and
+  `coord maintain --lock-days` wiring for stale coordination lock prune. Cards
+  b0a0d004 / b0a0d005.
+>>>>>>> 4502a82 (docs: changelog for coord live-only maintain job)
+
+### Changed
+
+- `coord status` hides idle/stale agent projections by default
+  (`--include-idle-agents`); `coord board` / `briefing` accept `--include-done`.
+  Maintain default `--done-days` is 7. Cards b0a0d003 / b0a0d001.
+
+- `fleet_beat.validate_beat_owner` is now an alias of the single shared
+  `heartbeat.validate_agent_name` allowlist (card 77d62d85): one
+  implementation for heartbeat and beat writers, reject-never-sanitize
+  semantics unchanged. `heartbeat.py` carries the deprecation-on-parity
+  note: once Worker Beat Protocol Cards B and D are live, it is deprecated
+  for worker-liveness use in favor of `fleet_beat`.
+
+
+### Added
+
+- `SK_CURSOR_YOLO` (card `1b84d7f4`): SK agent picker wraps Cursor Agent CLI
+  (`agent` / `cursor-agent`) with `--yolo` by default; doctor reports
+  `harness:yolo:agent`; docs cover the env var next to Codex/Claude/OpenCode.
+- `fleet_beat` module (card ad0c3bfd / A of the Worker Beat Protocol): beat
+  writer with atomic temp+rename, beat reader with malformed-file tolerance,
+  and a pure `classify()` function returning LIVE/STALLED/BLOCKED/DEAD/
+  NEVER_STARTED/UNKNOWN with the evidence class used. Invariant: no lease
+  state is derived from beat evidence alone. Shadow alert TTL 900s,
+  actuation floor 3600s (measured Syncthing p95 292s). Shared allowlist
+  validation with heartbeat.py. 20 tests including agent-beat with disposition vocabulary and skmail emission for non-RUNNING states (Card C).
+- `skmail send` self-healing (card 4a3d1119): when a recurring cross-host
+  writer appends foreign records straight into another writer's mailbox
+  (blocking all canonical appends for that writer, observed twice on
+  2026-09-04), the send path now quarantines those records losslessly into
+  their canonical `<from>@<host>.jsonl` files and retries the append exactly
+  once. Unparseable lines are never deleted; contaminated destinations and
+  partial records still fail closed.
+### Added
+
+- Wrapper beat loop in the worker launch command (card e03755ba / B of
+  the Worker Beat Protocol). Every launched worker now runs a background
+  beat loop that writes liveness state to
+  `~/.skcapstone/fleet/beats/<worker>.json` every
+  `SKFLEET_BEAT_INTERVAL` seconds (default 600). The beat carries owner,
+  card_id, claim_revision, emitter=wrapper, disposition=RUNNING, beat_at,
+  and elapsed_s. Killed on every exit path (HUP/INT/TERM/EXIT/normal).
+  A failing beat never fails the worker (`|| true` on every write).
+  Tunable via env without redeploy.
+
+
+
+### Fixed
+
+- Review handoff authorization and launch receipt attribution now use the
+  actual worker/reviewer identity instead of hardcoded `actor="jarvis"`.
+  This preserves worker identity in claim and completion events so Joules
+  and evidence are credited to the worker that did the work (card 4c9d7a12).
+- Heartbeat agent names are validated against a strict `[a-z0-9-]` allowlist
+  at model construction and beacon initialization. Names containing path
+  separators, `..`, spaces, or other special characters are rejected, never
+  silently rewritten. The malformed file already in the heartbeats directory
+  (`casimir-andrew-junior: house of kobeszko.json`) is this validation gap
+  made visible. Shared `validate_agent_name()` helper is importable by any
+  future beat writer (card 34006183 / F of the Worker Beat Protocol).
+
+
+
+### Fixed
+
+- **Card 0e010300: let the fleet bootstrap its own lane admission.** Lane
+  admission required each capacity domain's SKGateway `lastCheck` to be within
+  the 120 second snapshot bound, which reused a snapshot expiry bound as a
+  backend observation bound. SKGateway derives health rows only from proxied
+  request outcomes, so that made a lane admissible only during the two minutes
+  after somebody else sent traffic to that exact domain, and the fleet could
+  neither start nor restart itself. Measured against the live dispatch gateway,
+  up 8 hours with `codex` reading `status=up observed=true`, all four lanes
+  resolved to `(False, "unknown")`. The documented three conditions (observed
+  `up` or `degraded`, not quarantined, positive queue capacity) are now the
+  whole contract. Unobserved, malformed, and future `lastCheck` values still
+  fail closed, and snapshot freshness is still enforced. The post-restart
+  bootstrap (one warm-up request per capacity domain) is documented in
+  `docs/fleet/lane-admission-health.md`.
+
+- **Card 46c6526d: fail closed before fleet lane claims.** Fleet selection and
+  the immediate preclaim gate consume a fresh snapshot that the selector creates
+  by fetching SKGateway health and queue state once in the same cycle. The
+  atomically sealed evidence binds endpoint, capacity domains, exact model, and
+  the Git revision of the active gateway process. An unhealthy or incomplete
+  lane remains unclaimed without suppressing independently healthy lanes.
 
 - **Card ea0bc9e1: bind automatic review closeout to exact generations.** A
   completed review closes only the unchanged producer generation it names;
