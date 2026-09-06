@@ -535,7 +535,7 @@ except (OSError,ValueError,TypeError):
 # idle legacy glm panes did nothing. A lane is a prefix, a model alias, a target.
 def _beat_interval():
     """Wrapper beat interval in seconds. Tunable via env, no redeploy."""
-    return os.environ.get("SKFLEET_BEAT_INTERVAL", "600")
+    return os.environ.get("SKFLEET_BEAT_INTERVAL", "60")
 
 LANES=[
     {"name":"codex","prefix":"codex-auto-","model":"sk-codex-mid",

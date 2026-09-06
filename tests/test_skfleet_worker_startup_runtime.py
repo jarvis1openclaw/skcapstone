@@ -16,7 +16,12 @@ import threading
 import time
 
 import pytest
-from skcapstone.fleet.worker_watchdog import StartupObservation, startup_actuation_fenced
+from skcapstone.fleet.worker_watchdog import (
+    DEFAULT_HEARTBEAT_TIMEOUT_S,
+    HOST_LOCAL_BEAT_NOTICE_S,
+    StartupObservation,
+    startup_actuation_fenced,
+)
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -258,8 +263,42 @@ def test_wrapper_reports_early_child_exit_without_waiting_for_deadline(
         assert not args.stdout.exists()
 
 
-def test_actual_launcher_shell_preserves_workspace_and_beat_identity(tmp_path):
+def test_default_heartbeat_has_margin_below_notice_and_timeout(monkeypatch):
+    monkeypatch.delenv("SKFLEET_BEAT_INTERVAL", raising=False)
+    tree = ast.parse((ROOT / "scripts/fleet/skfleet-rotate.py").read_text())
+    function = next(
+        node
+        for node in tree.body
+        if isinstance(node, ast.FunctionDef) and node.name == "_beat_interval"
+    )
+    namespace = {"os": os}
+    exec(compile(ast.Module(body=[function], type_ignores=[]), "beat-interval", "exec"), namespace)
+    interval = float(namespace["_beat_interval"]())
+    assert interval == 60
+    assert interval <= HOST_LOCAL_BEAT_NOTICE_S / 2
+    assert interval <= DEFAULT_HEARTBEAT_TIMEOUT_S / 10
+
+
+@pytest.mark.parametrize("override", [None, "17"])
+def test_actual_launcher_shell_preserves_workspace_and_beat_identity(
+    tmp_path, monkeypatch, override
+):
+    monkeypatch.delenv("SKFLEET_BEAT_INTERVAL", raising=False)
+    if override is not None:
+        monkeypatch.setenv("SKFLEET_BEAT_INTERVAL", override)
     source = (ROOT / "scripts/fleet/skfleet-rotate.py").read_text()
+    tree = ast.parse(source)
+    interval_function = next(
+        node
+        for node in tree.body
+        if isinstance(node, ast.FunctionDef) and node.name == "_beat_interval"
+    )
+    interval_assignment = next(
+        node
+        for node in ast.walk(tree)
+        if isinstance(node, ast.Assign)
+        and any(isinstance(target, ast.Name) and target.id == "_bi" for target in node.targets)
+    )
     assignment = next(
         node
         for node in ast.walk(ast.parse(source))
@@ -288,7 +327,7 @@ def test_actual_launcher_shell_preserves_workspace_and_beat_identity(tmp_path):
         claimed_revision="rev-1",
         sess="session-1",
         _bf_path=str(beat),
-        _bi=1,
+        os=os,
         workspace=str(workspace),
         PI=str(pi),
         model="fake",
@@ -296,7 +335,16 @@ def test_actual_launcher_shell_preserves_workspace_and_beat_identity(tmp_path):
         bf=str(brief),
         shlex=shlex,
     )
-    exec(compile(ast.Module(body=[assignment], type_ignores=[]), "launcher", "exec"), namespace)
+    exec(
+        compile(
+            ast.Module(body=[interval_function, interval_assignment, assignment], type_ignores=[]),
+            "launcher",
+            "exec",
+        ),
+        namespace,
+    )
+    assert namespace["_bi"] == (override or "60")
+    assert f"sleep {override or '60'} & wait $!" in namespace["child"]
     result = subprocess.run(
         ["bash", "-c", namespace["child"]],
         capture_output=True,
