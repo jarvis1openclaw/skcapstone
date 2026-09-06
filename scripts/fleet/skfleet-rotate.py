@@ -4263,18 +4263,18 @@ for _LANE,(_,_,cid,core,_labels,_nb) in picks:
         "last_seen=datetime.datetime.now(datetime.timezone.utc).isoformat());"
         "t=p.with_suffix('.json.tmp');t.write_text(json.dumps(d,indent=2)+chr(10));"
         "t.replace(p)\" >/dev/null 2>&1 || true; }; "
-        "beat() { "
+        "beat() { while :; do "
         "trap 'trap - HUP INT TERM; "
         "for sleeper in $(jobs -pr); do kill \"$sleeper\" 2>/dev/null || true; done; "
         "wait; exit 0' HUP INT TERM; "
-        "while :; do "
         "mkdir -p ~/.skcapstone/fleet/beats; "
-        "echo '{\"owner\":\"%s\",\"card_id\":\"%s\",\"claim_revision\":\"%s\",\"session_id\":\"%s\","
+        "echo '{\"owner\":\"%s\",\"card_id\":\"%s\",\"claim_revision\":\"%s\","
+        "\"session_id\":\"%s\","
         "\"emitter\":\"wrapper\",\"disposition\":\"RUNNING\","
         "\"beat_at\":'$(date +%%s)',\"elapsed_s\":'$SECONDS'}' "
         "> %s.tmp 2>/dev/null && mv %s.tmp %s 2>/dev/null || true; "
         "sleep %s & wait $!; done; }; "
-        "beat </dev/null >/dev/null 2>&1 & BEAT=$!; "
+        "beat & BEAT=$!; "
         "stop_beat() { kill $BEAT 2>/dev/null || true; wait $BEAT 2>/dev/null || true; }; "
         'trap "stop_beat; release_claim; idle_agent; exit 143" HUP INT TERM; '
         'trap "stop_beat; release_claim; idle_agent" EXIT; '
@@ -4371,4 +4371,5 @@ if lane_drift:
     log(d,"LANE_RACED|%s|%d card(s) changed lane compatibility before claim"%
         (HOST,lane_drift))
 if claim_refused:
-    log(d,"CLAIM_REFUSED_TOTAL|%s|%d claim command(s) refused or not visible in the authoritative fold"%(HOST,claim_refused))
+    log(d,"CLAIM_REFUSED_TOTAL|%s|%d claim command(s) refused or not visible "
+        "in the authoritative fold"%(HOST,claim_refused))
