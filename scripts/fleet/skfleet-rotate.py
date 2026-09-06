@@ -13,6 +13,7 @@ import importlib.metadata
 from pathlib import Path
 
 from skcapstone.card_store import CardStore
+from skcapstone.fleet.worker_watchdog import StartupObservation, startup_actuation_fenced
 from skcapstone.coord_eligibility import leaf_eligibility_counts
 from skcapstone.fleet_lane_health import (
     acquire_lane_snapshot,
@@ -290,11 +291,41 @@ def active_worker_units():
 
 def _worker_launch_command(unit, workspace, inner):
     """Build the systemd-supported detached worker launch command."""
+    # Keep a legacy string caller compatible, but never round-trip the real
+    # wrapper argv through shlex.join/split.  The child script contains shell
+    # function declarations and must remain one argument to bash -lc.
+    child_argv = ["bash", "-lc", inner] if isinstance(inner, str) else list(inner)
     return [
         "systemd-run", "--user", "--quiet", "--collect", "--service-type=exec",
         "--unit", unit, "--property=KillMode=control-group",
-        "--working-directory", workspace, "bash", "-lc", inner,
+        "--working-directory", workspace, *child_argv,
     ]
+
+
+def _resolve_workspace_root(root):
+    """Resolve a configured workspace root to one unambiguous Git checkout."""
+    candidate = Path(root).expanduser()
+    if not candidate.is_dir():
+        raise ValueError("workspace root is missing or not a directory")
+    if (candidate / ".git").exists():
+        return str(candidate)
+    repositories = sorted(
+        child
+        for child in candidate.iterdir()
+        if child.is_dir() and (child / ".git").exists()
+    )
+    if len(repositories) != 1:
+        raise ValueError(
+            "workspace root must contain exactly one Git checkout; "
+            f"found {len(repositories)}"
+        )
+    return str(repositories[0])
+
+
+def _worker_workspace(default):
+    """Use an explicitly configured checkout only when it resolves uniquely."""
+    configured = os.environ.get("SKFLEET_WORKSPACE")
+    return _resolve_workspace_root(configured) if configured else default
 
 
 def pi_tool_allowlist(labels):
@@ -934,18 +965,40 @@ def _legacy_claimability_events(fresh=False):
 
 def _fold_claimability(core, rows):
     """Fold only fields used by Board.claim_task and scheduler policy."""
+    core_links = core.get("links") if isinstance(core.get("links"), dict) else {}
     state = {
         "status": "backlog", "owner": None, "claim_revision": None,
         "archived": False, "voided": False, "terminal": False,
+        "review_seen": False,
         "title": str(core.get("title") or ""),
         "description": str(core.get("description") or ""),
         "acceptance_criteria": [
             str(x) for x in (core.get("acceptance_criteria") or [])
         ],
-        "links": {},
+        "links": {
+            str(key): str(value).strip()
+            for key, value in core_links.items()
+            if str(key).strip() and str(value).strip()
+        },
         "labels": [str(x) for x in (core.get("initial_labels") or [])],
         "dependencies": [str(x) for x in (core.get("dependencies") or [])],
     }
+    review_link_keys = {
+        "pr", "pull_request", "open_pr", "candidate_evidence_sha256",
+        "evidence", "evidence_sha256",
+    }
+    # Retain metadata as history while tracking which review markers belong
+    # to the current workflow phase. An explicit executable transition starts
+    # a new phase; an automatic claim release never does.
+    markers = {
+        "title": "[REVIEW]" in state["title"].upper(),
+        "description": "PASS_FOR_REVIEW" in state["description"].upper(),
+        **{"label:" + str(label).strip().lower(): True for label in state["labels"]
+           if str(label).strip().lower() in {"review", "review-only"}},
+        **{"link:" + key: bool(value) for key, value in state["links"].items()
+           if key in review_link_keys},
+    }
+    state["review_markers"] = markers
     ordered = sorted(rows, key=lambda e: (str(e.get("ts") or ""),
                                           str(e.get("writer") or ""), e.get("seq", 0)))
     for event in ordered:
@@ -954,6 +1007,9 @@ def _fold_claimability(core, rows):
             column = str(event.get("column") or "").strip().lower()
             if column in _COLUMNS:
                 state["status"] = column
+                state["review_seen"] = column == "review"
+                if column in {"backlog", "ready", "doing"}:
+                    markers.clear()
         elif action == "assign":
             state["owner"] = event.get("owner")
             state["claim_revision"] = None
@@ -1001,18 +1057,26 @@ def _fold_claimability(core, rows):
             column = str(event.get("column") or "").strip().lower()
             if column in _COLUMNS:
                 state["status"] = column
+                state["review_seen"] = column == "review"
+                if column in {"backlog", "ready", "doing"}:
+                    markers.clear()
         elif action == "add_label":
             label = event.get("label")
+            if str(label).strip().lower() in {"review", "review-only"}:
+                markers["label:" + str(label).strip().lower()] = True
             if isinstance(label, str) and label and label not in state["labels"]:
                 state["labels"].append(label)
         elif action == "remove_label":
             label = event.get("label")
+            markers.pop("label:" + str(label).strip().lower(), None)
             state["labels"] = [x for x in state["labels"] if x != label]
         elif action == "describe":
             if event.get("title") is not None:
                 state["title"] = str(event.get("title"))
+                markers["title"] = "[REVIEW]" in state["title"].upper()
             if event.get("description") is not None:
                 state["description"] = str(event.get("description"))
+                markers["description"] = "PASS_FOR_REVIEW" in state["description"].upper()
         elif action == "amend_criteria":
             criteria = event.get("criteria")
             if not isinstance(criteria, list) or not criteria or not all(
@@ -1021,12 +1085,15 @@ def _fold_claimability(core, rows):
                 raise ValueError("amended acceptance criteria are malformed")
             state["acceptance_criteria"] = list(criteria)
         elif action == "link" and event.get("link_key") in {
-            "producer_identity", "candidate_evidence_sha256"
+            "producer_identity", "candidate_evidence_sha256", "pr",
+            "pull_request", "open_pr", "evidence", "evidence_sha256",
         }:
             value = event.get("link_value")
             if not isinstance(value, str) or not value.strip():
                 raise ValueError("typed review metadata is malformed")
             state["links"][str(event["link_key"])] = value.strip()
+            if event["link_key"] in review_link_keys:
+                markers["link:" + event["link_key"]] = True
         elif action in ("add_dependency", "remove_dependency"):
             dep = _dependency_value(event)
             if action == "add_dependency" and dep and dep not in state["dependencies"]:
@@ -1054,6 +1121,27 @@ def _claimability_reason(core, state):
         return "done"
     if state["owner"] and state["status"] in {"ready", "doing", "review"}:
         return "owned-%s" % state["status"]
+    # Review work is a separate lane.  An unowned review card must not fall
+    # through as executable work after its producer releases the claim.  The
+    # explicit markers also cover stale projections whose column is backlog.
+    # A dedicated reviewer must reach _review_assignment, which enforces
+    # producer separation and exact candidate evidence before launch.
+    links = state["links"]
+    description = state["description"]
+    governed_review = "review" in {str(label).strip().lower() for label in labels} and (
+        (bool(str(links.get("producer_identity") or "").strip())
+         and bool(re.fullmatch(r"[0-9a-f]{64}", str(links.get("candidate_evidence_sha256") or "").lower())))
+        or (not links.get("producer_identity") and not links.get("candidate_evidence_sha256")
+            and bool(re.search(r"Producer identity:\s*[^.\s][^.]*\.", description))
+            and bool(re.search(r"sha256=([0-9a-f]{64})(?:\.|\s|$)", description)))
+    )
+    review_marked = (
+        state["status"] == "review"
+        or state["review_seen"]
+        or (any(state["review_markers"].values()) and not governed_review)
+    )
+    if review_marked:
+        return "review"
     if non_implementation(folded_core, labels):
         return "human-gate"
     if "foreign-project" in {str(x).strip().lower() for x in labels}:
@@ -2358,6 +2446,105 @@ def _current_claim_identity_fresh(cid):
     return _claim_identity(_acts_fresh_rows(cid))
 
 
+def _startup_release_ready(report):
+    """Recommend release only with current host-local negative proof and fence."""
+    if report.get("host") != HOST or report.get("state") == "startup-ready":
+        return False
+    try:
+        cid, owner, revision = (report[key] for key in
+                                ("card_id", "owner", "claim_revision"))
+        unit = _worker_unit_name(report["lane"], cid)
+        cgroup = report["control_group"]
+        if (not isinstance(cgroup, str) or not cgroup.startswith("/")
+                or ".." in cgroup.split("/") or not cgroup.endswith("/" + unit)):
+            return False
+        pid = report["child_pid"]
+        if not isinstance(pid, int) or pid <= 0 or Path("/proc", str(pid)).exists():
+            return False
+        status = subprocess.run(
+            ["systemctl", "--user", "show", unit,
+             "--property=LoadState,ActiveState,MainPID,ControlPID"],
+            capture_output=True, text=True, timeout=5)
+        fields = dict(line.split("=", 1) for line in status.stdout.splitlines() if "=" in line)
+        if fields.get("LoadState") == "not-found":
+            if status.returncode not in {0, 1}:
+                return False
+        elif (status.returncode != 0 or fields.get("ActiveState") not in {"inactive", "failed"}
+              or fields.get("MainPID") != "0" or fields.get("ControlPID") != "0"):
+            return False
+        group_path = Path("/sys/fs/cgroup" + cgroup)
+        try:
+            events = dict(line.split() for line in (group_path / "cgroup.events").read_text().splitlines())
+            if events.get("populated") != "0":
+                return False
+        except FileNotFoundError:
+            if group_path.exists():
+                return False
+        sessions = subprocess.run(
+            ["tmux", "list-sessions", "-F", "#{session_name}"],
+            capture_output=True, text=True, timeout=5)
+        if sessions.returncode == 0:
+            if report["session_id"] in sessions.stdout.splitlines():
+                return False
+        elif sessions.returncode == 1:
+            if "no server running" not in sessions.stderr:
+                missing_socket = re.fullmatch(
+                    r"error connecting to (/[^\n]+) \(No such file or directory\)",
+                    sessions.stderr.strip())
+                if not missing_socket:
+                    return False
+                try:
+                    Path(missing_socket.group(1)).lstat()
+                except FileNotFoundError:
+                    pass
+                else:
+                    return False
+        else:
+            return False
+        fresh_owner, _, fresh_revision = _current_claim_identity_fresh(cid)
+        if (fresh_owner, fresh_revision) != (owner, revision):
+            return False
+        observation = StartupObservation(
+            owner=owner, card_id=cid, session_id=report["session_id"],
+            claim_revision=revision, expected_claim_revision=fresh_revision,
+            heartbeat_seen=bool(report.get("heartbeat_at")),
+            heartbeat_at=report.get("heartbeat_at"),
+            executable_evidence_seen=bool(report.get("executable_evidence")),
+            executable_evidence=report.get("executable_evidence"),
+            process_alive=False, session_alive=False)
+        return startup_actuation_fenced(
+            observation, owner=fresh_owner, claim_revision=fresh_revision,
+            now=datetime.datetime.now(datetime.timezone.utc))
+    except (OSError, ValueError, TypeError, KeyError, subprocess.TimeoutExpired):
+        return False
+
+
+def _release_failed_startups():
+    """Reconcile exited local startups on the next selector cycle, never kill."""
+    if DRY:
+        return
+    directory = Path(_WORKER_EXIT_DIR).parent / "worker-startup"
+    for path in directory.glob("*.json"):
+        try:
+            report = json.loads(path.read_text())
+            if not isinstance(report, dict) or not _startup_release_ready(report):
+                continue
+            cid, owner, revision = (report[key] for key in
+                                    ("card_id", "owner", "claim_revision"))
+            log(d, "STARTUP_RELEASE_RECOMMENDED|%s|%s|owner=%s|claim_revision=%s" %
+                (HOST, cid, owner, revision))
+            result = subprocess.run(
+                [SKC, "coord", "release-claim", cid, "--owner", owner,
+                 "--expected-claim-revision", revision, "--agent", "jarvis"],
+                capture_output=True, text=True, timeout=10)
+            fresh_owner, _, fresh_revision = _current_claim_identity_fresh(cid)
+            released = (fresh_owner, fresh_revision) != (owner, revision)
+            log(d, "STARTUP_RELEASE_RESULT|%s|%s|rc=%s|released=%s" %
+                (HOST, cid, result.returncode, released))
+        except (OSError, ValueError, TypeError, KeyError, subprocess.TimeoutExpired) as exc:
+            log(d, "STARTUP_RELEASE_UNAVAILABLE|%s|%s" % (HOST, type(exc).__name__))
+
+
 def _acts_fresh_rows(cid):
     """Every event for a card, straight from disk."""
     ev = os.path.join(CARDS, cid, "events")
@@ -2712,6 +2899,7 @@ if DRY:
            "close_reviewed_parents skipped; "
            "pass --go to mutate the board" % HOST)
 else:
+    _release_failed_startups()
     reap_dead_claims()
 
 # ---- open provisional outcomes for review, then close reviewed work --------
@@ -3727,6 +3915,9 @@ _health_lanes=list(LANES)
 for _glm_model in sorted(set(_GLM_LEVELS.values())):
     if _glm_model!=next(lane for lane in LANES if lane["name"]=="glm")["model"]:
         _health_lanes.append({"name":"glm","model":_glm_model})
+for _codex_model in sorted(set(_CODEX_LEVELS.values())):
+    if _codex_model!=next(lane for lane in LANES if lane["name"]=="codex")["model"]:
+        _health_lanes.append({"name":"codex","model":_codex_model})
 _cycle_id=new_cycle_id(HOST,STAMP)
 _lane_health_snapshot=acquire_lane_snapshot(
     _GATEWAY_ENDPOINT,_health_lanes,_CAPACITY_DOMAINS,
@@ -4005,8 +4196,14 @@ for _LANE,(_,_,cid,core,_labels,_nb) in picks:
     except BoundaryError as exc:
         log(d, "REVIEW_ASSIGNMENT_BLOCKED|%s|%s|%s" % (HOST, cid, exc))
         continue
-    workspace=os.path.join(HOME,".skcapstone/fleet/workspaces",name)
-    os.makedirs(workspace,exist_ok=True)
+    default_workspace=os.path.join(HOME,".skcapstone/fleet/workspaces",name)
+    try:
+        workspace=_worker_workspace(default_workspace)
+    except ValueError as exc:
+        log(d,"WORKSPACE_BLOCKED|%s|%s|%s"%(HOST,cid,exc))
+        continue
+    if workspace == default_workspace:
+        os.makedirs(workspace,exist_ok=True)
     bf=os.path.join(logdir,"brief-%s.txt"%cid); open(bf,"w").write(brief)
     lf=os.path.join(logdir,"%s-%s.log"%(cid,STAMP))
     # Last-moment re-check through the same fold that built the pool.
@@ -4066,35 +4263,43 @@ for _LANE,(_,_,cid,core,_labels,_nb) in picks:
         "last_seen=datetime.datetime.now(datetime.timezone.utc).isoformat());"
         "t=p.with_suffix('.json.tmp');t.write_text(json.dumps(d,indent=2)+chr(10));"
         "t.replace(p)\" >/dev/null 2>&1 || true; }; "
-        "beat() { while :; do "
+        "beat() { "
+        "trap 'trap - HUP INT TERM; "
+        "for sleeper in $(jobs -pr); do kill \"$sleeper\" 2>/dev/null || true; done; "
+        "wait; exit 0' HUP INT TERM; "
+        "while :; do "
         "mkdir -p ~/.skcapstone/fleet/beats; "
-        "echo '{\"owner\":\"%s\",\"card_id\":\"%s\",\"claim_revision\":\"%s\","
+        "echo '{\"owner\":\"%s\",\"card_id\":\"%s\",\"claim_revision\":\"%s\",\"session_id\":\"%s\","
         "\"emitter\":\"wrapper\",\"disposition\":\"RUNNING\","
-        "\"beat_at\":'\\$(date +%%s)',\"elapsed_s\":'\\$SECONDS'}' "
+        "\"beat_at\":'$(date +%%s)',\"elapsed_s\":'$SECONDS'}' "
         "> %s.tmp 2>/dev/null && mv %s.tmp %s 2>/dev/null || true; "
-        "sleep %s; done; }; "
-        "beat & BEAT=$!; "
-        "stop_beat() { kill $BEAT 2>/dev/null || true; }; "
+        "sleep %s & wait $!; done; }; "
+        "beat </dev/null >/dev/null 2>&1 & BEAT=$!; "
+        "stop_beat() { kill $BEAT 2>/dev/null || true; wait $BEAT 2>/dev/null || true; }; "
         'trap "stop_beat; release_claim; idle_agent; exit 143" HUP INT TERM; '
         'trap "stop_beat; release_claim; idle_agent" EXIT; '
-        "env SKAGENT=%s SKCAPSTONE_AGENT=%s SKFLEET_WORKSPACE=%s %s --approve --name %s "
+        "env SKAGENT=%s SKCAPSTONE_AGENT=%s SKFLEET_WORKSPACE=%s "
+        "SKFLEET_CARD_ID=%s SKFLEET_CLAIM_REVISION=%s SKFLEET_SESSION_ID=%s "
+        "%s --approve --name %s "
         "--provider skgateway --model %s --thinking off --no-context-files --no-skills --tools %s "
         '-p "$(cat %s)"; '
         "rc=$?; trap - EXIT HUP INT TERM; stop_beat; release_claim; idle_agent; exit $rc"
         % (SKC, cid, name, claimed_revision, name,
            name,
-           name, cid, claimed_revision,
+           name, cid, claimed_revision, sess,
            _bf_path, _bf_path, _bf_path,
            _bi,
-           name, name, workspace, PI, name, model,
+           name, name, shlex.quote(workspace), cid, shlex.quote(claimed_revision),
+           shlex.quote(sess), shlex.quote(PI), name, model,
            pi_tools, bf))
     wrapper=os.path.join(os.path.dirname(__file__),"skfleet-worker-wrapper.py")
-    inner=shlex.join([
+    inner=[
         sys.executable,wrapper,"--card",cid,"--owner",name,
         "--claim-revision",claimed_revision,"--host",HOST,"--lane",_LANE["name"],
         "--model",model,"--stdout",lf,"--evidence-dir",_WORKER_EXIT_DIR,
+        "--session",sess,"--worker-executable",PI,
         "--","bash","-lc",child,
-    ])
+    ]
     unit=_worker_unit_name(_LANE["name"],cid)
     r=subprocess.run(_worker_launch_command(unit,workspace,inner),capture_output=True,text=True)
     ok = r.returncode==0

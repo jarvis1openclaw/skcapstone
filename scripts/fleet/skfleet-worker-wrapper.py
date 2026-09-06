@@ -12,7 +12,149 @@ import re
 import signal
 import subprocess
 import sys
+import threading
+import time
 from pathlib import Path
+
+from skcapstone.fleet.worker_watchdog import StartupObservation, classify_startup
+
+
+def startup_observation(args: argparse.Namespace, child_pid: int) -> StartupObservation:
+    """Read host-local heartbeat and actual attributed executable descendants.
+
+    A shell with Pi text in its command is not executable evidence. Only a
+    live executable, or a Node process whose script resolves to Pi, qualifies.
+    Observation failures never authorize termination or release.
+    """
+    identity = dict(
+        owner=args.owner,
+        card_id=args.card,
+        session_id=args.session,
+        claim_revision=args.claim_revision,
+    )
+    heartbeat_at = None
+    beat_path = Path.home() / ".skcapstone/fleet/beats" / f"{args.owner}.json"
+    try:
+        beat = json.loads(beat_path.read_text(encoding="utf-8"))
+        if all(beat.get(key) == value for key, value in identity.items()):
+            stamp = float(beat["beat_at"])
+            if stamp >= args.started_at:
+                heartbeat_at = datetime.datetime.fromtimestamp(
+                    stamp, datetime.timezone.utc
+                ).isoformat()
+    except (OSError, ValueError, TypeError, KeyError, AttributeError, OverflowError):
+        pass
+    evidence = None
+    pending = [child_pid]
+    visited = set()
+    expected_executable = Path(args.worker_executable).resolve()
+    expected_env = {
+        "SKAGENT": args.owner,
+        "SKFLEET_CARD_ID": args.card,
+        "SKFLEET_CLAIM_REVISION": args.claim_revision,
+        "SKFLEET_SESSION_ID": args.session,
+    }
+    while pending and len(visited) < 256:
+        pid = pending.pop()
+        if pid in visited:
+            continue
+        visited.add(pid)
+        proc = Path("/proc") / str(pid)
+        try:
+            pending.extend(
+                int(value) for value in (proc / f"task/{pid}/children").read_text().split()
+            )
+            executable = (proc / "exe").resolve(strict=True)
+            argv = (proc / "cmdline").read_bytes().split(b"\0")
+            environment = dict(
+                item.split(b"=", 1)
+                for item in (proc / "environ").read_bytes().split(b"\0")
+                if b"=" in item
+            )
+            attributed = all(
+                environment.get(key.encode()) == value.encode()
+                for key, value in expected_env.items()
+            )
+            matches = executable == expected_executable
+            if executable.name in {"node", "nodejs"} and len(argv) > 1:
+                matches = Path(os.fsdecode(argv[1])).resolve() == expected_executable
+            if matches and attributed:
+                evidence = {
+                    **identity,
+                    "kind": "executable-work",
+                    "pid": pid,
+                    "executable": str(expected_executable),
+                }
+                break
+        except (OSError, ValueError, RuntimeError):
+            continue
+    return StartupObservation(
+        **identity,
+        expected_claim_revision=args.claim_revision,
+        heartbeat_seen=heartbeat_at is not None,
+        heartbeat_at=heartbeat_at,
+        executable_evidence_seen=evidence is not None,
+        executable_evidence=evidence,
+    )
+
+
+def write_startup_report(
+    args: argparse.Namespace, pid: int, state: str, observation: StartupObservation | None = None
+) -> None:
+    """Preserve one immutable report for next-cycle fenced reconciliation."""
+    payload = {
+        "owner": args.owner,
+        "card_id": args.card,
+        "claim_revision": args.claim_revision,
+        "session_id": args.session,
+        "host": args.host,
+        "state": state,
+        "observed_at": datetime.datetime.now(datetime.timezone.utc).isoformat(),
+        "heartbeat_at": observation.heartbeat_at if observation else None,
+        "executable_evidence": observation.executable_evidence if observation else None,
+        "release_recommended": False,
+        "lane": args.lane,
+        "child_pid": pid,
+        "control_group": None,
+    }
+    try:
+        payload["control_group"] = next(
+            line[3:]
+            for line in Path("/proc/self/cgroup").read_text().splitlines()
+            if line.startswith("0::")
+        )
+    except (OSError, StopIteration):
+        pass
+    # The wrapper and its unit still exist here. Exact fenced exit
+    # cleanup belongs to the child shell, not this observer.
+    directory = args.evidence_dir.parent / "worker-startup"
+    key = hashlib.sha256(
+        f"{args.owner}\0{args.claim_revision}\0{args.started_at}".encode()
+    ).hexdigest()
+    try:
+        directory.mkdir(parents=True, exist_ok=True)
+        with (directory / f"{key}.json").open("x", encoding="utf-8") as handle:
+            json.dump(payload, handle, sort_keys=True)
+            handle.write("\n")
+    except OSError as exc:
+        sys.stderr.write(f"startup evidence write failed: {exc}\n")
+    emit_work_mail(args, "agent.status", f"phase=startup state={state}")
+
+
+def monitor_startup(
+    args: argparse.Namespace, child: subprocess.Popen, stop: threading.Event
+) -> None:
+    """Publish one bounded startup verdict without mistaking timeout for death."""
+    deadline = time.monotonic() + args.startup_timeout
+    while True:
+        now = datetime.datetime.now(datetime.timezone.utc)
+        observation = startup_observation(args, child.pid)
+        state = classify_startup(observation, now=now)
+        if state == "startup-ready" or stop.is_set() or time.monotonic() >= deadline:
+            write_startup_report(args, child.pid, state, observation)
+            return
+        stop.wait(min(1.0, max(0.0, deadline - time.monotonic())))
+
 
 STDERR_LIMIT = 2048
 TRANSPORT_PATTERNS = {
@@ -171,12 +313,17 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--stdout", required=True, type=Path)
     parser.add_argument("--evidence-dir", required=True, type=Path)
     parser.add_argument("--mail-recipient", default="jarvis")
+    parser.add_argument("--session", default="")
+    parser.add_argument("--worker-executable", default="")
+    parser.add_argument("--startup-timeout", type=float, default=120.0)
     parser.add_argument("command", nargs=argparse.REMAINDER)
     args = parser.parse_args()
     if args.command[:1] == ["--"]:
         args.command = args.command[1:]
     if not args.command:
         parser.error("child command is required")
+    if args.startup_timeout <= 0 or not args.startup_timeout < float("inf"):
+        parser.error("startup timeout must be finite and positive")
     return args
 
 
@@ -201,8 +348,10 @@ def preflight_worktree() -> int:
 def main() -> int:
     """Run the child, tee stderr to the journal, and record terminal evidence."""
     args = parse_args()
+    args.started_at = int(time.time())
     preflight = preflight_worktree()
     if preflight == 2:
+        write_startup_report(args, os.getpid(), "startup-preflight-blocked")
         return 2
     args.stdout.parent.mkdir(parents=True, exist_ok=True)
     emit_work_mail(args, "agent.hello", f"phase=started lane={args.lane} model={args.model}")
@@ -213,11 +362,19 @@ def main() -> int:
 
     signal.signal(signal.SIGTERM, _stop)
     signal.signal(signal.SIGINT, _stop)
+    startup_stop = threading.Event()
+    startup_thread = None
     try:
         with args.stdout.open("wb") as stdout:
-            child = subprocess.run(args.command, stdout=stdout, stderr=subprocess.PIPE)
-        sys.stderr.buffer.write(child.stderr)
-        record_terminal_exit(args, child.stderr, child.returncode)
+            child = subprocess.Popen(args.command, stdout=stdout, stderr=subprocess.PIPE)
+            if args.session and args.worker_executable:
+                startup_thread = threading.Thread(
+                    target=monitor_startup, args=(args, child, startup_stop), daemon=True
+                )
+                startup_thread.start()
+            _, stderr = child.communicate()
+        sys.stderr.buffer.write(stderr)
+        record_terminal_exit(args, stderr, child.returncode)
         emit_work_mail(
             args,
             "work.complete" if child.returncode == 0 else "work.blocked",
@@ -225,6 +382,9 @@ def main() -> int:
         )
         return child.returncode
     finally:
+        startup_stop.set()
+        if startup_thread:
+            startup_thread.join(timeout=6)
         # Always idle the worker projection on any exit path, including SIGTERM.
         idle_owner_projection(args.owner)
 
