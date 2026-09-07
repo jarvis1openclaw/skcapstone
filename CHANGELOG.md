@@ -36,6 +36,10 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ### Fixed
 
+- Cards `ca3ad02b`, `31f0642f`, and `1fea841f`: restored the Link observation
+  producer and Niobe live entrypoint, with review lineage bound to the exact
+  repository, pull request number, and head commit.
+
 - Card `48db6272`: restored the released Link and Mero seat-cycle entrypoint,
   observation feed, SKMail helper, service units, and focused runtime tests.
 
