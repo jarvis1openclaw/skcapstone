@@ -36,6 +36,10 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ### Fixed
 
+- Card `4f7e2c91`: Link now reconciles exact source-card and head review work
+  into one deterministic governed backlog card and reports it launchable only
+  after the fleet reviewer-assignment preflight accepts the same card.
+
 - Card `f0ba44f4`: Link now emits bounded, exact-head review-work
   recommendations from signed incomplete-lineage evidence while merge
   recommendations remain fail-closed.
