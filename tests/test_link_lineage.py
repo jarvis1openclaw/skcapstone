@@ -139,6 +139,32 @@ def test_source_owner_cannot_be_its_reviewer(tmp_path):
     assert out["review_work_recommendations"] == []
 
 
+def test_source_originator_cannot_be_its_reviewer(tmp_path):
+    _home(tmp_path, "source01")
+    out = mod.reconcile(
+        [
+            {
+                "repository": "org/repo",
+                "number": 7,
+                "headRefOid": "a" * 40,
+                "baseRefOid": "b" * 40,
+            }
+        ],
+        [
+            {
+                "id": "source01",
+                "title": "Implement PR #7",
+                "originator": _reviewer()["identity"],
+                "owner": "different-current-owner",
+                "created_by": "different-creator",
+            }
+        ],
+        tmp_path,
+        reviewer_candidates=[_reviewer()],
+    )
+    assert out["review_work_recommendations"] == []
+
+
 def test_review_work_is_deterministically_bounded(tmp_path):
     ids = [f"{number:08x}" for number in range(60)]
     _home(tmp_path, *ids)

@@ -294,7 +294,9 @@ def reconcile(
             not terminal_reviews or (terminal_reviews and not bound_terminal_reviews)
         ):
             source = sources[0]
-            source_owner = str(source.get("owner") or source.get("created_by") or "").strip()
+            source_owner = str(
+                source.get("originator") or source.get("owner") or source.get("created_by") or ""
+            ).strip()
             eligible_reviewers = [
                 reviewer
                 for reviewer in candidates_from_authority
