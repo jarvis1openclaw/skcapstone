@@ -262,6 +262,12 @@ HOME=os.path.expanduser("~")
 CARDS=os.path.join(HOME,".skcapstone/cards")
 EVID=os.path.join(HOME,".skcapstone/evidence/fleet-rotation")
 PI="/home/skuser01/.npm-global/bin/pi"
+PI_CARDSTORE_GUARD=os.environ.get(
+    "SKFLEET_PI_CARDSTORE_GUARD",
+    os.path.join(os.path.dirname(os.path.abspath(__file__)), "pi-cardstore-guard.mjs"),
+)
+if not os.path.isfile(PI_CARDSTORE_GUARD):
+    raise SystemExit("BLOCKED|missing Pi CardStore write guard: %s" % PI_CARDSTORE_GUARD)
 PI_NATIVE_TOOLS=("read", "bash", "edit", "write", "grep", "find", "ls")
 PI_MCP_PROXY_LABEL="mcp-required"
 ESC_MODEL=os.environ.get("SKFLEET_ESC_MODEL","gpt-5.6-sol")
@@ -4372,6 +4378,10 @@ for _LANE,(_,_,cid,core,_labels,_nb) in picks:
       "for your exact agent identity. Verify that ownership before working and never "
       "claim or substitute another card. If ownership is absent, or a dependency is "
       "incomplete, say so and stop rather than working it anyway.\n\n"
+      "COORDINATION WRITE BOUNDARY: Use skcapstone coord for every verdict, "
+      "evidence, status, claim, label, dependency, and lifecycle write. Never create, "
+      "append, rewrite, rename, or delete CardStore JSONL. Use CLI reads for normal "
+      "verification; raw file inspection is emergency operator diagnostics only.\n\n"
       "CARD %s (%s)\nTITLE: %s\nDESCRIPTION: %s\n\nACCEPTANCE CRITERIA:\n%s\n\n" % (cid,cid,core.get("kind"),core.get("title"),core.get("description"),ac))
     _seat = seat_for(cid, core)
     # A seat-owned card runs under the seat's identity, not the lane's. The
@@ -4490,7 +4500,7 @@ for _LANE,(_,_,cid,core,_labels,_nb) in picks:
         'trap "stop_beat; release_claim; idle_agent" EXIT; '
         "env SKAGENT=%s SKCAPSTONE_AGENT=%s SKFLEET_WORKSPACE=%s "
         "SKFLEET_CARD_ID=%s SKFLEET_CLAIM_REVISION=%s SKFLEET_SESSION_ID=%s "
-        "%s --approve --name %s "
+        "%s --approve --extension %s --name %s "
         "--provider skgateway --model %s --thinking off --no-context-files --no-skills --tools %s "
         '-p "$(cat %s)"; '
         "rc=$?; trap - EXIT HUP INT TERM; stop_beat; release_claim; idle_agent; exit $rc"
@@ -4500,7 +4510,9 @@ for _LANE,(_,_,cid,core,_labels,_nb) in picks:
            _bf_path, _bf_path, _bf_path,
            _bi,
            name, name, shlex.quote(workspace), cid, shlex.quote(claimed_revision),
-           shlex.quote(sess), shlex.quote(PI), name, model,
+           shlex.quote(sess), shlex.quote(PI),
+           shlex.quote(globals().get("PI_CARDSTORE_GUARD", "pi-cardstore-guard.mjs")),
+           name, model,
            pi_tools, bf))
     wrapper=os.path.join(os.path.dirname(__file__),"skfleet-worker-wrapper.py")
     inner=[
