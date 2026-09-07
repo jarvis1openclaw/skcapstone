@@ -152,7 +152,7 @@ jobs:
       - name: Install extracted siblings from source
         run: |
           pip install --force-reinstall --no-deps --no-cache-dir \
-            "skcoord @ git+https://github.com/jarvis1openclaw/skcoord@c38d56d7078411f478d36b6f7985acc43b5c50f5" \
+            "skcoord @ git+https://github.com/jarvis1openclaw/skcoord@436128dca2dd465d0232947fd9979a36af3bf2b1" \
             "skdashboard @ git+https://github.com/smilinTux/skdashboard" \
             "skharness @ git+https://github.com/smilinTux/skharness"
 
