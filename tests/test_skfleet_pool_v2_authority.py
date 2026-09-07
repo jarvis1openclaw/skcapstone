@@ -5,6 +5,7 @@ from __future__ import annotations
 import ast
 import hashlib
 import json
+import re
 from pathlib import Path
 from types import SimpleNamespace
 
@@ -21,7 +22,7 @@ def _load_helpers(*names: str) -> dict[str, object]:
     }
     assert set(functions) == set(names)
     module = ast.Module(body=[functions[name] for name in names], type_ignores=[])
-    namespace: dict[str, object] = {"hashlib": hashlib, "json": json}
+    namespace: dict[str, object] = {"hashlib": hashlib, "json": json, "re": re}
     exec(compile(module, str(ROTATE), "exec"), namespace)
     return namespace
 
@@ -116,8 +117,8 @@ def test_worker_runtime_contract_is_unchanged() -> None:
 
 def test_authority_and_preclaim_are_wired_into_launcher() -> None:
     source = ROTATE.read_text(encoding="utf-8")
-    assert "_pool_v2_ids = _pool_v2_ready_ids(" in source
-    assert "pool = list(_pool_v2_rows.values())" in source
+    assert "pool, _PINNED_IDS = _pool_v2_authority_rows(" in source
+    assert "_OWNER_BY_ID, _SEAT_BLOCKED = _pool_v2_owner_map(" in source
     assert "POOL_AUTHORITY|%s|source=POOL_V2" in source
-    assert "if not _pool_v2_preclaim_matches(" in source
+    assert "_pool_v2_preclaim_handoff(" in source
     assert "SKIPPED_ADMISSION_DRIFT|" in source

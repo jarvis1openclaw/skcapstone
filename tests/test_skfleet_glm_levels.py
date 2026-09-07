@@ -16,7 +16,6 @@ from __future__ import annotations
 
 import ast
 import json
-import os
 from pathlib import Path
 from types import SimpleNamespace
 
@@ -108,7 +107,8 @@ def _load_review_assignment(
     body = [
         node
         for node in tree.body
-        if isinstance(node, ast.FunctionDef) and node.name == "_review_assignment"
+        if isinstance(node, ast.FunctionDef)
+        and node.name in {"_governed_review_metadata", "_review_assignment"}
     ]
     exec(compile(ast.Module(body=body, type_ignores=[]), str(ROTATE), "exec"), namespace)
     return namespace, captured
