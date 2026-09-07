@@ -61,6 +61,8 @@ def _ids(rows: Iterable[Mapping[str, object]]) -> set[str]:
         card_id = row.get("card_id") or row.get("id")
         if not isinstance(card_id, str) or not card_id:
             raise ValueError("lifecycle row requires card_id")
+        if card_id in result:
+            raise ValueError(f"duplicate card_id in lifecycle stage: {card_id}")
         result.add(card_id)
     return result
 
@@ -98,9 +100,14 @@ def reconcile_snapshot(
         drifted = {
             card_id
             for card_id in stage_ids[left] & stage_ids[right]
-            if left_by_id[card_id].get("category") != right_by_id[card_id].get("category")
-            and "category" in left_by_id[card_id]
-            and "category" in right_by_id[card_id]
+            # Classification must be carried consistently by both stages. A
+            # missing category is drift, not permission to silently relabel.
+            if (
+                "category" not in left_by_id[card_id]
+                or "category" not in right_by_id[card_id]
+                or left_by_id[card_id].get("category")
+                != right_by_id[card_id].get("category")
+            )
         }
         key = f"{left}->{right}"
         if lost or gained or drifted:
