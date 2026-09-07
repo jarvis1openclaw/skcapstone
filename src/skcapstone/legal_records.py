@@ -13,7 +13,7 @@ import socket
 import uuid
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any, Iterable
+from typing import Any
 
 SCHEMA = "skcapstone.legal-record.v1"
 EVIDENCE_SCHEMA = "skcapstone.legal-evidence.v1"
@@ -68,9 +68,22 @@ def append_evidence(root: Path, record_id: str, evidence: dict[str, Any]) -> dic
     if not record_id or not isinstance(evidence, dict):
         raise ValueError("record_id and object evidence are required")
     def tracking_claim(value: Any) -> bool:
-        """Reject an outcome coupled to tracking, including nested attachments."""
+        """Reject delivery or legal outcomes coupled to tracking evidence.
+
+        Carrier metadata is evidence only.  In particular, a carrier's status
+        must not be promoted to a mailing, delivery, service, or legal result.
+        Check nested attachment objects too, since receipt bundles commonly
+        contain the tracking object several levels down.
+        """
+        forbidden = {
+            "outcome", "status", "delivery_status", "mailing_status",
+            "legal_outcome", "delivered", "mailed", "served",
+        }
         if isinstance(value, dict):
-            if "tracking_number" in value and value.get("outcome") is not None:
+            if "tracking_number" in value and any(
+                key in value and value[key] not in (None, False, "")
+                for key in forbidden
+            ):
                 return True
             return any(tracking_claim(item) for item in value.values())
         if isinstance(value, list):
@@ -86,9 +99,12 @@ def append_evidence(root: Path, record_id: str, evidence: dict[str, Any]) -> dic
 
 
 def supersede(root: Path, record_id: str, correction: dict[str, Any], *, supersedes: str) -> dict[str, Any]:
-    """Append a correction; old records remain immutable."""
-    if not supersedes:
-        raise ValueError("supersedes event id is required")
+    """Append a correction; old records remain immutable and addressable."""
+    if not supersedes or not isinstance(correction, dict):
+        raise ValueError("supersedes event id and object correction are required")
+    prior = read(root / "records.jsonl")
+    if not any(event.get("event_id") == supersedes for event in prior):
+        raise ValueError("supersedes must reference an existing record event")
     return append_record(root, record_id, {"correction": dict(correction), "supersedes": supersedes})
 
 
