@@ -133,6 +133,50 @@ def _launcher_function(name: str, namespace: dict) -> object:
     return namespace[name]
 
 
+def test_pool_v2_authority_includes_safe_review_rows_and_fails_closed() -> None:
+    dispatchable = _launcher_function("_pool_v2_dispatchable", {})
+    ready_ids = _launcher_function(
+        "_pool_v2_ready_ids", {"_pool_v2_dispatchable": dispatchable}
+    )
+    decisions = (
+        SchedulerDecision("claim000", "ready", True),
+        SchedulerDecision("review00", "ready", True),
+        SchedulerDecision("unsafe00", "ready", True),
+        SchedulerDecision("blocked0", "dependency", False),
+    )
+    admissions = {
+        "claim000": {"claimable": True, "reason": "claimable"},
+        "review00": {"claimable": False, "reason": "review"},
+        "unsafe00": {"claimable": False, "reason": "dependency"},
+        "blocked0": {"claimable": True, "reason": "claimable"},
+    }
+
+    assert ready_ids(decisions, admissions) == {"claim000", "review00"}
+    assert ready_ids(decisions, admissions, failed=True) == set()
+
+
+def test_pool_v2_preclaim_accepts_unchanged_review_only() -> None:
+    dispatchable = _launcher_function("_pool_v2_dispatchable", {})
+    fingerprint = _launcher_function(
+        "_pool_v2_fingerprint", {"hashlib": __import__("hashlib"), "json": json}
+    )
+    matches = _launcher_function(
+        "_pool_v2_preclaim_matches",
+        {
+            "_pool_v2_dispatchable": dispatchable,
+            "_pool_v2_fingerprint": fingerprint,
+        },
+    )
+    selected = {"claimable": False, "reason": "review", "source_revision": "a"}
+
+    assert matches(selected, dict(selected)) is True
+    assert matches(selected, {**selected, "source_revision": "b"}) is False
+    assert matches(
+        {"claimable": False, "reason": "dependency"},
+        {"claimable": False, "reason": "dependency"},
+    ) is False
+
+
 def test_shadow_partition_executes_real_legacy_path_on_same_population(tmp_path) -> None:
     rows = {
         "ready000": {},

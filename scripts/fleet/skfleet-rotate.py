@@ -3656,24 +3656,37 @@ def _pool_v2_fingerprint(admission):
                                      separators=(",", ":")).encode()).hexdigest()
 
 
+def _pool_v2_dispatchable(admission):
+    """Allow claimable work and review work routed through review authority."""
+    return bool(
+        isinstance(admission, dict)
+        and (
+            admission.get("claimable") is True
+            or (
+                admission.get("claimable") is False
+                and admission.get("reason") == "review"
+            )
+        )
+    )
+
+
 def _pool_v2_ready_ids(decisions, admissions, failed=False):
-    """Return only explicitly eligible, explicitly claimable snapshot rows."""
+    """Return explicitly eligible rows with a dispatchable snapshot."""
     if failed:
         return set()
     return {
         row.card_id for row in decisions
         if row.eligible
-        and isinstance(admissions.get(row.card_id), dict)
-        and admissions[row.card_id].get("claimable") is True
+        and _pool_v2_dispatchable(admissions.get(row.card_id))
     }
 
 
 def _pool_v2_preclaim_matches(selected, fresh):
-    """Require explicit claimability and byte-identical admission facts."""
+    """Require dispatchable, byte-identical admission facts."""
     return bool(
         isinstance(selected, dict)
         and isinstance(fresh, dict)
-        and fresh.get("claimable") is True
+        and _pool_v2_dispatchable(fresh)
         and _pool_v2_fingerprint(fresh) == _pool_v2_fingerprint(selected)
     )
 
