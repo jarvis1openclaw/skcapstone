@@ -16,6 +16,8 @@ import subprocess
 from pathlib import Path
 from typing import Any
 
+from skcapstone.link_review_work import card_generation
+
 PR_RE = re.compile(r"\bPR\s*#?\s*(\d+)\b", re.I)
 CARD_RE = re.compile(r"\b([0-9a-f]{8})\b", re.I)
 _REVIEWER_SCHEMA = "skfleet.reviewer-identity/v1"
@@ -99,21 +101,7 @@ def _events(home: Path, card_id: str) -> list[dict[str, Any]]:
 def _revision(home: Path, card_id: str, card: dict[str, Any] | None = None) -> str | None:
     events = _events(home, card_id)
     if card is not None:
-        stable = {
-            "id": card.get("id"),
-            "status": card.get("status"),
-            "owner": card.get("owner"),
-            "labels": sorted(card.get("labels") or []),
-            "dependencies": sorted(card.get("dependencies") or []),
-            "verdict": str(
-                (card.get("links") or {}).get("verdict")
-                or (card.get("links") or {}).get("outcome")
-                or ""
-            )
-            .strip()
-            .upper(),
-        }
-        return hashlib.sha256(_json(stable).encode()).hexdigest()
+        return card_generation(card)
     if not events:
         return None
     # The event identity is the exact immutable revision, not lifecycle status.
