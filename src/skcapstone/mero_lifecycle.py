@@ -4,6 +4,7 @@ This module is deliberately storage-neutral.  Callers provide one bounded,
 immutable snapshot, structural lifecycle events, and separate evidence events.
 No lifecycle status or link is treated as a verdict by itself.
 """
+
 from __future__ import annotations
 
 import hashlib
@@ -11,7 +12,21 @@ import json
 from dataclasses import dataclass
 from typing import Iterable, Mapping
 
-_ALLOWED_FALSE = frozenset({"review", "terminal", "human", "sensitive", "superseded", "owned", "stale", "unknown", "malformed", "drifted"})
+_ALLOWED_FALSE = frozenset(
+    {
+        "review",
+        "terminal",
+        "human",
+        "sensitive",
+        "superseded",
+        "owned",
+        "stale",
+        "unknown",
+        "malformed",
+        "drifted",
+    }
+)
+
 
 @dataclass(frozen=True)
 class LifecycleHealth:
@@ -23,11 +38,18 @@ class LifecycleHealth:
 
     def to_json(self) -> str:
         """Serialize compact, non-protected health evidence deterministically."""
-        return json.dumps({"schema": "skfleet.mero-health/v1", "snapshot_revision": self.snapshot_revision,
-            "stage_counts": dict(sorted(self.stage_counts.items())),
-            "unmatched_ids": {k: list(v) for k, v in sorted(self.unmatched_ids.items())},
-            "invariants": dict(sorted(self.invariants.items())),
-            "remediation_owner": self.remediation_owner}, sort_keys=True, separators=(",", ":"))
+        return json.dumps(
+            {
+                "schema": "skfleet.mero-health/v1",
+                "snapshot_revision": self.snapshot_revision,
+                "stage_counts": dict(sorted(self.stage_counts.items())),
+                "unmatched_ids": {k: list(v) for k, v in sorted(self.unmatched_ids.items())},
+                "invariants": dict(sorted(self.invariants.items())),
+                "remediation_owner": self.remediation_owner,
+            },
+            sort_keys=True,
+            separators=(",", ":"),
+        )
 
     def sha256(self) -> str:
         return hashlib.sha256(self.to_json().encode()).hexdigest()
@@ -47,7 +69,12 @@ def _bounded(values: set[str], limit: int) -> tuple[str, ...]:
     return tuple(sorted(values)[:limit])
 
 
-def reconcile_snapshot(snapshot_revision: str, stages: Mapping[str, Iterable[Mapping[str, object]]], *, max_ids: int = 20) -> LifecycleHealth:
+def reconcile_snapshot(
+    snapshot_revision: str,
+    stages: Mapping[str, Iterable[Mapping[str, object]]],
+    *,
+    max_ids: int = 20,
+) -> LifecycleHealth:
     """Reconcile adjacent stages from one bounded snapshot and fail closed.
 
     A stage is materialized exactly once.  This prevents a caller from
@@ -65,9 +92,12 @@ def reconcile_snapshot(snapshot_revision: str, stages: Mapping[str, Iterable[Map
         lost = stage_ids[left] - stage_ids[right]
         gained = stage_ids[right] - stage_ids[left]
         left_by_id = {str(row.get("card_id") or row.get("id")): row for row in materialized[left]}
-        right_by_id = {str(row.get("card_id") or row.get("id")): row for row in materialized[right]}
+        right_by_id = {
+            str(row.get("card_id") or row.get("id")): row for row in materialized[right]
+        }
         drifted = {
-            card_id for card_id in stage_ids[left] & stage_ids[right]
+            card_id
+            for card_id in stage_ids[left] & stage_ids[right]
             if left_by_id[card_id].get("category") != right_by_id[card_id].get("category")
             and "category" in left_by_id[card_id]
             and "category" in right_by_id[card_id]
@@ -75,15 +105,22 @@ def reconcile_snapshot(snapshot_revision: str, stages: Mapping[str, Iterable[Map
         key = f"{left}->{right}"
         if lost or gained or drifted:
             invariants[key] = "BLOCKED"
-            if lost: unmatched[f"{key}:lost"] = _bounded(lost, max_ids)
-            if gained: unmatched[f"{key}:gained"] = _bounded(gained, max_ids)
-            if drifted: unmatched[f"{key}:category_changed"] = _bounded(drifted, max_ids)
+            if lost:
+                unmatched[f"{key}:lost"] = _bounded(lost, max_ids)
+            if gained:
+                unmatched[f"{key}:gained"] = _bounded(gained, max_ids)
+            if drifted:
+                unmatched[f"{key}:category_changed"] = _bounded(drifted, max_ids)
         else:
             invariants[key] = "PASS"
-    return LifecycleHealth(snapshot_revision, {k: len(v) for k, v in stage_ids.items()}, unmatched, invariants)
+    return LifecycleHealth(
+        snapshot_revision, {k: len(v) for k, v in stage_ids.items()}, unmatched, invariants
+    )
 
 
-def review_dispatch_decision(structural: Mapping[str, object], evidence: Mapping[str, object], *, reviewer: str | None) -> str:
+def review_dispatch_decision(
+    structural: Mapping[str, object], evidence: Mapping[str, object], *, reviewer: str | None
+) -> str:
     """Return dispatch only for a governed, fully evidenced distinct review."""
     if structural.get("claimable") is not False or structural.get("reason") != "review":
         return "BLOCKED"
