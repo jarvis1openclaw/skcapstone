@@ -280,6 +280,30 @@ def active_worker_units():
     return _parse_worker_units(output)
 
 
+def _worker_workspace(default, card_id=None, lane=None):
+    """Resolve an explicit card workspace before the host default."""
+    for key in (
+        f"SKFLEET_WORKSPACE_CARD_{card_id}" if card_id else "",
+        f"SKFLEET_{str(lane or '').upper()}_WORKSPACE_CARD_{card_id}" if card_id else "",
+        "SKFLEET_WORKSPACE",
+    ):
+        configured = os.environ.get(key) if key else None
+        if configured:
+            candidate = Path(configured).expanduser()
+            if not candidate.is_dir():
+                raise ValueError("workspace root is missing or not a directory")
+            if (candidate / ".git").exists():
+                return str(candidate)
+            repositories = sorted(
+                child for child in candidate.iterdir()
+                if child.is_dir() and (child / ".git").exists()
+            )
+            if len(repositories) != 1:
+                raise ValueError("workspace root must contain exactly one Git checkout")
+            return str(repositories[0])
+    return default
+
+
 def _worker_launch_command(unit, workspace, inner):
     """Build the systemd-supported detached worker launch command."""
     return [
@@ -3429,8 +3453,14 @@ for _LANE,(_,_,cid,core,_labels,_nb) in picks:
     except BoundaryError as exc:
         log(d, "REVIEW_ASSIGNMENT_BLOCKED|%s|%s|%s" % (HOST, cid, exc))
         continue
-    workspace=os.path.join(HOME,".skcapstone/fleet/workspaces",name)
-    os.makedirs(workspace,exist_ok=True)
+    default_workspace=os.path.join(HOME,".skcapstone/fleet/workspaces",name)
+    try:
+        workspace=_worker_workspace(default_workspace, cid, _LANE["name"])
+    except ValueError as exc:
+        log(d,"WORKSPACE_BLOCKED|%s|%s|%s"%(HOST,cid,exc))
+        continue
+    if workspace == default_workspace:
+        os.makedirs(workspace,exist_ok=True)
     bf=os.path.join(logdir,"brief-%s.txt"%cid); open(bf,"w").write(brief)
     lf=os.path.join(logdir,"%s-%s.log"%(cid,STAMP))
     # Last-moment re-check through the same fold that built the pool.
