@@ -199,20 +199,18 @@ def _review_assignment(cid, core, labels, reviewer):
     if card is None:
         raise BoundaryError("review card is missing")
     state_revision = review_state_revision(card)
-    recommendation_id = "link-review-" + hashlib.sha256(
-        (cid + "\0" + reviewer + "\0" + evidence + "\0" + state_revision).encode()
-    ).hexdigest()[:32]
     observed_process = _card_process_snapshot(cid)
     if observed_process["sessions"]:
         raise BoundaryError("review card already has a live same-card process")
     recommendation = recommend_reviewer(
         Path(HOME) / ".skcapstone",
         card_id=cid,
-        recommendation_id=recommendation_id,
+        recommendation_id=None,
         author=producer,
         candidates=[reviewer],
         observed_process=observed_process,
         evidence_sha256=evidence,
+        expected_state_revision=state_revision,
     )
     live_claim_revision = str(_current_claim_identity_fresh(cid)[2] or "")
     handoff = authorize_review_launch(

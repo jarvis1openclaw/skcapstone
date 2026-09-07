@@ -244,6 +244,70 @@ def test_unrecorded_recommendation_is_denied(tmp_path: Path) -> None:
         )
 
 
+def test_generation_id_fails_closed_on_race_and_retries_cleanly(tmp_path: Path) -> None:
+    card(tmp_path)
+    store = CardStore(tmp_path)
+    stale_revision = review_state_revision(store.fold("feedface"))
+    store.append_event("feedface", "add_label", "other", label="qwen-suitable")
+
+    with pytest.raises(BoundaryError, match="changed before recommendation"):
+        recommend_reviewer(
+            tmp_path,
+            card_id="feedface",
+            recommendation_id=None,
+            author="producer",
+            candidates=["reviewer-one"],
+            observed_process={"sessions": []},
+            evidence_sha256=HASH,
+            expected_state_revision=stale_revision,
+        )
+    assert not any(
+        event.get("action") == "review_assignment_recommendation"
+        for event in store._read_events("feedface")
+    )
+
+    current_revision = review_state_revision(store.fold("feedface"))
+    recommendation = recommend_reviewer(
+        tmp_path,
+        card_id="feedface",
+        recommendation_id=None,
+        author="producer",
+        candidates=["reviewer-one"],
+        observed_process={"sessions": []},
+        evidence_sha256=HASH,
+        expected_state_revision=current_revision,
+    )
+    repeated = recommend_reviewer(
+        tmp_path,
+        card_id="feedface",
+        recommendation_id=None,
+        author="producer",
+        candidates=["reviewer-one"],
+        observed_process={"sessions": []},
+        evidence_sha256=HASH,
+        expected_state_revision=current_revision,
+    )
+    events = [
+        event
+        for event in store._read_events("feedface")
+        if event.get("action") == "review_assignment_recommendation"
+    ]
+    handoff = authorize_review_launch(
+        tmp_path,
+        repeated,
+        actor="reviewer-one",
+        current_process={"sessions": []},
+        used_recommendation_ids=set(),
+    )
+
+    assert repeated.recommendation_id == recommendation.recommendation_id
+    assert repeated.observed_state_revision == current_revision
+    assert len(events) == 1
+    assert events[0]["recommendation_id"] == recommendation.recommendation_id
+    assert events[0]["observed_state_revision"] == current_revision
+    assert handoff.recommendation_id == recommendation.recommendation_id
+
+
 def test_assignment_denies_owned_review_card(tmp_path: Path) -> None:
     """A live owner appearing before recommendation fails closed."""
 

@@ -86,11 +86,12 @@ def recommend_reviewer(
     home: Path,
     *,
     card_id: str,
-    recommendation_id: str,
+    recommendation_id: str | None,
     author: str,
     candidates: list[str],
     observed_process: Mapping[str, object],
     evidence_sha256: str,
+    expected_state_revision: str | None = None,
 ) -> ReviewAssignmentRecommendation:
     """Have Link append one revision-bound, distinct-reviewer recommendation."""
 
@@ -104,12 +105,25 @@ def recommend_reviewer(
         raise BoundaryError("review card is not unclaimed review work")
     if "review" not in {str(label).lower() for label in card.labels}:
         raise BoundaryError("review card lacks the review label")
+    state_revision = review_state_revision(card)
+    if expected_state_revision is not None and expected_state_revision != state_revision:
+        raise BoundaryError("review card state changed before recommendation")
+    reviewer = assign_distinct_reviewer(author=author, assigner="link", candidates=candidates)
+    if recommendation_id is None:
+        recommendation_id = (
+            "link-review-"
+            + hashlib.sha256(
+                (
+                    card_id + "\0" + reviewer + "\0" + evidence_sha256 + "\0" + state_revision
+                ).encode()
+            ).hexdigest()[:32]
+        )
     recommendation = ReviewAssignmentRecommendation(
         card_id=card_id,
         recommendation_id=recommendation_id,
         author=author.strip(),
-        reviewer=assign_distinct_reviewer(author=author, assigner="link", candidates=candidates),
-        observed_state_revision=review_state_revision(card),
+        reviewer=reviewer,
+        observed_state_revision=state_revision,
         observed_process=dict(observed_process),
         evidence_sha256=evidence_sha256,
     )
