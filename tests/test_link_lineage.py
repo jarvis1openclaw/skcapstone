@@ -23,7 +23,7 @@ def _cards():
             "title": "Independent review PR #7",
             "labels": ["review", "parent-source01"],
             "status": "done",
-            "links": {"verdict": "PASS"},
+            "links": {"verdict": "PASS", "pr": "org/repo#7", "commit": "a" * 40},
         },
     ]
 
@@ -57,7 +57,11 @@ def test_malformed_cardstore_fails_closed(tmp_path):
     events.mkdir(parents=True)
     (events / "001.jsonl").write_text("not-json\n")
     try:
-        mod.reconcile([{"repository": "org/repo", "number": 7}], _cards(), tmp_path)
+        mod.reconcile(
+            [{"repository": "org/repo", "number": 7, "headRefOid": "a" * 40}],
+            _cards(),
+            tmp_path,
+        )
     except json.JSONDecodeError:
         pass
     else:
@@ -165,7 +169,7 @@ def test_pr_body_card_references_resolve_lineage_without_pr_number(tmp_path):
             "title": "Independent review",
             "labels": ["review", "parent-a1b2c3d4"],
             "status": "done",
-            "links": {"verdict": "PASS"},
+            "links": {"verdict": "PASS", "pr": "org/repo#9", "commit": "a" * 40},
         },
     ]
     out = mod.reconcile(
@@ -194,7 +198,7 @@ def test_legacy_review_title_is_not_treated_as_source(tmp_path):
             "title": "[REVIEW] Check source",
             "labels": ["parent-a1b2c3d4"],
             "status": "done",
-            "links": {"verdict": "PASS"},
+            "links": {"verdict": "PASS", "pr": "org/repo#10", "commit": "a" * 40},
         },
     ]
     out = mod.reconcile(
@@ -250,7 +254,7 @@ def test_terminal_fail_is_reconciled_but_not_a_pass(tmp_path):
             "title": "[REVIEW] Check source",
             "labels": ["review", "parent-a1b2c3d4"],
             "status": "done",
-            "links": {"verdict": "FAIL"},
+            "links": {"verdict": "FAIL", "pr": "org/repo#12", "commit": "a" * 40},
         },
     ]
     out = mod.reconcile(
@@ -279,7 +283,7 @@ def test_review_required_source_label_is_not_reviewer(tmp_path):
             "title": "Independent review",
             "labels": ["review", "parent-a1b2c3d4"],
             "status": "done",
-            "links": {"verdict": "PASS"},
+            "links": {"verdict": "PASS", "pr": "org/repo#13", "commit": "a" * 40},
         },
     ]
     out = mod.reconcile(
@@ -314,7 +318,7 @@ def test_unique_terminal_review_wins_over_historical_nonterminal_review(tmp_path
             "title": "[REVIEW] Current review",
             "labels": ["parent-a1b2c3d4"],
             "status": "done",
-            "links": {"verdict": "FAIL"},
+            "links": {"verdict": "FAIL", "pr": "org/repo#14", "commit": "a" * 40},
         },
     ]
     out = mod.reconcile(
@@ -357,3 +361,71 @@ def test_exact_pr_and_head_binding_resolves_multiple_terminal_reviews(tmp_path):
     record = out["records"]["org/repo#15"]
     assert record["review_card_id"] == "e5f6a7b9"
     assert record["review_verdict"] == "FAIL"
+
+
+def test_unique_terminal_review_bound_to_different_pr_is_unresolved(tmp_path):
+    head = "a" * 40
+    _home(tmp_path, "a1b2c3d4", "e5f6a7b8")
+    cards = [
+        {"id": "a1b2c3d4", "title": "Implement PR #16", "labels": []},
+        {
+            "id": "e5f6a7b8",
+            "title": "[REVIEW] Different PR",
+            "labels": ["parent-a1b2c3d4"],
+            "status": "done",
+            "links": {"verdict": "PASS", "pr": "org/repo#99", "commit": head},
+        },
+    ]
+    out = mod.reconcile(
+        [{"repository": "org/repo", "number": 16, "headRefOid": head}],
+        cards,
+        tmp_path,
+    )
+    assert out["records"] == {}
+    assert out["coverage"]["unresolved"] == 1
+
+
+def test_unique_terminal_review_bound_to_stale_head_is_unresolved(tmp_path):
+    _home(tmp_path, "a1b2c3d4", "e5f6a7b8")
+    cards = [
+        {"id": "a1b2c3d4", "title": "Implement PR #17", "labels": []},
+        {
+            "id": "e5f6a7b8",
+            "title": "[REVIEW] Stale head",
+            "labels": ["parent-a1b2c3d4"],
+            "status": "done",
+            "links": {"verdict": "PASS", "pr": "org/repo#17", "commit": "b" * 40},
+        },
+    ]
+    out = mod.reconcile(
+        [{"repository": "org/repo", "number": 17, "headRefOid": "a" * 40}],
+        cards,
+        tmp_path,
+    )
+    assert out["records"] == {}
+    assert out["coverage"]["unresolved"] == 1
+
+
+def test_multiple_head_bound_terminal_reviews_are_unresolved(tmp_path):
+    head = "a" * 40
+    _home(tmp_path, "a1b2c3d4", "e5f6a7b8", "e5f6a7b9")
+    cards = [
+        {"id": "a1b2c3d4", "title": "Implement PR #18", "labels": []},
+        *[
+            {
+                "id": card_id,
+                "title": "[REVIEW] Bound review",
+                "labels": ["parent-a1b2c3d4"],
+                "status": "done",
+                "links": {"verdict": verdict, "pr": "org/repo#18", "commit": head},
+            }
+            for card_id, verdict in (("e5f6a7b8", "PASS"), ("e5f6a7b9", "FAIL"))
+        ],
+    ]
+    out = mod.reconcile(
+        [{"repository": "org/repo", "number": 18, "headRefOid": head}],
+        cards,
+        tmp_path,
+    )
+    assert out["records"] == {}
+    assert out["coverage"]["unresolved"] == 1

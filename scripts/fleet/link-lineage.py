@@ -237,15 +237,12 @@ def reconcile(
             for review in terminal_reviews
             if _review_is_bound_to_pr(review, repository, number, pr.get("headRefOid"))
         ]
-        selected_reviews = (
-            bound_terminal_reviews if len(bound_terminal_reviews) == 1 else terminal_reviews
-        )
         if len(sources) != 1:
             classification = "unresolved"
-        elif len(selected_reviews) != 1:
+        elif len(bound_terminal_reviews) != 1:
             classification = "unresolved"
         else:
-            source, review = sources[0], selected_reviews[0]
+            source, review = sources[0], bound_terminal_reviews[0]
             source_generation = _revision(home, source["id"], source)
             review_revision = _revision(home, review["id"], review)
             review_links = review.get("links") if isinstance(review.get("links"), dict) else {}
