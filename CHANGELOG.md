@@ -36,6 +36,12 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ### Fixed
 
+- Card `c1a1c003`: atomic task creation resolves identity in the canonical
+  `SKAGENT`, `SKCAPSTONE_AGENT`, `SKMEMORY_AGENT`, `SK_DEFAULT_AGENT`, then
+  sole-installed-agent order and tests its unreleased SKCoord contract against
+  the exact reviewed source commit without claiming that API exists in an
+  older published wheel.
+
 - Card `2bb61659`: agent guidance and fleet Pi runtime checks now require all
   coordination mutations to use `skcapstone coord`; direct CardStore JSONL
   writes are prohibited and the durable broker boundary is tracked separately.

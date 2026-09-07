@@ -74,7 +74,7 @@ jobs:
       - name: Verify registry skcoord contract before source overlay
         run: |
           python -m pip install --force-reinstall --no-deps --no-cache-dir \
-            --only-binary=:all: "skcoord==0.1.57"
+            --only-binary=:all: "skcoord==0.1.68"
           python -m pip show skcoord
           python - <<'PY'
           import os
@@ -88,7 +88,7 @@ jobs:
           from skcoord.coordination import Board
           from skcoord.lifecycle import audit_lifecycle, repair_lifecycle, transition_task
 
-          assert Version(version("skcoord")) == Version("0.1.57")
+          assert Version(version("skcoord")) == Version("0.1.68")
           assert callable(audit_lifecycle)
           assert callable(repair_lifecycle)
           assert callable(transition_task)
@@ -152,7 +152,7 @@ jobs:
       - name: Install extracted siblings from source
         run: |
           pip install --force-reinstall --no-deps --no-cache-dir \
-            "skcoord @ git+https://github.com/smilinTux/skcoord" \
+            "skcoord @ git+https://github.com/jarvis1openclaw/skcoord@c38d56d7078411f478d36b6f7985acc43b5c50f5" \
             "skdashboard @ git+https://github.com/smilinTux/skdashboard" \
             "skharness @ git+https://github.com/smilinTux/skharness"
 
