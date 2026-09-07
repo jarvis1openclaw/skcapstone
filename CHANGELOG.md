@@ -40,6 +40,17 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   CardStore classification through review assignment, preclaim, launch,
   completion, and release, while keeping all non-review false states closed.
 
+- Cards `ca3ad02b`, `31f0642f`, and `1fea841f`: restored the Link observation
+  producer and Niobe live entrypoint, with review lineage bound to the exact
+  repository, pull request number, and head commit.
+
+- Card `48db6272`: restored the released Link and Mero seat-cycle entrypoint,
+  observation feed, SKMail helper, service units, and focused runtime tests.
+
+- Cards `c106a2a6` and `d12b93ef`: POOL_V2 now supplies every dispatch row
+  from one bounded admission snapshot, and governed review work reaches an
+  exact distinct reviewer only after final drift and lane-health checks.
+
 - Fleet runtime repair: selector claimability, worker startup evidence,
   heartbeat cleanup, watchdog fencing, and truthful Pi-only monitoring.
 
