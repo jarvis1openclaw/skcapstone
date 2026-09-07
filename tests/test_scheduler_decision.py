@@ -229,7 +229,7 @@ def _authoritative_claimability_for(card_home: Path):
     )
 
 
-def test_pool_v2_authority_includes_safe_review_rows_and_fails_closed() -> None:
+def test_pool_v2_authority_includes_only_claimable_rows_and_fails_closed() -> None:
     dispatchable = _launcher_function("_pool_v2_dispatchable", {})
     ready_ids = _launcher_function("_pool_v2_ready_ids", {"_pool_v2_dispatchable": dispatchable})
     decisions = (
@@ -251,11 +251,38 @@ def test_pool_v2_authority_includes_safe_review_rows_and_fails_closed() -> None:
         "blocked0": _admission("blocked0"),
     }
 
-    assert ready_ids(decisions, admissions) == {"claim000", "review00"}
+    assert ready_ids(decisions, admissions) == {"claim000"}
     assert ready_ids(decisions, admissions, failed=True) == set()
 
 
-def test_pool_v2_preclaim_accepts_unchanged_review_only() -> None:
+def test_only_v2_claimable_row_launches_and_nonclaimable_rows_do_not() -> None:
+    dispatchable = _launcher_function("_pool_v2_dispatchable", {})
+    ready_ids = _launcher_function("_pool_v2_ready_ids", {"_pool_v2_dispatchable": dispatchable})
+    authority_rows = _launcher_function(
+        "_pool_v2_authority_rows",
+        {"_pool_v2_ready_ids": ready_ids, "json": json},
+    )
+    decisions = classify_scheduler_population(
+        (
+            SchedulerFacts("legacy00"),
+            SchedulerFacts("onlyv200"),
+            SchedulerFacts("review00", awaiting_review=True),
+            SchedulerFacts("stale000", owner_health="stale"),
+        )
+    )
+    admissions = {
+        "legacy00": _admission("legacy00"),
+        "onlyv200": _admission("onlyv200"),
+        "review00": _admission("review00", claimable=False, reason="review"),
+        "stale000": _admission("stale000", claimable=False, reason="owned-ready"),
+    }
+
+    rows, _pinned = authority_rows(decisions, admissions, False, {}, {"high": 1}, (), "chiap08")
+
+    assert {row[2] for row in rows} == {"legacy00", "onlyv200"}
+
+
+def test_pool_v2_preclaim_accepts_unchanged_claimable_only() -> None:
     dispatchable = _launcher_function("_pool_v2_dispatchable", {})
     fingerprint = _launcher_function(
         "_pool_v2_fingerprint", {"hashlib": __import__("hashlib"), "json": json}
@@ -267,13 +294,7 @@ def test_pool_v2_preclaim_accepts_unchanged_review_only() -> None:
             "_pool_v2_fingerprint": fingerprint,
         },
     )
-    selected = _admission(
-        "review00",
-        claimable=False,
-        reason="review",
-        labels=["review"],
-        governed_review=True,
-    )
+    selected = _admission("claim000")
 
     assert matches(selected, dict(selected)) is True
     assert matches(selected, {**selected, "source_revision": "b"}) is False
@@ -286,7 +307,7 @@ def test_pool_v2_preclaim_accepts_unchanged_review_only() -> None:
     )
 
 
-def test_legacy_8_pool_v2_64_reaches_governed_review_preclaim(tmp_path) -> None:
+def test_legacy_8_pool_v2_8_excludes_review_rows_from_authority(tmp_path) -> None:
     card_home = tmp_path / ".skcapstone"
     card_home.mkdir()
     store = CardStore(card_home)
@@ -415,7 +436,9 @@ def test_legacy_8_pool_v2_64_reaches_governed_review_preclaim(tmp_path) -> None:
         for cid in card_ids
         if legacy_selector(cid, str(card_home / "cards" / cid / "core.json"))["eligible"]
     }
-    decisions = classify_scheduler_population(SchedulerFacts(cid) for cid in card_ids)
+    decisions = classify_scheduler_population(
+        SchedulerFacts(cid, awaiting_review=cid not in legacy_ids) for cid in card_ids
+    )
     admissions = {}
     for cid in card_ids:
         claimability = claimability_for(cid)
@@ -463,25 +486,14 @@ def test_legacy_8_pool_v2_64_reaches_governed_review_preclaim(tmp_path) -> None:
         )
     assert [event["action"] for event in store._read_events(review_id)] == before_actions
 
-    reviewer, recommendation, handoff = preclaim_handoff(
-        review_id,
-        selected_admission,
-        dict(selected_admission),
-        reviewer_identity,
-    )
-
     assert actual_legacy_ids == legacy_ids
-    assert pool_v2("chiap08", decisions).ready == 64
-    assert authority_ids == selected_ids == set(card_ids)
+    assert pool_v2("chiap08", decisions).ready == 8
+    assert authority_ids == selected_ids == legacy_ids
     assert blocked == {}
-    assert reviewer == reviewer_identity
-    assert recommendation is not None and handoff is not None
-    assert recommendation.reviewer == reviewer_identity
-    assert handoff.reviewer == reviewer_identity
-    assert matches(admissions[review_id], dict(admissions[review_id])) is True
+    assert matches(admissions[review_id], dict(admissions[review_id])) is False
     assert [event["action"] for event in store._read_events(review_id)].count(
         "review_assignment_recommendation"
-    ) == 1
+    ) == 0
 
 
 @pytest.mark.parametrize(
