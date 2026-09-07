@@ -60,6 +60,8 @@ jobs:
           fetch-tags: true
       - name: No retired capauth shim imports
         run: bash scripts/check-no-shim-imports.sh
+      - name: No raw CardStore write instructions
+        run: python scripts/check-coord-write-guidance.py
 
   build:
     runs-on: ubuntu-latest

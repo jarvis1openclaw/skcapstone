@@ -44,8 +44,8 @@ def register_coord_commands(main: click.Group) -> None:
             "\n"
             "\b\n"
             "  coord link can print success while storing an empty value. Read the\n"
-            "  verdict back before believing it:\n"
-            "    grep -h '<id>' ~/.skcapstone/coordination/card_events/*.jsonl\n"
+            "  verdict back through the mediated CLI before believing it:\n"
+            "    coord kanban --json\n"
             "\n"
             "\b\n"
             "WHERE TO LOOK\n"
@@ -1118,13 +1118,37 @@ def register_coord_commands(main: click.Group) -> None:
         from ..coordination import get_briefing_json, get_briefing_text
 
         home_path = Path(home).expanduser()
+        write_policy = {
+            "rule": (
+                "All verdict, evidence, status, claim, label, dependency, and lifecycle "
+                "writes use skcapstone coord. Never create, append, rewrite, rename, or "
+                "delete CardStore JSONL."
+            ),
+            "good": "skcapstone coord link <card> verdict PASS_FOR_REVIEW --agent <name>",
+            "bad": "Creating, appending, rewriting, renaming, or deleting CardStore JSONL.",
+            "read_boundary": (
+                "Use CLI reads normally. Raw file inspection is emergency operator "
+                "diagnostics only."
+            ),
+        }
         if fmt == "json":
             try:
-                click.echo(get_briefing_json(home_path, include_done=include_done))
+                payload = get_briefing_json(home_path, include_done=include_done)
             except TypeError:
-                click.echo(get_briefing_json(home_path))
+                payload = get_briefing_json(home_path)
+            briefing = json.loads(payload)
+            briefing["coord_write_policy"] = write_policy
+            click.echo(json.dumps(briefing, indent=2))
         else:
             try:
-                click.echo(get_briefing_text(home_path, include_done=include_done))
+                payload = get_briefing_text(home_path, include_done=include_done)
             except TypeError:
-                click.echo(get_briefing_text(home_path))
+                payload = get_briefing_text(home_path)
+            click.echo(
+                "# Coordination Write Boundary\n\n"
+                f"RULE: {write_policy['rule']}\n"
+                f"GOOD: {write_policy['good']}\n"
+                f"BAD: {write_policy['bad']}\n\n"
+                f"READS: {write_policy['read_boundary']}\n\n"
+                f"{payload}"
+            )
