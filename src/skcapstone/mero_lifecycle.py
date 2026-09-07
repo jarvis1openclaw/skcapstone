@@ -138,6 +138,28 @@ def review_dispatch_decision(
     return "PASS_FOR_REVIEW"
 
 
+def launch_decision(
+    structural: Mapping[str, object],
+    evidence: Mapping[str, object] | None = None,
+    *,
+    reviewer: str | None = None,
+) -> str:
+    """Return the only dispatchable outcome for a selector row.
+
+    Structural lifecycle state is not evidence.  Consequently every false row
+    is blocked unless it is the special review case and its independent
+    evidence is supplied to :func:`review_dispatch_decision`.
+    """
+    if structural.get("claimable") is not False:
+        return "BLOCKED"
+    if structural.get("reason") != "review" or evidence is None:
+        return "BLOCKED"
+    return review_dispatch_decision(structural, evidence, reviewer=reviewer)
+
+
 def false_state_launches_zero(rows: Iterable[Mapping[str, object]]) -> bool:
-    """Ensure false, malformed, stale, or unknown rows never launch."""
-    return all(row.get("claimable") is not False or row.get("reason") != "review" for row in rows)
+    """Ensure all non-review false states have zero launch opportunities."""
+    return all(
+        row.get("claimable") is not False or row.get("reason") != "review"
+        for row in rows
+    )

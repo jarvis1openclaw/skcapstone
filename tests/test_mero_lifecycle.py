@@ -1,5 +1,6 @@
 from skcapstone.mero_lifecycle import (
     false_state_launches_zero,
+    launch_decision,
     reconcile_snapshot,
     review_dispatch_decision,
 )
@@ -59,8 +60,24 @@ def test_false_states_other_than_review_never_launch():
         row("ordinary", claimable=False, reason="unknown"),
         row("stale", claimable=False, reason="stale"),
         row("terminal", claimable=False, reason="terminal"),
+        row("human", claimable=False, reason="human"),
+        row("sensitive", claimable=False, reason="sensitive"),
+        row("superseded", claimable=False, reason="superseded"),
+        row("owned", claimable=False, reason="owned"),
+        row("malformed", claimable=False, reason="malformed"),
+        row("drifted", claimable=False, reason="drifted"),
     ]
     assert false_state_launches_zero(rows)
+    assert all(launch_decision(item) == "BLOCKED" for item in rows)
+
+
+def test_launch_decision_requires_independent_review_evidence():
+    structural = {"claimable": False, "reason": "review"}
+    evidence = {"review_label": True, "producer": "link", "evidence_sha256": "a" * 64}
+    assert launch_decision(structural) == "BLOCKED"
+    assert launch_decision(structural, evidence, reviewer="link") == "BLOCKED"
+    assert launch_decision(structural, evidence, reviewer="jarvis") == "PASS_FOR_REVIEW"
+    assert launch_decision({"claimable": True}, evidence, reviewer="jarvis") == "BLOCKED"
 
 
 def test_pool_v2_authority_regression_counts_are_not_legacy_ready_count():
