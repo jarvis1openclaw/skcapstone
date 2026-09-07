@@ -31,3 +31,12 @@ def test_correction_is_append_only(tmp_path):
     lines = read(tmp_path / "records.jsonl")
     assert len(lines) == 2
     assert lines[1]["record"]["supersedes"] == first["event_id"]
+
+
+def test_correction_can_supersede_evidence_but_not_other_record(tmp_path):
+    evidence = append_evidence(tmp_path, "c1", {"kind": "duplicate_receipt", "attachment_sha256": "abc"})
+    correction = supersede(tmp_path, "c1", {"kind": "receipt_reconciled"}, supersedes=evidence["event_id"])
+    assert correction["record"]["supersedes"] == evidence["event_id"]
+    other = append_record(tmp_path, "c2", {"type": "deadline"})
+    with pytest.raises(ValueError):
+        supersede(tmp_path, "c1", {"kind": "bad"}, supersedes=other["event_id"])

@@ -102,9 +102,15 @@ def supersede(root: Path, record_id: str, correction: dict[str, Any], *, superse
     """Append a correction; old records remain immutable and addressable."""
     if not supersedes or not isinstance(correction, dict):
         raise ValueError("supersedes event id and object correction are required")
-    prior = read(root / "records.jsonl")
-    if not any(event.get("event_id") == supersedes for event in prior):
-        raise ValueError("supersedes must reference an existing record event")
+    # Corrections may supersede either structural state or a prior evidence
+    # assertion.  In both cases the original event remains immutable and the
+    # correction is a new structural event that can be audited by event_id.
+    prior = read(root / "records.jsonl") + read(root / "evidence.jsonl")
+    target = next((event for event in prior if event.get("event_id") == supersedes), None)
+    if target is None:
+        raise ValueError("supersedes must reference an existing record or evidence event")
+    if target.get("record_id") != record_id:
+        raise ValueError("supersedes event belongs to a different record")
     return append_record(root, record_id, {"correction": dict(correction), "supersedes": supersedes})
 
 
