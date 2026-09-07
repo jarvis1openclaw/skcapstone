@@ -36,6 +36,10 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ### Fixed
 
+- Card `4f7e2c91`: Link now reconciles exact source-card and head review work
+  into one deterministic governed backlog card and reports it launchable only
+  after the fleet reviewer-assignment preflight accepts the same card.
+
 - Card `2bb61659`: agent guidance and fleet Pi runtime checks now require all
   coordination mutations to use `skcapstone coord`; direct CardStore JSONL
   writes are prohibited and the durable broker boundary is tracked separately.
