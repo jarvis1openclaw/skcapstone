@@ -135,9 +135,7 @@ def _launcher_function(name: str, namespace: dict) -> object:
 
 def test_pool_v2_authority_includes_safe_review_rows_and_fails_closed() -> None:
     dispatchable = _launcher_function("_pool_v2_dispatchable", {})
-    ready_ids = _launcher_function(
-        "_pool_v2_ready_ids", {"_pool_v2_dispatchable": dispatchable}
-    )
+    ready_ids = _launcher_function("_pool_v2_ready_ids", {"_pool_v2_dispatchable": dispatchable})
     decisions = (
         SchedulerDecision("claim000", "ready", True),
         SchedulerDecision("review00", "ready", True),
@@ -171,10 +169,13 @@ def test_pool_v2_preclaim_accepts_unchanged_review_only() -> None:
 
     assert matches(selected, dict(selected)) is True
     assert matches(selected, {**selected, "source_revision": "b"}) is False
-    assert matches(
-        {"claimable": False, "reason": "dependency"},
-        {"claimable": False, "reason": "dependency"},
-    ) is False
+    assert (
+        matches(
+            {"claimable": False, "reason": "dependency"},
+            {"claimable": False, "reason": "dependency"},
+        )
+        is False
+    )
 
 
 def test_shadow_partition_executes_real_legacy_path_on_same_population(tmp_path) -> None:
