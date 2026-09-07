@@ -9,7 +9,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Iterable
 
-from skcoord.card_store import CardCore, CardStore
+from skcoord.card_store import CardCore, CardStore, card_mutation_lock
 
 from .seat_boundaries import BoundaryError
 from .seat_runtime import authorize_review_launch, recommend_reviewer
@@ -35,10 +35,39 @@ class ReviewWorkResult:
         return self.__dict__.copy()
 
 
-def review_card_id(source_card: str, head_revision: str) -> str:
+def card_generation(card: Any) -> str:
+    """Return the canonical Link generation for one folded source card."""
+
+    def value(name: str, default: Any = None) -> Any:
+        return card.get(name, default) if isinstance(card, dict) else getattr(card, name, default)
+
+    links = value("links", {}) or {}
+    status = value("status")
+    stable = {
+        "id": value("id"),
+        "status": getattr(status, "value", status),
+        "owner": value("owner"),
+        "labels": sorted(value("labels", []) or []),
+        "dependencies": sorted(value("dependencies", []) or []),
+        "verdict": str(links.get("verdict") or links.get("outcome") or "").strip().upper(),
+    }
+    encoded = json.dumps(stable, sort_keys=True, separators=(",", ":"), ensure_ascii=False)
+    return hashlib.sha256(encoded.encode()).hexdigest()
+
+
+def review_card_id(
+    source_card: str,
+    head_revision: str,
+    card_generation: str,
+    evidence_sha256: str,
+    review_class: str = "review",
+) -> str:
     """Return the stable cross-host identity for one source generation."""
 
-    return hashlib.sha256(f"{source_card}\0{head_revision}".encode()).hexdigest()[:8]
+    identity = "\0".join(
+        (source_card, head_revision, card_generation, evidence_sha256, review_class)
+    )
+    return hashlib.sha256(identity.encode()).hexdigest()[:8]
 
 
 def reconcile_review_work(
@@ -46,132 +75,188 @@ def reconcile_review_work(
     item: dict[str, Any],
     *,
     evidence_sha256: str,
-    _cards_by_key: dict[tuple[str, str], list[Any]] | None = None,
+    _cards_by_key: dict[tuple[str, str, str, str, str], list[Any]] | None = None,
 ) -> ReviewWorkResult:
     """Materialize once and prove the exact card passes reviewer preflight."""
 
     source_card = str(item["source_card"])
     head_revision = str(item["head_revision"])
-    card_id = review_card_id(source_card, head_revision)
+    supplied_generation = str(item["card_generation"])
+    review_class = "review"
+    card_id = review_card_id(
+        source_card,
+        head_revision,
+        supplied_generation,
+        evidence_sha256,
+        review_class,
+    )
+    if not _DIGEST.fullmatch(supplied_generation):
+        return ReviewWorkResult(
+            source_card, head_revision, card_id, False, False, "source_generation_invalid"
+        )
+    if not _DIGEST.fullmatch(evidence_sha256):
+        return ReviewWorkResult(
+            source_card, head_revision, card_id, False, False, "candidate_evidence_invalid"
+        )
     store = CardStore(home)
-    if _cards_by_key is None:
-        _cards_by_key = _review_card_index(store.list_cards())
-    key = (source_card, head_revision)
-    matching = _cards_by_key.get(key, [])
-    if len({card.id for card in matching}) > 1:
-        return ReviewWorkResult(
-            source_card, head_revision, card_id, False, False, "duplicate_review_cards"
-        )
-    if matching and matching[0].id != card_id:
-        return ReviewWorkResult(
-            source_card, head_revision, card_id, False, False, "noncanonical_review_card"
-        )
-    source = store.fold(source_card)
-    if source is None:
+    try:
+        source_lock = card_mutation_lock(home, source_card, artifact_neutral=True)
+        source_lock.__enter__()
+    except ValueError:
         return ReviewWorkResult(
             source_card, head_revision, card_id, False, False, "source_card_missing"
         )
-    existing = matching[0] if matching else store.fold(card_id)
-    if (
-        existing is not None
-        and not matching
-        and (
-            existing.meta.get("link_source_card") != source_card
-            or existing.meta.get("link_head_revision") != head_revision
-        )
-    ):
-        return ReviewWorkResult(
-            source_card, head_revision, card_id, False, False, "review_card_id_collision"
-        )
-    created = existing is None
-    reviewer = dict(item["reviewer_candidates"][0])
-    reviewer_identity = str(reviewer["identity"])
-    source_owner = str(item["source_owner"])
-    if created:
-        try:
-            store.create(
-                CardCore(
-                    id=card_id,
-                    title=(
-                        f"[LINK-{source_card}-{head_revision[:8]}][S][REVIEW] "
-                        "Review exact source head"
-                    ),
-                    description=(
-                        f"Producer identity: {source_owner}. "
-                        f"Candidate evidence sha256={evidence_sha256}."
-                    ),
-                    created_by="link",
-                    created_at=source.created_at,
-                    acceptance_criteria=[
-                        f"Review source card {source_card} at exact head {head_revision}.",
-                        "Return a terminal PASS, FAIL, or BLOCKED verdict with evidence.",
-                    ],
-                    initial_labels=["review", "seat-seraph", f"parent-{source_card}"],
-                    meta={
-                        "link_source_card": source_card,
-                        "link_head_revision": head_revision,
-                    },
-                )
-            )
-        except ValueError as exc:
-            return ReviewWorkResult(source_card, head_revision, card_id, False, False, str(exc))
-        created_card = store.fold(card_id)
-        if created_card is not None:
-            _cards_by_key[key] = [created_card]
-        store.append_event(
-            card_id,
-            "link",
-            "link",
-            transition_id=f"link-review-producer-{card_id}",
-            link_key="producer_identity",
-            link_value=source_owner,
-        )
-        store.append_event(
-            card_id,
-            "link",
-            "link",
-            transition_id=f"link-review-evidence-{card_id}",
-            link_key="candidate_evidence_sha256",
-            link_value=evidence_sha256,
-        )
-    card = store.fold(card_id)
-    parent_labels = [label for label in card.labels if label.startswith("parent-")] if card else []
-    if card is None or parent_labels != [f"parent-{source_card}"] or "review" not in card.labels:
-        return ReviewWorkResult(
-            source_card, head_revision, card_id, created, False, "review_parent_invalid"
-        )
-    recommendation_id = f"link-review-{card_id}"
     try:
-        recommendation = recommend_reviewer(
-            home,
-            card_id=card_id,
-            recommendation_id=recommendation_id,
-            author=source_owner,
-            candidates=[reviewer_identity],
-            observed_process={"sessions": []},
-            evidence_sha256=evidence_sha256,
+        try:
+            source = store.fold(source_card)
+        except ValueError:
+            return ReviewWorkResult(
+                source_card, head_revision, card_id, False, False, "source_card_malformed"
+            )
+        if source is None:
+            return ReviewWorkResult(
+                source_card, head_revision, card_id, False, False, "source_card_missing"
+            )
+        if card_generation(source) != supplied_generation:
+            return ReviewWorkResult(
+                source_card, head_revision, card_id, False, False, "source_generation_changed"
+            )
+        if _cards_by_key is None:
+            _cards_by_key = _review_card_index(store.list_cards())
+        key = (source_card, head_revision, supplied_generation, evidence_sha256, review_class)
+        matching = _cards_by_key.get(key, [])
+        if len({card.id for card in matching}) > 1:
+            return ReviewWorkResult(
+                source_card, head_revision, card_id, False, False, "duplicate_review_cards"
+            )
+        if matching and matching[0].id != card_id:
+            return ReviewWorkResult(
+                source_card, head_revision, card_id, False, False, "noncanonical_review_card"
+            )
+        existing = matching[0] if matching else store.fold(card_id)
+        expected_meta = {
+            "link_source_card": source_card,
+            "link_head_revision": head_revision,
+            "link_card_generation": supplied_generation,
+            "link_evidence_sha256": evidence_sha256,
+            "link_review_class": review_class,
+        }
+        if (
+            existing is not None
+            and not matching
+            and any(existing.meta.get(name) != value for name, value in expected_meta.items())
+        ):
+            return ReviewWorkResult(
+                source_card, head_revision, card_id, False, False, "review_card_id_collision"
+            )
+        created = existing is None
+        reviewer = dict(item["reviewer_candidates"][0])
+        reviewer_identity = str(reviewer["identity"])
+        source_owner = str(item["source_owner"])
+        if created:
+            try:
+                store.create(
+                    CardCore(
+                        id=card_id,
+                        title=(
+                            f"[LINK-{source_card}-{head_revision[:8]}][S][REVIEW] "
+                            "Review exact source head"
+                        ),
+                        description=(
+                            f"Producer identity: {source_owner}. "
+                            f"Candidate evidence sha256={evidence_sha256}."
+                        ),
+                        created_by="link",
+                        created_at=source.created_at,
+                        acceptance_criteria=[
+                            f"Review source card {source_card} at exact head {head_revision}.",
+                            "Return a terminal PASS, FAIL, or BLOCKED verdict with evidence.",
+                        ],
+                        initial_labels=["review", "seat-seraph", f"parent-{source_card}"],
+                        meta=expected_meta,
+                    )
+                )
+            except ValueError as exc:
+                return ReviewWorkResult(
+                    source_card, head_revision, card_id, False, False, str(exc)
+                )
+            created_card = store.fold(card_id)
+            if created_card is not None:
+                _cards_by_key[key] = [created_card]
+            store.append_event(
+                card_id,
+                "link",
+                "link",
+                transition_id=f"link-review-producer-{card_id}",
+                link_key="producer_identity",
+                link_value=source_owner,
+            )
+            store.append_event(
+                card_id,
+                "link",
+                "link",
+                transition_id=f"link-review-evidence-{card_id}",
+                link_key="candidate_evidence_sha256",
+                link_value=evidence_sha256,
+            )
+        card = store.fold(card_id)
+        parent_labels = (
+            [label for label in card.labels if label.startswith("parent-")] if card else []
         )
-        authorize_review_launch(
-            home,
-            recommendation,
-            actor=reviewer_identity,
-            current_process={"sessions": []},
-            used_recommendation_ids=set(),
-        )
-    except BoundaryError as exc:
-        return ReviewWorkResult(source_card, head_revision, card_id, created, False, str(exc))
-    return ReviewWorkResult(source_card, head_revision, card_id, created, True, "ready")
+        if (
+            card is None
+            or parent_labels != [f"parent-{source_card}"]
+            or "review" not in card.labels
+        ):
+            return ReviewWorkResult(
+                source_card, head_revision, card_id, created, False, "review_parent_invalid"
+            )
+        recommendation_id = f"link-review-{card_id}"
+        try:
+            recommendation = recommend_reviewer(
+                home,
+                card_id=card_id,
+                recommendation_id=recommendation_id,
+                author=source_owner,
+                candidates=[reviewer_identity],
+                observed_process={"sessions": []},
+                evidence_sha256=evidence_sha256,
+            )
+            if card_generation(store.fold(source_card)) != supplied_generation:
+                return ReviewWorkResult(
+                    source_card,
+                    head_revision,
+                    card_id,
+                    created,
+                    False,
+                    "source_generation_changed",
+                )
+            authorize_review_launch(
+                home,
+                recommendation,
+                actor=reviewer_identity,
+                current_process={"sessions": []},
+                used_recommendation_ids=set(),
+            )
+        except (BoundaryError, ValueError) as exc:
+            return ReviewWorkResult(source_card, head_revision, card_id, created, False, str(exc))
+        return ReviewWorkResult(source_card, head_revision, card_id, created, True, "ready")
+    finally:
+        source_lock.__exit__(None, None, None)
 
 
-def _review_card_index(cards: Iterable[Any]) -> dict[tuple[str, str], list[Any]]:
+def _review_card_index(cards: Iterable[Any]) -> dict[tuple[str, str, str, str, str], list[Any]]:
     """Index existing Link review cards in one CardStore scan."""
 
-    result: dict[tuple[str, str], list[Any]] = {}
+    result: dict[tuple[str, str, str, str, str], list[Any]] = {}
     for card in cards:
         source = str(card.meta.get("link_source_card") or "")
         head = str(card.meta.get("link_head_revision") or "")
-        if source and head:
-            result.setdefault((source, head), []).append(card)
+        generation = str(card.meta.get("link_card_generation") or "")
+        evidence = str(card.meta.get("link_evidence_sha256") or "")
+        review_class = str(card.meta.get("link_review_class") or "")
+        if source and head and generation and evidence and review_class:
+            result.setdefault((source, head, generation, evidence, review_class), []).append(card)
     return result
 
 
