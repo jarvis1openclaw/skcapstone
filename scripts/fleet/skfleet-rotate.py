@@ -3639,11 +3639,93 @@ log(d,"POOL|%s|ready=%d sklegal=%d eng=%d biz=%d dep_blocked=%d "
         structural_leaf,human_gated,
         skipped_unclaimable+sensitive_withheld+not_claimable_skipped+foreign_skipped,top))
 
-# Shadow-only scheduler truth. The legacy selector above remains authoritative
-# until this partition has proven parity across a release. SKCoord contributes
-# read-only lifecycle classes through this adapter; it does not own runtime
-# backoff, worker health, ITIL state, or host routing policy.
+# Scheduler truth. POOL_V2 is the bounded admission partition. The legacy pool
+# remains diagnostic only. SKCoord contributes read-only lifecycle classes
+# through this adapter; it does not own runtime backoff, worker health, ITIL
+# state, or host routing policy.
+_POOL_V2_ADMISSIONS = {}
+_POOL_V2_DECISIONS = None
+_POOL_V2_FAILED = False
+_POOL_V2_CLASSES = {}
+_POOL_V2_EXCLUDED = set()
+
+
+def _pool_v2_fingerprint(admission):
+    """Return the stable identity of every fact used for admission."""
+    return hashlib.sha256(json.dumps(admission, sort_keys=True,
+                                     separators=(",", ":")).encode()).hexdigest()
+
+
+def _pool_v2_ready_ids(decisions, admissions, failed=False):
+    """Return only explicitly eligible, explicitly claimable snapshot rows."""
+    if failed:
+        return set()
+    return {
+        row.card_id for row in decisions
+        if row.eligible
+        and isinstance(admissions.get(row.card_id), dict)
+        and admissions[row.card_id].get("claimable") is True
+    }
+
+
+def _pool_v2_preclaim_matches(selected, fresh):
+    """Require explicit claimability and byte-identical admission facts."""
+    return bool(
+        isinstance(selected, dict)
+        and isinstance(fresh, dict)
+        and fresh.get("claimable") is True
+        and _pool_v2_fingerprint(fresh) == _pool_v2_fingerprint(selected)
+    )
+
+
+def _pool_v2_source_revision(cid, core, fresh=False):
+    """Identify the exact core and event inputs used for one admission."""
+    rows = list(_strict_card_events(cid, fresh=fresh))
+    rows.extend(_legacy_claimability_events(fresh=fresh).get(cid, []))
+    return hashlib.sha256(json.dumps(
+        {"core": core, "events": rows},
+        sort_keys=True, separators=(",", ":")
+    ).encode()).hexdigest()
+
+
+def _pool_v2_overlay(cid, core, reason):
+    """Capture every non-claimability exclusion used by POOL_V2."""
+    return {
+        "lifecycle": lifecycle_state(cid),
+        "itil_terminal": itil_terminal(cid),
+        "superseded": cid in _POOL_V2_CLASSES.get("superseded_cards", set()),
+        "excluded": cid in _POOL_V2_EXCLUDED,
+        "review_readback": cid in _REVIEW_READBACK_BLOCKED,
+        "terminal_review": bool(terminal_review_verdict(cid, core)),
+        "awaiting_review": awaiting_review(cid),
+        "backoff": blocked_backoff(cid),
+        "attempt_limit": unclaimable(cid),
+        "class_facets": sorted(
+            name for name, ids in _POOL_V2_CLASSES.items() if cid in ids
+        ),
+        "reason": reason,
+    }
+
+
+def _pool_v2_admission(cid, core, claimability, fresh=False):
+    """Build the complete bounded admission record for one card."""
+    reason = str(claimability.get("reason") or "")
+    return {
+        "card_id": cid,
+        "claimable": claimability.get("claimable") is True,
+        "reason": reason,
+        "host_pin": claimability.get("host_pin"),
+        "title": claimability.get("title"),
+        "labels": claimability.get("labels"),
+        "core": claimability.get("core"),
+        "overlay": _pool_v2_overlay(cid, core, reason),
+        "source_revision": _pool_v2_source_revision(cid, core, fresh=fresh),
+    }
+
+
 def _shadow_pool_v2():
+    global _POOL_V2_ADMISSIONS, _POOL_V2_CLASSES, _POOL_V2_DECISIONS
+    global _POOL_V2_EXCLUDED
     classes = assessment.get("classes", {}) if isinstance(assessment, dict) else {}
     class_ids = {
         name: {str(row.get("card_id")) for row in rows if row.get("card_id")}
@@ -3651,6 +3733,9 @@ def _shadow_pool_v2():
         if isinstance(rows, list)
     }
     all_excluded = set(excluded)
+    _POOL_V2_ADMISSIONS = {}
+    _POOL_V2_CLASSES = class_ids
+    _POOL_V2_EXCLUDED = all_excluded
     population = []
     for card_dir in sorted(glob.glob(CARDS + "/*")):
         cid = os.path.basename(card_dir)
@@ -3666,6 +3751,9 @@ def _shadow_pool_v2():
             lifecycle = lifecycle_state(cid)
             claimability = authoritative_claimability(cid, core)
             reason = str(claimability.get("reason") or "")
+            _POOL_V2_ADMISSIONS[cid] = _pool_v2_admission(
+                cid, core, claimability
+            )
             owner_health = None
             if reason.startswith("owned-"):
                 if cid in class_ids.get("dead_worker_claims", set()):
@@ -3685,7 +3773,10 @@ def _shadow_pool_v2():
             population.append(
                 SchedulerFacts(
                     card_id=cid,
-                    malformed=lifecycle == "ambiguous"
+                    malformed=(
+                        claimability.get("claimable") not in {True, False}
+                        or lifecycle == "ambiguous"
+                    )
                     or reason.startswith("malformed:"),
                     lifecycle_excluded=cid in all_excluded and not mapped_exclusion,
                     selector_excluded=(
@@ -3713,6 +3804,11 @@ def _shadow_pool_v2():
                 )
             )
         except Exception as exc:
+            _POOL_V2_ADMISSIONS[cid] = {
+                "card_id": cid,
+                "claimable": False,
+                "reason": "malformed:%s" % type(exc).__name__,
+            }
             population.append(
                 SchedulerFacts(
                     card_id=cid,
@@ -3721,6 +3817,7 @@ def _shadow_pool_v2():
                 )
             )
     decisions = classify_scheduler_population(population)
+    _POOL_V2_DECISIONS = decisions
     report = pool_v2(HOST, decisions)
     log(d, report.render())
     ready_ids = {row.card_id for row in decisions if row.eligible}
@@ -3743,14 +3840,47 @@ def _shadow_pool_v2():
 
 
 def _emit_shadow_pool_v2():
+    global _POOL_V2_FAILED
     try:
         _shadow_pool_v2()
     except Exception as exc:
-        # Shadow truth is observational. Its failure must never stop legacy claims.
+        _POOL_V2_FAILED = True
         log(d, "SHADOW_ERROR|%s|%s:%s" % (HOST, type(exc).__name__, str(exc)[:160]))
 
 
 _emit_shadow_pool_v2()
+
+# POOL_V2 alone supplies dispatch candidates. Reuse legacy rows where present,
+# then build missing rows only from the same admission snapshot. Any unknown or
+# malformed state produces zero candidates rather than a legacy fallback.
+_legacy_ready = len(pool)
+_pool_v2_ids = _pool_v2_ready_ids(
+    _POOL_V2_DECISIONS or (), _POOL_V2_ADMISSIONS, _POOL_V2_FAILED
+)
+_pool_v2_rows = {row[2]: row for row in pool if row[2] in _pool_v2_ids}
+for _cid in sorted(_pool_v2_ids - set(_pool_v2_rows)):
+    _admission = _POOL_V2_ADMISSIONS[_cid]
+    _core = _admission["core"]
+    _title = _admission["title"]
+    _labels = _admission["labels"]
+    _blob = (_title + " " + json.dumps(_labels)).upper()
+    _up = _title.upper().lstrip("[")
+    if _admission["host_pin"] == HOST:
+        _PINNED_IDS.add(_cid)
+    if _up.startswith("SKLEGAL") or "SKLEGAL" in _blob:
+        _lane = 0
+    elif any(_up.startswith(_prefix) for _prefix in ENG):
+        _lane = 1
+    else:
+        _lane = 2
+    _pool_v2_rows[_cid] = [
+        _lane, PRI.get(str(_core.get("initial_priority")), 4),
+        _cid, _core, _labels, unblocks.get(_cid, 0),
+    ]
+pool = list(_pool_v2_rows.values())
+pool.sort(key=lambda row: (row[0], -row[5], row[1], row[2]))
+log(d, "POOL_AUTHORITY|%s|source=POOL_V2|ready=%d|legacy_ready=%d" %
+    (HOST, len(pool), _legacy_ready))
 
 # Partition the CARD SPACE by hash, not by pool index. Index striding assumes all
 # three hosts see an identical pool at the same instant; ~/.skcapstone is Syncthing
@@ -4229,11 +4359,17 @@ for _LANE,(_,_,cid,core,_labels,_nb) in picks:
     lf=os.path.join(logdir,"%s-%s.log"%(cid,STAMP))
     # Last-moment re-check through the same fold that built the pool.
     fresh_claimability=authoritative_claimability(cid,fresh=True)
-    if _classify_claim_outcome(fresh_claimability["claimable"]) == "raced":
+    with open(os.path.join(CARDS,cid,"core.json"),encoding="utf-8") as _handle:
+        _fresh_core=json.load(_handle)
+    _fresh_admission=_pool_v2_admission(
+        cid,_fresh_core,fresh_claimability,fresh=True
+    )
+    _selected_admission=_POOL_V2_ADMISSIONS.get(cid)
+    if not _pool_v2_preclaim_matches(_selected_admission,_fresh_admission):
         raced += 1
         _raced_ids.append(cid)
-        log(d,"SKIPPED_RACED|%s|%s|%s|reason=%s"%
-            (HOST,sess,cid,fresh_claimability["reason"]))
+        log(d,"SKIPPED_ADMISSION_DRIFT|%s|%s|%s|reason=%s"%
+            (HOST,sess,cid,fresh_claimability.get("reason","unknown")))
         continue
     fresh_escalation=needs_escalation(
         cid,fresh_claimability["core"],fresh_claimability["labels"])
