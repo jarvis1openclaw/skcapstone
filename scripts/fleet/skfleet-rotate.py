@@ -3677,7 +3677,7 @@ def _pool_v2_fingerprint(admission):
 
 
 def _pool_v2_dispatchable(admission):
-    """Allow claimable work and review work routed through review authority."""
+    """Allow only explicitly claimable work from the bounded snapshot."""
     return bool(
         isinstance(admission, dict)
         and isinstance(admission.get("card_id"), str)
@@ -3687,15 +3687,8 @@ def _pool_v2_dispatchable(admission):
         and isinstance(admission.get("labels"), list)
         and isinstance(admission.get("overlay"), dict)
         and re.fullmatch(r"[0-9a-f]{64}", str(admission.get("source_revision") or ""))
-        and (
-            (admission.get("claimable") is True
-             and admission.get("reason") == "claimable")
-            or (
-                admission.get("claimable") is False
-                and admission.get("reason") == "review"
-                and admission.get("governed_review") is True
-            )
-        )
+        and admission.get("claimable") is True
+        and admission.get("reason") == "claimable"
     )
 
 
@@ -3882,7 +3875,7 @@ def _shadow_pool_v2():
                         reason == "dependency"
                         or cid in class_ids.get("void_dependency_edges", set())
                     ),
-                    awaiting_review=awaiting_review(cid),
+                    awaiting_review=awaiting_review(cid) or reason == "review",
                     backoff=blocked_backoff(cid),
                     attempt_limit=unclaimable(cid),
                     host_pin_elsewhere=reason.startswith("host-pin:"),
