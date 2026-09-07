@@ -40,6 +40,10 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   recommendations from signed incomplete-lineage evidence while merge
   recommendations remain fail-closed.
 
+- Card `35009333`: Mero now verifies lifecycle category preservation from
+  CardStore classification through review assignment, preclaim, launch,
+  completion, and release, while keeping all non-review false states closed.
+
 - Cards `ca3ad02b`, `31f0642f`, and `1fea841f`: restored the Link observation
   producer and Niobe live entrypoint, with review lineage bound to the exact
   repository, pull request number, and head commit.
