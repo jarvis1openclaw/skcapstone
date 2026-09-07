@@ -36,6 +36,9 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ### Fixed
 
+- Card `48db6272`: restored the released Link and Mero seat-cycle entrypoint,
+  observation feed, SKMail helper, service units, and focused runtime tests.
+
 - Cards `c106a2a6` and `d12b93ef`: POOL_V2 now supplies every dispatch row
   from one bounded admission snapshot, and governed review work reaches an
   exact distinct reviewer only after final drift and lane-health checks.
