@@ -17,4 +17,3 @@ ReadWritePaths=%h/.skcapstone/coordination/skmail.d
 
 [Install]
 WantedBy=default.target
-

@@ -9,4 +9,3 @@ Unit=skfleet-mero.service
 
 [Install]
 WantedBy=timers.target
-
