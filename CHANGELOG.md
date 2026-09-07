@@ -36,6 +36,10 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ### Fixed
 
+- Card `35009333`: Mero now verifies lifecycle category preservation from
+  CardStore classification through review assignment, preclaim, launch,
+  completion, and release, while keeping all non-review false states closed.
+
 - Fleet runtime repair: selector claimability, worker startup evidence,
   heartbeat cleanup, watchdog fencing, and truthful Pi-only monitoring.
 

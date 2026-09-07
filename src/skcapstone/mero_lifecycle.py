@@ -105,8 +105,7 @@ def reconcile_snapshot(
             if (
                 "category" not in left_by_id[card_id]
                 or "category" not in right_by_id[card_id]
-                or left_by_id[card_id].get("category")
-                != right_by_id[card_id].get("category")
+                or left_by_id[card_id].get("category") != right_by_id[card_id].get("category")
             )
         }
         key = f"{left}->{right}"
@@ -166,7 +165,4 @@ def launch_decision(
 
 def false_state_launches_zero(rows: Iterable[Mapping[str, object]]) -> bool:
     """Ensure all non-review false states have zero launch opportunities."""
-    return all(
-        row.get("claimable") is not False or row.get("reason") != "review"
-        for row in rows
-    )
+    return all(row.get("claimable") is not False or row.get("reason") != "review" for row in rows)
