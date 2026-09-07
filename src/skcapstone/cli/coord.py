@@ -268,6 +268,10 @@ def register_coord_commands(main: click.Group) -> None:
             "      --criteria 'Every nav item renders its icon at 1x and 2x.' \\\n"
             "      --criteria 'No new dependency is added.'\n"
             "\n"
+            "  Create work for this agent without exposing an unowned card:\n"
+            "    SKAGENT=mero coord create --claim-for-me \\\n"
+            "      --title '[SKDASH-NAV-02][S] Repair the nav labels'\n"
+            "\n"
             "\b\n"
             "  Work owned by a standing seat, so its verdicts carry the seat identity:\n"
             "    coord create --by mero --priority critical \\\n"
@@ -331,7 +335,12 @@ def register_coord_commands(main: click.Group) -> None:
     @click.option("--by", default="human", help="Creator name.")
     @click.option("--criteria", multiple=True, help="Acceptance criteria (repeatable).")
     @click.option("--dep", multiple=True, help="Dependency task IDs (repeatable).")
-    def coord_create(home, task_id, title, desc, priority, tag, by, criteria, dep):
+    @click.option(
+        "--claim-for-me",
+        is_flag=True,
+        help="Atomically create and claim for the resolved active agent.",
+    )
+    def coord_create(home, task_id, title, desc, priority, tag, by, criteria, dep, claim_for_me):
         """Create a new task on the board."""
         from ..coordination import Board, Task, TaskPriority
 
@@ -353,8 +362,22 @@ def register_coord_commands(main: click.Group) -> None:
             acceptance_criteria=list(criteria),
             dependencies=list(dep),
         )
-        path = board.create_task(task)
-        console.print(f"\n  [green]Created:[/] [{task.id}] {task.title}")
+        if claim_for_me:
+            from .. import active_agent_name
+
+            owner = active_agent_name()
+            if not owner:
+                raise click.ClickException("no active agent could be resolved")
+            validate_agent_name(owner)
+            try:
+                path, revision = board.create_claimed_task(task, owner)
+            except (RuntimeError, ValueError) as exc:
+                raise click.ClickException(str(exc)) from None
+            console.print(f"\n  [green]Created and claimed:[/] [{task.id}] {task.title}")
+            console.print(f"  [dim]owner={owner} status=doing claim_revision={revision}[/]")
+        else:
+            path = board.create_task(task)
+            console.print(f"\n  [green]Created:[/] [{task.id}] {task.title}")
         console.print(f"  [dim]{path}[/]\n")
 
     @coord.command("claim")
