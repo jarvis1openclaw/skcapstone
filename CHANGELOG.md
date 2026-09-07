@@ -36,6 +36,10 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ### Fixed
 
+- Card `f0ba44f4`: Link now emits bounded, exact-head review-work
+  recommendations from signed incomplete-lineage evidence while merge
+  recommendations remain fail-closed.
+
 - Cards `ca3ad02b`, `31f0642f`, and `1fea841f`: restored the Link observation
   producer and Niobe live entrypoint, with review lineage bound to the exact
   repository, pull request number, and head commit.
