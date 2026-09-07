@@ -21,6 +21,7 @@ CARD_RE = re.compile(r"\b([0-9a-f]{8})\b", re.I)
 _REVIEWER_SCHEMA = "skfleet.reviewer-identity/v1"
 _SHA256 = re.compile(r"[0-9a-f]{64}")
 _TERMINAL_REVIEW = frozenset({"PASS", "FAIL", "BLOCKED"})
+_MAX_REVIEW_WORK = 50
 
 
 def _reviewer_candidates(
@@ -190,6 +191,7 @@ def reconcile(
             by_pr.setdefault(n, []).append(card)
     records: dict[str, dict[str, Any]] = {}
     diagnostics = []
+    review_work = []
     for pr in sorted(open_prs, key=lambda x: (str(x.get("repository", "")), int(x["number"]))):
         repository = str(pr.get("repository") or "")
         if not repository:
@@ -277,7 +279,10 @@ def reconcile(
                 continue
         diagnostics.append(
             {
+                "repository": repository,
                 "pr": number,
+                "head_revision": str(pr.get("headRefOid") or ""),
+                "base_revision": str(pr.get("baseRefOid") or ""),
                 "classification": classification,
                 "candidate_source_cards": [c["id"] for c in sources],
                 "candidate_review_cards": [c["id"] for c in reviews],
@@ -285,6 +290,38 @@ def reconcile(
                 "head_bound_review_cards": [c["id"] for c in bound_terminal_reviews],
             }
         )
+        if len(sources) == 1 and (
+            not terminal_reviews or (terminal_reviews and not bound_terminal_reviews)
+        ):
+            source = sources[0]
+            source_owner = str(
+                source.get("originator") or source.get("owner") or source.get("created_by") or ""
+            ).strip()
+            eligible_reviewers = [
+                reviewer
+                for reviewer in candidates_from_authority
+                if reviewer["identity"] != source_owner and reviewer["name"] != source_owner
+            ]
+            source_generation = _revision(home, source["id"], source)
+            if source_generation and eligible_reviewers and len(review_work) < _MAX_REVIEW_WORK:
+                review_work.append(
+                    {
+                        "kind": "review-work",
+                        "reason": (
+                            "missing_terminal_review"
+                            if not terminal_reviews
+                            else "review_not_bound_to_head"
+                        ),
+                        "repository": repository,
+                        "pr": number,
+                        "head_revision": str(pr.get("headRefOid") or ""),
+                        "base_revision": str(pr.get("baseRefOid") or ""),
+                        "source_card": source["id"],
+                        "card_generation": source_generation,
+                        "source_owner": source_owner,
+                        "reviewer_candidates": eligible_reviewers,
+                    }
+                )
     counts = {
         k: sum(r["classification"] == k for r in diagnostics) for k in ("excluded", "unresolved")
     }
@@ -298,6 +335,7 @@ def reconcile(
             r["pr"] for r in diagnostics if r["classification"] == "unresolved"
         ),
         "records": records,
+        "review_work_recommendations": review_work,
         "reviewer_candidates": candidates_from_authority,
         "diagnostics": diagnostics,
     }
