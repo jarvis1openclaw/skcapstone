@@ -137,9 +137,11 @@ def _review_is_bound_to_pr(
     pr_link = str(links.get("pr") or "").strip().rstrip("/")
     commit = str(links.get("commit") or links.get("head_commit") or "").strip()
     head = str(head_revision or "").strip()
-    pr_matches = pr_link in {str(number), f"{repository}#{number}"} or pr_link.endswith(
-        f"/{number}"
-    )
+    pr_matches = pr_link in {
+        str(number),
+        f"{repository}#{number}",
+        f"https://github.com/{repository}/pull/{number}",
+    }
     return bool(pr_matches and head and commit == head)
 
 

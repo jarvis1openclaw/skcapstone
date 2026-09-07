@@ -385,6 +385,32 @@ def test_unique_terminal_review_bound_to_different_pr_is_unresolved(tmp_path):
     assert out["coverage"]["unresolved"] == 1
 
 
+def test_same_number_review_url_from_different_repository_is_unresolved(tmp_path):
+    head = "a" * 40
+    _home(tmp_path, "a1b2c3d4", "e5f6a7b8")
+    cards = [
+        {"id": "a1b2c3d4", "title": "Implement PR #16", "labels": []},
+        {
+            "id": "e5f6a7b8",
+            "title": "[REVIEW] Wrong repository",
+            "labels": ["parent-a1b2c3d4"],
+            "status": "done",
+            "links": {
+                "verdict": "PASS",
+                "pr": "https://github.com/evil/other/pull/16",
+                "commit": head,
+            },
+        },
+    ]
+    out = mod.reconcile(
+        [{"repository": "org/repo", "number": 16, "headRefOid": head}],
+        cards,
+        tmp_path,
+    )
+    assert out["records"] == {}
+    assert out["coverage"]["unresolved"] == 1
+
+
 def test_unique_terminal_review_bound_to_stale_head_is_unresolved(tmp_path):
     _home(tmp_path, "a1b2c3d4", "e5f6a7b8")
     cards = [
