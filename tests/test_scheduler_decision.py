@@ -20,7 +20,11 @@ from skcapstone.scheduler_decision import (
     pool_v2,
 )
 from skcapstone.seat_boundaries import BoundaryError
-from skcapstone.seat_runtime import authorize_review_launch, recommend_reviewer
+from skcapstone.seat_runtime import (
+    authorize_review_launch,
+    recommend_reviewer,
+    review_state_revision,
+)
 
 SCRIPT = Path(__file__).parents[1] / "scripts" / "fleet" / "skfleet-rotate.py"
 
@@ -354,11 +358,13 @@ def test_legacy_8_pool_v2_64_reaches_governed_review_preclaim(tmp_path) -> None:
             "BoundaryError": BoundaryError,
             "hashlib": hashlib,
             "Path": Path,
+            "CardStore": CardStore,
             "HOME": str(tmp_path),
             "_card_process_snapshot": lambda cid: {"sessions": []},
             "_current_claim_identity_fresh": lambda cid: (None, None, None),
             "event_rows": lambda cid: store._read_events(cid),
             "recommend_reviewer": recommend_reviewer,
+            "review_state_revision": review_state_revision,
             "authorize_review_launch": authorize_review_launch,
         },
     )

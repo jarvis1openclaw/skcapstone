@@ -31,6 +31,7 @@ from skcapstone.seat_runtime import (
     append_review_launch_receipt,
     authorize_review_launch,
     recommend_reviewer,
+    review_state_revision,
 )
 
 def _required_lane_target(name, env=None, default=None):
@@ -194,8 +195,12 @@ def _review_assignment(cid, core, labels, reviewer):
     if metadata is None:
         raise BoundaryError("review card lacks complete producer evidence metadata")
     producer, evidence = metadata
+    card = CardStore(Path(HOME) / ".skcapstone").fold(cid)
+    if card is None:
+        raise BoundaryError("review card is missing")
+    state_revision = review_state_revision(card)
     recommendation_id = "link-review-" + hashlib.sha256(
-        (cid + "\0" + reviewer + "\0" + evidence).encode()
+        (cid + "\0" + reviewer + "\0" + evidence + "\0" + state_revision).encode()
     ).hexdigest()[:32]
     observed_process = _card_process_snapshot(cid)
     if observed_process["sessions"]:
