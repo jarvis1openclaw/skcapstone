@@ -25,10 +25,12 @@ def test_reconcile_same_bounded_snapshot_fails_closed_on_loss_and_gain():
 def test_review_requires_governed_label_producer_hash_and_distinct_reviewer():
     structural = {"claimable": False, "reason": "review"}
     evidence = {"review_label": True, "producer": "link", "evidence_sha256": "a" * 64}
-    assert review_dispatch_decision(structural, evidence, reviewer="jarvis") == "PASS"
+    assert review_dispatch_decision(structural, evidence, reviewer="jarvis") == "PASS_FOR_REVIEW"
     assert review_dispatch_decision(structural, {**evidence, "review_label": False}, reviewer="jarvis") == "BLOCKED"
     assert review_dispatch_decision(structural, evidence, reviewer="link") == "BLOCKED"
     assert review_dispatch_decision({"claimable": False, "reason": "unknown"}, evidence, reviewer="jarvis") == "BLOCKED"
+    assert review_dispatch_decision({"claimable": True, "reason": "review"}, evidence, reviewer="jarvis") == "BLOCKED"
+    assert review_dispatch_decision(structural, {**evidence, "producer": ""}, reviewer="jarvis") == "BLOCKED"
 
 
 def test_false_states_other_than_review_never_launch():
@@ -38,3 +40,20 @@ def test_false_states_other_than_review_never_launch():
         row("terminal", claimable=False, reason="terminal"),
     ]
     assert false_state_launches_zero(rows)
+
+
+def test_pool_v2_authority_regression_counts_are_not_legacy_ready_count():
+    health = reconcile_snapshot("rev-pool-v2", {
+        "legacy_ready": [row(str(i)) for i in range(8)],
+        "pool_v2": [row(str(i)) for i in range(64)],
+    })
+    assert health.stage_counts == {"legacy_ready": 8, "pool_v2": 64}
+    assert health.invariants["legacy_ready->pool_v2"] == "BLOCKED"
+
+
+def test_unlabeled_review_bypass_is_blocked():
+    assert review_dispatch_decision(
+        {"claimable": False, "reason": "review"},
+        {"producer": "source", "evidence_sha256": "a" * 64},
+        reviewer="reviewer",
+    ) == "BLOCKED"

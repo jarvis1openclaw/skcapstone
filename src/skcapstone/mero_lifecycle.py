@@ -48,25 +48,36 @@ def _bounded(values: set[str], limit: int) -> tuple[str, ...]:
 
 
 def reconcile_snapshot(snapshot_revision: str, stages: Mapping[str, Iterable[Mapping[str, object]]], *, max_ids: int = 20) -> LifecycleHealth:
-    """Reconcile adjacent stages from the same snapshot and fail closed.
+    """Reconcile adjacent stages from one bounded snapshot and fail closed.
 
-    Every stage must carry the same population as its predecessor.  IDs that
-    disappear, appear, or change category are reported as invariant failures.
+    A stage is materialized exactly once.  This prevents a caller from
+    accidentally comparing different reads, and lets us detect population
+    loss, gain, and classification drift rather than only count changes.
     """
     if not snapshot_revision or max_ids < 1:
         raise ValueError("snapshot revision and positive ID bound are required")
-    stage_ids = {name: _ids(rows) for name, rows in stages.items()}
+    materialized = {name: tuple(rows) for name, rows in stages.items()}
+    stage_ids = {name: _ids(rows) for name, rows in materialized.items()}
     names = list(stage_ids)
     unmatched: dict[str, tuple[str, ...]] = {}
     invariants: dict[str, str] = {}
     for left, right in zip(names, names[1:]):
         lost = stage_ids[left] - stage_ids[right]
         gained = stage_ids[right] - stage_ids[left]
+        left_by_id = {str(row.get("card_id") or row.get("id")): row for row in materialized[left]}
+        right_by_id = {str(row.get("card_id") or row.get("id")): row for row in materialized[right]}
+        drifted = {
+            card_id for card_id in stage_ids[left] & stage_ids[right]
+            if left_by_id[card_id].get("category") != right_by_id[card_id].get("category")
+            and "category" in left_by_id[card_id]
+            and "category" in right_by_id[card_id]
+        }
         key = f"{left}->{right}"
-        if lost or gained:
+        if lost or gained or drifted:
             invariants[key] = "BLOCKED"
             if lost: unmatched[f"{key}:lost"] = _bounded(lost, max_ids)
             if gained: unmatched[f"{key}:gained"] = _bounded(gained, max_ids)
+            if drifted: unmatched[f"{key}:category_changed"] = _bounded(drifted, max_ids)
         else:
             invariants[key] = "PASS"
     return LifecycleHealth(snapshot_revision, {k: len(v) for k, v in stage_ids.items()}, unmatched, invariants)
@@ -87,7 +98,7 @@ def review_dispatch_decision(structural: Mapping[str, object], evidence: Mapping
         return "BLOCKED"
     if not reviewer or reviewer == evidence["producer"]:
         return "BLOCKED"
-    return "PASS"
+    return "PASS_FOR_REVIEW"
 
 
 def false_state_launches_zero(rows: Iterable[Mapping[str, object]]) -> bool:
