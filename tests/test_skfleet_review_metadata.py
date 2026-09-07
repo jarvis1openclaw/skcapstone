@@ -25,11 +25,16 @@ def _load_assignment(
     claim_revision: str | None = None,
 ) -> tuple[dict[str, object], list[dict[str, object]], list[dict[str, object]]]:
     tree = ast.parse(ROTATE.read_text(encoding="utf-8"))
-    node = next(
+    nodes = [
         item
         for item in tree.body
-        if isinstance(item, ast.FunctionDef) and item.name == "_review_assignment"
-    )
+        if isinstance(item, ast.FunctionDef)
+        and item.name in {"_governed_review_metadata", "_review_assignment"}
+    ]
+    assert [node.name for node in nodes] == [
+        "_governed_review_metadata",
+        "_review_assignment",
+    ]
     seen = []
 
     def recommend(_home, **kwargs):
@@ -54,7 +59,7 @@ def _load_assignment(
         "_card_process_snapshot": lambda _cid: {"sessions": []},
         "_current_claim_identity_fresh": lambda _cid: ("owner", 1.0, claim_revision),
     }
-    exec(compile(ast.Module(body=[node], type_ignores=[]), str(ROTATE), "exec"), namespace)
+    exec(compile(ast.Module(body=nodes, type_ignores=[]), str(ROTATE), "exec"), namespace)
     return namespace, seen, handoffs
 
 

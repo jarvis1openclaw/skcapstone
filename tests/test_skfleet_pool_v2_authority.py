@@ -42,7 +42,7 @@ def _admission(card_id: str, *, claimable: object = True) -> dict[str, object]:
 
 def test_pool_v2_is_authoritative_for_large_only_v2_population() -> None:
     """Forty-five V2-only cards enter even when the legacy pool has two rows."""
-    ready_ids = _load_helpers("_pool_v2_ready_ids")["_pool_v2_ready_ids"]
+    ready_ids = _load_helpers("_pool_v2_dispatchable", "_pool_v2_ready_ids")["_pool_v2_ready_ids"]
     ids = [f"{index:08x}" for index in range(45)]
     decisions = [SimpleNamespace(card_id=card_id, eligible=True) for card_id in ids]
     admissions = {card_id: _admission(card_id) for card_id in ids}
@@ -57,7 +57,7 @@ def test_pool_v2_is_authoritative_for_large_only_v2_population() -> None:
 
 def test_malformed_review_stale_drift_and_unknown_fail_closed() -> None:
     """Every uncertain class stays out of the authoritative candidate set."""
-    ready_ids = _load_helpers("_pool_v2_ready_ids")["_pool_v2_ready_ids"]
+    ready_ids = _load_helpers("_pool_v2_dispatchable", "_pool_v2_ready_ids")["_pool_v2_ready_ids"]
     cases = {
         "malformed": False,
         "review": False,
@@ -82,9 +82,11 @@ def test_malformed_review_stale_drift_and_unknown_fail_closed() -> None:
 
 def test_preclaim_requires_identical_snapshot_fingerprint() -> None:
     """Any source, overlay, or claimability drift produces zero launch authority."""
-    matches = _load_helpers("_pool_v2_fingerprint", "_pool_v2_preclaim_matches")[
-        "_pool_v2_preclaim_matches"
-    ]
+    matches = _load_helpers(
+        "_pool_v2_dispatchable",
+        "_pool_v2_fingerprint",
+        "_pool_v2_preclaim_matches",
+    )["_pool_v2_preclaim_matches"]
     selected = _admission("cafefeed")
     assert matches(selected, dict(selected)) is True
 

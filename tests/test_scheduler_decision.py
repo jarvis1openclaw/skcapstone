@@ -225,6 +225,16 @@ def test_legacy_8_pool_v2_64_reaches_governed_review_preclaim(tmp_path) -> None:
             "authorize_review_launch": lambda *args, **kwargs: SimpleNamespace(reviewer="link"),
         },
     )
+    partition_owner = _launcher_function("_partition_owner", {"hashlib": __import__("hashlib")})
+    rotation_hosts = ("chiap01", "chiap02", "chiap03", "chiap04", "chiap08")
+    seat_owner = _launcher_function(
+        "_seat_owner",
+        {"_partition_owner": partition_owner, "ROTATION_HOSTS": rotation_hosts},
+    )
+    lane_compatibility = _launcher_function("lane_compatibility", {"_LANE_ONLY_LABELS": {}})
+    select_lane = _launcher_function(
+        "select_compatible_lane", {"lane_compatibility": lane_compatibility}
+    )
     card_ids = [f"{index:08x}" for index in range(64)]
     legacy_ids = set(card_ids[:8])
     decisions = classify_scheduler_population(SchedulerFacts(cid) for cid in card_ids)
@@ -258,7 +268,23 @@ def test_legacy_8_pool_v2_64_reaches_governed_review_preclaim(tmp_path) -> None:
         admissions[cid] = admission(cid, core, claimability)
 
     authority_ids = ready_ids(decisions, admissions)
-    selected_ids = {cid for cid in authority_ids if cid in set(card_ids)}
+    selected_ids = set()
+    for host in rotation_hosts:
+        remaining = {"qwen": 64}
+        for cid in sorted(authority_ids):
+            owner, reason = seat_owner(cid, None)
+            assert reason == "ordinary"
+            if owner != host:
+                continue
+            lane, lane_reason = select_lane(
+                admissions[cid]["labels"],
+                False,
+                [{"name": "qwen"}],
+                remaining,
+            )
+            assert (lane, lane_reason) == ("qwen", "compatible")
+            remaining[lane] -= 1
+            selected_ids.add(cid)
     review_id = card_ids[8]
     reviewer, recommendation, handoff = review_assignment(
         review_id,
