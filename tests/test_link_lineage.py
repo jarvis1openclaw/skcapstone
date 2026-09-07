@@ -28,6 +28,20 @@ def _cards():
     ]
 
 
+def _reviewer():
+    return {
+        "schema": "skfleet.reviewer-identity/v1",
+        "name": "Seraph",
+        "seat": "seraph",
+        "identity": "seraph@casey.skworld.io",
+        "host": "chiap08",
+        "session": "seraph-card-scoped",
+        "workspace": "/work/skcapstone",
+        "fingerprint": "a" * 64,
+        "eligible": True,
+    }
+
+
 def test_complete_emits_producer_contract(tmp_path):
     _home(tmp_path, "source01", "review01")
     out = mod.reconcile(
@@ -50,6 +64,98 @@ def test_incomplete_is_not_emitted_as_record(tmp_path):
     )
     assert out["records"] == {}
     assert out["coverage"]["unresolved"] == 1
+
+
+def test_single_source_missing_review_emits_exact_bounded_review_work(tmp_path):
+    _home(tmp_path, "source01")
+    out = mod.reconcile(
+        [{"repository": "org/repo", "number": 7, "headRefOid": "a" * 40, "baseRefOid": "b" * 40}],
+        [{"id": "source01", "title": "Implement PR #7", "owner": "builder"}],
+        tmp_path,
+        reviewer_candidates=[_reviewer()],
+    )
+    assert out["records"] == {}
+    assert out["coverage"]["unresolved"] == 1
+    assert out["review_work_recommendations"] == [
+        {
+            "kind": "review-work",
+            "reason": "missing_terminal_review",
+            "repository": "org/repo",
+            "pr": 7,
+            "head_revision": "a" * 40,
+            "base_revision": "b" * 40,
+            "source_card": "source01",
+            "card_generation": out["review_work_recommendations"][0]["card_generation"],
+            "source_owner": "builder",
+            "reviewer_candidates": [_reviewer()],
+        }
+    ]
+
+
+def test_stale_head_review_emits_work_but_orphan_and_ambiguity_do_not(tmp_path):
+    _home(tmp_path, "source01", "source02", "review01")
+    cards = _cards()
+    cards[1]["links"]["commit"] = "c" * 40
+    cards.append({"id": "source02", "title": "Implement PR #9", "labels": []})
+    cards.append({"id": "source01", "title": "Also PR #9", "labels": []})
+    out = mod.reconcile(
+        [
+            {
+                "repository": "org/repo",
+                "number": 7,
+                "headRefOid": "a" * 40,
+                "baseRefOid": "b" * 40,
+            },
+            {
+                "repository": "org/repo",
+                "number": 8,
+                "headRefOid": "d" * 40,
+                "baseRefOid": "e" * 40,
+            },
+            {
+                "repository": "org/repo",
+                "number": 9,
+                "headRefOid": "f" * 40,
+                "baseRefOid": "1" * 40,
+            },
+        ],
+        cards,
+        tmp_path,
+        reviewer_candidates=[_reviewer()],
+    )
+    assert [(item["pr"], item["reason"]) for item in out["review_work_recommendations"]] == [
+        (7, "review_not_bound_to_head")
+    ]
+
+
+def test_source_owner_cannot_be_its_reviewer(tmp_path):
+    _home(tmp_path, "source01")
+    out = mod.reconcile(
+        [{"repository": "org/repo", "number": 7, "headRefOid": "a" * 40, "baseRefOid": "b" * 40}],
+        [{"id": "source01", "title": "Implement PR #7", "owner": _reviewer()["identity"]}],
+        tmp_path,
+        reviewer_candidates=[_reviewer()],
+    )
+    assert out["review_work_recommendations"] == []
+
+
+def test_review_work_is_deterministically_bounded(tmp_path):
+    ids = [f"{number:08x}" for number in range(60)]
+    _home(tmp_path, *ids)
+    prs = [
+        {
+            "repository": "org/repo",
+            "number": number,
+            "body": ids[number - 1],
+            "headRefOid": f"{number:040x}",
+            "baseRefOid": "b" * 40,
+        }
+        for number in range(1, 61)
+    ]
+    cards = [{"id": card_id, "title": "Source", "created_by": "builder"} for card_id in ids]
+    out = mod.reconcile(prs, cards, tmp_path, reviewer_candidates=[_reviewer()])
+    assert len(out["review_work_recommendations"]) == 50
+    assert [item["pr"] for item in out["review_work_recommendations"]] == list(range(1, 51))
 
 
 def test_malformed_cardstore_fails_closed(tmp_path):

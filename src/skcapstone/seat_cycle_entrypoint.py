@@ -18,6 +18,7 @@ from typing import Any, Callable
 
 from .link_cycle import recommend_one_reviewer
 from .link_observation_feed import ObservationFeedError, load_observation_feed
+from .link_review_work import load_review_work
 from .mero_census import run_blocker_census
 from .seat_boundaries import BoundaryError
 from .seat_cycle_guard import CycleResult, SeatCycleGuard
@@ -177,13 +178,42 @@ def mero_operation(home: Path) -> dict[str, int]:
     }
 
 
-def link_operation(home: Path, feed_path: Path) -> dict[str, int | str]:
+def _emit_review_work(home: Path, lineage_path: Path, feed_reason: str) -> dict[str, int | str]:
+    try:
+        source_revision, evidence_sha256, recommendations = load_review_work(lineage_path)
+    except (OSError, ValueError, json.JSONDecodeError):
+        return {"reason": feed_reason, "suppressed": 1}
+    output = home / "coordination" / "seat-cycles" / "link.review-work.jsonl"
+    if recommendations:
+        output.parent.mkdir(parents=True, exist_ok=True)
+        with output.open("a", encoding="utf-8") as stream:
+            for recommendation in recommendations:
+                event = {
+                    "source_revision": source_revision,
+                    "evidence_sha256": evidence_sha256,
+                    **recommendation,
+                }
+                stream.write(json.dumps(event, sort_keys=True, separators=(",", ":")) + "\n")
+    return {
+        "cards_examined": len(recommendations),
+        "recommendations": len(recommendations),
+        "suppressed": 1,
+        "reason": f"review_work_only:{feed_reason}",
+        "source_revision": source_revision,
+        "evidence_sha256": evidence_sha256,
+    }
+
+
+def link_operation(
+    home: Path, feed_path: Path, lineage_path: Path | None = None
+) -> dict[str, int | str]:
     """Consume mediated observations and append advisory handoffs only."""
 
     try:
         feed = load_observation_feed(feed_path)
     except ObservationFeedError as exc:
-        return {"reason": str(exc), "suppressed": 1}
+        lineage = lineage_path or home / "coordination" / "link-lineage.json"
+        return _emit_review_work(home, lineage, str(exc))
 
     handoffs: list[dict[str, object]] = []
     suppressed = 0
