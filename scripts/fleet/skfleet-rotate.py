@@ -163,10 +163,10 @@ def _card_process_snapshot(cid):
     }
 
 
-def _review_assignment(cid, core, labels, reviewer):
-    """Return Link's governed reviewer and recommendation for a review card."""
+def _governed_review_metadata(core, labels):
+    """Return complete producer evidence for an explicitly labeled review."""
     if "review" not in {str(label).strip().lower() for label in labels}:
-        return reviewer, None, None
+        return None
     links = core.get("links") if isinstance(core.get("links"), dict) else {}
     typed_producer = links.get("producer_identity")
     typed_evidence = links.get("candidate_evidence_sha256")
@@ -174,15 +174,26 @@ def _review_assignment(cid, core, labels, reviewer):
         producer = str(typed_producer or "").strip()
         evidence = str(typed_evidence or "").strip().lower()
         if not producer or not re.fullmatch(r"[0-9a-f]{64}", evidence):
-            raise BoundaryError("review card has incomplete or malformed typed metadata")
+            return None
     else:
         description = str(core.get("description") or "")
         producer_match = re.search(r"Producer identity:\s*([^.]*)\.", description)
         evidence_match = re.search(r"sha256=([0-9a-f]{64})(?:\.|\s|$)", description)
         if not producer_match or not producer_match.group(1).strip() or not evidence_match:
-            raise BoundaryError("review card lacks producer identity or candidate evidence hash")
+            return None
         producer = producer_match.group(1).strip()
         evidence = evidence_match.group(1)
+    return producer, evidence
+
+
+def _review_assignment(cid, core, labels, reviewer):
+    """Return Link's governed reviewer and recommendation for a review card."""
+    if "review" not in {str(label).strip().lower() for label in labels}:
+        return reviewer, None, None
+    metadata = _governed_review_metadata(core, labels)
+    if metadata is None:
+        raise BoundaryError("review card lacks complete producer evidence metadata")
+    producer, evidence = metadata
     recommendation_id = "link-review-" + hashlib.sha256(
         (cid + "\0" + reviewer + "\0" + evidence).encode()
     ).hexdigest()[:32]
@@ -3665,6 +3676,7 @@ def _pool_v2_dispatchable(admission):
             or (
                 admission.get("claimable") is False
                 and admission.get("reason") == "review"
+                and admission.get("governed_review") is True
             )
         )
     )
@@ -3731,6 +3743,9 @@ def _pool_v2_admission(cid, core, claimability, fresh=False):
         "title": claimability.get("title"),
         "labels": claimability.get("labels"),
         "core": claimability.get("core"),
+        "governed_review": _governed_review_metadata(
+            claimability.get("core") or core, claimability.get("labels") or ()
+        ) is not None,
         "overlay": _pool_v2_overlay(cid, core, reason),
         "source_revision": _pool_v2_source_revision(cid, core, fresh=fresh),
     }

@@ -6,6 +6,7 @@ import subprocess
 import sys
 from collections import Counter
 from pathlib import Path
+from types import SimpleNamespace
 
 import pytest
 
@@ -144,7 +145,11 @@ def test_pool_v2_authority_includes_safe_review_rows_and_fails_closed() -> None:
     )
     admissions = {
         "claim000": {"claimable": True, "reason": "claimable"},
-        "review00": {"claimable": False, "reason": "review"},
+        "review00": {
+            "claimable": False,
+            "reason": "review",
+            "governed_review": True,
+        },
         "unsafe00": {"claimable": False, "reason": "dependency"},
         "blocked0": {"claimable": True, "reason": "claimable"},
     }
@@ -165,7 +170,12 @@ def test_pool_v2_preclaim_accepts_unchanged_review_only() -> None:
             "_pool_v2_fingerprint": fingerprint,
         },
     )
-    selected = {"claimable": False, "reason": "review", "source_revision": "a"}
+    selected = {
+        "claimable": False,
+        "reason": "review",
+        "governed_review": True,
+        "source_revision": "a",
+    }
 
     assert matches(selected, dict(selected)) is True
     assert matches(selected, {**selected, "source_revision": "b"}) is False
@@ -176,6 +186,110 @@ def test_pool_v2_preclaim_accepts_unchanged_review_only() -> None:
         )
         is False
     )
+
+
+def test_legacy_8_pool_v2_64_reaches_governed_review_preclaim(tmp_path) -> None:
+    metadata = _launcher_function("_governed_review_metadata", {"re": __import__("re")})
+    dispatchable = _launcher_function("_pool_v2_dispatchable", {})
+    ready_ids = _launcher_function("_pool_v2_ready_ids", {"_pool_v2_dispatchable": dispatchable})
+    fingerprint = _launcher_function(
+        "_pool_v2_fingerprint", {"hashlib": __import__("hashlib"), "json": json}
+    )
+    matches = _launcher_function(
+        "_pool_v2_preclaim_matches",
+        {
+            "_pool_v2_dispatchable": dispatchable,
+            "_pool_v2_fingerprint": fingerprint,
+        },
+    )
+    admission = _launcher_function(
+        "_pool_v2_admission",
+        {
+            "_governed_review_metadata": metadata,
+            "_pool_v2_overlay": lambda cid, core, reason: {"reason": reason},
+            "_pool_v2_source_revision": lambda cid, core, fresh=False: cid,
+        },
+    )
+    review_assignment = _launcher_function(
+        "_review_assignment",
+        {
+            "_governed_review_metadata": metadata,
+            "BoundaryError": RuntimeError,
+            "hashlib": __import__("hashlib"),
+            "Path": Path,
+            "HOME": str(tmp_path),
+            "_card_process_snapshot": lambda cid: {"sessions": []},
+            "recommend_reviewer": lambda *args, **kwargs: SimpleNamespace(),
+            "_current_claim_identity_fresh": lambda cid: (None, None, None),
+            "event_rows": lambda cid: [],
+            "authorize_review_launch": lambda *args, **kwargs: SimpleNamespace(reviewer="link"),
+        },
+    )
+    card_ids = [f"{index:08x}" for index in range(64)]
+    legacy_ids = set(card_ids[:8])
+    decisions = classify_scheduler_population(SchedulerFacts(cid) for cid in card_ids)
+    admissions = {}
+    for cid in card_ids:
+        if cid in legacy_ids:
+            core = {"id": cid, "title": cid}
+            claimability = {
+                "claimable": True,
+                "reason": "claimable",
+                "title": cid,
+                "labels": [],
+                "core": core,
+            }
+        else:
+            core = {
+                "id": cid,
+                "title": cid,
+                "links": {
+                    "producer_identity": "producer",
+                    "candidate_evidence_sha256": "a" * 64,
+                },
+            }
+            claimability = {
+                "claimable": False,
+                "reason": "review",
+                "title": cid,
+                "labels": ["review"],
+                "core": core,
+            }
+        admissions[cid] = admission(cid, core, claimability)
+
+    authority_ids = ready_ids(decisions, admissions)
+    selected_ids = {cid for cid in authority_ids if cid in set(card_ids)}
+    review_id = card_ids[8]
+    reviewer, recommendation, handoff = review_assignment(
+        review_id,
+        admissions[review_id]["core"],
+        admissions[review_id]["labels"],
+        "pi-codex-chiap08-review",
+    )
+
+    assert len(legacy_ids) == 8
+    assert pool_v2("chiap08", decisions).ready == 64
+    assert authority_ids == selected_ids == set(card_ids)
+    assert reviewer == "link"
+    assert recommendation is not None and handoff is not None
+    assert matches(admissions[review_id], dict(admissions[review_id])) is True
+
+
+@pytest.mark.parametrize(
+    "admission",
+    [
+        {"claimable": False, "reason": "review"},
+        {"claimable": False, "reason": "review", "governed_review": False},
+        {"claimable": False, "reason": "dependency", "governed_review": True},
+        {"claimable": None, "reason": "review", "governed_review": True},
+        {},
+        None,
+    ],
+)
+def test_pool_v2_review_dispatch_rejects_incomplete_or_unknown(admission) -> None:
+    dispatchable = _launcher_function("_pool_v2_dispatchable", {})
+
+    assert dispatchable(admission) is False
 
 
 def test_shadow_partition_executes_real_legacy_path_on_same_population(tmp_path) -> None:
