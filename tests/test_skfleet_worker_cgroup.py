@@ -64,6 +64,31 @@ def test_worker_unit_identity_rejects_unbounded_values(lane: str, card: str) -> 
         function(lane, card)
 
 
+def test_invalid_legacy_id_does_not_block_valid_subsequent_unit() -> None:
+    make = _load("_worker_unit_name")["_worker_unit_name"]
+    launched = []
+    for card_id in ("a8100002-1", "5a71c2dd"):
+        try:
+            unit = make("codex", card_id)
+        except ValueError:
+            continue
+        launched.append((card_id, unit))
+
+    assert launched == [
+        ("5a71c2dd", "skfleet-worker-codex-5a71c2dd.service")
+    ]
+
+
+def test_unit_identity_skip_precedes_workspace_and_claim() -> None:
+    source = ROTATE.read_text(encoding="utf-8")
+    loop = source[source.index("for _LANE,(_,_,cid,core,_labels,_nb) in picks:") :]
+    skip_at = loop.index("UNSUPPORTED_CARD_ID|")
+    materialize_at = loop.index("workspace=_materialize_worker_workspace(")
+    claim_at = loop.index('claim=subprocess.run([SKC,"coord","claim",cid')
+    launch_at = loop.index("_worker_launch_command(unit,workspace,inner)")
+    assert skip_at < materialize_at < claim_at < launch_at
+
+
 def test_migration_counts_and_publishes_old_and_new_workers() -> None:
     functions = _load("_parse_worker_units", "_lane_busy", "_worker_cards")
     output = """

@@ -4401,6 +4401,14 @@ if not picks:
 raced=0; _raced_ids=[]; lane_drift=0; claim_refused=0
 logdir=os.path.join(HOME,".skcapstone/fleet/logs"); os.makedirs(logdir,exist_ok=True)
 for _LANE,(_,_,cid,core,_labels,_nb) in picks:
+    try:
+        unit=_worker_unit_name(_LANE["name"],cid)
+    except ValueError as exc:
+        _log_once_per_hour(
+            d,"worker_unit_identity",cid,
+            "UNSUPPORTED_CARD_ID|%s|%s|lane=%s|reason=%s"%
+            (HOST,cid,_LANE["name"],exc))
+        continue
     ac="\n".join("  %d. %s"%(i+1,x) for i,x in enumerate(core.get("acceptance_criteria") or []))
     # PREFIX CACHE ORDERING. vLLM caches on a shared PROMPT PREFIX. This brief
     # used to open with the card id and the card body, so every request diverged
@@ -4663,7 +4671,6 @@ for _LANE,(_,_,cid,core,_labels,_nb) in picks:
         "--session",sess,"--worker-executable",PI,
         "--","bash","-lc",child,
     ]
-    unit=_worker_unit_name(_LANE["name"],cid)
     r=subprocess.run(_worker_launch_command(unit,workspace,inner),capture_output=True,text=True)
     ok = r.returncode==0
     launch_identity=_launch_claim_fields(name,claimed_revision,ok)
