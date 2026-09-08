@@ -36,6 +36,9 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ### Fixed
 
+- Card `7ad5f0c1`: lane admission now uses an explicit bounded endpoint timeout
+  above measured gateway health latency, without weakening fail-closed checks.
+
 - Card `c1a1c003`: atomic task creation resolves identity in the canonical
   `SKAGENT`, `SKCAPSTONE_AGENT`, `SKMEMORY_AGENT`, `SK_DEFAULT_AGENT`, then
   sole-installed-agent order and requires the published SKCoord atomic
