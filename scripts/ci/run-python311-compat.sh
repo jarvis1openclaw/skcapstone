@@ -9,7 +9,6 @@ python_bin="${PYTHON_BIN:-python}"
 wheel_dir="$(mktemp -d)"
 "$python_bin" -m pip wheel --no-deps --no-cache-dir --wheel-dir "$wheel_dir" .
 "$python_bin" -m pip install --force-reinstall --no-deps "$wheel_dir"/*.whl
-"$python_bin" -m pip check
 "$python_bin" - <<'PY'
 import skcapstone
 from skcapstone.models import AgentConfig, SyncConfig

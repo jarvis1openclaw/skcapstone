@@ -39,6 +39,11 @@ deletions outside those paths, and unknown paths fail closed into Python jobs.
 Required checks still run and record the decision when Python execution is
 omitted.
 
+Dependency consistency is checked immediately after resolving SKCapstone and
+all extras. It intentionally precedes exact sibling source overlays, which use
+`--no-deps` to prevent sibling repositories from changing the environment under
+test. The later import and compatibility tests verify those exact overlays.
+
 ## Required-check migration
 
 No live protection changes belong in this source card. Existing check names

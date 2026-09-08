@@ -62,6 +62,7 @@ def test_workflow_preserves_required_checks_and_coverage() -> None:
     assert "github.event_name != 'pull_request'" in workflow
     assert "matrix.python-version == '3.12'" in workflow
     assert "run-python311-compat.sh" in workflow
+    assert "python -m pip check" in workflow
     assert "uses: ./.github/workflows/pytest.yml" in (
         ROOT / ".github" / "workflows" / "publish.yml"
     ).read_text(encoding="utf-8")
