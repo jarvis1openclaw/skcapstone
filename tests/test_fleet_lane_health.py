@@ -13,6 +13,7 @@ from typing import Any
 import pytest
 
 from skcapstone.fleet_lane_health import (
+    ENDPOINT_TIMEOUT_SECONDS,
     MAX_ENDPOINT_BYTES,
     acquire_lane_snapshot,
     active_gateway_revision,
@@ -79,7 +80,7 @@ def _documents(*, codex: str = "up", qwen_a: str = "down") -> dict[str, dict[str
 
 def _opener(documents: dict[str, dict[str, Any]], calls: list[str]):
     def open_url(url: str, *, timeout: float) -> Response:
-        assert timeout == 5
+        assert timeout == ENDPOINT_TIMEOUT_SECONDS == 8
         calls.append(url)
         path = "/" + url.rsplit("/", 1)[-1]
         value = documents[path]
