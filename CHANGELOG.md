@@ -1,5 +1,14 @@
 # Changelog
 
+## Unreleased
+
+- Cut pull-request CI duplication by running the full deterministic suite once
+  on Python 3.12 and a packaging, import, schema, and changed-test compatibility
+  lane on Python 3.11. Main, weekly, and release calls retain the complete
+  advertised Python 3.10 through 3.14 matrix, with auditable documentation-only
+  classification, immutable cache inputs, exact sibling revision fences, and
+  cancellation of superseded pull-request runs (`9c71f24a`).
+
 - **Card `1b84d7f4`: Cursor Agent YOLO default.** Added `SK_CURSOR_YOLO`
   (default on) so the SK agent picker launches Cursor Agent CLI (`agent` /
   `cursor-agent`) with `--yolo`, plus doctor harness checks and docs aligned
