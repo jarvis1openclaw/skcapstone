@@ -172,23 +172,40 @@ def test_seraph_dispatch_is_exactly_one_claimed_live_and_seat_scoped(
     assert result["reason"] == "seraph_dispatch_complete"
     assert captured["SKFLEET_ONLY_SEAT"] == "seraph"
     assert captured["SKFLEET_MAX_LAUNCH"] == "1"
-    assert captured["SKFLEET_TARGET"] == "1"
+    assert captured["SKFLEET_SEAT_TARGET"] == "1"
+    assert "SKFLEET_TARGET" not in captured
     assert captured["SKFLEET_CODEX_MODEL_S"] == "sk-codex-mid"
     assert calls[1][-1] == "skfleet-worker-codex-review01.service"
 
 
-def test_seraph_zero_launch_is_not_reported_as_success(tmp_path, monkeypatch) -> None:
+def test_seraph_zero_eligible_work_is_truthful_noop(tmp_path, monkeypatch) -> None:
     monkeypatch.setattr(
         "skcapstone.seat_cycle_entrypoint.subprocess.run",
-        lambda *_args, **_kwargs: SimpleNamespace(returncode=0, stdout="SELECTION_EMPTY\n"),
+        lambda *_args, **_kwargs: SimpleNamespace(
+            returncode=0,
+            stdout="NOOP_RECEIPT|chiap08|reason=no_eligible_work|seat=seraph\n",
+        ),
     )
     result = seraph_operation(tmp_path)
     assert result == {
         "cards_examined": 0,
         "recommendations": 0,
-        "suppressed": 1,
-        "reason": "seraph_launch_receipt_missing",
+        "suppressed": 0,
+        "reason": "seraph_no_eligible_work",
     }
+
+
+def test_seraph_zero_available_capacity_is_truthful_noop(tmp_path, monkeypatch) -> None:
+    monkeypatch.setattr(
+        "skcapstone.seat_cycle_entrypoint.subprocess.run",
+        lambda *_args, **_kwargs: SimpleNamespace(
+            returncode=0,
+            stdout="NOOP_RECEIPT|chiap08|reason=no_available_capacity|seat=seraph\n",
+        ),
+    )
+    result = seraph_operation(tmp_path)
+    assert result["reason"] == "seraph_no_available_capacity"
+    assert result["suppressed"] == 0
 
 
 def test_seraph_rejects_duplicate_launch_receipts(tmp_path, monkeypatch) -> None:
@@ -255,7 +272,10 @@ def test_link_materialization_race_launches_once_and_replay_is_denied(
         if command[0] == "systemctl":
             return SimpleNamespace(returncode=0)
         if launched:
-            return SimpleNamespace(returncode=0, stdout="SELECTION_EMPTY\n")
+            return SimpleNamespace(
+                returncode=0,
+                stdout="NOOP_RECEIPT|chiap08|reason=no_eligible_work|seat=seraph\n",
+            )
         with ThreadPoolExecutor(max_workers=8) as pool:
             results = list(
                 pool.map(
@@ -289,7 +309,7 @@ def test_link_materialization_race_launches_once_and_replay_is_denied(
     second = seraph_operation(home)
 
     assert first["reason"] == "seraph_dispatch_complete"
-    assert second["reason"] == "seraph_launch_receipt_missing"
+    assert second["reason"] == "seraph_no_eligible_work"
     review_cards = [card for card in store.list_cards() if "parent-source01" in card.labels]
     assert len(review_cards) == 1
     assert review_cards[0].owner.startswith("pi-seraph-")
@@ -341,4 +361,7 @@ def test_unit_templates_preserve_limits_and_disabled_install_contract() -> None:
     assert "TimeoutStartSec=300" in seraph
     assert "--seat seraph" in seraph
     assert "SKFLEET_MAX_LAUNCH" not in seraph
+    assert "Environment=SKFLEET_TARGET=2" in seraph
+    assert "Environment=SKFLEET_SEAT_TARGET=1" in seraph
+    assert "Environment=SKFLEET_CODEX_PHYSICAL_LIMIT=3" in seraph
     assert "skfleet-seraph.service" in seraph_timer

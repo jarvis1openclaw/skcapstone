@@ -259,6 +259,11 @@ GLM_TARGET=_required_lane_target("SKFLEET_GLM_TARGET")
 QWEN_TARGET=_required_lane_target("SKFLEET_QWEN_TARGET", default="6")
 KIMI_TARGET=_required_lane_target("SKFLEET_KIMI_TARGET", default="0")
 MAX_LAUNCH=int(os.environ.get("SKFLEET_MAX_LAUNCH","11"))
+ONLY_SEAT=os.environ.get("SKFLEET_ONLY_SEAT","").strip().lower()
+SEAT_TARGET=_required_lane_target("SKFLEET_SEAT_TARGET", default="0")
+CODEX_PHYSICAL_LIMIT=_required_lane_target(
+    "SKFLEET_CODEX_PHYSICAL_LIMIT", default=str(TARGET))
+_SEAT_RE = re.compile(r"^[a-z][a-z0-9-]{0,31}$")
 DRY = "--go" not in sys.argv
 HOME=os.path.expanduser("~")
 CARDS=os.path.join(HOME,".skcapstone/cards")
@@ -476,6 +481,40 @@ def _worker_cards(sessions, units, lanes):
          for s in sessions if s.startswith(lane["prefix"])}
         | {unit["card"] for unit in units}
     )
+
+
+def _seat_capacity(seat, seat_target, physical_limit, busy_cards, owner_for):
+    """Return isolated seat capacity bounded by seat and physical limits."""
+    if not seat:
+        return None
+    seat_busy = sum(
+        str(owner_for(card_id) or "").startswith("pi-%s-" % seat)
+        for card_id in busy_cards
+    )
+    return min(
+        max(0, int(seat_target) - seat_busy),
+        max(0, int(physical_limit) - len(busy_cards)),
+    )
+
+
+def _last_claim_owner(cid):
+    """Return the latest claim owner used by an active worker card."""
+    for event in reversed(event_rows(cid)):
+        if event.get("action") == "claim":
+            return event.get("owner") or event.get("actor")
+    return None
+
+
+def _noop_reason(pool, owned, lane_deferred):
+    """Classify a zero-launch cycle without treating an honest no-op as failure."""
+    if not pool or not owned:
+        return "no_eligible_work"
+    if lane_deferred and all(
+        reason.startswith(("no-free-lane:", "no-compatible-healthy-lane:"))
+        for reason in lane_deferred
+    ):
+        return "no_available_capacity"
+    return "no_eligible_work"
 
 
 def _coord_task_claimable(core):
@@ -746,6 +785,14 @@ if glm_held:
 for _L in LANES:
     _L["busy"]=_lane_busy(_L,sessions,worker_units)
     _L["free"]=max(0,_L["target"]-len(_L["busy"]))
+if ONLY_SEAT:
+    if not _SEAT_RE.fullmatch(ONLY_SEAT) or SEAT_TARGET < 1:
+        raise SystemExit("BLOCKED|SKFLEET_SEAT_TARGET|seat dispatch requires a positive target")
+    _codex=next(lane for lane in LANES if lane["name"]=="codex")
+    _busy_cards=_worker_cards(sessions,worker_units,[_codex])
+    _codex["free"]=_seat_capacity(
+        ONLY_SEAT,SEAT_TARGET,CODEX_PHYSICAL_LIMIT,_busy_cards,_last_claim_owner)
+    _codex["target"]=SEAT_TARGET
 free=sum(_L["free"] for _L in LANES)
 log(d, "SLOTS|%s|%s" % (HOST, _slot_summary(LANES)))
 
@@ -973,9 +1020,12 @@ def live_report():
     """Return the authoritative cross-host report health snapshot."""
     return live_report_health()
 
-publish_live(sessions, worker_units)
+if not ONLY_SEAT:
+    publish_live(sessions, worker_units)
 
 if free==0:
+    log(d,"NOOP_RECEIPT|%s|reason=no_available_capacity|seat=%s"%
+        (HOST,ONLY_SEAT or "generic"))
     log(d,"NOOP|%s|all slots busy"%HOST); sys.exit(0)
 
 # ---- assignable pool: unclaimed, not human, not drift, DEPENDENCIES SATISFIED
@@ -1602,7 +1652,6 @@ def folded_labels(cid,core):
     return labels
 
 _SEAT_LABEL_PREFIX = "seat-"
-_SEAT_RE = re.compile(r"^[a-z][a-z0-9-]{0,31}$")
 _SEAT_PLACEMENT_PATH = os.environ.get(
     "SKFLEET_SEAT_PLACEMENT",
     os.path.join(HOME, ".skcapstone/coordination/seat-placement.json"),
@@ -1636,7 +1685,7 @@ def _load_seat_placement(path=None):
 
 
 _SEAT_PLACEMENT, _SEAT_PLACEMENT_ERROR = _load_seat_placement()
-_ONLY_SEAT = os.environ.get("SKFLEET_ONLY_SEAT", "").strip().lower()
+_ONLY_SEAT = ONLY_SEAT
 if _ONLY_SEAT and not _SEAT_RE.fullmatch(_ONLY_SEAT):
     raise SystemExit("BLOCKED|SKFLEET_ONLY_SEAT|invalid seat")
 
@@ -3686,6 +3735,8 @@ historical_review_terminal=0
 historical_review_claimed=0
 structural_leaf=leaf_eligibility_counts(Path(HOME) / ".skcapstone").leaves
 human_gated=0
+ENG=("SKGW","SKCP","SKCOORD","SKHARNESS","SKMEM","CAPAUTH","FLEET","INC",
+     "SKW","QWEN38","CARD-CORE","CARD-EVENT","SKDASH","SKGATEWAY","SKSEC","SKL-")
 for cd in sorted(glob.glob(CARDS+"/*")):
     cid=os.path.basename(cd)
     core_p=os.path.join(cd,"core.json")
@@ -3756,8 +3807,6 @@ for cd in sorted(glob.glob(CARDS+"/*")):
     up=title.upper().lstrip("[")
     # lane 0 SKLEGAL (Chef priority, Casey funded and waiting), 1 other engineering,
     # 2 business cards that need founder decisions an agent cannot supply.
-    ENG=("SKGW","SKCP","SKCOORD","SKHARNESS","SKMEM","CAPAUTH","FLEET","INC",
-         "SKW","QWEN38","CARD-CORE","CARD-EVENT","SKDASH","SKGATEWAY","SKSEC","SKL-")
     if up.startswith("SKLEGAL") or "SKLEGAL" in blob: lane=0
     elif any(up.startswith(e) for e in ENG): lane=1
     else: lane=2
@@ -3820,17 +3869,26 @@ def _pool_v2_fingerprint(admission):
 
 def _pool_v2_dispatchable(admission):
     """Allow only explicitly claimable work from the bounded snapshot."""
+    if not isinstance(admission, dict):
+        return False
+    ordinary = (
+        admission.get("claimable") is True
+        and admission.get("reason") == "claimable"
+    )
+    seraph_review = (
+        admission.get("claimable") is False
+        and admission.get("reason") == "review"
+        and admission.get("seraph_review_admitted") is True
+    )
     return bool(
-        isinstance(admission, dict)
-        and isinstance(admission.get("card_id"), str)
+        isinstance(admission.get("card_id"), str)
         and isinstance(admission.get("core"), dict)
         and admission["core"].get("id") == admission["card_id"]
         and isinstance(admission.get("title"), str)
         and isinstance(admission.get("labels"), list)
         and isinstance(admission.get("overlay"), dict)
         and re.fullmatch(r"[0-9a-f]{64}", str(admission.get("source_revision") or ""))
-        and admission.get("claimable") is True
-        and admission.get("reason") == "claimable"
+        and (ordinary or seraph_review)
     )
 
 
@@ -3877,6 +3935,16 @@ def _pool_v2_overlay(cid, core, reason):
 def _pool_v2_admission(cid, core, claimability, fresh=False):
     """Build the complete bounded admission record for one card."""
     reason = str(claimability.get("reason") or "")
+    folded_core = claimability.get("core") or core
+    labels = claimability.get("labels") or ()
+    governed_review = _governed_review_metadata(folded_core, labels) is not None
+    seraph_review_admitted = bool(
+        globals().get("_ONLY_SEAT", "") == "seraph"
+        and reason == "review"
+        and claimability.get("claimable") is False
+        and governed_review
+        and seat_for(cid, folded_core) == "seraph"
+    )
     return {
         "card_id": cid,
         "claimable": claimability.get("claimable"),
@@ -3885,9 +3953,8 @@ def _pool_v2_admission(cid, core, claimability, fresh=False):
         "title": claimability.get("title"),
         "labels": claimability.get("labels"),
         "core": claimability.get("core"),
-        "governed_review": _governed_review_metadata(
-            claimability.get("core") or core, claimability.get("labels") or ()
-        ) is not None,
+        "governed_review": governed_review,
+        "seraph_review_admitted": seraph_review_admitted,
         "overlay": _pool_v2_overlay(cid, core, reason),
         "source_revision": claimability.get("source_revision"),
     }
@@ -3978,6 +4045,9 @@ def _shadow_pool_v2():
             _POOL_V2_ADMISSIONS[cid] = _pool_v2_admission(
                 cid, core, claimability
             )
+            seraph_review_admitted = _POOL_V2_ADMISSIONS[cid].get(
+                "seraph_review_admitted"
+            ) is True
             owner_health = None
             if reason.startswith("owned-"):
                 if cid in class_ids.get("dead_worker_claims", set()):
@@ -4020,7 +4090,9 @@ def _shadow_pool_v2():
                         reason == "dependency"
                         or cid in class_ids.get("void_dependency_edges", set())
                     ),
-                    awaiting_review=awaiting_review(cid) or reason == "review",
+                    awaiting_review=(
+                        awaiting_review(cid) or reason == "review"
+                    ) and not seraph_review_admitted,
                     backoff=blocked_backoff(cid),
                     attempt_limit=unclaimable(cid),
                     host_pin_elsewhere=reason.startswith("host-pin:"),
@@ -4396,6 +4468,8 @@ if not picks:
     detail = _selection_diagnostic(
         pool, owned, LANES, owner_host, reporting_capacity())
     log(d,"SELECTION_EMPTY|%s|%s"%(HOST,detail))
+    log(d,"NOOP_RECEIPT|%s|reason=%s|seat=%s"%
+        (HOST,_noop_reason(pool,owned,_lane_deferred),_ONLY_SEAT or "generic"))
     log(d,"NOOP|%s|selection empty: %s"%(HOST,detail)); sys.exit(0)
 
 raced=0; _raced_ids=[]; lane_drift=0; claim_refused=0
