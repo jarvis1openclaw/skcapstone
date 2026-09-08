@@ -206,6 +206,48 @@ def test_cross_writer_timestamp_order_and_stale_projection_parity() -> None:
     assert namespace["_claimability_reason"](core, state) == "owned-review"
 
 
+def test_source_bindings_fold_from_normal_link_events() -> None:
+    namespace = _load_claimability()
+    core = _core("source01", labels=["source-only"])
+    events = [
+        _event(
+            "2026-09-08T22:00:00Z",
+            "jarvis",
+            "link",
+            link_key="repository",
+            link_value="https://github.com/smilinTux/sklegal",
+        ),
+        _event(
+            "2026-09-08T22:00:01Z",
+            "jarvis",
+            "link",
+            link_key="base_ref",
+            link_value="main",
+        ),
+    ]
+    state = namespace["_fold_claimability"](core, events)
+    assert state["links"] == {
+        "repository": "https://github.com/smilinTux/sklegal",
+        "base_ref": "main",
+    }
+    assert not any(state["review_markers"].values())
+
+
+@pytest.mark.parametrize("key,value", [("repository", ""), ("base_ref", "   ")])
+def test_empty_source_binding_link_event_fails_closed(key: str, value: str) -> None:
+    namespace = _load_claimability()
+    core = _core("source02", labels=["source-only"])
+    event = _event(
+        "2026-09-08T22:00:00Z",
+        "jarvis",
+        "link",
+        link_key=key,
+        link_value=value,
+    )
+    with pytest.raises(ValueError, match="typed review metadata is malformed"):
+        namespace["_fold_claimability"](core, [event])
+
+
 def test_terminal_review_dependency_gate_and_host_pin_reasons() -> None:
     namespace = _load_claimability()
     core = _core("states01")

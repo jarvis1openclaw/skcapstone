@@ -1249,6 +1249,7 @@ def _fold_claimability(core, rows):
         elif action == "link" and event.get("link_key") in {
             "producer_identity", "candidate_evidence_sha256", "pr",
             "pull_request", "open_pr", "evidence", "evidence_sha256",
+            "repository", "base_ref",
         }:
             value = event.get("link_value")
             if not isinstance(value, str) or not value.strip():
