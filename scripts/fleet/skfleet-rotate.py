@@ -4464,10 +4464,15 @@ for _LANE,(_,_,cid,core,_labels,_nb) in picks:
             evidence_root=Path(HOME) / ".skcapstone" / "evidence",
         )
     except BriefEvidenceError as exc:
-        report_path, report_sha256 = write_missing_report(
-            exc.report, Path(HOME) / ".skcapstone" / "evidence"
-        )
         report = json.dumps(exc.report, sort_keys=True, separators=(",", ":"))
+        try:
+            report_path, report_sha256 = write_missing_report(
+                exc.report, Path(HOME) / ".skcapstone" / "evidence"
+            )
+        except (OSError, ValueError):
+            log(d, "WORKER_BRIEF_BLOCKED|%s|%s|%s|report_write_failed"
+                % (HOST, cid, report))
+            continue
         log(
             d,
             "WORKER_BRIEF_BLOCKED|%s|%s|%s|report=%s|sha256=%s"
