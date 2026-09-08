@@ -1,6 +1,7 @@
 {
   "observed_at": "2026-09-08T00:40:50-05:00",
-  "rotation_report_sha256": "5ca8a18a95ea6990695bfec31b2a7bdfe10997df263ee484a11360b3d8b80b6f",
+  "authoritative_rotation_actions_sha256": "098388027a2590841bf5ecf2da3c6c1f3e5098af8ea8362be2d5127b6d5800cb",
+  "authoritative_reassessment_content_sha256": "5ca8a18a95ea6990695bfec31b2a7bdfe10997df263ee484a11360b3d8b80b6f",
   "slots": {
     "codex": {"used": 0, "capacity": 2},
     "glm": {"used": 0, "capacity": 2},

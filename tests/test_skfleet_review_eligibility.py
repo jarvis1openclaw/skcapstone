@@ -72,6 +72,51 @@ def test_e125b710_ready_fixture_is_claimable_exactly_once() -> None:
     )
 
 
+def test_real_provisional_writer_shape_is_claimable() -> None:
+    """The automated opener output needs no manual metadata repair."""
+    digest = "a" * 64
+    core = {
+        "id": "feedface",
+        "kind": "task",
+        "title": "[REVIEW] Review provisional outcome for deadbeef",
+        "description": (
+            "Producer identity: pi-codex-source. Candidate evidence: candidate.patch "
+            f"sha256={digest}."
+        ),
+        "initial_labels": ["review", "independent-review", "parent-deadbeef"],
+        "dependencies": ["deadbeef"],
+    }
+    namespace = _load_claimability()
+    namespace["_load_outcomes"] = lambda: {"deadbeef": ("2026-09-08T04:59:00Z", "PASS_FOR_REVIEW")}
+    state = namespace["_fold_claimability"](
+        core,
+        [
+            _event(
+                "2026-09-08T05:00:00Z",
+                "fleet-review-opener",
+                "move",
+                column="ready",
+            )
+        ],
+    )
+
+    assert namespace["_claimability_reason"](core, state) == "claimable"
+
+
+def test_partial_optional_candidate_identity_fails_closed() -> None:
+    """Optional Git identity is accepted only as one complete typed set."""
+    _fixture, core = _fixture_core()
+    core["links"] = {
+        "producer_identity": "producer",
+        "candidate_evidence_sha256": "a" * 64,
+        "candidate_commit": "b" * 40,
+    }
+    namespace = _load_claimability()
+    state = namespace["_fold_claimability"](core, _ready_events(core))
+
+    assert namespace["_claimability_reason"](core, state) == "review_incomplete"
+
+
 @pytest.mark.parametrize(
     ("mutation", "reason"),
     [
@@ -190,7 +235,10 @@ def test_invalid_reviews_do_not_consume_authoritative_free_lanes() -> None:
         name: values["capacity"] - values["used"] for name, values in observed["slots"].items()
     }
     assert sum(remaining.values()) == observed["total_free"] == 7
-    assert observed["rotation_report_sha256"] == (
+    assert observed["authoritative_rotation_actions_sha256"] == (
+        "098388027a2590841bf5ecf2da3c6c1f3e5098af8ea8362be2d5127b6d5800cb"
+    )
+    assert observed["authoritative_reassessment_content_sha256"] == (
         "5ca8a18a95ea6990695bfec31b2a7bdfe10997df263ee484a11360b3d8b80b6f"
     )
     assert set(observed["observed_ready_ids"]) == {"b7e8094c", "a13c7010"}

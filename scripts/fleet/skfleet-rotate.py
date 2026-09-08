@@ -215,20 +215,24 @@ def _governed_review_reason(core, labels, state):
     if not _PROVISIONAL_PASS_RE.match(str(parent_verdict or "")):
         return "review_parent_verdict"
     links = core.get("links") if isinstance(core.get("links"), dict) else {}
-    required = ("producer_identity", *_REVIEW_SHA1_KEYS, *_REVIEW_SHA256_KEYS)
-    if any(key not in links or not str(links.get(key) or "").strip() for key in required):
+    metadata = _governed_review_metadata(core, labels)
+    if metadata is None:
+        return "review_incomplete"
+    optional_identity = (*_REVIEW_SHA1_KEYS, "candidate_patch_sha256")
+    present_identity = [key for key in optional_identity if str(links.get(key) or "").strip()]
+    if present_identity and len(present_identity) != len(optional_identity):
         return "review_incomplete"
     malformed_sha1 = any(
         not re.fullmatch(r"[0-9a-f]{40}", str(links[key]).strip().lower())
-        for key in _REVIEW_SHA1_KEYS
+        for key in _REVIEW_SHA1_KEYS if key in links
     )
     malformed_sha256 = any(
         not re.fullmatch(r"[0-9a-f]{64}", str(links[key]).strip().lower())
-        for key in _REVIEW_SHA256_KEYS
+        for key in _REVIEW_SHA256_KEYS if key in links
     )
     if malformed_sha1 or malformed_sha256:
         return "review_malformed"
-    return "claimable" if _governed_review_metadata(core, labels) else "review_malformed"
+    return "claimable"
 
 
 def _review_assignment(cid, core, labels, reviewer):
@@ -3433,7 +3437,8 @@ def open_provisional_reviews(capacity, dry_run=False):
              "--title", "[REVIEW] Review provisional outcome for %s" % parent,
              "--desc", description,
              "--priority", "high", "--tag", "parent-%s" % parent,
-             "--tag", "review", "--tag", "qwen-suitable",
+             "--tag", "review", "--tag", "independent-review",
+             "--tag", "qwen-suitable", "--dep", parent,
              "--tag", "source-implementer-%s" % producer,
              "--by", "fleet-review-opener",
              "--criteria", "Verify exact candidate %s at sha256 %s." % (path, digest),
@@ -3443,6 +3448,15 @@ def open_provisional_reviews(capacity, dry_run=False):
             capture_output=True, text=True,
             env=dict(os.environ, SKCOORD_CARD_STORE="1"))
         if r.returncode == 0:
+            moved = subprocess.run(
+                [SKC, "coord", "move", review_id, "ready", "--agent", "fleet-review-opener"],
+                capture_output=True, text=True,
+                env=dict(os.environ, SKCOORD_CARD_STORE="1"))
+            if moved.returncode != 0:
+                error = ((moved.stderr or "") + " " + (moved.stdout or "")).strip()
+                log(d, "OPEN_REVIEW_READY_FAILED|%s|%s|review=%s|%s" %
+                    (HOST, parent, review_id, error[:110]))
+                break
             _rows.pop(review_id, None)
             if not _authoritative_review_readback(
                     review_id, parent, producer, path, digest, generation,
