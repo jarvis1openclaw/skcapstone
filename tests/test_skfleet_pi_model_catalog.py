@@ -11,6 +11,7 @@ import pytest
 
 ROOT = Path(__file__).resolve().parents[1]
 SCRIPT = ROOT / "scripts/fleet/skfleet-pi-model-catalog.py"
+ROUTING_DOC = ROOT / "docs/fleet/model-lane-routing.md"
 
 
 def _module():
@@ -160,3 +161,18 @@ def test_launcher_disables_only_glm_when_catalog_reconciliation_fails():
     codex_stanza = source[source.index("LANES=[") : source.index("_GLM_LEVEL_DEFAULTS")]
     assert '"name":"codex"' in codex_stanza
     assert '"target":TARGET' in codex_stanza
+
+
+def test_five_host_install_contract_hardens_before_reconcile_and_activation():
+    contract = ROUTING_DOC.read_text(encoding="utf-8")
+    preserve = contract.index("Preserve the exact catalog bytes and original mode")
+    harden = contract.index("atomically replace it with the")
+    reconcile = contract.index("Invoke `skfleet-pi-model-catalog.py --apply`")
+    activate = contract.index("install or activate the alias-selecting")
+    assert preserve < harden < reconcile < activate
+    assert "chiap01, chiap02, chiap03, and chiap08" in contract
+    assert "`0600` on\nchiap04" in contract
+    assert "launcher baseline on chiap02 is distinct" in contract
+    assert "exact catalog bytes and original mode" in contract
+    assert "must not substitute the chiap02 launcher" in contract
+    assert "never\nnormalizes unsafe input itself" in contract

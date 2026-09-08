@@ -104,6 +104,38 @@ Run the command without `--apply` as the post-install drift check. Both
 `sk-glm-{s,m,l}` and canonical `sk-zai-{s,m,l}` are installed. Fleet workers
 use only the `sk-glm-*` names.
 
+#### Five-host installation contract
+
+Alias installation is ordered and fail closed on every host. It is not valid
+to install a launcher that can select an alias before that host's Pi catalog
+has been reconciled.
+
+The fresh preflight must record the full SHA256, owner, and mode of both the
+host-local Pi catalog and installed launcher. The observed catalog mode
+baseline is `0664` on chiap01, chiap02, chiap03, and chiap08, and `0600` on
+chiap04. The launcher baseline on chiap02 is distinct from the common launcher
+baseline on the other four hosts. Deployment evidence must preserve each full
+per-host hash rather than treating either launcher baseline as estate-wide.
+
+For each host, the installer must perform these steps in order:
+
+1. Preserve the exact catalog bytes and original mode in host-local rollback
+   custody without reading, logging, or copying opaque fields between hosts.
+2. If the owned regular catalog is mode `0664`, atomically replace it with the
+   exact same bytes at mode `0600`, then verify that its SHA256 is unchanged.
+   Any other insecure mode, symlink, wrong owner, byte drift, or verification
+   failure stops installation on that host.
+3. Invoke `skfleet-pi-model-catalog.py --apply` and verify a subsequent
+   read-only invocation reports the catalog current.
+4. Only after reconciliation succeeds, install or activate the alias-selecting
+   launcher and verify its exact host-specific expected hash.
+
+Rollback restores that host's exact catalog bytes and original mode, plus its
+exact prior launcher bytes. It must not substitute the chiap02 launcher
+baseline with the baseline observed on another host. The reconciler remains
+strict: it accepts only a current-user, mode-0600 regular file and never
+normalizes unsafe input itself.
+
 ### opencode (`~/.config/opencode/opencode.jsonc`)
 
 Same routes through the OpenAI-compatible adapter, for interactive seats:
