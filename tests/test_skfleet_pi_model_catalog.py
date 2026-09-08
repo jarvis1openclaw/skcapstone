@@ -3,7 +3,9 @@ from __future__ import annotations
 import importlib.util
 import json
 import stat
+import subprocess
 from pathlib import Path
+from types import SimpleNamespace
 
 import pytest
 
@@ -112,3 +114,49 @@ def test_rejects_symlink(tmp_path: Path):
     link.symlink_to(target)
     with pytest.raises(ValueError, match="symlink"):
         module.load_and_reconcile(link)
+
+
+def test_launcher_reconciles_before_logical_alias_activation(monkeypatch, tmp_path: Path):
+    source = (ROOT / "scripts/fleet/skfleet-rotate.py").read_text(encoding="utf-8")
+    assert source.index("def _prepare_pi_glm_catalog") < source.index("LANES=[")
+    assert source.index("_prepare_pi_glm_catalog()") < source.index("LANES=[")
+    assert '"target":0 if glm_held or not glm_catalog_ready else GLM_TARGET' in source
+
+    calls = []
+
+    def run(argv, **kwargs):
+        calls.append((argv, kwargs))
+        return SimpleNamespace(returncode=0, stdout="PI_MODEL_CATALOG|current", stderr="")
+
+    monkeypatch.setattr(subprocess, "run", run)
+    namespace = {
+        "Path": Path,
+        "HOME": str(tmp_path),
+        "__file__": str(ROOT / "scripts/fleet/skfleet-rotate.py"),
+        "subprocess": subprocess,
+        "sys": __import__("sys"),
+    }
+    tree = __import__("ast").parse(source)
+    function = next(
+        node
+        for node in tree.body
+        if isinstance(node, __import__("ast").FunctionDef)
+        and node.name == "_prepare_pi_glm_catalog"
+    )
+    exec(
+        compile(__import__("ast").Module(body=[function], type_ignores=[]), "rotate", "exec"),
+        namespace,
+    )
+    assert namespace["_prepare_pi_glm_catalog"]() == (
+        True,
+        "PI_MODEL_CATALOG|current",
+    )
+    assert calls[0][0][-1] == "--apply"
+
+
+def test_launcher_disables_only_glm_when_catalog_reconciliation_fails():
+    source = (ROOT / "scripts/fleet/skfleet-rotate.py").read_text(encoding="utf-8")
+    assert '"target":0 if glm_held or not glm_catalog_ready else GLM_TARGET' in source
+    codex_stanza = source[source.index("LANES=[") : source.index("_GLM_LEVEL_DEFAULTS")]
+    assert '"name":"codex"' in codex_stanza
+    assert '"target":TARGET' in codex_stanza
