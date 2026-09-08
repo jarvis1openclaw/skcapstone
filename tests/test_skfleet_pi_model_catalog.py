@@ -117,6 +117,25 @@ def test_rejects_symlink(tmp_path: Path):
         module.load_and_reconcile(link)
 
 
+def test_cli_reports_one_sanitized_line_without_traceback_or_catalog(tmp_path: Path):
+    path = tmp_path / "models.json"
+    path.write_text(json.dumps(_document()), encoding="utf-8")
+    path.chmod(0o664)
+    result = subprocess.run(
+        [str(SCRIPT), "--catalog", str(path), "--apply"],
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    assert result.returncode == 2
+    assert result.stdout == ""
+    assert result.stderr.splitlines() == [
+        "PI_MODEL_CATALOG_ERROR|ValueError|" "catalog must not be accessible by group or other"
+    ]
+    assert "Traceback" not in result.stderr
+    assert "preserve-me" not in result.stderr
+
+
 def test_launcher_reconciles_before_logical_alias_activation(monkeypatch, tmp_path: Path):
     source = (ROOT / "scripts/fleet/skfleet-rotate.py").read_text(encoding="utf-8")
     assert source.index("def _prepare_pi_glm_catalog") < source.index("LANES=[")
@@ -153,6 +172,22 @@ def test_launcher_reconciles_before_logical_alias_activation(monkeypatch, tmp_pa
         "PI_MODEL_CATALOG|current",
     )
     assert calls[0][0][-1] == "--apply"
+
+    def refuse(argv, **kwargs):
+        return SimpleNamespace(
+            returncode=2,
+            stdout="",
+            stderr=(
+                "PI_MODEL_CATALOG_ERROR|ValueError|"
+                "catalog must not be accessible by group or other\n"
+            ),
+        )
+
+    monkeypatch.setattr(subprocess, "run", refuse)
+    assert namespace["_prepare_pi_glm_catalog"]() == (
+        False,
+        "PI_MODEL_CATALOG_ERROR|ValueError|" "catalog must not be accessible by group or other",
+    )
 
 
 def test_launcher_disables_only_glm_when_catalog_reconciliation_fails():

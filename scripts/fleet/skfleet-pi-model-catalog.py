@@ -8,6 +8,7 @@ import copy
 import json
 import os
 import stat
+import sys
 import tempfile
 from pathlib import Path
 
@@ -106,9 +107,14 @@ def main() -> int:
     parser.add_argument("--catalog", type=Path, default=catalog_path())
     parser.add_argument("--apply", action="store_true")
     args = parser.parse_args()
-    updated, changed, info = load_and_reconcile(args.catalog)
-    if changed and args.apply:
-        write_atomic(args.catalog, updated, info)
+    try:
+        updated, changed, info = load_and_reconcile(args.catalog)
+        if changed and args.apply:
+            write_atomic(args.catalog, updated, info)
+    except (OSError, UnicodeError, ValueError) as exc:
+        detail = " ".join(str(exc).split()) or type(exc).__name__
+        print(f"PI_MODEL_CATALOG_ERROR|{type(exc).__name__}|{detail[:200]}", file=sys.stderr)
+        return 2
     state = "changed" if changed else "current"
     print(f"PI_MODEL_CATALOG|{state}|aliases={len(ALIASES)}|pending={len(changed)}")
     return 1 if changed and not args.apply else 0
