@@ -147,6 +147,48 @@ class HTWCWorkflowPackPayload(GatewayValue):
             raise ValueError("proposition coverage is incomplete")
         if self.coverage.get("proposition_unreferenced_spans") != []:
             raise ValueError("a required proposition span is missing")
+        # The consumer, rather than lifecycle state or links, owns these
+        # structural joins. Keep the lane and action boundary closed here so
+        # callers cannot silently widen the pack's meaning.
+        expected_lanes = {
+            "course_instruction": "source-derived proposals in this pack",
+            "matter_facts_and_evidence": "not supplied",
+            "official_authority": "not supplied; current jurisdiction-specific verification required",
+            "model_inference": "Qwen proposal with per-item uncertainty",
+            "human_decision": "not supplied; review is required",
+        }
+        if self.lanes != expected_lanes:
+            raise ValueError("pack lanes are not the governed consumer lanes")
+        if self.jurisdiction_overlay != {
+            "included": False,
+            "state": "unresolved",
+            "rule": "No course proposition is controlling Authority or a Matter deadline.",
+        }:
+            raise ValueError("jurisdiction overlay is not closed")
+        if self.external_actions != {
+            "dispatch": False,
+            "filing": False,
+            "mailing": False,
+            "service": False,
+            "workflow_state_advance": False,
+        }:
+            raise ValueError("external action boundary is not closed")
+        expected_boundary = {
+            "corpus_semantics": "sk-qwen",
+            "corpus_served_model": self.qwen_run.get("served_model"),
+            "frontier_available": "astra",
+            "frontier_invoked": False,
+            "fable_5_1_state": "placeholder_metadata_only",
+            "fable_5_1_eligible": False,
+            "fable_5_1_dispatchable": False,
+            "fable_5_1_fallback": False,
+        }
+        if self.model_boundary != expected_boundary:
+            raise ValueError("model boundary is not governed")
+        if self.coverage.get("represented_sources") != 28:
+            raise ValueError("derived source coverage is incomplete")
+        if self.coverage.get("covered_workflows") != sorted(HTWC_WORKFLOWS):
+            raise ValueError("derived workflow coverage is incomplete")
         qwen = self.qwen_run
         sha_fields = (
             "request_sha256",
