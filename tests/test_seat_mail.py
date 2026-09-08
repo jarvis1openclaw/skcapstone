@@ -7,6 +7,30 @@ from pathlib import Path
 from skcapstone import seat_mail
 
 
+def test_mail_command_prefers_active_interpreter_sibling(monkeypatch, tmp_path: Path) -> None:
+    sibling = tmp_path / "skmail"
+    sibling.write_text("#!/bin/sh\n")
+    sibling.chmod(0o755)
+    monkeypatch.setattr(seat_mail.sys, "executable", str(tmp_path / "python"))
+    monkeypatch.setattr(seat_mail.Path, "resolve", lambda path: path)
+    monkeypatch.setattr(seat_mail.shutil, "which", lambda name: "/path/skmail")
+    assert seat_mail._mail_command() == str(sibling)
+
+
+def test_mail_command_uses_path_only_when_sibling_absent(monkeypatch, tmp_path: Path) -> None:
+    monkeypatch.setattr(seat_mail.sys, "executable", str(tmp_path / "python"))
+    monkeypatch.setattr(seat_mail.Path, "resolve", lambda path: path)
+    monkeypatch.setattr(seat_mail.shutil, "which", lambda name: "/path/skmail")
+    assert seat_mail._mail_command() == "/path/skmail"
+
+
+def test_mail_command_returns_none_without_sibling_or_path(monkeypatch, tmp_path: Path) -> None:
+    monkeypatch.setattr(seat_mail.sys, "executable", str(tmp_path / "python"))
+    monkeypatch.setattr(seat_mail.Path, "resolve", lambda path: path)
+    monkeypatch.setattr(seat_mail.shutil, "which", lambda name: None)
+    assert seat_mail._mail_command() is None
+
+
 def test_startup_hello_is_once_and_retries_after_failure(tmp_path: Path, monkeypatch) -> None:
     calls: list[list[str]] = []
 
@@ -24,6 +48,30 @@ def test_startup_hello_is_once_and_retries_after_failure(tmp_path: Path, monkeyp
     assert seat_mail.startup_hello(tmp_path, "mero", host="chiap08") is True
     assert seat_mail.startup_hello(tmp_path, "mero", host="chiap08") is True
     assert len(calls) == 1
+
+
+def test_poll_reports_nonzero_exit_without_ack(monkeypatch) -> None:
+    class Result:
+        returncode = 7
+        stdout = ""
+        stderr = "permission denied"
+
+    monkeypatch.setattr(seat_mail, "_mail_command", lambda: "skmail")
+    monkeypatch.setattr(seat_mail, "_run", lambda command, timeout=5.0: Result())
+    result = seat_mail.poll_mail("mero")
+    assert result.ok is False
+    assert result.error == "permission denied"
+
+
+def test_poll_reports_timeout_without_ack(monkeypatch) -> None:
+    def timeout(command, timeout=5.0):
+        raise __import__("subprocess").TimeoutExpired(command, timeout)
+
+    monkeypatch.setattr(seat_mail, "_mail_command", lambda: "skmail")
+    monkeypatch.setattr(seat_mail, "_run", timeout)
+    result = seat_mail.poll_mail("mero")
+    assert result.ok is False
+    assert result.error == "TimeoutExpired"
 
 
 def test_poll_reads_direct_and_all_view_without_ack(monkeypatch) -> None:

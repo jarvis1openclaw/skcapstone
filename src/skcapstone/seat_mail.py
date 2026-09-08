@@ -13,6 +13,7 @@ import re
 import shutil
 import socket
 import subprocess
+import sys
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
@@ -46,14 +47,22 @@ def _now() -> str:
 
 
 def _mail_command() -> str | None:
+    """Resolve the mailbox helper without depending on the caller's PATH.
+
+    The worker is commonly launched by systemd with a deliberately small
+    environment.  ``skmail`` is installed beside the active interpreter in
+    that case, so that sibling is authoritative.  PATH is consulted only
+    when that canonical executable is absent.  ``SKMAIL_BIN`` remains an
+    explicit operator override for controlled installations.
+    """
     configured = os.environ.get("SKMAIL_BIN")
     if configured:
         return configured
+    sibling = Path(sys.executable).resolve().parent / "skmail"
+    if sibling.is_file() and os.access(sibling, os.X_OK):
+        return str(sibling)
     found = shutil.which("skmail")
-    if found:
-        return found
-    candidate = Path(__file__).resolve().parents[2] / "scripts" / "fleet" / "skmail"
-    return str(candidate) if candidate.exists() else None
+    return found if found else None
 
 
 def _run(command: list[str], *, timeout: float = 5.0) -> subprocess.CompletedProcess[str]:
