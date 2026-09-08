@@ -157,6 +157,43 @@ def test_failed_clone_leaves_no_partial_workspace(tmp_path: Path) -> None:
     assert not list(tmp_path.glob(".*.materializing-*"))
 
 
+def test_interrupted_clone_cleans_up_and_can_retry(tmp_path: Path) -> None:
+    materialize = _helpers()["_materialize_worker_workspace"]
+    target = tmp_path / "worker"
+    core = {
+        "links": {
+            "repository": "https://github.com/smilinTux/sklegal",
+            "base_ref": "main",
+        }
+    }
+
+    def interrupt(command: list[str], **_: object) -> subprocess.CompletedProcess[str]:
+        Path(command[-1]).mkdir()
+        raise KeyboardInterrupt
+
+    with pytest.raises(KeyboardInterrupt):
+        materialize(str(target), core, ["source-only"], runner=interrupt)
+    assert not target.exists()
+    assert not list(tmp_path.glob(".*.materializing-*"))
+
+    def retry(command: list[str], **_: object) -> subprocess.CompletedProcess[str]:
+        if command[1] == "clone":
+            checkout = Path(command[-1])
+            checkout.mkdir()
+            (checkout / ".git").mkdir()
+            return subprocess.CompletedProcess(command, 0, "", "")
+        if command[-2:] == ["get-url", "origin"]:
+            output = "https://github.com/smilinTux/sklegal\n"
+        elif "status" in command or "fetch" in command:
+            output = ""
+        else:
+            output = "abc123\n"
+        return subprocess.CompletedProcess(command, 0, output, "")
+
+    assert materialize(str(target), core, ["source-only"], runner=retry) == str(target)
+    assert (target / ".git").is_dir()
+
+
 def test_existing_dirty_workspace_is_preserved_and_rejected(tmp_path: Path) -> None:
     materialize = _helpers()["_materialize_worker_workspace"]
     target = tmp_path / "worker"

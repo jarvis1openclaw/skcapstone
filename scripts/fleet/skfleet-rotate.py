@@ -448,7 +448,7 @@ def _materialize_worker_workspace(default, core, labels, runner=subprocess.run):
             target.rmdir()
         temporary.replace(target)
         return str(target)
-    except Exception:
+    except BaseException:
         if temporary.exists():
             shutil.rmtree(temporary)
         raise
