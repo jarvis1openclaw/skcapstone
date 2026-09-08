@@ -10,7 +10,9 @@ Fixes two defects found 03:50Z:
 """
 import json,os,glob,subprocess,sys,time,fcntl,datetime,hashlib,collections,re,importlib.util,shlex
 import importlib.metadata
+import shutil
 from pathlib import Path
+from urllib.parse import urlsplit
 
 from skcapstone.card_store import CardStore
 from skcapstone.fleet.worker_watchdog import StartupObservation, startup_actuation_fenced
@@ -347,6 +349,109 @@ def _worker_workspace(default):
     """Use an explicitly configured checkout only when it resolves uniquely."""
     configured = os.environ.get("SKFLEET_WORKSPACE")
     return _resolve_workspace_root(configured) if configured else default
+
+
+def _source_workspace_spec(core, labels):
+    """Return the authenticated source binding required by a source card."""
+    normalized = {str(label).strip().lower() for label in labels}
+    if "source-only" not in normalized:
+        return None
+    links = core.get("links") if isinstance(core.get("links"), dict) else {}
+    repository = str(links.get("repository") or "").strip()
+    base_ref = str(links.get("base_ref") or "").strip()
+    parsed = urlsplit(repository)
+    if (
+        parsed.scheme != "https"
+        or not parsed.hostname
+        or parsed.username
+        or parsed.password
+        or parsed.query
+        or parsed.fragment
+    ):
+        raise ValueError(
+            "source card requires a credential-free https repository link"
+        )
+    if not re.fullmatch(r"[A-Za-z0-9._/-]+", base_ref) or base_ref.startswith("-"):
+        raise ValueError("source card requires a bounded base_ref link")
+    return repository, base_ref
+
+
+def _verify_source_workspace(path, repository, base_ref, runner=subprocess.run):
+    """Verify source identity, cleanliness, and the fetched base revision."""
+    commands = (
+        (["git", "-C", str(path), "remote", "get-url", "origin"], "origin"),
+        (["git", "-C", str(path), "status", "--porcelain=v1"], "clean"),
+        (["git", "-C", str(path), "fetch", "--quiet", "origin", base_ref], "fetch"),
+        (["git", "-C", str(path), "rev-parse", "HEAD"], "head"),
+        (["git", "-C", str(path), "rev-parse", "FETCH_HEAD"], "base"),
+    )
+    values = {}
+    for command, name in commands:
+        result = runner(command, capture_output=True, text=True)
+        if result.returncode != 0:
+            raise ValueError(f"workspace {name} verification failed")
+        values[name] = result.stdout.strip()
+    expected = repository.rstrip("/").removesuffix(".git")
+    observed = values["origin"].rstrip("/").removesuffix(".git")
+    if observed != expected:
+        raise ValueError("workspace repository does not match card binding")
+    if values["clean"]:
+        raise ValueError("workspace contains uncommitted custody state")
+    if not values["head"] or values["head"] != values["base"]:
+        raise ValueError("workspace HEAD does not match fetched base_ref")
+
+
+def _materialize_worker_workspace(default, core, labels, runner=subprocess.run):
+    """Materialize one source checkout atomically before a worker is claimed."""
+    configured = os.environ.get("SKFLEET_WORKSPACE")
+    spec = _source_workspace_spec(core, labels)
+    if configured:
+        checkout = _resolve_workspace_root(configured)
+        if spec is not None:
+            _verify_source_workspace(checkout, *spec, runner)
+        return checkout
+    if spec is None:
+        os.makedirs(default, exist_ok=True)
+        return default
+    repository, base_ref = spec
+    target = Path(default)
+    if target.exists() and any(target.iterdir()):
+        checkout = _resolve_workspace_root(target)
+        _verify_source_workspace(checkout, repository, base_ref, runner)
+        return checkout
+    target.parent.mkdir(parents=True, exist_ok=True)
+    temporary = target.with_name(f".{target.name}.materializing-{os.getpid()}")
+    if temporary.exists():
+        raise ValueError("workspace materialization temporary path already exists")
+    try:
+        result = runner(
+            [
+                "git",
+                "clone",
+                "--quiet",
+                "--single-branch",
+                "--branch",
+                base_ref,
+                "--",
+                repository,
+                str(temporary),
+            ],
+            capture_output=True,
+            text=True,
+        )
+        if result.returncode != 0:
+            detail = (result.stderr or result.stdout or "git clone failed").strip()
+            raise ValueError(f"workspace materialization failed: {detail[:160]}")
+        _resolve_workspace_root(temporary)
+        _verify_source_workspace(temporary, repository, base_ref, runner)
+        if target.exists():
+            target.rmdir()
+        temporary.replace(target)
+        return str(target)
+    except Exception:
+        if temporary.exists():
+            shutil.rmtree(temporary)
+        raise
 
 
 def pi_tool_allowlist(labels):
@@ -4434,14 +4539,6 @@ for _LANE,(_,_,cid,core,_labels,_nb) in picks:
         log(d,"WOULD_LAUNCH|%s|%s|%s|lane=%s|model=%s|%s"%(HOST,sess,cid,_LANE["name"],model,str(core.get("title"))[:40])); continue
     _review_recommendation = None
     _review_handoff = None
-    default_workspace=os.path.join(HOME,".skcapstone/fleet/workspaces",name)
-    try:
-        workspace=_worker_workspace(default_workspace)
-    except ValueError as exc:
-        log(d,"WORKSPACE_BLOCKED|%s|%s|%s"%(HOST,cid,exc))
-        continue
-    if workspace == default_workspace:
-        os.makedirs(workspace,exist_ok=True)
     bf=os.path.join(logdir,"brief-%s.txt"%cid); open(bf,"w").write(brief)
     lf=os.path.join(logdir,"%s-%s.log"%(cid,STAMP))
     # Last-moment re-check through the same fold that built the pool.
@@ -4486,6 +4583,16 @@ for _LANE,(_,_,cid,core,_labels,_nb) in picks:
                 (HOST,sess,cid,fresh_claimability.get("reason","unknown")))
             continue
         log(d, "REVIEW_ASSIGNMENT_BLOCKED|%s|%s|%s" % (HOST, cid, exc))
+        continue
+    default_workspace=os.path.join(HOME,".skcapstone/fleet/workspaces",name)
+    try:
+        workspace=_materialize_worker_workspace(
+            default_workspace,
+            fresh_claimability["core"],
+            fresh_claimability["labels"],
+        )
+    except ValueError as exc:
+        log(d,"WORKSPACE_BLOCKED|%s|%s|%s"%(HOST,cid,exc))
         continue
     claim=subprocess.run([SKC,"coord","claim",cid,"--agent",name],capture_output=True,text=True)
     claimed_owner,_claimed_at,claimed_revision=_current_claim_identity_fresh(cid)
