@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Reconcile non-secret SKGateway logical GLM routes into Pi's model catalog."""
+"""Bootstrap non-secret SKGateway models and logical routes in Pi's catalog."""
 
 from __future__ import annotations
 
@@ -20,6 +20,58 @@ ALIASES = {
     "sk-zai-m": ("glm-4.6", "Z.ai medium via SKGateway"),
     "sk-zai-l": ("glm-4.7", "Z.ai large via SKGateway"),
 }
+
+SOURCE_MODELS = (
+    {
+        "id": "glm-4.6",
+        "name": "GLM-4.6 via SKGateway (z.ai)",
+        "reasoning": True,
+        "input": ["text"],
+        "contextWindow": 200000,
+    },
+    {
+        "id": "glm-4.7",
+        "name": "GLM-4.7 via SKGateway (z.ai)",
+        "reasoning": True,
+        "input": ["text"],
+        "contextWindow": 200000,
+    },
+    {
+        "id": "glm-5.3",
+        "name": "GLM-5.3 via SKGateway (z.ai)",
+        "reasoning": True,
+        "input": ["text"],
+        "contextWindow": 200000,
+    },
+    {
+        "id": "kimi-for-coding",
+        "name": "Kimi K2.7 Coding via SKGateway (z.ai-free kimi sub)",
+        "reasoning": True,
+        "input": ["text", "image"],
+        "contextWindow": 262144,
+    },
+    {
+        "id": "kimi-for-coding-highspeed",
+        "name": "Kimi K2.7 Coding Highspeed via SKGateway",
+        "reasoning": True,
+        "input": ["text", "image"],
+        "contextWindow": 262144,
+    },
+    {
+        "id": "k3",
+        "name": "Kimi K3 via SKGateway (1M context)",
+        "reasoning": True,
+        "input": ["text", "image"],
+        "contextWindow": 1000000,
+    },
+    {
+        "id": "k3-256k",
+        "name": "Kimi K3 256K via SKGateway",
+        "reasoning": True,
+        "input": ["text", "image"],
+        "contextWindow": 262144,
+    },
+)
 
 
 def catalog_path() -> Path:
@@ -46,17 +98,36 @@ def reconcile(document: dict) -> tuple[dict, list[str]]:
     models = gateway.get("models") if isinstance(gateway, dict) else None
     if not isinstance(models, list) or not all(isinstance(item, dict) for item in models):
         raise ValueError("providers.skgateway.models must be a list of objects")
-    by_id = {item.get("id"): item for item in models if isinstance(item.get("id"), str)}
-    missing = sorted({source for source, _ in ALIASES.values()} - by_id.keys())
-    if missing:
-        raise ValueError("missing source model metadata: " + ",".join(missing))
-
+    for item in models:
+        model_id = item.get("id")
+        if not isinstance(model_id, str) or not model_id:
+            raise ValueError("every model id must be a non-empty string")
+    managed_ids = {item["id"] for item in SOURCE_MODELS} | set(ALIASES)
+    seen_managed = set()
+    for item in models:
+        model_id = item.get("id")
+        if model_id not in managed_ids:
+            continue
+        if model_id in seen_managed:
+            raise ValueError(f"duplicate managed model id: {model_id}")
+        seen_managed.add(model_id)
     updated = copy.deepcopy(document)
     target_models = updated["providers"]["skgateway"]["models"]
     target_by_id = {item.get("id"): item for item in target_models}
     changed = []
+    for expected in SOURCE_MODELS:
+        model_id = expected["id"]
+        current = target_by_id.get(model_id)
+        if current is None:
+            added = copy.deepcopy(expected)
+            target_models.append(added)
+            target_by_id[model_id] = added
+            changed.append(model_id)
+        elif current != expected:
+            raise ValueError(f"conflicting source model metadata: {model_id}")
+
     for alias, (source, name) in ALIASES.items():
-        expected = copy.deepcopy(by_id[source])
+        expected = copy.deepcopy(target_by_id[source])
         expected["id"] = alias
         expected["name"] = name
         current = target_by_id.get(alias)
@@ -65,8 +136,7 @@ def reconcile(document: dict) -> tuple[dict, list[str]]:
         if current is None:
             target_models.append(expected)
         else:
-            current.clear()
-            current.update(expected)
+            raise ValueError(f"conflicting logical alias metadata: {alias}")
         changed.append(alias)
     return updated, changed
 
@@ -116,7 +186,10 @@ def main() -> int:
         print(f"PI_MODEL_CATALOG_ERROR|{type(exc).__name__}|{detail[:200]}", file=sys.stderr)
         return 2
     state = "changed" if changed else "current"
-    print(f"PI_MODEL_CATALOG|{state}|aliases={len(ALIASES)}|pending={len(changed)}")
+    print(
+        f"PI_MODEL_CATALOG|{state}|sources={len(SOURCE_MODELS)}|"
+        f"aliases={len(ALIASES)}|pending={len(changed)}"
+    )
     return 1 if changed and not args.apply else 0
 
 

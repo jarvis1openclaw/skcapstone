@@ -97,12 +97,15 @@ boot as undeclared custom model ids with no metadata:
 ```
 
 Installers reconcile the six non-secret logical aliases with
-`skfleet-pi-model-catalog.py --apply`. The command derives their metadata from
-the existing `glm-4.6` and `glm-4.7` entries, preserves every unrelated field,
-requires a current-user mode-0600 regular file, and replaces it atomically.
-Run the command without `--apply` as the post-install drift check. Both
-`sk-glm-{s,m,l}` and canonical `sk-zai-{s,m,l}` are installed. Fleet workers
-use only the `sk-glm-*` names.
+`skfleet-pi-model-catalog.py --apply`. The command carries reviewed metadata
+for only the three GLM and four Kimi source models used by fleet routes. It
+adds a missing managed source model, refuses conflicting metadata already
+present under a managed id, and then derives each GLM alias from that local
+source record. Conflicting aliases and duplicate managed ids also stop the
+operation. It preserves every unrelated field, requires a current-user
+mode-0600 regular file, and replaces it atomically. Run the command without
+`--apply` as the post-install drift check. Both `sk-glm-{s,m,l}` and canonical
+`sk-zai-{s,m,l}` are installed. Fleet workers use only the `sk-glm-*` names.
 
 #### Five-host installation contract
 
@@ -126,7 +129,9 @@ For each host, the installer must perform these steps in order:
    Any other insecure mode, symlink, wrong owner, byte drift, or verification
    failure stops installation on that host.
 3. Invoke `skfleet-pi-model-catalog.py --apply` and verify a subsequent
-   read-only invocation reports the catalog current.
+   read-only invocation reports the catalog current. Missing managed GLM or
+   Kimi source records are bootstrapped from the reviewed script. Existing
+   conflicting managed records stop installation rather than being replaced.
 4. Only after reconciliation succeeds, install or activate the alias-selecting
    launcher and verify its exact host-specific expected hash.
 
