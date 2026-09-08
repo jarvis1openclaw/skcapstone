@@ -74,9 +74,7 @@ def test_invalid_legacy_id_does_not_block_valid_subsequent_unit() -> None:
             continue
         launched.append((card_id, unit))
 
-    assert launched == [
-        ("5a71c2dd", "skfleet-worker-codex-5a71c2dd.service")
-    ]
+    assert launched == [("5a71c2dd", "skfleet-worker-codex-5a71c2dd.service")]
 
 
 def test_unit_identity_skip_precedes_workspace_and_claim() -> None:
