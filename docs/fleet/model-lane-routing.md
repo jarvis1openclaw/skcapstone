@@ -10,7 +10,7 @@ The rotation dispatches each claimable card to one lane, cheapest first:
 | Lane | Default model | Target source | Notes |
 |------|---------------|---------------|-------|
 | qwen | `SKFLEET_QWEN_MODEL` (default `qwen3.8-27b-huihui-abliterated-q4_k_m`) | `SKFLEET_QWEN_TARGET` | Local free tier. Heavy titles (production, release, migration, schema, architecture, `[HUMAN]`, `[XL]`) are excluded by `qwen_suitable`. |
-| glm | `SKFLEET_GLM_MODEL` (default `glm-4.6`), overridden per card by level routing below | `SKFLEET_GLM_TARGET` | One shared z.ai connection serves the whole estate. |
+| glm | `SKFLEET_GLM_MODEL` (default `sk-glm-s`), overridden per card by level routing below | `SKFLEET_GLM_TARGET` | One shared Z.ai connection serves the whole estate. Logical routes prevent provider fallback. |
 | codex | `sk-codex` | `SKFLEET_TARGET` | Flat plan quota. |
 | escalate | `SKFLEET_ESC_MODEL` (default `gpt-5.6-sol`) | `SKFLEET_ESC_TARGET` | Only capability-escalated cards. |
 
@@ -21,11 +21,11 @@ The card size marker in the title selects the model level:
 
 | Title marker | Model |
 |--------------|-------|
-| `[S]` | `glm-4.6` |
-| `[M]` | `glm-4.6` |
-| `[L]` | `glm-4.7` |
-| `[XL]` | `glm-5.3` |
-| no marker | lane default (`glm-4.6`) |
+| `[S]` | `sk-glm-s` |
+| `[M]` | `sk-glm-m` |
+| `[L]` | `sk-glm-l` |
+| `[XL]` | `sk-glm-l` |
+| no marker | lane default (`sk-glm-s`) |
 
 A bracket only counts as a size marker when it is exactly `S`, `M`, `L`, or
 `XL`; a title like `[SKLEGAL][S1-05B][L]` routes as `L`, never as `S`. Each
@@ -96,6 +96,14 @@ boot as undeclared custom model ids with no metadata:
 }
 ```
 
+Installers reconcile the six non-secret logical aliases with
+`skfleet-pi-model-catalog.py --apply`. The command derives their metadata from
+the existing `glm-4.6` and `glm-4.7` entries, preserves every unrelated field,
+requires a current-user mode-0600 regular file, and replaces it atomically.
+Run the command without `--apply` as the post-install drift check. Both
+`sk-glm-{s,m,l}` and canonical `sk-zai-{s,m,l}` are installed. Fleet workers
+use only the `sk-glm-*` names.
+
 ### opencode (`~/.config/opencode/opencode.jsonc`)
 
 Same routes through the OpenAI-compatible adapter, for interactive seats:
@@ -127,8 +135,8 @@ Environment=SKFLEET_QWEN_TARGET=1
 Environment=SKFLEET_QWEN_MODEL=qwen3.8-27b-huihui-abliterated-q4_k_m
 Environment=SKFLEET_GLM_TARGET=3
 # Optional per-level overrides; defaults are in the script
-# Environment=SKFLEET_GLM_MODEL_L=glm-4.7
-# Environment=SKFLEET_GLM_MODEL_XL=glm-5.3
+# Environment=SKFLEET_GLM_MODEL_L=sk-glm-l
+# Environment=SKFLEET_GLM_MODEL_XL=sk-glm-l
 Environment=SKFLEET_MAX_LAUNCH=8
 ExecStart=%h/.skenv/bin/python3 %h/.local/bin/skfleet-rotate.py --go
 ```

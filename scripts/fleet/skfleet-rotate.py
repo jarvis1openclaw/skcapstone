@@ -561,7 +561,7 @@ def _beat_interval():
 LANES=[
     {"name":"codex","prefix":"codex-auto-","model":"sk-codex-mid",
      "target":TARGET},
-    {"name":"glm","prefix":"glm-auto-","model":os.environ.get("SKFLEET_GLM_MODEL","glm-4.6"),
+    {"name":"glm","prefix":"glm-auto-","model":os.environ.get("SKFLEET_GLM_MODEL","sk-glm-s"),
      "target":0 if glm_held else GLM_TARGET},
     # Restored. needs_escalation() still exists and still marks a card whose
     # worker reported blocked_on=capability, but the lane it routes to had been
@@ -582,7 +582,7 @@ LANES=[
      "model":os.environ.get("SKFLEET_ESC_MODEL", ESC_MODEL if "ESC_MODEL" in dir() else "gpt-5.6-sol"),
      "target":int(os.environ.get("SKFLEET_ESC_TARGET","2"))},
 ]
-_GLM_LEVEL_DEFAULTS={"S":"glm-4.6","M":"glm-4.6","L":"glm-4.7","XL":"glm-5.3"}
+_GLM_LEVEL_DEFAULTS={"S":"sk-glm-s","M":"sk-glm-m","L":"sk-glm-l","XL":"sk-glm-l"}
 _GLM_LEVELS={key:os.environ.get("SKFLEET_GLM_MODEL_"+key,value)
              for key,value in _GLM_LEVEL_DEFAULTS.items()}
 _GLM_SIZE_RE=re.compile(r"\[(S|M|XL|L)\]")
