@@ -212,6 +212,41 @@ def test_redaction_and_outbox_idempotency_and_retention(tmp_path):
         outbox.append(altered)
 
 
+def test_outbox_reload_rejects_hash_or_ack_tampering(tmp_path):
+    path = tmp_path / "outbox.jsonl"
+    record = make_record(
+        "Observation",
+        actor="link",
+        target_ref="review-latency@1",
+        payload={
+            "natural_key": "tamper",
+            "value": 1,
+            "unit": "count",
+            "source": "test",
+            "cohort": "baseline",
+            "sample_id": "tamper",
+            "collection_quality": "complete",
+        },
+    )
+    outbox = AppendOnlyOutbox(path)
+    outbox.append(record)
+
+    row = json.loads(path.read_text())
+    row["record_hash"] = "0" * 64
+    path.write_text(json.dumps(row) + "\n")
+    with pytest.raises(SKRSIIntegrityError):
+        AppendOnlyOutbox(path)
+
+    outbox = AppendOnlyOutbox(tmp_path / "second.jsonl")
+    outbox.append(record)
+    second_path = tmp_path / "second.jsonl"
+    row = json.loads(second_path.read_text())
+    row["sent"] = True
+    second_path.write_text(json.dumps(row) + "\n")
+    with pytest.raises(SKRSIIntegrityError):
+        AppendOnlyOutbox(second_path)
+
+
 def test_registry_rejects_revision_reuse_and_discovers_only_active_unexpired():
     registry = TargetRegistry()
     draft = target()

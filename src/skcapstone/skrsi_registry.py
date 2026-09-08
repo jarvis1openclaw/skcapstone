@@ -505,17 +505,31 @@ class AppendOnlyOutbox:
                     self._by_key[key] = acknowledged
                     self._entries[self._entries.index(prior)] = acknowledged
                     continue
+                if data.get("kind") is not None or data.get("sent", False):
+                    raise SKRSIIntegrityError("outbox entry is not an append-only record")
+                serialized = bytes.fromhex(data["serialized_hex"])
+                record = MetadataRecord.from_dict(json.loads(serialized))
+                if data["record_hash"] != record.content_hash:
+                    raise SKRSIIntegrityError("outbox record hash does not match content")
+                if data["idempotency_key"] != record.idempotency_key:
+                    raise SKRSIIntegrityError("outbox idempotency key does not match content")
                 entry = OutboxEntry(
                     record_hash=data["record_hash"],
                     idempotency_key=data["idempotency_key"],
                     destination=data["destination"],
-                    serialized=bytes.fromhex(data["serialized_hex"]),
+                    serialized=serialized,
                     appended_at=data["appended_at"],
-                    sent=bool(data.get("sent", False)),
                 )
-                if entry.idempotency_key not in self._by_key:
-                    self._entries.append(entry)
-                    self._by_key[entry.idempotency_key] = entry
+                existing = self._by_key.get(entry.idempotency_key)
+                if existing is not None:
+                    if (
+                        existing.record_hash != entry.record_hash
+                        or existing.serialized != entry.serialized
+                    ):
+                        raise SKRSIIntegrityError("outbox idempotency key has conflicting records")
+                    continue
+                self._entries.append(entry)
+                self._by_key[entry.idempotency_key] = entry
         except (OSError, KeyError, TypeError, ValueError, json.JSONDecodeError) as exc:
             raise SKRSIIntegrityError("outbox is malformed; refusing to continue") from exc
 
