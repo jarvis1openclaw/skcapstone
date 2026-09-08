@@ -83,7 +83,9 @@ def test_atomic_write_preserves_mode_and_unrelated_fields(tmp_path: Path):
     assert changed
     module.write_atomic(path, updated, info)
     assert stat.S_IMODE(path.stat().st_mode) == 0o600
-    assert json.loads(path.read_text())["providers"]["skgateway"]["opaqueReference"] == "preserve-me"
+    assert (
+        json.loads(path.read_text())["providers"]["skgateway"]["opaqueReference"] == "preserve-me"
+    )
 
 
 def test_rejects_insecure_or_incomplete_catalog(tmp_path: Path):
