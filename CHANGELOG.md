@@ -84,6 +84,10 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ### Added
 
+- Card `5a71c2db`: added metadata-only SKRSI target revisions, canonical
+  hash-bound architecture records, redaction and fail-closed validation, and
+  an append-only idempotent outbox with retention and acknowledgement cursors.
+
 - Daily `coord-maintain` scheduler job (`config/jobs.d/coord-maintain.yaml`) and
   `coord maintain --lock-days` wiring for stale coordination lock prune. Cards
   b0a0d004 / b0a0d005.
