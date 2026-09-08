@@ -50,6 +50,14 @@ def test_docs_only_classifier_fails_closed(tmp_path: Path) -> None:
     runtime_head = _git(tmp_path, "rev-parse", "HEAD")
     assert _classify(tmp_path, docs_head, runtime_head) == "docs_only=false"
 
+    nested_markdown = tmp_path / "src" / "contract.md"
+    nested_markdown.parent.mkdir()
+    nested_markdown.write_text("not documentation scope\n", encoding="utf-8")
+    _git(tmp_path, "add", ".")
+    _git(tmp_path, "commit", "-qm", "nested markdown")
+    nested_head = _git(tmp_path, "rev-parse", "HEAD")
+    assert _classify(tmp_path, runtime_head, nested_head) == "docs_only=false"
+
 
 def test_workflow_preserves_required_checks_and_coverage() -> None:
     data = yaml.safe_load(WORKFLOW.read_text(encoding="utf-8"))

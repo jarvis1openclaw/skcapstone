@@ -13,7 +13,12 @@ if ((${#changed[@]} == 0)); then
 fi
 for path in "${changed[@]}"; do
   case "$path" in
-    docs/*|*.md) ;;
+    docs/*) ;;
+    *.md)
+      if [[ "$path" == */* ]]; then
+        docs_only=false
+      fi
+      ;;
     *) docs_only=false ;;
   esac
 done
