@@ -93,7 +93,11 @@ from .providers import (
 from .registry import REGISTRY_SCHEMA, RouteRegistry, sha256_text
 from .schemas import (
     CORPUS_SUMMARY_SCHEMA_ID,
+    HTWC_PROPOSITIONS_SCHEMA_ID,
+    HTWC_WORKFLOW_PACK_SCHEMA_ID,
     CorpusSummaryProposalPayload,
+    HTWCPropositionsPayload,
+    HTWCWorkflowPackPayload,
     SchemaRegistry,
     schema_sha256,
 )
@@ -118,6 +122,8 @@ __all__ = [
     "CATALOG_SCHEMA",
     "CONTROL_GATE_REVISION",
     "CORPUS_SUMMARY_SCHEMA_ID",
+    "HTWC_PROPOSITIONS_SCHEMA_ID",
+    "HTWC_WORKFLOW_PACK_SCHEMA_ID",
     "DEFAULT_QWEN_CAPACITY_DOMAIN_ID",
     "DEFAULT_QWEN_ENVELOPE",
     "InMemoryAuditRecorder",
@@ -185,6 +191,8 @@ __all__ = [
     "RouteNotFoundError",
     "RouteRegistry",
     "SchemaRegistry",
+    "HTWCPropositionsPayload",
+    "HTWCWorkflowPackPayload",
     "SchemaValidationError",
     "SecretResolutionError",
     "SecretResolver",

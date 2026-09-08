@@ -1,0 +1,1109 @@
+Analyze only the supplied 28 authorized HowToWinInCourt spans. Return JSON only with keys propositions, contradictions, unresolved_gaps. Produce exactly one material proposition for each supplied span, exactly 28 propositions total. Use every supplied span ID exactly once as the sole source_refs entry of its proposition. Each proposition requires id, workflow, text, lane equal to course_instruction, source_refs using the exact supplied span ID, uncertainty low or medium or high, counter_support, and human_review_required true. Preserve the source wording and intent without silently reconciling tensions. Contradictions require id, description, source_refs, resolution_state equal unresolved, and human_review_required true. Keep course instruction, Matter Fact Assertions and Evidence Items, current jurisdiction-specific official Authority, model inference, and human decisions separate. Treat every jurisdiction rule, deadline, admissibility conclusion, remedy, filing requirement, and outcome as unresolved until verified from current official Authority and Matter facts. Do not invent facts or law. Do not file, serve, mail, dispatch, approve, execute, or advance workflow state. This is a source-derived research proposal only. Do not use or request a frontier model.
+
+WORKFLOW planning SPAN planning-1:L30-L31
+
+[00:00:00 - 00:00:35] Thanks for watching! Thank you.
+
+WORKFLOW planning SPAN planning-2:L34-L80
+## Captured Page Text
+
+//
+ Official  JurisDictionary® Tactics Course
+How to Win in Court
+~  Without a Lawyer  ~
+866-LAW-EASY
+( 866-529-3279 )
+     A B C D E F G H I J K L M N O P Q R S T U V W X Y Z  
+ 
+Renew before Sep 28, 2026 for $89 ... Save $160
+	
+Tutoring
+	
+Help
+	
+Home
+	
+$$$ 
+Us
+	
+Order for a Friend
+	
+Chat
+	
+Tell a Friend
+	
+Sign Out
+	
+Donate
+
+
+
+ 
+
+ 
+
+A
+
+ 
+
+To request additional definitions,
+email lawbook@jurisdictionary.com.
+
+Ab Initio
+Literally, from the beginning or from the start.
+The term is often used to describe an agreement that was unenforceable when first made, such as a gambling debt. See Void Ab Initio
+
+WORKFLOW planning SPAN planning-3:L34-L80
+
+//
+ Official  JurisDictionary® Tactics Course
+How to Win in Court
+~  Without a Lawyer  ~
+866-LAW-EASY
+( 866-529-3279 )
+     A B C D E F G H I J K L M N O P Q R S T U V W X Y Z  
+ 
+Renew before Sep 28, 2026 for $89 ... Save $160
+	
+Tutoring
+	
+Help
+	
+Home
+	
+$$$ 
+Us
+	
+Order for a Friend
+	
+Chat
+	
+Tell a Friend
+	
+Sign Out
+	
+Donate
+
+
+
+Maxims
+
+The Light of Liberty's Lamp
+
+Self-Evident Truths
+
+Maxims are brief statements of self-evident truth.
+
+By self-evident, we mean truths any "reasonable" man or woman will agree are, in fact, true and always true!
+
+Click the letter "R" above to learn more about the "reasonable man", an important legal term of art.
+
+Maxims explain what's "fair" and “right” and therefore tell us what is “just”.
+
+Maxims control (or should control) our courts, our legislatures, and every consideration of mankind that seeks what's fair and best for everyone (and not for just the fortunate few).
+
+WORKFLOW planning SPAN planning-4:L34-L80
+
+//
+ Official  JurisDictionary® Tactics Course
+How to Win in Court
+~  Without a Lawyer  ~
+866-LAW-EASY
+( 866-529-3279 )
+     A B C D E F G H I J K L M N O P Q R S T U V W X Y Z  
+ 
+Renew before Sep 28, 2026 for $89 ... Save $160
+	
+Tutoring
+	
+Help
+	
+Home
+	
+$$$ 
+Us
+	
+Order for a Friend
+	
+Chat
+	
+Tell a Friend
+	
+Sign Out
+	
+Donate
+
+
+
+Natural Law
+
+Avoiding the Big Foot
+
+What Is Natural Law?
+
+You hear it talked about.
+
+Politicians and commentators toss the word around.
+
+But, what is it really?
+
+To unravel this mystery we explore the meaning of Jurisprudence. By understanding this complex word we gain a clearer view of our American heritage of law. You will learn how we came to the problems we now face. You will hopefully want to work with us, using this knowledge, to make things better for the future of our children and our planet.
+
+Our search for discovering what Natural Law really is (without arguing over sectarian or political opinions) begins with our investigation of a particular, critically important word: Jurisprudence.
+
+WORKFLOW planning SPAN planning-5:L30-L44
+## Transcript
+
+[00:00:00 - 00:03:48] The key to winning is confidence. How many football teams win when they think, oh gosh, we can't win? Something happens, doesn't it? You might be very skilled, you might have an excellent quarterback, but if you are not confident, you've limited yourself from the beginning. The key to confidence is knowing. If you don't know, then you're going to be confused. The key to knowledge is truth. I'm not going to pick out any particular source of information that I know some of you are listening to, but I will say this. Some of what you're getting is false. And believe me, anybody that lies to you or doesn't tell you the full truth is not your friend. And when you begin to see what we have here and you begin to see what they're telling you, I hope some of you will begin to ask some questions and begin to wonder, maybe I've been sold some snake oil, because there's a lot of it out there. Not every case is winnable. Not every wrong has a remedy. Back in World War II, before 1945, when the war was over, if a young man or woman went overseas and came back to find out the best friend had enticed the spouse, there used to be a cause of action in Florida for alienation of affections. You can get money damages. And why not? Somebody comes into your relationship, destroys your marriage, end up losing everything. Why shouldn't you have a cause of action against that person? And you did for years and years and years. And then the legislature acting at the behest of the people and hopefully because people were abusing it, they said we abolish the cause of action. We used to be able to do that. There are only a few things that you can sue for. I'll tell you how to identify those things and what to look for and what you have to prove in order to get to where you want to go. Facts and law. Facts and law. How do you win a lawsuit? Is it being persuasive? No. Is it wearing a $700 suit? No. And if you're truly honest with yourselves, it's not knowing the judge. Because once you know what we teach you here, you'll realize that it doesn't matter who the guy is on the other side. It could be the President of the United States. If you have the facts, and you have the law, and you know how to to make a record of the facts and the law and you know how to move the court to get your order, you will win. At least the odds of winning will be tremendously multiplied. But it all comes down to the facts and the law. If you don't have the facts, you can't win. Unless you want to manufacture them like some of my peers do in the profession and get away with it because this person on the other side doesn't know what they're doing. But if the person on the other side knew what they were doing, that would never happen. So you're going to be equipped on that. Liability and damages. That's the other way of looking at it. First, we look at a case and say, do we have the facts and do we have the law? Yes. What do we have to prove? We have to prove that the other side is legally liable for our damages, and we have to prove that we were damaged as a direct and proximate result. I'll tell you a case that's in our tort books. It's called the Paulsgraf case for a lady named Mrs. Paulsgraf, who was down at the train station one day. How many of you are old enough to remember those big luggage trailers that had the big steel wheels? Well, there was one of those and it was stacked way high with luggage. And some little boy set off a firecracker. Somebody bumped into the luggage trailer. The piece of luggage on the top of the trailer fell and hit Mrs. Paul's Graff and she sued. The question is, who caused her damages? Was it the railroad company? Was it the boy with the firecracker? Was it the man that stacked the luggage too high? And without getting into how the case came out, the point that I want you to understand is we have to determine who approximately caused the damages. It can't be this person did this and this person and because of this and then it hurt me. At some point, the law says, unless there's a proximity between the causation,
+[00:03:48 - 00:03:52] the initial causation, and there are no intervening, superseding causes,
+[00:03:52 - 00:03:55] or the fellow that says, gee whiz, you know, my neck hurts,
+[00:03:55 - 00:03:58] Florida Power and Light drove a pole truck into my car,
+[00:03:58 - 00:04:00] and it bumped me a little bit, and I've been having headaches.
+[00:04:01 - 00:04:03] Somewhere the court wants to know,
+[00:04:03 - 00:05:46] what is the proximate causation of this person's damages, if in fact he has them? So you have to prove that you have headaches. Somewhere the court wants to know what is the proximate causation of this person's damages if in fact he has them. So you have to prove that you have headaches, but you also have to prove that someone is liable to you because they breached a duty. Every cause of action arises because someone had a duty that the law recognizes and they breached it. And as a result of the breach, they cause damages. And the only thing I'd add to that equation is that there has to be approximate, in other words, some kind of close relationship between the causation and the damages. It's that simple. Now, if you say, gee whiz, how can it be that simple? Well, it just is. The reality is that America is a wonderful place to live, and American courts do work if you know how to work them. And if you don't know how to work them, anticipate being taken advantage of by other members of my profession because that's what people pay us to do. My clients don't pay me to let other people win. My clients don't pay me to help the other guy on the other side. I don't pick up the phone and call and say, you know, by the way, you need to take that fellow's deposition. I'm not being paid to do that. That's what the system is. It's called an adversarial system. I took an oath to vigorously and zealously advocate my client's cause. So don't anticipate that the attorney on the other side is going to help you and never, ever anticipate that the judge is going to help you or that the judge has any responsibility to do anything whatsoever until you do what? Move the court and set your motion for hearing. I can't tell you how many emails we get. People say, well, I filed a motion and nothing happened. You have to schedule a hearing and you have to go to the hearing and you have to present what? The facts and the law, the liability and the
+[00:05:46 - 00:05:51] damages, move the court, and then the judge has to do something. And we'll get into that
+[00:05:51 - 00:05:56] a little more as we go along. Many people just jump in. They just throw something out
+[00:05:56 - 00:06:02] there. And the problem is this. If you don't do a good job from the beginning, it haunts
+[00:06:02 - 00:06:06] you throughout the lawsuit. Remember, a lawsuit's a process. You start over here. We're trying
+[00:06:06 - 00:06:10] to get over there like we're going to see when we look at the flow chart. If you don't
+[00:06:10 - 00:06:13] Thank you. beginning, it haunts you throughout the lawsuit. Remember, a lawsuit's a process. You start over here, we're trying to get over there like we're going to see when we look at the flowchart. If you don't start with a good plan, then you're hampered by that all the way along. So what we need to do is start at the beginning and plan before we do anything. Anticipate what the other guy's going to say. Anticipate what the other guy's going to have, what he's going to present, and be ready for it. This is an axe fight. Don't forget your axe. It's very serious, very serious. It's an axe fight. We're not here to be gentle, but at the same time, swinging the axe through the air is going to get us absolutely nothing. What we want to do is bury the axe right in the middle of the other guy's forehead. I'm going to teach you how to do this by getting away from all of these extraneous diversions
+
+WORKFLOW planning SPAN planning-6:L34-L80
+
+//
+ Official  JurisDictionary® Tactics Course
+How to Win in Court
+~  Without a Lawyer  ~
+866-LAW-EASY
+( 866-529-3279 )
+     A B C D E F G H I J K L M N O P Q R S T U V W X Y Z  
+ 
+Renew before Sep 28, 2026 for $89 ... Save $160
+	
+Tutoring
+	
+Help
+	
+Home
+	
+$$$ 
+Us
+	
+Order for a Friend
+	
+Chat
+	
+Tell a Friend
+	
+Sign Out
+	
+Donate
+
+
+
+Easy Guide
+
+Get the Big Picture
+
+A Brief Tour
+
+See the BIG picture here before getting into the details.
+
+Spend a few minutes with this EasyGuide before jumping ahead to the more advanced tutorials, and the mind-numbing fog of legal mystery will disappear more quickly for you.
+
+NOTICE:
+My case-winning tactics work everywhere, but exact wording of rules may differ slightly from one court to another.
+Be prepared to cite the official rules where you are.
+Google "Florida Rules of Evidence" or "California Rules of Civil Procedure" or "Indiana Rules of Criminal Procedure" to get the latest official rules.
+Then use my tactics to keep everyone honest ... including the judge!
+
+WORKFLOW planning SPAN planning-7:L34-L80
+
+//
+ Official  JurisDictionary® Tactics Course
+How to Win in Court
+~  Without a Lawyer  ~
+866-LAW-EASY
+( 866-529-3279 )
+     A B C D E F G H I J K L M N O P Q R S T U V W X Y Z  
+ 
+Renew before Sep 28, 2026 for $89 ... Save $160
+	
+Tutoring
+	
+Help
+	
+Home
+	
+$$$ 
+Us
+	
+Order for a Friend
+	
+Chat
+	
+Tell a Friend
+	
+Sign Out
+	
+Donate
+
+
+
+The Key to Winning
+
+Key to the Courthouse
+
+The #1 Lesson
+
+Learn this first!
+
+This is your key to the courthouse!
+
+Written words win court cases!
+
+TV shows like "Law & Order" give the idea that cases are won at trial by questioning witnesses and introducing "new" evidence to the jury at the last minute.
+
+Not so!
+
+WORKFLOW planning SPAN planning-8:L34-L80
+
+//
+ Official  JurisDictionary® Tactics Course
+How to Win in Court
+~  Without a Lawyer  ~
+866-LAW-EASY
+( 866-529-3279 )
+     A B C D E F G H I J K L M N O P Q R S T U V W X Y Z  
+ 
+Renew before Sep 28, 2026 for $89 ... Save $160
+	
+Tutoring
+	
+Help
+	
+Home
+	
+$$$ 
+Us
+	
+Order for a Friend
+	
+Chat
+	
+Tell a Friend
+	
+Sign Out
+	
+Donate
+
+
+
+Planning
+
+Know Where You're Going Before You Begin
+
+Get Ready
+
+Foolish folks start journeys without planning.
+
+Plan first.
+
+Don't wait till the battle of words is raging before deciding what you must do to win.
+
+Make a plan.
+
+Work your plan!
+
+WORKFLOW elements-evidence SPAN elements-evidence-1:L34-L80
+
+//
+ Official  JurisDictionary® Tactics Course
+How to Win in Court
+~  Without a Lawyer  ~
+866-LAW-EASY
+( 866-529-3279 )
+     A B C D E F G H I J K L M N O P Q R S T U V W X Y Z  
+ 
+Renew before Sep 28, 2026 for $89 ... Save $160
+	
+Tutoring
+	
+Help
+	
+Home
+	
+$$$ 
+Us
+	
+Order for a Friend
+	
+Chat
+	
+Tell a Friend
+	
+Sign Out
+	
+Donate
+
+
+
+Contract Law
+
+The Foundation of All Legal Systems
+
+A Deal is a Deal!
+
+In the Gospel of Matthew, Jesus teaches a simple lesson about contracts every schoolchild should be taught before 8th grade.
+
+It is fundamental contract law this world sorely needs to learn.
+
+It teaches one of our fundamental civil rights that's in jeopardy each day in the hands of liberal politicians and the self-interest of crooked lawyers.
+
+The Vineyard Workers
+
+A land owner went early one morning to hire men to work in his vineyard.
+
+WORKFLOW elements-evidence SPAN elements-evidence-2:L34-L80
+
+//
+ Official  JurisDictionary® Tactics Course
+How to Win in Court
+~  Without a Lawyer  ~
+866-LAW-EASY
+( 866-529-3279 )
+     A B C D E F G H I J K L M N O P Q R S T U V W X Y Z  
+ 
+Renew before Sep 28, 2026 for $89 ... Save $160
+	
+Tutoring
+	
+Help
+	
+Home
+	
+$$$ 
+Us
+	
+Order for a Friend
+	
+Chat
+	
+Tell a Friend
+	
+Sign Out
+	
+Donate
+
+
+READY FOR COURT?
+Take this 10 Minute Quiz
+Click Here
+
+Contract Law
+
+The Foundation of All Legal Systems
+
+Everything You Need
+Click Below for Previews
+Evidence Rules Made Easy
+How to Make Objections
+  The Key to Winning !
+Why Winning Is Easy
+The Essential Elements
+2½ Hour Audio Classroom
+
+WORKFLOW elements-evidence SPAN elements-evidence-3:L34-L80
+
+//
+ Official  JurisDictionary® Tactics Course
+How to Win in Court
+~  Without a Lawyer  ~
+866-LAW-EASY
+( 866-529-3279 )
+     A B C D E F G H I J K L M N O P Q R S T U V W X Y Z  
+ 
+Renew before Sep 28, 2026 for $89 ... Save $160
+	
+Tutoring
+	
+Help
+	
+Home
+	
+$$$ 
+Us
+	
+Order for a Friend
+	
+Chat
+	
+Tell a Friend
+	
+Sign Out
+	
+Donate
+
+
+
+
+Evidence
+
+Don't Take No for an Answer!
+
+The Friendly Filter
+
+Evidence Rules are a "filter".
+
+That's all they are.
+
+Get this NOW.
+
+They filter "out" falsified testimony, forged documents, and other things that should never be allowed to influence judge or jury.
+
+
+WORKFLOW pleadings SPAN pleadings-1:L30-L49
+## Transcript
+
+[00:00:00 - 00:02:25] The pleadings. The reason I picked this particular graphic is this fellow's got a frame. And very often lawyers will use the term that we're framing our pleadings. Experienced lawyers don't get this. They don't realize that the only thing that's ultimately going to be decided at trial, if it goes to trial, is what has been alleged in the pleadings. The pleadings frame the case. I say you did this, you say I didn't do it, someone else did it. In the pleadings we say what the case is about, what we're going to prove and the rest of everything that goes on is outside the pleadings but it's about the pleadings and if it's not about the pleadings then he shouldn't have it there. From time to time you may need to amend the pleadings because you found out something you didn't know. So you move the court to allow you to amend the pleadings. If the other side hasn't filed an answer yet you can amend the pleadings without leave of court. Usually even And he's filed an answer you can amend the pleadings close to the time of trial but at some point the judge will say now this is going to prejudice the other side. You've had your chance. So again that's why we have the little fellow at the drafting table. Let's plan this situation so that when we state our case that we state it correctly. Get everything in the pleadings that has to be in the pleadings and put nothing else in the pleadings except what needs to be in the pleadings, and there's one exception. If I need to prove as part of my case that somebody owned a vehicle, for example, even though it may not be an element of a cause of action, but I'd like to be able to prove that he owned the vehicle, then I would state in my pleadings that the defendant owned the vehicle. It might not have to be there, but I would put it there because I know he's going to admit it. And if he admits it, it's admitted for all purposes. So you see, I've used my pleading for discovery. Now, what would be the point of putting in the pleading something I know he's going to deny? If it's part of the elements of a cause of action, then I'll put it in whether he's going to deny it or not, because it has to be there. But if there are some things I know he will admit that I don't want to have to go to the trouble of deposing someone or subpoenaing bank records to prove, then I'll go ahead and put that in the complaint just because I know that
+[00:02:25 - 00:03:06] once he admits it a little less work has to be done. All right the first kind of pleading is a complaint. Here's a complaint one page I've seen some complaints by pro se people one fellow actually had one that was over 60 pages. What do you think the judge did when he saw that? Judges don't like to read. The complaint here is very simple, jurisdictional allegations in a complaint. What I'm going to tell the judge now is why the court has subject matter jurisdiction. Then we're going to have our general factual allegations and we're going to say this is an action for money damages in excess of $15,000. If it isn't, then this court doesn't have jurisdiction. And if I don't
+[00:03:06 - 00:03:10] allege it, the other side's going to file a motion to dismiss it. Then I'll have to allege it. And
+[00:03:10 - 00:03:15] why waste everybody's time? Peter Plaintiff was a resident of Sunshine County. Danny Defendant was
+[00:03:15 - 00:03:20] a resident of Sunshine County. All acts necessary or proceeding to bring the action occurred or
+[00:03:20 - 00:03:25] accrued in Sunshine County. The court has jurisdiction. If I didn't say all those things,
+[00:03:25 - 00:04:28] I can't just say this court has jurisdiction. But what we need to do is we tell the judge, this is why you have jurisdiction. Get it over with. Then that's done. The next is we're going to allege the facts. There are no counts in this simple complaint because there's only one cause of action. So I don't have to number them. Why would I have a count one when there's not going to be a count two? The point here is we're stating that the plaintiff and defendant entered into a written agreement and we're telling them what the written agreement was. I'm going to have the written agreement, and the written agreement is going to say that he's going to do this while I'm on vacation. This says I paid him $3,000 at the time of execution of the contract. A copy of the written contract is attached. Many jurisdictions require this. During plaintiff's absence, defendant failed and refused to spray the strawberries, breaching the contract. As a direct result, strawberries valued in excess of $15,000 were destroyed by insects. I've stated my cause of action by stating facts that support those elements. Existence of a contract, breach of the contract, and damages.
+[00:04:29 - 00:04:33] Now, I didn't just say, we had a contract, he breached it, I had damages.
+[00:04:33 - 00:04:36] I have to state ultimate facts.
+[00:04:37 - 00:04:40] Now, I don't have to state ultimate facts that go beyond the elements,
+[00:04:40 - 00:04:42] but I do have to state ultimate facts.
+[00:04:43 - 00:05:08] So the ultimate fact is, we had a written agreement, and I tell the court what the agreement was that he promised to spray it while I was away. I have to show that I performed, so I did my side of the contract. I paid him, and I have a written copy, and he failed and refused, and he breached the contract. I don't just say he breached the contract. I say how he breached the contract, and then I say I suffered damages because they were destroyed by insects then there's what's called the
+[00:05:08 - 00:05:13] wherefore clause which tells the judge what I want I want money against Danny
+[00:05:13 - 00:05:16] defendant with such other and further relief his court may deem reasonable
+[00:05:16 - 00:05:20] just under the circumstances always put that in there because if you don't put
+[00:05:20 - 00:05:23] it in there the judge might decide he doesn't want to give you interest or
+[00:05:23 - 00:05:25] other things costs and things and so forth
+[00:05:25 - 00:05:27] now down here we're signing it and that's a complaint
+
+WORKFLOW pleadings SPAN pleadings-2:L34-L80
+
+//
+ Official  JurisDictionary® Tactics Course
+How to Win in Court
+~  Without a Lawyer  ~
+866-LAW-EASY
+( 866-529-3279 )
+     A B C D E F G H I J K L M N O P Q R S T U V W X Y Z  
+ 
+Renew before Sep 28, 2026 for $89 ... Save $160
+	
+Tutoring
+	
+Help
+	
+Home
+	
+$$$ 
+Us
+	
+Order for a Friend
+	
+Chat
+	
+Tell a Friend
+	
+Sign Out
+	
+Donate
+
+
+
+Answers
+
+Responding to the Complaint
+
+Defending Yourself
+
+The answer responds to each numbered paragraph of a complaint.
+
+Each response should be numbered to match the paragraph numbers of complaint.
+
+Admitted
+Denied
+Without sufficient knowledge to be able to respond
+
+This is the proper way to answer a complaint.
+
+WORKFLOW pleadings SPAN pleadings-3:L34-L80
+
+//
+ Official  JurisDictionary® Tactics Course
+How to Win in Court
+~  Without a Lawyer  ~
+866-LAW-EASY
+( 866-529-3279 )
+     A B C D E F G H I J K L M N O P Q R S T U V W X Y Z  
+ 
+Renew before Sep 28, 2026 for $89 ... Save $160
+	
+Tutoring
+	
+Help
+	
+Home
+	
+$$$ 
+Us
+	
+Order for a Friend
+	
+Chat
+	
+Tell a Friend
+	
+Sign Out
+	
+Donate
+
+
+
+Complaints
+
+Alleging What Must Be Proved
+
+Complaints in General
+
+The complaint is the most important document in a lawsuit.
+
+It's where the battle begins.
+
+It's where you say what you plan to prove!
+
+Every civil case begins with a complaint or petition (explained later). Criminal cases begin with a charging instrument that is similar to a complaint in that it alleges what the prosecutor must prove. (More on criminal cases in my class on Criminal Defense Tactics).
+
+Complaints allege essential facts the plaintiff must prove to win.
+
+WORKFLOW discovery SPAN discovery-1:L30-L76
+## Transcript
+
+[00:00:00 - 00:00:02] This is where it's fun. Discovery.
+[00:00:02 - 00:00:46] Lawsuits are won or lost on evidence. And not all evidence is evidence. Not everything you think is evidence is evidence. And a lot of people come up empty-handed and very disappointed when they show up for a hearing and they think that that letter that they have from Uncle Mort is going to come in. And it ain't coming in. Because it looks like evidence, it smells like evidence. If Perry Mason had it on a TV show, he'd get it in. But in a court of law, unless the other side is brain dead, anything that's not admissible evidence, might as well leave it at home. If the other side is brain dead, bring everything in because the judge is not supposed to object for the other side. And if he does, raise hell. Have that court reporter
+[00:00:46 - 00:00:48] write down everything you say.
+[00:00:48 - 00:00:50] Get right to the point of almost
+[00:00:50 - 00:00:52] being thrown in jail. But stand
+[00:00:52 - 00:00:54] up for your rights and say, Your Honor, hold
+[00:00:54 - 00:00:56] on. Judges are not supposed
+[00:00:56 - 00:00:58] to help one side or the other.
+[00:00:58 - 00:01:00] And if you offer evidence and it's
+[00:01:00 - 00:01:02] not admissible and the other side
+[00:01:02 - 00:01:04] doesn't object, it's the other side's job
+[00:01:04 - 00:01:05] to object, not the judge's.
+[00:01:06 - 00:01:06] Keep them straight.
+[00:01:07 - 00:01:08] Five tools to get in evidence.
+[00:01:08 - 00:01:10] There are only five tools, only five.
+[00:01:10 - 00:01:11] One, two, three, four, five.
+[00:01:11 - 00:01:14] You can count them on one hand, and this is in your flow chart.
+[00:01:14 - 00:01:16] A request for admission is where you say,
+[00:01:16 - 00:01:20] admit the truth of the following, and then you state a fact.
+[00:01:20 - 00:01:22] I'm going to give you an example in a minute.
+[00:01:22 - 00:01:22] It's real simple.
+[00:01:23 - 00:01:24] Request for production.
+[00:01:24 - 00:03:27] Get the contract. If the plaintiff sues you for breach of contract, get the contract. Get the letters. Get their books. Interrogatories are simply questions. Use them sparingly. Number one, interrogatory. Identify the person answering these interrogatories. Guess what's on the last page of the response to the interrogatory? The signature and the name of the person who answered the interrogatories. So why did I waste an interrogatory to ask who answered the interrogatories when he's going to sign his name on the end of it anyway? You only want to use your interrogatories very sparingly, and sometimes you want to use some of them up front, and then some of them right before trial to fill in the blanks if it's after you've taken the deposition because you don't have any other way to ask the guy a question before trial. Something you want to remember and never forget there is nothing you're going to prove, there's no question you're going to get answered, there's no documents you're going to obtain at the trial that you can't get before trial. No question can't be answered, no witnesses that can't be questioned, no documents that can't be obtained before trial that you're going to get at trial. No question can't be answered. No witnesses that can't be questioned. No documents that can't be obtained before trial that you're going to get at trial. If you don't win before trial, you didn't do your job. Affidavits are inadmissible. An affidavit is an out-of-court statement made to prove the truth of the matter asserted. An affidavit is hearsay. I just gave you the definition of hearsay. A hearsay is an out-of-court statement offered to prove the truth of the matter asserted. If you have an affidavit, and the person who signed the affidavit comes into court, then he can say what the affidavit says is true, but that's his testimony, isn't it? It's not the piece of paper. Or if the affidavit is filed by a party, well, then that's just what the party said. But if the affidavit is signed by someone who's not a party not a witness, didn't get deposed, never got a chance to be cross examined, it could be from the Pope I the undersigned Pope of the universe hereby swear and affirm that so and so and so and so. It's hearsay because it's an out of court statement offered to prove the truth of the matter asserted in the affidavit.
+[00:03:27 - 00:03:29] A party's affidavit is different.
+[00:03:29 - 00:03:30] That's just like his testimony.
+[00:03:31 - 00:03:32] And he's in court, isn't he?
+[00:03:32 - 00:03:34] And he's subject to cross-examination on that.
+[00:03:34 - 00:03:37] What I'm talking about is you come in with the guy that fixed your car,
+[00:03:37 - 00:03:42] and he says this and he said that, or, you know, that it was terrible and it was, you know, the fender was all bashed in.
+[00:03:42 - 00:04:24] Don't come to court and think that that's going to come in unless the other side is brain dead. Documents speaking for themselves. Some documents speak for themselves. Government documents speak for themselves. A letter from Aunt Mabel is not going to come in. It's not going to be evidence. The rules of evidence, we'll go over those a little bit. And compelling discovery. A lot of you file requests, a lot of lawyers do. They file requests for discovery, they file interrogatories. They file requests for admissions. And nobody answers. So they don't file a motion to compel. Or they file a motion to compel and then never set it for hearing. So they never get the discovery. And what was the point of trying if you're not going to go ahead and follow through. So part of getting discovery is to compel the discovery. Court has to be moved.
+[00:04:25 - 00:04:25] Request for admissions.
+[00:04:26 - 00:04:28] You were employed by plaintiff to deliver grapefruit.
+[00:04:29 - 00:04:29] True or false?
+[00:04:29 - 00:06:09] Simple. True or false? You were allowed to use plaintiff's grapefruit delivery truck. Either were or you weren't. Now you see the value of that, don't you? Use them sparingly. Try to get the most important information first. Okay, a request for production. Very similar. All corporate records of the Grapefruit Delivery Corporation. They may come back. If there's a lawyer, he'll say overbroad, vague, ambiguous, seeks to inquire into the attorney-client privilege, or some other excuse. That's why we file motions to compel discovery. Notice we have a date in here, a period of time. If you can be specific about your requests, you tend to avoid the tendency of the other side to say, at what point in time, Your Honor? We've been in business since 1952. And the court's not going to compel them to produce all the records since 1952, if all you need are the records since the entering into that contract. That's all there is to it. It's one of your five tools good question the advantage of getting the other side to produce is if they produce it they can't object to it right sorry you produced it pal and by the way notice these are numbered one of the tricks that unscrupulous members of my profession do you have have 14 requests for production, 14 paragraphs. You get a box of documents. It's in there somewhere, but you don't know which one of those documents responds to which request. One sure way to get around that is plaintiff's first request for production documents, and you ask for one set of documents that's responsive to this one particular thing. Plaintiffs, second request, I want to know what documents are responsive to this
+[00:06:09 - 00:06:11] instead of getting a box of documents.
+[00:06:11 - 00:06:12] This is a real case.
+[00:06:12 - 00:06:15] He was being sued by Sears for credit card debt.
+[00:06:15 - 00:06:16] The case had gone on for over two years.
+[00:06:17 - 00:06:18] He paid his lawyer I don't know how much money.
+[00:06:19 - 00:06:20] His lawyer died.
+[00:06:20 - 00:06:23] I said, well, Ron, get all the files from the lawyer and let me see them.
+[00:06:23 - 00:06:24] So I looked at these files.
+[00:06:25 - 00:06:26] Nothing had been done.
+[00:06:26 - 00:06:27] So what do we request?
+[00:06:26 - 00:06:27] So what do we request?
+
+WORKFLOW discovery SPAN discovery-2:L30-L57
+
+[00:00:00 - 00:00:45] Ladies and gentlemen, the Florida Supreme Court. Please be seated. Good morning, everyone. Welcome to the Florida Supreme Court. We have an interesting docket of cases this morning which deal with court procedures. And I know that the lawyers that are here today to discuss those cases are going to be especially educational about our rules. So with that we'll go right to the first case. Amendments to the Florida Rules of Civil Procedure. Councils ready? May proceed. I'll sit down. Thank you. Okay, thank you. Mr. Graves, Mr. Friedman, Mr. Graves you're going to go first and we all are going to have ten minutes each. Is that your agreement?
+[00:00:45 - 00:00:46] Yes, sir. Thank you.
+[00:00:46 - 00:01:07] Okay, Mr. Graves. Good morning. Good morning. If it please the Court. What I hope to do is to convince you, if you're not already convinced, that requests for admissions are perhaps the most powerful pretrial discovery tool that we have. And if anything, rather than limiting the number of
+[00:01:07 - 00:02:08] admissions permitted to the people of our state to get at the truth before they have to go to the expense of trial, that we would ask you to clarify the confusion that exists over the use of admissions, give us a clearer idea of where the line is that we should not cross and deal with the fees issue that the Bar Committee is concerned about, which I can see that's a legitimate problem because you have this issue. Tell us where we are now and where you would like. Well, where we are right now is that we lawyers have to deal with the rules as they are written. And Rule 1.280, of course, says that I'm allowed to get discovery of any matter that's not privileged by several different methods, including requests for admissions. When we turn to the rule itself, it says that I'm allowed to require the other side to admit the truth of any matter
+[00:02:08 - 00:02:12] within the scope of 1.280, and that's a very powerful thing to be able to do.
+[00:02:12 - 00:02:17] In fact, it's in the form of a leading question, which I cannot do with interrogatories.
+[00:02:20 - 00:02:26] Counsel, are you suggesting that there should be no limit on the number of admissions in the rule?
+[00:04:25 - 00:04:26] No limit on the number, Your Honor, but rather a limit on the use. You know, there are two kinds of lawyers. Please forgive me. There are the lawyers who seek the truth and the lawyers that seek to hide it. I can't think of a better way to get at the truth than to require the defendant or the plaintiff in a case to admit that he owned the vehicle. He was driving the vehicle at the time of the accident or whatever it might be. These are not complicated things. They're very efficient. It's either yes or no. It doesn't take forever to answer. Well, the proposal doesn't, the proposal, the bar's proposal doesn't eliminate the use of requests for admissions. It just says they're limited to 30 unless you can stipulate to more or you get permission of the court. What's wrong with that? Well, one of the things that's wrong with it, Your Honor, is the reasons given. The reasons given don't make sense to me, and forgive me, but my colleagues in Stewart actually chuckled. Everybody in my office thought it was funny, and the president of the local bar thought it was somewhat ridiculous that we would argue to reduce the number of admissions because, oh my goodness, people are using them for discovery or to prove the elements of their case. Well, that's what it's for. The rule specifically states, if I may, the purpose of the rule is to expedite the trial of the action, relieve the parties of the time and expense entailed in proving the genuineness of documents or the truth of matters of fact, which can be ascertained by reasonable inquiry. Look, I agree with you completely that that's one of the purposes of requests for admissions. It's also the purpose of interrogatories, but we limit interrogatories to 30 unless you get permission in the court. But the time required to answer admissions is nothing compared to the time to answer interrogatories. We're not talking about time. We're talking about number. So what's wrong with saying 30 or 50 or 60 if that's the problem,
+[00:04:31 - 00:04:31] but having some limit unless you can stipulate with opposing counsel or get permission of the court?
+[00:04:35 - 00:04:41] Well, what I would ask the court to consider would be a rule or an order that would clarify for us what is excessive, not in terms of a fixed number.
+[00:04:41 - 00:04:45] For example, I have a case now in West Palm Beach that involves six defendants,
+[00:07:06 - 00:07:08] four individuals, two corporations, the theft of a very large investment business, very complex issues. I need more than 30 admissions, but the court may be disinclined to create any more work for itself than necessary. What I would argue is if someone files more admissions than necessary, well, then the court could rule that that was something that might be dealt with. Why isn't the analogy to the interrogatories, is it correct, that the interrogatory rule limits the number of interrogatories to 30 unless there's a stipulation or permission by the court? Is that correct? Your Honor, interrogatories are typically direct questions that require lists of information, as you know, the name and address and so forth and so on and so forth and so on. Very detailed answers rather than yes or no. It's either true or it's false. It's not as complicated as an interrogatory. But it's much more sophisticated than that, is it not? That is because of the consequences of an answer to request for admission. As you say, consequences can be dramatic in that respect. But why not if you're going to have that requirement in the interrogatory rule? Trial judges now just complain of the excessive amount of time that they have to spend policing the discovery process in the civil courts. Yes, sir. I think that perhaps that's because a number of lawyers, including some that I've had to deal with, cite that it's from the 1971 City of Miami v. Bell case that has been changed. After the Rules Amendment in 72, it was no longer objectionable to ask for admissions of elements that go to the heart of the case. That was changed. It was done away with. There's a progeny of cases that follows that. There's a recent case, the arena parking case, where the courts have said, no, this is okay, you can do this. And why shouldn't we be able to do it? Why should I not be able to cause the other party to admit facts before trial rather than putting these poor people that cannot afford to pay legal fees to go to trial? No, sir. A request for admission is a leading question. An interrogatory is not. It's in the same form as a leading question. We all know
+[00:07:08 - 00:07:10] that's the most powerful way to get at
+[00:07:10 - 00:07:12] the truth. All I want to do is
+[00:07:12 - 00:07:14] to be able to go after bad people
+[00:07:14 - 00:07:16] who have done bad things, make them
+[00:07:16 - 00:07:18] admit that they've done them before I have
+[00:07:18 - 00:07:20] drained my client's pockets dry.
+[00:07:28 - 00:07:30] So we get some clarification from the court
+[00:07:30 - 00:08:25] We'll be right back. so we get some clarification from the court as to what is extreme what is excessive rather than limiting this very powerful due process right that belongs to the people of the state of florida though virtually always going to turn on the circumstances of the individual case I would suggest that proper use of admissions could probably save the state millions of dollars by getting cases settled before trial and that that is the purpose but just add one more thing the rule comment says one party may not obstinately put the other to his proof and yet I submit to you that this is commonplace at least in the fourth DCA where I practice it is common have no limitation on the number there has not been before this I don't see that there should be after this and above all I would ask the court if you're inclined to limit it then require the Rules Committee to give you a better excuse
+[00:08:25 - 00:08:30] than some people are using it for discovery because I have the book,
+[00:08:30 - 00:08:32] and the book says that's what it's for.
+[00:08:33 - 00:08:36] That's not a good reason to amend it.
+[00:08:36 - 00:08:39] If you want to amend it for some other reason, let them come up with a better reason.
+[00:08:40 - 00:08:40] Thank you.
+[00:08:40 - 00:08:40] Thank you, sir.
+[00:08:41 - 00:08:41] Mr. Frieden.
+
+WORKFLOW discovery SPAN discovery-3:L34-L80
+
+//
+ Official  JurisDictionary® Tactics Course
+How to Win in Court
+~  Without a Lawyer  ~
+866-LAW-EASY
+( 866-529-3279 )
+     A B C D E F G H I J K L M N O P Q R S T U V W X Y Z  
+ 
+Renew before Sep 28, 2026 for $89 ... Save $160
+	
+Tutoring
+	
+Help
+	
+Home
+	
+$$$ 
+Us
+	
+Order for a Friend
+	
+Chat
+	
+Tell a Friend
+	
+Sign Out
+	
+Donate
+
+
+
+Compelling Evidence
+
+Force Your Opponent to Obey the Rules!
+
+When Your Opponent Hides
+
+If you can't get evidence from others, you cannot win!
+
+If your opponent hides evidence (and he will hide it) this class shows you how to get him out from behind that tree ... no matter how he drags his feet, screams, and complains.
+
+You have your God-given right to get evidence in support of your case, and this class shows you how to exercise that right!
+
+NOTICE:
+My case-winning tactics work everywhere, but exact wording of rules may differ slightly from one court to another.
+Be prepared to cite the official rules where you are.
+
+WORKFLOW discovery SPAN discovery-4:L34-L80
+
+//
+ Official  JurisDictionary® Tactics Course
+How to Win in Court
+~  Without a Lawyer  ~
+866-LAW-EASY
+( 866-529-3279 )
+     A B C D E F G H I J K L M N O P Q R S T U V W X Y Z  
+ 
+Renew before Sep 28, 2026 for $89 ... Save $160
+	
+Tutoring
+	
+Help
+	
+Home
+	
+$$$ 
+Us
+	
+Order for a Friend
+	
+Chat
+	
+Tell a Friend
+	
+Sign Out
+	
+Donate
+
+
+
+Discovery
+
+Tools to Get the Evidence
+
+Power Tactics
+
+Pleadings allege what you must prove to win.
+
+Discovery is how you prove what you allege.
+
+It is this simple!
+
+You have five (5) discovery tools.
+
+Requests for Admissions
+
+WORKFLOW motions SPAN motions-1:L30-L55
+## Transcript
+
+[00:00:00 - 00:00:07] The answer. If you're the defendant, why would you volunteer information in an answer when you don't have to?
+[00:00:08 - 00:00:09] Why would you help the other side?
+[00:00:09 - 00:00:13] The defendant answers the complaint in response to each numbered paragraph thereof states.
+[00:00:14 - 00:00:14] Number one, denied.
+[00:00:15 - 00:00:17] Number two, admitted. That means it's admitted for all purposes.
+[00:00:18 - 00:00:19] Number three, maybe he doesn't know.
+[00:00:20 - 00:00:22] How do I know whether he tried to get a hold of me when I was in Pittsburgh?
+[00:00:22 - 00:00:23] I have no idea.
+[00:00:24 - 00:01:05] Denied, denied, denied, admitted. That's an answer. Don't tell anybody any more than that. If you do, you're just shooting yourself in the foot. If he gets enough information out of you, he's going to get a judgment against you. Even though you may add something, denied, but, you know, I was in Harrisburg. I wasn't in Pittsburgh. You might be helping him. And that's really all really all there is to a simple answer now this is an answer and a counterclaim it's the same thing the only thing is that what we do with the counterclaim is we add a lawsuit to our answer don't make it harder than that and what are we doing here existence of a contract but plaintiff failed to pay me I I delivered some grapefruit, but Peter plaintiff
+[00:01:05 - 00:01:25] never gave me a dime. And then I suffered consequences because I did deliver some grapefruit. And that's my counterclaim. Don't make it harder than it is because the more complicated you make it, the less likely it is that you're going to win your case. Let's look at a cross claim. Now here's where Danny Defendant got sued by Peter plaintiff. Doesn't that look familiar? It's the same answer.
+[00:01:26 - 00:03:46] The only thing is that within this answer, I have a lawsuit against Carl Co-Defendant. So let's look at the cross-claim. Danny sues Carl. It says Danny and Carl agreed to work together to deliver the grapefruit. Danny and Carl agreed to share the labor responsibilities equally. Danny and Carl agreed to share the plaintiff's payments equally. The plaintiff contracted to pay Danny and Carl 3,000 as an initial deposit toward the full agreed price of 5,000 for delivery to be performed by both of them working together. Peter paid Carl. Danny never got a dime. Danny made deliveries. Carl failed and refused to make any deliveries and kept the money and so Danny suffered money damages. So he's suing his co-defendant because the co-defendant got all the money and he did the work. And it's no more complicated than that. Third party complaint, very similar. And all these are on the CD. The caption is slightly different because we have another party. Peter sued Danny. Danny sues Theo. Now, first Danny's going to answer. And then Danny says, somebody else is responsible for this problem that I have. Theo agreed to work for me. I paid Theo $1,500 to deliver the grapefruit. Theo failed and refused to deliver any grapefruit, breaching his contract. As a result, the defendant has been required to file an answer in this lawsuit and defend against the claims of money damages brought against the defendant by the plaintiff. Third-party defendant is liable to the defendant for all the damages suffered by the defendant. And so the third-party defendant is further liable to defendant for return of the $1,500 taken by him without consideration of any kind. That's all the complaints. There are no more. You're beginning to see that maybe all this is simpler than you had thought. Complaint, flurry of motions we're going to talk about in a minute where we try to get out of answering the complaint then there's the answer which we've talked about here and then there's the discovery which can take place any time but you see how you really can't complete your discovery till after the answer because you don't know what he's going to say you can do discovery at the very beginning some discovery with the complaint itself by alleging things you know he's going to admit so you don't have to ask him again later and then trial if you have to go to trial now what's an affirmative defense as i told you before if you can file an affirmative defense by all means file it but keep it simple further the defendant asserts the following defenses and says the plaintiff's actions barred by the of limitations. Reaching contract complained of took place more than five years
+[00:03:46 - 00:03:48] prior to the filing of this action. It is pursuant to
+[00:03:48 - 00:03:50] 9511 Florida statutes barred.
+[00:03:50 - 00:03:51] That's a defense.
+[00:03:52 - 00:03:54] Now, a reply, if
+[00:03:54 - 00:03:56] you're the plaintiff and the defendant
+[00:03:56 - 00:03:58] serves you with an affirmative defense,
+[00:03:58 - 00:04:00] you have to reply. Plaintiff
+[00:04:00 - 00:04:02] denies. Plaintiff denies.
+[00:04:02 - 00:04:03] Plaintiff denies.
+[00:04:04 - 00:05:49] And demand strict proof. You say this, but I'm saying you have to prove it. Those are the pleadings. Pleadings are complaints, answers, affirmative defenses, and replies to affirmative defenses. What I try to show you here is that in all of this complexity, there's a simplicity. Pleadings state cases. What is it that they state? They state causes of action. They state the factual elements that support the causes of action and that's what makes a case. An answer admits or denies. The affirmative defense is a defense such as latches, statute of limitation, estoppel, and other defenses. I paid you. You can't sue me. I paid you. I did the work. I delivered the grapefruit, whatever that is. Those are the pleadings. Everything outside the pleadings is motions, discovery. You see, discovery doesn't state the case, does it? A motion to compel somebody to answer an interrogatory doesn't state the case. It doesn't tell me what the case is about. It just tells the judge, make this person over here answer the question. Pleadings state the case. They establish the case. That's why I had the fellow up there holding that frame. I'm going to frame the case. You can sometimes trick a lawyer because he'll come to the trial and he's trying to prove something and you might not want to tip him off until the most effective moment when you say well i'm sorry your honor but he didn't plead that we're here at trial your honor he can't amend his complaint to add something else i had nothing to do with his truck breaking down he didn't plead it we're not here to give him damages on it if he had a problem with his truck breaking down and says it's my fault, he should have pleaded in his pleadings. If they're not in the pleadings, he doesn't
+[00:05:49 - 00:05:55] get relief. Sometimes a lawyer will try to get things that aren't in the pleadings. Don't
+[00:05:55 - 00:05:59] tip him off. Wait until he really gets down to moving the court to get it. Then you say,
+[00:05:59 - 00:06:01] excuse me, your honor, that's not in the pleadings. So he doesn't get it.
+
+WORKFLOW motions SPAN motions-2:L34-L80
+
+//
+ Official  JurisDictionary® Tactics Course
+How to Win in Court
+~  Without a Lawyer  ~
+866-LAW-EASY
+( 866-529-3279 )
+     A B C D E F G H I J K L M N O P Q R S T U V W X Y Z  
+ 
+Renew before Sep 28, 2026 for $89 ... Save $160
+	
+Tutoring
+	
+Help
+	
+Home
+	
+$$$ 
+Us
+	
+Order for a Friend
+	
+Chat
+	
+Tell a Friend
+	
+Sign Out
+	
+Donate
+
+
+
+Motions & Hearings
+
+Forcing the Court to Act
+
+Moving the Court
+
+The goal of every case is a court order.
+
+Judges rarely sign orders until moved to do so.
+
+Every motion seeks an order.
+
+That's what motions do.
+
+They are not pleadings.
+
+WORKFLOW trial SPAN trial-1:L30-L41
+## Transcript
+
+[00:00:00 - 00:05:54] People want to come in and they say, oh, y'all, I'm a Christian, you know, I preach down here at the 17th Baptist Church. If you can say, Your Honor, I'm not offering that to prove the character of my witness. I'm offering that to prove that he had an opportunity to know what goes on down there at the drugstore on the corner because he's been the pastor of that church for 14 years. The jury gets to hear he was a pastor. If the jury's inclined to believe that pastors are more honest than the ordinary people, who knows? But in other words, you can get things in, but it might be excluded because it's not admissible on one basis, but it's admissible because it's relevant to prove some other matter that is material to the outcome. Defective capacity. A person that's drunk, a person that's on drugs, lacks the capacity to understand what went on at a particular place, if you can show that. Lack of first-hand knowledge. You don't really know, do you? You weren't there. You don't know what happened. Well, that's true. I don't know. Well, then I move to strike all of that. Drunks and incompetents lack the capacity to be able to testify because it's not reliable. Children talk to their toys, if you've got somebody who talks to their toys, you can impeach them. Substantial contrary evidence is another way. Ladies and gentlemen of the jury, you heard this man testify that he was sitting in the back seat when the accident happened, that he wasn't even driving the car. This man was standing on the sidewalk and he could tell clearly that it was this man all these other people disagree with this man i'm impeaching his testimony by showing that there's substantial contrary evidence that tends to say you don't call people a liar it's much more powerful if you just show that they're a liar hearsay what is it it's an out of court statement a deposition is treated as if it was in court. The statement's made at a deposition. It's not out-of-court. Deposition's kind of like an extension of the court. The declarant is not available. The declarant being the person that made the declaration, they're not available. They're not subject to cross-examination. And it's offered to prove the truth of what it asserts. An affidavit could be offered to prove that someone was alive on the date the affidavit was signed. It couldn't be offered to prove what it asserts. You've got to learn to think like this because this is how you win lawsuits. Ladies and gentlemen, I'm not offering you this affidavit to prove what the affidavit says. I'm only offering it to show this fellow Bob was alive because look here, here's the notary notary signature i'm not offering it to prove the truth of the matter asserted so it's not hearsay i'm offering it to prove something else exceptions to hearsay statement against self-interest most states will say all right yes it's hearsay because it's an out-of-court statement made to prove the truth of the matter asserted. But whoever said that was saying something that really wasn't favorable to them at all. In fact, whoever said that had to be really an honest person, or they never would have admitted it. In other words, if he said he robbed a bank, it's not something a normal person would want to have known. So in some cases, if a person who's an out-of-court person made a statement so contrary to his own self-interest that it probably was true. So we'll let it go at that. A dying declaration. Harvey shot me. Somebody takes a stand and says, I found this guy, Bill. He had been shot five times in the chest. And the last thing he said to me was, Harvey shot me. I'll jump up objection hearsay. But the other guy, if he's on his toes, will say, it's an exception. The person looking out into eternity, where he is going to be judged by the grand architect of the universe, is not likely to make false statements. It doesn't mean Harvey shot him. It only means the jury gets to consider that statement because it was made by someone who was dying. An excited utterance. Oh, it's a snake! Or something like that. And then, of course, the court has to decide, well, how excited were they? Are they excited all the time? Or was it just that for one moment they were really excited? But if a person is excited enough and they say something, you might be able to get it in as an exception to hearsay under the excited utterance rule because again when someone is excited and they just it's an expostulation it's an instantaneous statement there's probably not a lie because a lie takes a little bit of thinking you have to think just a little bit a little moment of thought except for some people it just comes naturally testimony by attorneys don't allow it just don't allow it happens all the time the only way to stop it is for you to stand up and say excuse me your honor the council is testifying council's not allowed to testify the bar rules prohibit it now opening statement and closing statement the attorney can say defendant was present the defendant was riding a bicycle that's not the best way to do it but you probably aren't going to be able to stop them from doing it. And if you're giving opening and you're giving closing, it's better to say this. Opening. The evidence will show. The plaintiff will demonstrate by showing you photographs and documents and putting witnesses on this stand who will be under oath, under penalties of perjury, risking the possibility of being sent to prison if they lie. And you're going to hear this evidence, and the evidence will show that's much better than saying what happened. Because, number one, it makes you more believable. Same thing with closing statement. Ladies and gentlemen of the jury, you saw the man's checkbook. You looked at his bank statements. You heard the testimony of the store clerk. And the testimony and the evidence that you have heard will conclude in your reasonable minds that my client didn't do anything. I'm going to tell you something out of the Bible. Romans chapter 3, verse 4. Paul, the apostle, writes to the wisdom of doing an opening statement
+[00:05:54 - 00:05:56] and a closing statement the same way.
+[00:05:56 - 00:05:58] I won't tell the jury what's true.
+[00:05:59 - 00:06:01] I will tell the jury what they saw with their own eyes.
+[00:06:02 - 00:06:02] Can't dispute with that.
+[00:06:03 - 00:06:04] Can't call me a liar.
+[00:06:04 - 00:09:45] I didn't say what these people did. I said what I showed you, or I said what I was going to show you, and by golly, I showed you what I was going to show you, and I didn't make you any promises I didn't keep. By not putting myself in a situation where I can be seen as a liar, I improve the credibility of my case and magnify the opportunity to win. Attorneys should not testify. If an attorney insists on testifying outside of opening and closing statement, then you jump up and you say, Your Honor, can we put Mr. Lawyer over here under oath? Because if he's going to testify, he needs to be under oath. That'll probably either shut him up or confuse the judge to no end. But it's your right, and you've made your record, and if he keeps going, you say, Your Honor, I object. This attorney is attorney is not supposed to testify he doesn't have firsthand knowledge and he's not under oath make your record and if you lose appeal it direct and cross here's where you need to practice when you call your own witness you don't get to cross examine him it gets to be a real problem because you want your witness to tell you what you want your witness to say but he may not know where you're going you can't say you were in the hardware store that day weren't you objection you're on he's leading and you have to come back tell me where you were on thursday july 4th it's one of the hardest things that you have to do to get what you want out of somebody with direct examination because you can't lead him and he might be thinking about what he wants to do this afternoon and I don't want to be sitting here doing this and oh my gosh and his mind is just going all over the place and you know what you want to get but you can't lead him. You can't say isn't it a fact objection to your honor he's leading and a good lawyer is going to do that to you. So you've got to plan this out in advance. Of course if you meet with the witness and you tell the witness what you want him to say that's not good either because then the other guy is going to get up and he's going to say well isn't it a fact you had a conversation with Mr. Graves just yesterday yes well yes I did and Mr. Graves told you what he wanted you to say didn't he and what I want you to come back and say no Mr. Graves did not tell me what he wanted me to say Mr. Graves told me what he was going to ask me. You cannot lead your own witness. So you prepare. You can prepare the witness, but you've got to do it in such a way that the other guy can't come back and discredit you by making it look like you told the witness what to say. So you say, what did you see? Didn't you see the car speeding away? Can't do that. What did you see? And he has to say what you need him to say without you giving him any other help if he becomes hostile you can have the court declare a witness hostile even though he's your witness and then you can cross-examine him you can impeach your own witness but only if he's become hostile your honor i had no idea this was going to happen you know so forth and so on it's a real mess direct examination you need to practice Get a friend aside and practice with them. Have somebody else there to watch you and be the judge. If you've got a case and it's real important and you're going to have to examine some witnesses, practice it because there's nothing like practice. And then have the third person that's there with you say, no, you're leading. You're leading. You're helping him. You're telling him what the answers are. You can't do that because if you don't learn how to do it before the time comes to do it, they're not going to let you do it and then you're going to sit down all frustrated and lose your case. Cross-examination. Be friendly. Sir, I'm really sorry you have to be here, but I really appreciate your coming. I'm just going to ask you a few questions. Is that okay? I said, isn't it a fact that you're a drug dealer? Right? If you're going to turn on the guy and you're going to really start digging deep, leave it to last. Don't dig him at first because you won't get anything out of him. There is nothing more effective at getting at the truth than cross-examination. It's amazing what you can get by cross-examination. One of the powerful things about requests for admissions
+[00:09:45 - 00:09:48] that a request for admission is in the form
+[00:09:48 - 00:09:50] of a cross examination. Because you're
+[00:09:50 - 00:09:51] saying, admit that this is true.
+
+WORKFLOW trial SPAN trial-2:L34-L80
+
+//
+ Official  JurisDictionary® Tactics Course
+How to Win in Court
+~  Without a Lawyer  ~
+866-LAW-EASY
+( 866-529-3279 )
+     A B C D E F G H I J K L M N O P Q R S T U V W X Y Z  
+ 
+Renew before Sep 28, 2026 for $89 ... Save $160
+	
+Tutoring
+	
+Help
+	
+Home
+	
+$$$ 
+Us
+	
+Order for a Friend
+	
+Chat
+	
+Tell a Friend
+	
+Sign Out
+	
+Donate
+
+
+
+How to Control Judges
+
+Insight Based on Experience
+
+First Rule
+
+The first rule when dealing with judges is that they are human ... though at times you may think the judge in your case is a gorilla wearing a black robe!
+
+Some are.
+
+Most are not.
+
+Everyday you find yourself in front of one in the courtroom, stop a moment to recognize the judge woke up this morning just as you did, has family and loved ones just as you do, and is faced with the same mortality that faces us all. The judge or judge's family member may have a life-threatening disease weighing on his or her mind. The judge may have another case later in the day that will require dire decisions far more important than the ones involved in your case (though decisions in your case seem more important to you).
+
+And, sometimes, the judge may care more about you and seeing that justice is served in your case than you have yet imagined possible. The judge may have decided to rule in your favor even before hearing the facts or researching the law, depending on what the judge thinks of you as a person of honesty and integrity or what the judge knows about your opponent's reputation for dishonesty and deceit. It happens!
+
+WORKFLOW trial SPAN trial-3:L34-L80
+
+//
+ Official  JurisDictionary® Tactics Course
+How to Win in Court
+~  Without a Lawyer  ~
+866-LAW-EASY
+( 866-529-3279 )
+     A B C D E F G H I J K L M N O P Q R S T U V W X Y Z  
+ 
+Renew before Sep 28, 2026 for $89 ... Save $160
+	
+Tutoring
+	
+Help
+	
+Home
+	
+$$$ 
+Us
+	
+Order for a Friend
+	
+Chat
+	
+Tell a Friend
+	
+Sign Out
+	
+Donate
+
+
+
+Objections
+
+Preserving Your Rights
+
+Power to Control
+
+"Objection!"
+
+Everything stops until the judge rules.
+
+If the judge says "Sustained", your opponent must stop breaking the rules.
+
+That's what objections are for.
+
+Objections compel judges to enforce the rules!
+
+WORKFLOW trial SPAN trial-4:L34-L80
+
+//
+ Official  JurisDictionary® Tactics Course
+How to Win in Court
+~  Without a Lawyer  ~
+866-LAW-EASY
+( 866-529-3279 )
+     A B C D E F G H I J K L M N O P Q R S T U V W X Y Z  
+ 
+Renew before Sep 28, 2026 for $89 ... Save $160
+	
+Tutoring
+	
+Help
+	
+Home
+	
+$$$ 
+Us
+	
+Order for a Friend
+	
+Chat
+	
+Tell a Friend
+	
+Sign Out
+	
+Donate
+
+
+
+Trial
+
+If You Haven't Won Already
+
+Why Trial?
+
+Trial is
+
+Risky
+Expensive
+Frequently unnecessary
+
+So, why the need to go to trial at all?
+
+The necessity usually results from one of the following avoidable causes:
+
+WORKFLOW post-judgment SPAN post-judgment-1:L30-L34
+## Transcript
+
+[00:00:00 - 00:06:25] Judgment and execution. People get judgments and don't get execution. So it's suitable for framing or lining bird cages. The judgment can say, the plaintiff wins and the defendant owes the plaintiff $150,000. If that's all it says, it's not enough. The judgment needs to say, for which let execution issue. Execution is a writ. A writ is an order. A lot of people say, I'm going to file a writ. You don't file a writ, you file a petition for a writ. In this case, a writ of execution is an order to the sheriff. To all and several sheriffs of the state of Florida, you are hereby commanded to take into possession all property of the defendant and to sell same until you have fully satisfied this judgment. Okay, now the writ is actually issued by the clerk. But see, the judge's judgment says, for which let execution issue. So you go to the clerk and you say, here's my judgment. And it says, for which let execution issue. So that's directed to you, Madam Clerk, or Mr. Clerk. So they issue a writ of execution, which commands the sheriff to take possession of the property of the defendant. Now, you have to find out what he owns, free and clear. And once you've found out what he owns, then the sheriff will take possession of it. You might have to post a bond. You may have to pay the sheriff a little bit of money to go out and do it. But this is how it works. So if you get a judgment, be sure the judgment says, for which let execution issue, because the writ of execution is what commands the sheriff to execute the judgment and levy on the property. If you're not going to pursue the ultimate goal, then why are we playing this game? When and how to settle? Should I go to trial or should I take what they offer or should I ask for more? You make your case before trial. You never can negotiate from a position of weakness. We all know that. If you don't do all these things that I've told you about and you haven't made the case and you haven't made an appealable case where you can win if you lose, then you're not going to get as much when the time comes to settle in fact, they decide that they want to try to settle with you. So the first part is to make a case. Making the record, forcing the other side, counting the cost and risk of trial. There is no such thing as a sure thing. How many people have ever bet on a horse? Sure thing. There's a name for a horse. Is there an 80% chance? Is there a 30% chance you're going to lose? 10% chance you're going to lose? No one can tell you that but you. You have to look at the case. And it's a simple matter. You take the percentage that you think you're going to win, 70% sure we're going to win, then take 70% times the amount that you think you're going to recover and be willing to accept it in a New York minute. Count the cost and risk of trial and negotiate a price. Try not to be the first one to make the offer. If they have any idea that you're feeling weak, you're losing money. Attorney's fees and costs. Try to keep track of what you think the other guy had to pay to get to where he is because if you lose and there was a contract that provided for attorney's fees, or a statute that provided for attorney's fees, or an offer of judgment that gives them an opportunity to get attorney's fees, then you don't just look at the amount, you also have to pay their fees. And it can be more than the judgment. So then when the other side calls you up and says, well, you're trying to get $100,000, but will you take $65,000? And you're thinking to yourself, gee, well, there's an 80% chance that I would win. That's $80,000. But if I lose, I'll have to pay their attorney's fees, which are $30,000. So I think I better take the $65,000. When are you entitled to interest? If you sue on a promissory note and the promissory note was bearing interest, you're entitled to the interest of the promissory note through the date of judgment. If you sue for negligence, automotive negligence or something like that where there's not something in that that's bearing interest, you're usually not allowed to get what we call pre-judgment interest. But you may be entitled to post-judgment interest on most all judgments at the legal rate, whatever that they keep changing it if you are suing on some kind of a contract or a promissory note or a negotiable instrument that does pay interest or some kind of embezzlement out of an account that was paying interest so you not only lost the amount way back when but you also lost all the interest that would have accrued be sure to pray for it in your pleadings Because there's case law out there that says if you don't ask for it, you don't get it. Also, when it comes time to do the judgment, make sure the court puts in there pre-judgment interest and then post-judgment interest. Notice of dismissal. I already told you the situation where Sears said, okay, we'll dismiss the lawsuit. But when they sent me the notice of dismissal, it was without prejudice, which means that they could bring the lawsuit again. If it's with prejudice, it's over. It's race judicata. It's not going to be heard again. It's a done deal. Getting releases. I like both sides to release each other, and a good release would say something like this. I release every and all rights and causes of action that I may have had or had from the beginning of the world. Then you're done. If he sued me again after I got the release, I'd file an affirmative defense release and waiver. He might be able to sue me for something to happen after he signed the release, but nothing before. Now, preparing for appeal. The way you win is to prepare for appeal. You make your case before trial. You make a record. You plead all the essential elements in your pleading. If you're the defendant, you attack the possible fact that the plaintiff did not plead all essential facts in his pleading. It's all about the causes of action. It's all about the pleadings. The pleadings frame the case. If you're the plaintiff, you try to frame it well. If you're the defendant, you try to show that he didn't frame it well. But it's all about the cause of action and the elements of every cause of action, the ultimate facts. You get transcripts of all the hearings. You don't have to order the transcript, but you need to pay the court reporter whatever they're getting these days. You pay for attendance. You don't have to order the transcript unless you do the appeal. And you don't have to have all the transcripts for your appeal, only the transcripts that are germane to the issues that you're appealing. It may only be one hearing. It may only be part of a hearing that you have to get the transcript for at $3 a page or whatever it is. But you do pay the reporter to be there so that if you need the transcript you can get
+[00:06:25 - 00:06:26] it.
+[00:06:26 - 00:06:28] You have to have the ability to get a transcript, because if you can't send your record up on
+
+WORKFLOW post-judgment SPAN post-judgment-2:L30-L33
+## Transcript
+
+[00:00:00 - 00:00:29] Preserving objections is very important. I object. What's the basis for your objection, Mr. Graves? I can't think what it is right now, sir, but I object. Okay, that's not very good, but it's a whole lot better than not objecting at all. If you don't object, you haven't preserved your objection, and the appellate court will treat it as if it never happened. So try to preserve your objections. If a judge interrupts you and says, Well, let's move it along, Mr. Graves.
+[00:00:29 - 00:05:03] Let's let that happen. your objection and the appellate court will treat it as if it never happened so try to preserve your objections if a judge interrupts you and says well let's move it along Mr. Graves that happens, let's move it along you're getting bogged down, your honor I'm trying to make my record well Mr. Graves we're in a hurry here, I've got other hearings well your honor if you stop interrupting me I can probably get more done well he's probably not going to put you in jail for it you have a right to make your record if your record doesn't get made you're the only one to blame maybe you don't like that and you want to blame the judges for your failures but blaming people for failures in in my experience after just 61, I have discovered that I have never gotten anything out of blaming somebody else for my failures. Your Honor, I'm trying to make my record here. Well, Mr. Graves, you don't need to read that citation. And, Your Honor, I'd like to read the citation into the record. Well, Mr. Graves, I'm not going to let you do that. Very well, sir, I object. I have a right. I'm going to make my record. Well, Mr. Graves, I want you to be quiet right now. I have more to say, sir. Mr. Graves, sit down. At that point, I'll probably sit down. But I will have made my record. Okay? Remember what I said, and I get so much email from people so angry because the judge didn't do this, and it's all corruption, and it's all judges and lawyers, and they run the world, and it isn't fair. But the point is, you don't get anywhere in life by blaming somebody else when things don't go well. The best you can do is do the best you can, make your record, and get on with it. Stick to the citations and cite them often. You're giving the judge a place to hang his hat he doesn't want to be appealed so you give him the citation here's what the cases say this is what the statute says this is what the rule says rule says i get to do this that's the rule here's the case instruct the court if you do it right they'll like it remember like i said about the trade secret, that judge probably never ran across a trade secret situation before. But you're not instructing him of your opinion. I think you should do this. You say, Your Honor, the rule says this is what should be done. Be persnickety. This is your case. Because little tiny things mean a lot. And make your record. Written objections. New and renewed. Make your objections on on the record make them in writing at a later time but make them timely because sometimes a timely objection has to be made or they're going to ignore it motion to reconsider don't think that a motion to reconsider or a motion for rehearing tolls the time to appeal it doesn't people have just lost everything because everything because they filed a motion for a rehearing or a motion to reconsider. The judge signed the order on the 1st of January. It got to be the 1st of February. Too late to appeal. Well, I thought you were going to hear my case again and it was too late. Doesn't mean you shouldn't file them. There's nothing wrong with filing them because because why it gives you another opportunity to make a record of what you're complaining about if he doesn't rehear it and he doesn't reconsider it then when it goes up on appeal the appellate tribunal will look at that and say well look there he asked for a rehearing because the judge wouldn't allow him to bring this witness in that was on the title of that airplane. Well, that was wrong. And here was a one-page thing that the tribunal could look at where they could see the whole picture in brief instead of looking and trying to dig through all these papers. So a motion for rehearing is a good thing to file. And a motion to reconsider is a good thing to file. And you're going to cite cases, and you're going to say the record shows, and so forth and so on. And also what you're doing is you're telegraphing to him i'm going to appeal you and here's what i'm going to argue on appeal and you've already done the work you've written half your appellate brief and again i'll say it one more time if you prepare for appeal you reduce the likelihood of having to deal with an appeal a notice of appeal in florida has to be filed within 30 days of rendition of the order. Rendition is when the judge signs the order and files it with a clerk. Do not play the game. If the 30th day falls on a Saturday, don't think you have until Monday. Don't risk it. Don't wait until the 30th day. File it on the 22nd day. Don't delay because if you don't file the notice of appeal, it's over. Drafting an appellate brief is really very simple. It's very much like the memorandum that I showed you that's in our CD. What are the issues? The court entered an order. The issue is whether or not the order complied with the law. Here's the law. Here's the order. Here's the facts. Here's the evidence. Here's what was objected to. Here's the record. Did the judge here's the facts here's the evidence here's what was objected
+
+WORKFLOW post-judgment SPAN post-judgment-3:L34-L80
+
+//
+ Official  JurisDictionary® Tactics Course
+How to Win in Court
+~  Without a Lawyer  ~
+866-LAW-EASY
+( 866-529-3279 )
+     A B C D E F G H I J K L M N O P Q R S T U V W X Y Z  
+ 
+Renew before Sep 28, 2026 for $89 ... Save $160
+	
+Tutoring
+	
+Help
+	
+Home
+	
+$$$ 
+Us
+	
+Order for a Friend
+	
+Chat
+	
+Tell a Friend
+	
+Sign Out
+	
+Donate
+
+
+
+Appeals
+
+Holding Trial Judges Accountable
+
+First Aid for Lawsuits
+
+I knew a judge who, when lawyers made mistakes, liked to say, "Get a band-aid!"
+
+But, when judges make mistakes, who gets the band-aid?
+
+Judges make mistakes all the time and are appealed ... many times successfully!
+
+Everyone is supposed to play by the rules ... especially judges!
+
+A trial judge's job is to: enforce controlling law and the rules of court!
+
+WORKFLOW post-judgment SPAN post-judgment-4:L34-L80
+
+//
+ Official  JurisDictionary® Tactics Course
+How to Win in Court
+~  Without a Lawyer  ~
+866-LAW-EASY
+( 866-529-3279 )
+     A B C D E F G H I J K L M N O P Q R S T U V W X Y Z  
+ 
+Renew before Sep 28, 2026 for $89 ... Save $160
+	
+Tutoring
+	
+Help
+	
+Home
+	
+$$$ 
+Us
+	
+Order for a Friend
+	
+Chat
+	
+Tell a Friend
+	
+Sign Out
+	
+Donate
+
+
+
+How to Collect Judgments
+
+Getting What You Fought For 
+
+Start Here
+
+The goal of most lawsuits is money!
+
+This class will explain how to get your money after you win.
+
+The judge will never order someone to pay you. The judge will only sign an order saying you won and that the loser "owes" you. Just another piece of paper.
+
+When a courtroom battle is over, and the judge grants final judgment in your favor, the order will say something like what you see in the sidebar at right:
+
+"THIS CAUSE having come before the Court, and the Court having heard argument of counsel, considered the evidence, examined the file, and being otherwise fully advised in the premises, it is ordered and adjudged that Defendant owes Plaintiff the sum of $1,723,056.29,

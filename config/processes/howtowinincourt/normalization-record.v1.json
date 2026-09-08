@@ -1,0 +1,9 @@
+{
+  "algorithm": "extract-message-content;strip-one-markdown-fence;parse-json;map-source-ids-to-pinned-span-ids;type-string-gaps;canonical-json-v1",
+  "card": "a9e3c740",
+  "normalized_response_sha256": "a0c588de21db2420e7a74be67a630826b59e66c506472bfdeccc9fb5b4f33fc1",
+  "normalizer_source_sha256": "080959b7c5abf33d153deb1ae2b1291d97eaf0d91fc86be80d86095e13fa5321",
+  "raw_provider_response_sha256": "885583b0010c6cc69c372234a144df10afa21575e80da04af88feebbbd4af980",
+  "schema": "sklegal.htwc-normalization-record/v1",
+  "source_to_span_map_sha256": "b76ac3fc97aea464ae3b37d1aee9de222886f0ebe0baee502125715ed530aed3"
+}

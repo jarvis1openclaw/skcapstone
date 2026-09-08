@@ -1,0 +1,26 @@
+{
+  "captured_at": "2026-09-08T06:23:12.062666+00:00",
+  "credentials_used": false,
+  "evidence_basis": "The serving process is direct vLLM with one Qwen model root, and its server-side model inventory contains only Qwen3.8 aliases.",
+  "frontier_catalog_entries": [],
+  "frontier_dispatch_possible_on_this_server": false,
+  "host": "chiap08",
+  "model_config_sha256": "783a7999e813d3388e93bbe9ac865a62ed729196b40b07fa2b3c32258f8aaea1",
+  "model_index_sha256": "17bca6239df2e5a846bf01c90d235623c61dc30cd98c9fd7439b5cb4e45ca118",
+  "model_revision": "config-sha256:783a7999e813d3388e93bbe9ac865a62ed729196b40b07fa2b3c32258f8aaea1;index-sha256:17bca6239df2e5a846bf01c90d235623c61dc30cd98c9fd7439b5cb4e45ca118",
+  "models_endpoint": "/v1/models",
+  "models_response_sha256": "d8d57b5d6bc78c67ceda972ea777826716beea1c174c885ad9661d14eba0ff65",
+  "process_command_sha256": "c8dee4060e6cb90a488e63faf9b338898adbb04e982614396055f7b99e9307b7",
+  "protected_traffic_sent": false,
+  "router_present": false,
+  "schema": "sklegal.local-model-server-attestation/v1",
+  "served_model_ids": [
+    "qwen3.8-27b-huihui-abliterated-q4_k_m",
+    "qwen3.8-chiap08",
+    "qwen3.8-vllm"
+  ],
+  "service": "vllm-qwen38.service",
+  "service_main_pid": 966454,
+  "service_unit_sha256": "286aa4425f942feb8b909f0142d99d7813081d9b78cfaefac9195f6ef40f823f",
+  "transport": "direct-local-vllm"
+}

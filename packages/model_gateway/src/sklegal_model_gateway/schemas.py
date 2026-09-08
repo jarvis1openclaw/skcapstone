@@ -6,12 +6,31 @@ import hashlib
 import json
 from typing import Annotated, Any, Literal
 
-from pydantic import BaseModel, StringConstraints, ValidationError
+from pydantic import (
+    BaseModel,
+    Field,
+    StringConstraints,
+    ValidationError,
+    model_validator,
+)
 
 from .errors import RouteIntegrityError, SchemaValidationError
 from .models import GatewayValue
 
 CORPUS_SUMMARY_SCHEMA_ID = "sklegal.corpus-summary/v1"
+HTWC_PROPOSITIONS_SCHEMA_ID = "sklegal.htwc-propositions/v1"
+HTWC_WORKFLOW_PACK_SCHEMA_ID = "sklegal.htwc-workflow-pack/v2"
+HTWC_WORKFLOWS = frozenset(
+    {
+        "planning",
+        "elements-evidence",
+        "pleadings",
+        "discovery",
+        "motions",
+        "trial",
+        "post-judgment",
+    }
+)
 
 
 def canonical_json(value: Any) -> str:
@@ -33,6 +52,127 @@ class CorpusSummaryProposalPayload(GatewayValue):
     key_points: tuple[Annotated[str, StringConstraints(min_length=1)], ...]
     open_questions: tuple[Annotated[str, StringConstraints(min_length=1)], ...]
     confidence: Literal["low", "medium", "high"]
+
+
+class HTWCProposition(GatewayValue):
+    id: Annotated[str, StringConstraints(min_length=1)]
+    workflow: Literal[
+        "planning",
+        "elements-evidence",
+        "pleadings",
+        "discovery",
+        "motions",
+        "trial",
+        "post-judgment",
+    ]
+    text: Annotated[str, StringConstraints(min_length=1)]
+    lane: Literal["course_instruction"]
+    source_refs: tuple[Annotated[str, StringConstraints(min_length=1)], ...] = Field(
+        min_length=1, max_length=1
+    )
+    uncertainty: Literal["low", "medium", "high"]
+    counter_support: str
+    human_review_required: Literal[True]
+
+
+class HTWCUnresolvedRecord(GatewayValue):
+    id: Annotated[str, StringConstraints(min_length=1)]
+    description: Annotated[str, StringConstraints(min_length=1)]
+    source_refs: tuple[Annotated[str, StringConstraints(min_length=1)], ...] = Field(
+        min_length=1
+    )
+    resolution_state: Literal["unresolved"]
+    human_review_required: Literal[True]
+
+
+class HTWCPropositionsPayload(GatewayValue):
+    schema_id: Literal["sklegal.htwc-propositions/v1"] = Field(
+        alias="schema", serialization_alias="schema"
+    )
+    propositions: tuple[HTWCProposition, ...] = Field(min_length=28, max_length=28)
+    contradictions: tuple[HTWCUnresolvedRecord, ...] = Field(min_length=1)
+    unresolved_gaps: tuple[HTWCUnresolvedRecord, ...] = Field(min_length=1)
+
+    @model_validator(mode="after")
+    def validate_identity_and_coverage(self) -> HTWCPropositionsPayload:
+        ids = [item.id for item in self.propositions]
+        refs = [item.source_refs[0] for item in self.propositions]
+        if len(ids) != len(set(ids)):
+            raise ValueError("proposition ids must be unique")
+        if len(refs) != len(set(refs)):
+            raise ValueError("proposition source spans must be unique")
+        if {item.workflow for item in self.propositions} != HTWC_WORKFLOWS:
+            raise ValueError("every HowToWinInCourt workflow must be represented")
+        contradiction_ids = [item.id for item in self.contradictions]
+        if len(contradiction_ids) != len(set(contradiction_ids)):
+            raise ValueError("contradiction ids must be unique")
+        return self
+
+
+class HTWCWorkflowPackPayload(GatewayValue):
+    schema_id: Literal["sklegal.htwc-workflow-pack/v2"] = Field(
+        alias="schema", serialization_alias="schema"
+    )
+    card: Literal["a9e3c740"]
+    source_manifest_sha256: Annotated[str, StringConstraints(pattern=r"^[0-9a-f]{64}$")]
+    qwen_run_receipt_sha256: Annotated[
+        str, StringConstraints(pattern=r"^[0-9a-f]{64}$")
+    ]
+    qwen_run: dict[str, Any]
+    rights: dict[str, Any]
+    lanes: dict[str, str]
+    jurisdiction_overlay: dict[str, Any]
+    external_actions: dict[str, bool]
+    model_boundary: dict[str, Any]
+    propositions: tuple[HTWCProposition, ...] = Field(min_length=28, max_length=28)
+    contradictions: tuple[HTWCUnresolvedRecord, ...] = Field(min_length=1)
+    unresolved_gaps: tuple[HTWCUnresolvedRecord, ...] = Field(min_length=1)
+    coverage: dict[str, Any]
+
+    @model_validator(mode="after")
+    def validate_consumer_boundary(self) -> HTWCWorkflowPackPayload:
+        if self.rights != {
+            "classification": "confidential_personal_use_research",
+            "private_rights_isolation": True,
+            "public_redistribution": False,
+        }:
+            raise ValueError("private source rights are not exact")
+        ids = [item.id for item in self.propositions]
+        refs = [item.source_refs[0] for item in self.propositions]
+        if len(ids) != len(set(ids)) or len(refs) != len(set(refs)):
+            raise ValueError("proposition identity or coverage is not unique")
+        if {item.workflow for item in self.propositions} != HTWC_WORKFLOWS:
+            raise ValueError("workflow coverage is incomplete")
+        if self.coverage.get("proposition_referenced_spans") != 28:
+            raise ValueError("proposition coverage is incomplete")
+        if self.coverage.get("proposition_unreferenced_spans") != []:
+            raise ValueError("a required proposition span is missing")
+        qwen = self.qwen_run
+        sha_fields = (
+            "request_sha256",
+            "prompt_sha256",
+            "raw_provider_response_sha256",
+            "normalization_record_sha256",
+            "dispatch_evidence_sha256",
+            "transport_configuration_sha256",
+        )
+        if any(
+            not isinstance(qwen.get(field), str)
+            or len(qwen[field]) != 64
+            or any(character not in "0123456789abcdef" for character in qwen[field])
+            for field in sha_fields
+        ):
+            raise ValueError("Qwen execution provenance is incomplete")
+        if (
+            qwen.get("logical_route") != "qwen.semantic-proposal.v1"
+            or qwen.get("transport_profile") != "chiap08.direct-qwen.v1"
+            or qwen.get("requested_model") != "qwen3.8-27b-huihui-abliterated-q4_k_m"
+            or not qwen.get("served_model_revision")
+        ):
+            raise ValueError("Qwen execution identity is not pinned")
+        if any(self.external_actions.values()):
+            raise ValueError("HowToWinInCourt pack cannot execute external actions")
+        return self
 
 
 class SchemaRegistry:
@@ -71,10 +211,12 @@ class SchemaRegistry:
             raise SchemaValidationError(
                 "provider output failed the pinned output schema"
             ) from exc
-        return dict(parsed.model_dump(mode="json"))
+        return dict(parsed.model_dump(mode="json", by_alias=True))
 
     @classmethod
     def default(cls) -> SchemaRegistry:
         registry = cls()
         registry.register(CORPUS_SUMMARY_SCHEMA_ID, CorpusSummaryProposalPayload)
+        registry.register(HTWC_PROPOSITIONS_SCHEMA_ID, HTWCPropositionsPayload)
+        registry.register(HTWC_WORKFLOW_PACK_SCHEMA_ID, HTWCWorkflowPackPayload)
         return registry

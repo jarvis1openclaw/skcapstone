@@ -1,0 +1,258 @@
+{
+  "card": "a9e3c740",
+  "schema": "sklegal.htwc-retrieval-trace/v1",
+  "sources": [
+    {
+      "end_line": 31,
+      "source_id": "planning-1",
+      "source_path": "private-corpus/how-to-win-in-court/media/transcripts/qstart-here-whiteboard-a8638878baed.md",
+      "source_sha256": "12c360ad6c21bb92840ce82cb01c60200d662357b299e1d0dba720b9a4e55b38",
+      "span_id": "planning-1:L30-L31",
+      "span_sha256": "b6520f3e8887d3b32173d839a9db24001fdb16778e9f858437c706d69a307af0",
+      "start_line": 30
+    },
+    {
+      "end_line": 80,
+      "source_id": "planning-2",
+      "source_path": "private-corpus/how-to-win-in-court/normalized/course-pages/juris-dictionary-definitions-a-978784982b15.md",
+      "source_sha256": "6c23e8046e382fc77d48a18eb13b3d4a5b119f14141c0996dff0c59536121b3a",
+      "span_id": "planning-2:L34-L80",
+      "span_sha256": "0728934adf01943d77333b837bd32f2e9b998848aaaabecd1d46e9d9df3ca404",
+      "start_line": 34
+    },
+    {
+      "end_line": 80,
+      "source_id": "planning-3",
+      "source_path": "private-corpus/how-to-win-in-court/normalized/course-pages/maxims-cc947dc07569.md",
+      "source_sha256": "cad637c343bea4f8358052aecc4868e8bcddd3032dd099c25208bd1af974c311",
+      "span_id": "planning-3:L34-L80",
+      "span_sha256": "8101ea6eb17d65c8b3960e3f9476422a267bf1266ec1b75ee7a1b05812f684ce",
+      "start_line": 34
+    },
+    {
+      "end_line": 80,
+      "source_id": "planning-4",
+      "source_path": "private-corpus/how-to-win-in-court/normalized/course-pages/natural-law-14a29724ce45.md",
+      "source_sha256": "7c0ad0e78f9f54c10b05960dd403f592a373812f5e6218f860739451da5399d9",
+      "span_id": "planning-4:L34-L80",
+      "span_sha256": "f1523d6dfa41f86f26a5e2a16b09abbbf0714c4c122abffa087261492df05eec",
+      "start_line": 34
+    },
+    {
+      "end_line": 44,
+      "source_id": "planning-5",
+      "source_path": "private-corpus/how-to-win-in-court/media/transcripts/audio-classroom-2-e6de13f0f411.md",
+      "source_sha256": "159481aaffd7e1cb04e6602b1e35b6bd50f6afc30ebf0ecab1bea804c0a81029",
+      "span_id": "planning-5:L30-L44",
+      "span_sha256": "f72bf579621c1f01fee515ba9ffe2c3cd9ad71b1e12ecf49e89b09cd33385493",
+      "start_line": 30
+    },
+    {
+      "end_line": 80,
+      "source_id": "planning-6",
+      "source_path": "private-corpus/how-to-win-in-court/normalized/course-pages/easy-guide-cf12d3e93439.md",
+      "source_sha256": "b2754aa140cffa79cee93f55298c9e4444b6306ef91fd8eb14deef56f2869f4c",
+      "span_id": "planning-6:L34-L80",
+      "span_sha256": "8ead379b15651a65d2dbbde056bce6d1f3070d28b9d5604644fed628118c6396",
+      "start_line": 34
+    },
+    {
+      "end_line": 80,
+      "source_id": "planning-7",
+      "source_path": "private-corpus/how-to-win-in-court/normalized/course-pages/key-to-winning-be5a76c87f69.md",
+      "source_sha256": "9eb2b024db1ffe333606e7fdb0530f98122af1c702e3aa48b444b5b21d220b61",
+      "span_id": "planning-7:L34-L80",
+      "span_sha256": "e90ac73c84612745ab62e927398cd51ac97d1b43f25e3fb33f807525f1fb3e21",
+      "start_line": 34
+    },
+    {
+      "end_line": 80,
+      "source_id": "planning-8",
+      "source_path": "private-corpus/how-to-win-in-court/normalized/course-pages/planning-c977606e03a2.md",
+      "source_sha256": "b947199c308cfe34056ae03f30a4947bd53276c3e40ba1b13ca53584a4869874",
+      "span_id": "planning-8:L34-L80",
+      "span_sha256": "701ea4f3552f2889e8adb68bd8275cde6990fffb0a6d0337557837f790f601a4",
+      "start_line": 34
+    },
+    {
+      "end_line": 80,
+      "source_id": "elements-evidence-1",
+      "source_path": "private-corpus/how-to-win-in-court/normalized/course-pages/contracts-c7c76d7dd588.md",
+      "source_sha256": "d6c6cc56955bc923788e12f0ab565de7402f64dbd4f7ec2055886d0908b70108",
+      "span_id": "elements-evidence-1:L34-L80",
+      "span_sha256": "77c64b43c36ae9d134489cc6b2d251551580f67de934e3130d136fab55435dae",
+      "start_line": 34
+    },
+    {
+      "end_line": 80,
+      "source_id": "elements-evidence-2",
+      "source_path": "private-corpus/how-to-win-in-court/normalized/course-pages/qcontracts-de49db88f796.md",
+      "source_sha256": "2a2772c3f0a53d3161d8a7ca434089ca036a6e4ac4821a5b0be6fbed1524ead2",
+      "span_id": "elements-evidence-2:L34-L80",
+      "span_sha256": "aa915494258595ba24cf3acc2d86b1311d85538eaff3c072c7e9ec0a13fc10fd",
+      "start_line": 34
+    },
+    {
+      "end_line": 80,
+      "source_id": "elements-evidence-3",
+      "source_path": "private-corpus/how-to-win-in-court/normalized/course-pages/evidence-34db47fcb0d2.md",
+      "source_sha256": "69e8a62d5ab5c3218e358596f003381194ff9826467b2fd4814cbad14d0943bc",
+      "span_id": "elements-evidence-3:L34-L80",
+      "span_sha256": "d5cddfea1650c44a14aa7cd6717d4486a0e3e09ddd42668a84256da3ac79b6ee",
+      "start_line": 34
+    },
+    {
+      "end_line": 49,
+      "source_id": "pleadings-1",
+      "source_path": "private-corpus/how-to-win-in-court/media/transcripts/audio-classroom-7-ac41faf1ba08.md",
+      "source_sha256": "a705a3e9767bae55621e0f38a4f0317edbf22de5fecdd1a3411170adf0e93fc7",
+      "span_id": "pleadings-1:L30-L49",
+      "span_sha256": "d238276e593d2d129e492edb6dd9a0ca9a8e3d134c5eb1a3305ce092e11d4b40",
+      "start_line": 30
+    },
+    {
+      "end_line": 80,
+      "source_id": "pleadings-2",
+      "source_path": "private-corpus/how-to-win-in-court/normalized/course-pages/answers-299e26ac4b83.md",
+      "source_sha256": "0fe6bd0cd47f93e22bbf6109b851cb2052bec207af84c2a9a78e3b60a3412b59",
+      "span_id": "pleadings-2:L34-L80",
+      "span_sha256": "52071390e6c7e4fd5673ccd265eea482354ff7e0c33d0182c5cb3c1aae688412",
+      "start_line": 34
+    },
+    {
+      "end_line": 80,
+      "source_id": "pleadings-3",
+      "source_path": "private-corpus/how-to-win-in-court/normalized/course-pages/complaints-5813abe98a50.md",
+      "source_sha256": "10563dad3c43a4313b6e3a8848f68a2936648e734c902b66375899fb27d2b979",
+      "span_id": "pleadings-3:L34-L80",
+      "span_sha256": "c6ffe6c01ec8e750b11178100c933173dbb0829b54f01c4280cc2750480c3cb9",
+      "start_line": 34
+    },
+    {
+      "end_line": 76,
+      "source_id": "discovery-1",
+      "source_path": "private-corpus/how-to-win-in-court/media/transcripts/audio-classroom-11-731e4bd815c5.md",
+      "source_sha256": "52a130fcdef508070d706184649e9d05b2830c6a5c26fccc3a237edab18f9034",
+      "span_id": "discovery-1:L30-L76",
+      "span_sha256": "b6a1ee271c6583f27c1bd6fc42db0817e2d9238c785ecae9812f722044bd050a",
+      "start_line": 30
+    },
+    {
+      "end_line": 57,
+      "source_id": "discovery-2",
+      "source_path": "private-corpus/how-to-win-in-court/media/transcripts/floridasupremecourt-0c3187445682.md",
+      "source_sha256": "8166660c96fb827c51e36d7465f075c1f8fc1abdc24aedee1430365c8833a8e4",
+      "span_id": "discovery-2:L30-L57",
+      "span_sha256": "3276fbef701878e3d1897d302355bf9043512cf9565917ce30e79b1470086e94",
+      "start_line": 30
+    },
+    {
+      "end_line": 80,
+      "source_id": "discovery-3",
+      "source_path": "private-corpus/how-to-win-in-court/normalized/course-pages/compelling-5e637c126a9b.md",
+      "source_sha256": "d1509e9e50ad21e7156cee5ff1729e197176879b6bf685f8c5d29c4c407dabee",
+      "span_id": "discovery-3:L34-L80",
+      "span_sha256": "f189b3c2b3d42f2213cf415602dc4605af4e737aee9af3be8beb71562349835d",
+      "start_line": 34
+    },
+    {
+      "end_line": 80,
+      "source_id": "discovery-4",
+      "source_path": "private-corpus/how-to-win-in-court/normalized/course-pages/discovery-95223cc4300f.md",
+      "source_sha256": "03bc3ebf010cfd1055cf7696bec22701cfcd00fd95470f34241b0808e52fae95",
+      "span_id": "discovery-4:L34-L80",
+      "span_sha256": "7e33fbcb315fd98434754960158fb3a5b3f25b817ccff172a46c7dedd9cdeb56",
+      "start_line": 34
+    },
+    {
+      "end_line": 55,
+      "source_id": "motions-1",
+      "source_path": "private-corpus/how-to-win-in-court/media/transcripts/audio-classroom-9-8cd21ee06f59.md",
+      "source_sha256": "a49a547da5cb0d35e11d566b64f659a8107686e3a90e1c33d0c7cb15c54a506b",
+      "span_id": "motions-1:L30-L55",
+      "span_sha256": "aa300bbd980dac9b3c859d7500bd5d463fc2b3c0e3bb4450c020365b876fd8bb",
+      "start_line": 30
+    },
+    {
+      "end_line": 80,
+      "source_id": "motions-2",
+      "source_path": "private-corpus/how-to-win-in-court/normalized/course-pages/motions-ecb60bd2268a.md",
+      "source_sha256": "69bfbf8e0a0bde285e639ead9af31779c612dbfcc81fc03e8803ec2540de41df",
+      "span_id": "motions-2:L34-L80",
+      "span_sha256": "e0859e43aa79ac84af9b72ceac2e1a04b2a2ce519fc4e404bc6279dbec71c758",
+      "start_line": 34
+    },
+    {
+      "end_line": 41,
+      "source_id": "trial-1",
+      "source_path": "private-corpus/how-to-win-in-court/media/transcripts/audio-classroom-18-e85281746a6c.md",
+      "source_sha256": "0588079a7fc323f0b4f043fc23f3172117dd40e7cc0552c3d6d12e58c0fdb34a",
+      "span_id": "trial-1:L30-L41",
+      "span_sha256": "fbe20ca0066a1204d1ac7c150a8896ef4571de3b79250e77b2642e7b4abb0156",
+      "start_line": 30
+    },
+    {
+      "end_line": 80,
+      "source_id": "trial-2",
+      "source_path": "private-corpus/how-to-win-in-court/normalized/course-pages/judges-49b0a7b4e737.md",
+      "source_sha256": "8db7da3ad33940824e3f05471c07e1625cf7a0c057e3ca212236829a480b93de",
+      "span_id": "trial-2:L34-L80",
+      "span_sha256": "2f7175526327469a037638127c4031534c428bb9262b59ddb92da869bf62b58a",
+      "start_line": 34
+    },
+    {
+      "end_line": 80,
+      "source_id": "trial-3",
+      "source_path": "private-corpus/how-to-win-in-court/normalized/course-pages/objections-fa90ff67967a.md",
+      "source_sha256": "3809684515c4845cf4dfca6262917ce8f651e84bd3e6eae82fc6bcb3f8a8cb97",
+      "span_id": "trial-3:L34-L80",
+      "span_sha256": "5f690acc6398b32b6d1d441c8e7c735cbd6afcbbeb115e4f4167821eca364f5d",
+      "start_line": 34
+    },
+    {
+      "end_line": 80,
+      "source_id": "trial-4",
+      "source_path": "private-corpus/how-to-win-in-court/normalized/course-pages/trial-f135bffef111.md",
+      "source_sha256": "c2bede96cee72e6fb972a0c5f4a9f59df9ec1dafa6274227cedbf590a7f94866",
+      "span_id": "trial-4:L34-L80",
+      "span_sha256": "3827bfa89fcb7bf88948243685ce0080953e055d3f466f96a331652a6affca91",
+      "start_line": 34
+    },
+    {
+      "end_line": 34,
+      "source_id": "post-judgment-1",
+      "source_path": "private-corpus/how-to-win-in-court/media/transcripts/audio-classroom-21-4b03e4cc7605.md",
+      "source_sha256": "caa72e95528e8ff0089cdac31da3ae64223b95f46fffad767592cb7ec5af34fd",
+      "span_id": "post-judgment-1:L30-L34",
+      "span_sha256": "845a287e589eefa139d9b170203d7d0279d986d2004e6dc5c4c09f884d7350fb",
+      "start_line": 30
+    },
+    {
+      "end_line": 33,
+      "source_id": "post-judgment-2",
+      "source_path": "private-corpus/how-to-win-in-court/media/transcripts/audio-classroom-22-167431b2f5c1.md",
+      "source_sha256": "573b4aa90724e2cf6847b423215a4276aea25b9d629bcb346b27758dc98020b6",
+      "span_id": "post-judgment-2:L30-L33",
+      "span_sha256": "6c655403c8cb2fcb0b701d003f4a5942a0958b4ba9ca53f58384425ac51e6167",
+      "start_line": 30
+    },
+    {
+      "end_line": 80,
+      "source_id": "post-judgment-3",
+      "source_path": "private-corpus/how-to-win-in-court/normalized/course-pages/appeals-7c3bc8f2c9d7.md",
+      "source_sha256": "8ecfd908214da5d91336fd5524a6b9f766a6fcd2e85c423470a78fb3ffe2428f",
+      "span_id": "post-judgment-3:L34-L80",
+      "span_sha256": "beef8eda1f7b5133b0e4565a98652cfce53d8c4137a9a4cbe17ca850d320c97e",
+      "start_line": 34
+    },
+    {
+      "end_line": 80,
+      "source_id": "post-judgment-4",
+      "source_path": "private-corpus/how-to-win-in-court/normalized/course-pages/collecting-9d74986765fa.md",
+      "source_sha256": "b08385708f487b4ffac6b93b21d618469fd6e004fffe8ae992e56f7e8b58b1c2",
+      "span_id": "post-judgment-4:L34-L80",
+      "span_sha256": "f332579dd0a147840a3e4bf88a6eb54ccca063d99ddef78866d5382ebab78114",
+      "start_line": 34
+    }
+  ]
+}

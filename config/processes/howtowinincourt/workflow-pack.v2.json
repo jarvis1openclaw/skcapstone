@@ -1,0 +1,598 @@
+{
+  "card": "a9e3c740",
+  "contradictions": [
+    {
+      "description": "Span discovery-2 presents a debate where counsel argues for no fixed limit on requests for admissions, while the Bar Committee's proposal limits them to 30 unless stipulated or permitted by the court. The course's general instruction (discovery-4) lists 'Requests for Admissions' as one of five tools without specifying a numerical limit, creating a tension between the general tool list and the specific jurisdictional limit proposed in the hearing.",
+      "human_review_required": true,
+      "id": "contradiction-1",
+      "resolution_state": "unresolved",
+      "source_refs": [
+        "discovery-2:L30-L57",
+        "discovery-4:L34-L80"
+      ]
+    }
+  ],
+  "coverage": {
+    "authorized_sources": 28,
+    "contradiction_referenced_spans": 2,
+    "contradiction_unreferenced_spans": [
+      "discovery-1:L30-L76",
+      "discovery-3:L34-L80",
+      "elements-evidence-1:L34-L80",
+      "elements-evidence-2:L34-L80",
+      "elements-evidence-3:L34-L80",
+      "motions-1:L30-L55",
+      "motions-2:L34-L80",
+      "planning-1:L30-L31",
+      "planning-2:L34-L80",
+      "planning-3:L34-L80",
+      "planning-4:L34-L80",
+      "planning-5:L30-L44",
+      "planning-6:L34-L80",
+      "planning-7:L34-L80",
+      "planning-8:L34-L80",
+      "pleadings-1:L30-L49",
+      "pleadings-2:L34-L80",
+      "pleadings-3:L34-L80",
+      "post-judgment-1:L30-L34",
+      "post-judgment-2:L30-L33",
+      "post-judgment-3:L34-L80",
+      "post-judgment-4:L34-L80",
+      "trial-1:L30-L41",
+      "trial-2:L34-L80",
+      "trial-3:L34-L80",
+      "trial-4:L34-L80"
+    ],
+    "covered_workflows": [
+      "discovery",
+      "elements-evidence",
+      "motions",
+      "planning",
+      "pleadings",
+      "post-judgment",
+      "trial"
+    ],
+    "declared_spans": 28,
+    "material_proposition_coverage_percent": 100,
+    "material_propositions": 28,
+    "proposition_referenced_spans": 28,
+    "proposition_unreferenced_spans": [],
+    "represented_sources": 28,
+    "required_workflows": [
+      "planning",
+      "elements-evidence",
+      "pleadings",
+      "discovery",
+      "motions",
+      "trial",
+      "post-judgment"
+    ],
+    "source_bound_material_propositions": 28,
+    "unresolved_gap_referenced_spans": 28,
+    "unresolved_gap_unreferenced_spans": []
+  },
+  "external_actions": {
+    "dispatch": false,
+    "filing": false,
+    "mailing": false,
+    "service": false,
+    "workflow_state_advance": false
+  },
+  "jurisdiction_overlay": {
+    "included": false,
+    "rule": "No course proposition is controlling Authority or a Matter deadline.",
+    "state": "unresolved"
+  },
+  "lanes": {
+    "course_instruction": "source-derived proposals in this pack",
+    "human_decision": "not supplied; review is required",
+    "matter_facts_and_evidence": "not supplied",
+    "model_inference": "Qwen proposal with per-item uncertainty",
+    "official_authority": "not supplied; current jurisdiction-specific verification required"
+  },
+  "model_boundary": {
+    "corpus_semantics": "sk-qwen",
+    "corpus_served_model": "qwen3.8-27b-huihui-abliterated-q4_k_m",
+    "fable_5_1_dispatchable": false,
+    "fable_5_1_eligible": false,
+    "fable_5_1_fallback": false,
+    "fable_5_1_state": "placeholder_metadata_only",
+    "frontier_available": "astra",
+    "frontier_invoked": false,
+    "protected_matter_egress": false
+  },
+  "propositions": [
+    {
+      "counter_support": "None",
+      "human_review_required": true,
+      "id": "prop-planning-1",
+      "lane": "course_instruction",
+      "source_refs": [
+        "planning-1:L30-L31"
+      ],
+      "text": "The course concludes the introductory segment with a thank-you message to the viewer.",
+      "uncertainty": "low",
+      "workflow": "planning"
+    },
+    {
+      "counter_support": "None",
+      "human_review_required": true,
+      "id": "prop-planning-2",
+      "lane": "course_instruction",
+      "source_refs": [
+        "planning-2:L34-L80"
+      ],
+      "text": "The course defines 'Ab Initio' as meaning 'from the beginning' and notes its use in describing agreements unenforceable when first made, such as gambling debts.",
+      "uncertainty": "low",
+      "workflow": "planning"
+    },
+    {
+      "counter_support": "None",
+      "human_review_required": true,
+      "id": "prop-planning-3",
+      "lane": "course_instruction",
+      "source_refs": [
+        "planning-3:L34-L80"
+      ],
+      "text": "Maxims are defined as brief statements of self-evident truth that explain what is fair, right, and just, and are intended to control courts, legislatures, and societal considerations of fairness.",
+      "uncertainty": "low",
+      "workflow": "planning"
+    },
+    {
+      "counter_support": "None",
+      "human_review_required": true,
+      "id": "prop-planning-4",
+      "lane": "course_instruction",
+      "source_refs": [
+        "planning-4:L34-L80"
+      ],
+      "text": "The course introduces Natural Law by exploring the term 'Jurisprudence' to clarify the American heritage of law and the meaning of Natural Law without relying on sectarian or political opinions.",
+      "uncertainty": "low",
+      "workflow": "planning"
+    },
+    {
+      "counter_support": "None",
+      "human_review_required": true,
+      "id": "prop-planning-5",
+      "lane": "course_instruction",
+      "source_refs": [
+        "planning-5:L30-L44"
+      ],
+      "text": "Winning a lawsuit depends on having the facts and the law; confidence comes from knowing, and knowledge comes from truth. The course emphasizes that not every case is winnable and not every wrong has a remedy, using the abolished Florida cause of action for alienation of affections as an example of a removed remedy.",
+      "uncertainty": "low",
+      "workflow": "planning"
+    },
+    {
+      "counter_support": "None",
+      "human_review_required": true,
+      "id": "prop-planning-6",
+      "lane": "course_instruction",
+      "source_refs": [
+        "planning-6:L34-L80"
+      ],
+      "text": "The course advises users to view the 'Big Picture' before details, noting that while tactics work broadly, exact rule wording varies by jurisdiction, and users should consult official rules (e.g., Florida Rules of Evidence, California Rules of Civil Procedure) for their specific court.",
+      "uncertainty": "low",
+      "workflow": "planning"
+    },
+    {
+      "counter_support": "None",
+      "human_review_required": true,
+      "id": "prop-planning-7",
+      "lane": "course_instruction",
+      "source_refs": [
+        "planning-7:L34-L80"
+      ],
+      "text": "The course asserts that written words win court cases, countering the TV trope that cases are won at trial through last-minute witness questioning and new evidence.",
+      "uncertainty": "low",
+      "workflow": "planning"
+    },
+    {
+      "counter_support": "None",
+      "human_review_required": true,
+      "id": "prop-planning-8",
+      "lane": "course_instruction",
+      "source_refs": [
+        "planning-8:L34-L80"
+      ],
+      "text": "The course instructs users to plan before beginning, anticipating the opponent's actions and presenting facts and law to move the court, emphasizing that a good plan prevents being hampered throughout the lawsuit.",
+      "uncertainty": "low",
+      "workflow": "planning"
+    },
+    {
+      "counter_support": "None",
+      "human_review_required": true,
+      "id": "prop-elements-evidence-1",
+      "lane": "course_instruction",
+      "source_refs": [
+        "elements-evidence-1:L34-L80"
+      ],
+      "text": "The course presents contract law as the foundation of legal systems, using the biblical parable of the Vineyard Workers to illustrate the principle that 'a deal is a deal' and the importance of honoring agreements.",
+      "uncertainty": "low",
+      "workflow": "elements-evidence"
+    },
+    {
+      "counter_support": "None",
+      "human_review_required": true,
+      "id": "prop-elements-evidence-2",
+      "lane": "course_instruction",
+      "source_refs": [
+        "elements-evidence-2:L34-L80"
+      ],
+      "text": "The course provides a quiz and previews for evidence rules, objections, and winning tactics, positioning contract law as the foundation of all legal systems.",
+      "uncertainty": "low",
+      "workflow": "elements-evidence"
+    },
+    {
+      "counter_support": "None",
+      "human_review_required": true,
+      "id": "prop-elements-evidence-3",
+      "lane": "course_instruction",
+      "source_refs": [
+        "elements-evidence-3:L34-L80"
+      ],
+      "text": "The course describes evidence rules as a 'filter' that excludes falsified testimony, forged documents, and other inadmissible items from influencing the judge or jury.",
+      "uncertainty": "low",
+      "workflow": "elements-evidence"
+    },
+    {
+      "counter_support": "None",
+      "human_review_required": true,
+      "id": "prop-pleadings-1",
+      "lane": "course_instruction",
+      "source_refs": [
+        "pleadings-1:L30-L49"
+      ],
+      "text": "Pleadings frame the case; only what is alleged in the pleadings is decided at trial. The course explains that complaints must include jurisdictional allegations, factual allegations, and a wherefore clause, and that amendments are possible but subject to prejudice limits.",
+      "uncertainty": "low",
+      "workflow": "pleadings"
+    },
+    {
+      "counter_support": "None",
+      "human_review_required": true,
+      "id": "prop-pleadings-2",
+      "lane": "course_instruction",
+      "source_refs": [
+        "pleadings-2:L34-L80"
+      ],
+      "text": "An answer responds to each numbered paragraph of a complaint with 'Admitted', 'Denied', or 'Without sufficient knowledge to be able to respond', matching the paragraph numbers of the complaint.",
+      "uncertainty": "low",
+      "workflow": "pleadings"
+    },
+    {
+      "counter_support": "None",
+      "human_review_required": true,
+      "id": "prop-pleadings-3",
+      "lane": "course_instruction",
+      "source_refs": [
+        "pleadings-3:L34-L80"
+      ],
+      "text": "The complaint is the most important document in a lawsuit, where the plaintiff alleges the essential facts they must prove to win, marking the beginning of the battle.",
+      "uncertainty": "low",
+      "workflow": "pleadings"
+    },
+    {
+      "counter_support": "None",
+      "human_review_required": true,
+      "id": "prop-discovery-1",
+      "lane": "course_instruction",
+      "source_refs": [
+        "discovery-1:L30-L76"
+      ],
+      "text": "Discovery is the method to prove what is alleged in pleadings, utilizing five tools: requests for admissions, requests for production, interrogatories, affidavits (with hearsay caveats), and compelling discovery via motions to compel.",
+      "uncertainty": "low",
+      "workflow": "discovery"
+    },
+    {
+      "counter_support": "The Bar Committee proposed limiting admissions to 30 unless stipulated or permitted by the court.",
+      "human_review_required": true,
+      "id": "prop-discovery-2",
+      "lane": "course_instruction",
+      "source_refs": [
+        "discovery-2:L30-L57"
+      ],
+      "text": "In a Florida Supreme Court hearing, counsel argued that requests for admissions are the most powerful pretrial discovery tool, advocating for no fixed numerical limit (unlike interrogatories limited to 30) and seeking clarification on what constitutes excessive use.",
+      "uncertainty": "medium",
+      "workflow": "discovery"
+    },
+    {
+      "counter_support": "None",
+      "human_review_required": true,
+      "id": "prop-discovery-3",
+      "lane": "course_instruction",
+      "source_refs": [
+        "discovery-3:L34-L80"
+      ],
+      "text": "The course teaches that if an opponent hides evidence, the pro se litigant must use motions to compel discovery to force compliance, as judges do not automatically enforce rules without being moved.",
+      "uncertainty": "low",
+      "workflow": "discovery"
+    },
+    {
+      "counter_support": "None",
+      "human_review_required": true,
+      "id": "prop-discovery-4",
+      "lane": "course_instruction",
+      "source_refs": [
+        "discovery-4:L34-L80"
+      ],
+      "text": "Discovery is defined as the process of proving what is alleged in pleadings, and the course identifies five specific discovery tools, starting with Requests for Admissions.",
+      "uncertainty": "low",
+      "workflow": "discovery"
+    },
+    {
+      "counter_support": "None",
+      "human_review_required": true,
+      "id": "prop-motions-1",
+      "lane": "course_instruction",
+      "source_refs": [
+        "motions-1:L30-L55"
+      ],
+      "text": "Motions are used to force the court to act; the course explains that answers should be simple (admit/deny), and that counterclaims, cross-claims, and third-party complaints are variations of the answer that add lawsuits within the response.",
+      "uncertainty": "low",
+      "workflow": "motions"
+    },
+    {
+      "counter_support": "None",
+      "human_review_required": true,
+      "id": "prop-motions-2",
+      "lane": "course_instruction",
+      "source_refs": [
+        "motions-2:L34-L80"
+      ],
+      "text": "The goal of every case is a court order; judges rarely sign orders until moved to do so, and motions are distinct from pleadings as they seek specific orders rather than stating the case.",
+      "uncertainty": "low",
+      "workflow": "motions"
+    },
+    {
+      "counter_support": "None",
+      "human_review_required": true,
+      "id": "prop-trial-1",
+      "lane": "course_instruction",
+      "source_refs": [
+        "trial-1:L30-L41"
+      ],
+      "text": "The course details trial tactics including objections to preserve rights, the inadmissibility of attorney testimony outside opening/closing, and the importance of practicing direct and cross-examination to avoid leading questions.",
+      "uncertainty": "low",
+      "workflow": "trial"
+    },
+    {
+      "counter_support": "None",
+      "human_review_required": true,
+      "id": "prop-trial-2",
+      "lane": "course_instruction",
+      "source_refs": [
+        "trial-2:L34-L80"
+      ],
+      "text": "The course advises recognizing judges as human beings with personal stakes, suggesting that a judge's perception of the litigant's honesty and the opponent's reputation can influence rulings.",
+      "uncertainty": "medium",
+      "workflow": "trial"
+    },
+    {
+      "counter_support": "None",
+      "human_review_required": true,
+      "id": "prop-trial-3",
+      "lane": "course_instruction",
+      "source_refs": [
+        "trial-3:L34-L80"
+      ],
+      "text": "Objections are used to compel judges to enforce the rules; if an objection is sustained, the opponent must stop breaking the rules, and objections preserve rights for appeal.",
+      "uncertainty": "low",
+      "workflow": "trial"
+    },
+    {
+      "counter_support": "None",
+      "human_review_required": true,
+      "id": "prop-trial-4",
+      "lane": "course_instruction",
+      "source_refs": [
+        "trial-4:L34-L80"
+      ],
+      "text": "The course characterizes trial as risky, expensive, and frequently unnecessary, suggesting that the need for trial usually results from avoidable causes such as failure to make the case before trial.",
+      "uncertainty": "low",
+      "workflow": "trial"
+    },
+    {
+      "counter_support": "None",
+      "human_review_required": true,
+      "id": "prop-post-judgment-1",
+      "lane": "course_instruction",
+      "source_refs": [
+        "post-judgment-1:L30-L34"
+      ],
+      "text": "To execute a judgment, the judgment must include the phrase 'for which let execution issue,' allowing the clerk to issue a writ of execution commanding the sheriff to levy on the defendant's property.",
+      "uncertainty": "low",
+      "workflow": "post-judgment"
+    },
+    {
+      "counter_support": "None",
+      "human_review_required": true,
+      "id": "prop-post-judgment-2",
+      "lane": "course_instruction",
+      "source_refs": [
+        "post-judgment-2:L30-L33"
+      ],
+      "text": "Preserving objections is critical for appeal; the course emphasizes making a record, citing authorities, and filing motions to reconsider or rehearing to telegraph appeal arguments, noting that the notice of appeal in Florida must be filed within 30 days of the order's rendition.",
+      "uncertainty": "low",
+      "workflow": "post-judgment"
+    },
+    {
+      "counter_support": "None",
+      "human_review_required": true,
+      "id": "prop-post-judgment-3",
+      "lane": "course_instruction",
+      "source_refs": [
+        "post-judgment-3:L34-L80"
+      ],
+      "text": "Appeals are a mechanism to hold trial judges accountable, as judges make mistakes and are often successfully appealed; the course emphasizes that everyone, including judges, must play by the rules.",
+      "uncertainty": "low",
+      "workflow": "post-judgment"
+    },
+    {
+      "counter_support": "None",
+      "human_review_required": true,
+      "id": "prop-post-judgment-4",
+      "lane": "course_instruction",
+      "source_refs": [
+        "post-judgment-4:L34-L80"
+      ],
+      "text": "The course explains that a judgment is just a piece of paper stating the loser 'owes' money, and that collecting the judgment requires a writ of execution to command the sheriff to take possession of the defendant's property.",
+      "uncertainty": "low",
+      "workflow": "post-judgment"
+    }
+  ],
+  "qwen_run": {
+    "agent_run_id": "chatcmpl-9fb24b4dec1c222a",
+    "backend": "chiap08-local-qwen",
+    "card": "a9e3c740",
+    "dispatch_evidence_sha256": "a08965b55a83c2f4d609fd5400621c61da24c052494d81062db11251fa0f26fb",
+    "finished_at": "2026-09-08T07:00:11.143195+00:00",
+    "frontier_invocation_count": 0,
+    "frontier_model_used": false,
+    "frontier_rewrite": false,
+    "gateway_revision": null,
+    "gateway_revision_reason": "Direct local vLLM transport. No SKGateway process participated.",
+    "gateway_revision_required": false,
+    "logical_route": "qwen.semantic-proposal.v1",
+    "normalization_record_sha256": "5cdbd43a5dcc4ac775d5f0fd72e5da2f83019c85956797fc8959d3fa483e408d",
+    "prompt_sha256": "096654cf8d5a4896e7ab05afc893b8826699bc0924692cf4edf21027e9066a02",
+    "protected_egress": false,
+    "raw_provider_response_sha256": "885583b0010c6cc69c372234a144df10afa21575e80da04af88feebbbd4af980",
+    "request_sha256": "9aa40b7b6a357103f7a76c8515d05dbcd91229f03f9a3340a85095db9f812a42",
+    "requested_model": "qwen3.8-27b-huihui-abliterated-q4_k_m",
+    "response_sha256": "a0c588de21db2420e7a74be67a630826b59e66c506472bfdeccc9fb5b4f33fc1",
+    "retrieval_trace_sha256": "b6029ed3ff668cd28ef59234048e8e08d8a2bb82aed10b10007ffadd2150832c",
+    "schema": "sklegal.qwen-run-receipt/v2",
+    "schema_sha256": "ebeada7f9d271f5bf3554dac53293dcdf6fee8368adf951a4a392d77bd114501",
+    "served_model": "qwen3.8-27b-huihui-abliterated-q4_k_m",
+    "served_model_revision": "config-sha256:783a7999e813d3388e93bbe9ac865a62ed729196b40b07fa2b3c32258f8aaea1;index-sha256:17bca6239df2e5a846bf01c90d235623c61dc30cd98c9fd7439b5cb4e45ca118",
+    "server_attestation_sha256": "213fcb22c9e1cefde49e4d084b49688f5c18c836ed5dcb1c9f6f777a147358af",
+    "source_bytes_changed": false,
+    "started_at": "2026-09-08T06:59:06.050415+00:00",
+    "transport_configuration_sha256": "63d8e35a7a1fcff7dc44753a763f2304391c56ed82326ac5af7511542036c0d4",
+    "transport_profile": "chiap08.direct-qwen.v1",
+    "usage": {
+      "completion_tokens": 3890,
+      "completion_tokens_details": null,
+      "prompt_tokens": 21433,
+      "prompt_tokens_details": null,
+      "total_tokens": 25323
+    }
+  },
+  "qwen_run_receipt_sha256": "9560c83dda9c1f6a072215790b6a48c68cf7f9a036004178b809ab99ea526cef",
+  "rights": {
+    "classification": "confidential_personal_use_research",
+    "private_rights_isolation": true,
+    "public_redistribution": false
+  },
+  "schema": "sklegal.htwc-workflow-pack/v2",
+  "source_manifest_sha256": "44f3e1cd222ba1090a0d3ec85262d815873f6575a3cf9b480eee6c184f195dce",
+  "unresolved_gaps": [
+    {
+      "description": "The specific numerical limit for requests for admissions in the current official Florida Rules of Civil Procedure (Rule 1.310) is not explicitly stated in the course materials, leaving the exact current limit unresolved until verified from official Authority.",
+      "human_review_required": true,
+      "id": "gap-1",
+      "resolution_state": "unresolved",
+      "source_refs": [
+        "discovery-1:L30-L76",
+        "discovery-2:L30-L57",
+        "discovery-3:L34-L80",
+        "discovery-4:L34-L80",
+        "elements-evidence-1:L34-L80",
+        "elements-evidence-2:L34-L80",
+        "elements-evidence-3:L34-L80",
+        "motions-1:L30-L55",
+        "motions-2:L34-L80",
+        "planning-1:L30-L31",
+        "planning-2:L34-L80",
+        "planning-3:L34-L80",
+        "planning-4:L34-L80",
+        "planning-5:L30-L44",
+        "planning-6:L34-L80",
+        "planning-7:L34-L80",
+        "planning-8:L34-L80",
+        "pleadings-1:L30-L49",
+        "pleadings-2:L34-L80",
+        "pleadings-3:L34-L80",
+        "post-judgment-1:L30-L34",
+        "post-judgment-2:L30-L33",
+        "post-judgment-3:L34-L80",
+        "post-judgment-4:L34-L80",
+        "trial-1:L30-L41",
+        "trial-2:L34-L80",
+        "trial-3:L34-L80",
+        "trial-4:L34-L80"
+      ]
+    },
+    {
+      "description": "The course mentions 'five tools' for discovery but does not explicitly list all five in a single consolidated list in the provided spans, requiring verification of the complete set from official rules.",
+      "human_review_required": true,
+      "id": "gap-2",
+      "resolution_state": "unresolved",
+      "source_refs": [
+        "discovery-1:L30-L76",
+        "discovery-2:L30-L57",
+        "discovery-3:L34-L80",
+        "discovery-4:L34-L80",
+        "elements-evidence-1:L34-L80",
+        "elements-evidence-2:L34-L80",
+        "elements-evidence-3:L34-L80",
+        "motions-1:L30-L55",
+        "motions-2:L34-L80",
+        "planning-1:L30-L31",
+        "planning-2:L34-L80",
+        "planning-3:L34-L80",
+        "planning-4:L34-L80",
+        "planning-5:L30-L44",
+        "planning-6:L34-L80",
+        "planning-7:L34-L80",
+        "planning-8:L34-L80",
+        "pleadings-1:L30-L49",
+        "pleadings-2:L34-L80",
+        "pleadings-3:L34-L80",
+        "post-judgment-1:L30-L34",
+        "post-judgment-2:L30-L33",
+        "post-judgment-3:L34-L80",
+        "post-judgment-4:L34-L80",
+        "trial-1:L30-L41",
+        "trial-2:L34-L80",
+        "trial-3:L34-L80",
+        "trial-4:L34-L80"
+      ]
+    },
+    {
+      "description": "The exact deadline for filing a notice of appeal in Florida is stated as 30 days in post-judgment-2, but the specific rule citation (Rule 9.130) is not provided in the span, leaving the formal rule reference unresolved.",
+      "human_review_required": true,
+      "id": "gap-3",
+      "resolution_state": "unresolved",
+      "source_refs": [
+        "discovery-1:L30-L76",
+        "discovery-2:L30-L57",
+        "discovery-3:L34-L80",
+        "discovery-4:L34-L80",
+        "elements-evidence-1:L34-L80",
+        "elements-evidence-2:L34-L80",
+        "elements-evidence-3:L34-L80",
+        "motions-1:L30-L55",
+        "motions-2:L34-L80",
+        "planning-1:L30-L31",
+        "planning-2:L34-L80",
+        "planning-3:L34-L80",
+        "planning-4:L34-L80",
+        "planning-5:L30-L44",
+        "planning-6:L34-L80",
+        "planning-7:L34-L80",
+        "planning-8:L34-L80",
+        "pleadings-1:L30-L49",
+        "pleadings-2:L34-L80",
+        "pleadings-3:L34-L80",
+        "post-judgment-1:L30-L34",
+        "post-judgment-2:L30-L33",
+        "post-judgment-3:L34-L80",
+        "post-judgment-4:L34-L80",
+        "trial-1:L30-L41",
+        "trial-2:L34-L80",
+        "trial-3:L34-L80",
+        "trial-4:L34-L80"
+      ]
+    }
+  ]
+}

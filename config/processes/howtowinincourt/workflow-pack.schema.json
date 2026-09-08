@@ -1,0 +1,146 @@
+{
+  "$id": "sklegal.htwc-workflow-pack/v2",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$defs": {
+    "proposition": {
+      "additionalProperties": false,
+      "properties": {
+        "counter_support": {"type": "string"},
+        "human_review_required": {"const": true},
+        "id": {"minLength": 1, "type": "string"},
+        "lane": {"const": "course_instruction"},
+        "source_refs": {"items": {"minLength": 1, "type": "string"}, "minItems": 1, "type": "array", "uniqueItems": true},
+        "text": {"minLength": 1, "type": "string"},
+        "uncertainty": {"enum": ["low", "medium", "high"]},
+        "workflow": {"enum": ["planning", "elements-evidence", "pleadings", "discovery", "motions", "trial", "post-judgment"]}
+      },
+      "required": ["id", "workflow", "text", "lane", "source_refs", "uncertainty", "counter_support", "human_review_required"],
+      "type": "object"
+    },
+    "unresolved_record": {
+      "additionalProperties": false,
+      "properties": {
+        "description": {"minLength": 1, "type": "string"},
+        "human_review_required": {"const": true},
+        "id": {"minLength": 1, "type": "string"},
+        "resolution_state": {"const": "unresolved"},
+        "source_refs": {"items": {"minLength": 1, "type": "string"}, "minItems": 1, "type": "array", "uniqueItems": true}
+      },
+      "required": ["id", "description", "source_refs", "resolution_state", "human_review_required"],
+      "type": "object"
+    },
+    "sha256": {"pattern": "^[0-9a-f]{64}$", "type": "string"}
+  },
+  "additionalProperties": false,
+  "properties": {
+    "card": {"const": "a9e3c740"},
+    "contradictions": {"items": {"$ref": "#/$defs/unresolved_record"}, "minItems": 1, "type": "array"},
+    "coverage": {
+      "additionalProperties": false,
+      "properties": {
+        "authorized_sources": {"const": 28},
+        "covered_workflows": {"maxItems": 7, "minItems": 7, "type": "array", "uniqueItems": true},
+        "declared_spans": {"const": 28},
+        "material_proposition_coverage_percent": {"const": 100},
+        "material_propositions": {"const": 28},
+        "proposition_referenced_spans": {"const": 28},
+        "proposition_unreferenced_spans": {"maxItems": 0, "type": "array"},
+        "contradiction_referenced_spans": {"minimum": 1, "type": "integer"},
+        "contradiction_unreferenced_spans": {"items": {"type": "string"}, "type": "array", "uniqueItems": true},
+        "unresolved_gap_referenced_spans": {"minimum": 1, "type": "integer"},
+        "unresolved_gap_unreferenced_spans": {"items": {"type": "string"}, "type": "array", "uniqueItems": true},
+        "represented_sources": {"const": 28},
+        "required_workflows": {"maxItems": 7, "minItems": 7, "type": "array", "uniqueItems": true},
+        "source_bound_material_propositions": {"const": 28},
+        "source_bound_material_propositions": {"const": 28}
+      },
+      "required": ["authorized_sources", "covered_workflows", "declared_spans", "material_proposition_coverage_percent", "material_propositions", "proposition_referenced_spans", "proposition_unreferenced_spans", "contradiction_referenced_spans", "contradiction_unreferenced_spans", "unresolved_gap_referenced_spans", "unresolved_gap_unreferenced_spans", "represented_sources", "required_workflows", "source_bound_material_propositions"],
+      "type": "object"
+    },
+    "external_actions": {
+      "additionalProperties": false,
+      "properties": {"dispatch": {"const": false}, "filing": {"const": false}, "mailing": {"const": false}, "service": {"const": false}, "workflow_state_advance": {"const": false}},
+      "required": ["dispatch", "filing", "mailing", "service", "workflow_state_advance"],
+      "type": "object"
+    },
+    "jurisdiction_overlay": {
+      "additionalProperties": false,
+      "properties": {"included": {"const": false}, "rule": {"minLength": 1, "type": "string"}, "state": {"const": "unresolved"}},
+      "required": ["included", "state", "rule"],
+      "type": "object"
+    },
+    "lanes": {
+      "additionalProperties": false,
+      "properties": {"course_instruction": {"type": "string"}, "human_decision": {"type": "string"}, "matter_facts_and_evidence": {"type": "string"}, "model_inference": {"type": "string"}, "official_authority": {"type": "string"}},
+      "required": ["course_instruction", "matter_facts_and_evidence", "official_authority", "model_inference", "human_decision"],
+      "type": "object"
+    },
+    "model_boundary": {
+      "additionalProperties": false,
+      "properties": {
+        "corpus_semantics": {"const": "sk-qwen"},
+        "corpus_served_model": {"const": "qwen3.8-27b-huihui-abliterated-q4_k_m"},
+        "fable_5_1_dispatchable": {"const": false},
+        "fable_5_1_eligible": {"const": false},
+        "fable_5_1_fallback": {"const": false},
+        "fable_5_1_state": {"const": "placeholder_metadata_only"},
+        "frontier_available": {"const": "astra"},
+        "frontier_invoked": {"const": false},
+        "protected_matter_egress": {"const": false}
+      },
+      "required": ["corpus_semantics", "corpus_served_model", "frontier_available", "frontier_invoked", "fable_5_1_state", "fable_5_1_eligible", "fable_5_1_dispatchable", "fable_5_1_fallback", "protected_matter_egress"],
+      "type": "object"
+    },
+    "propositions": {"items": {"$ref": "#/$defs/proposition"}, "maxItems": 28, "minItems": 28, "type": "array"},
+    "qwen_run": {
+      "additionalProperties": true,
+      "properties": {
+        "agent_run_id": {"minLength": 1, "type": "string"},
+        "frontier_invocation_count": {"const": 0},
+        "frontier_model_used": {"const": false},
+        "frontier_rewrite": {"const": false},
+        "gateway_revision": {"type": "null"},
+        "gateway_revision_required": {"const": false},
+        "logical_route": {"const": "qwen.semantic-proposal.v1"},
+        "protected_egress": {"const": false},
+        "request_sha256": {"$ref": "#/$defs/sha256"},
+        "prompt_sha256": {"$ref": "#/$defs/sha256"},
+        "raw_provider_response_sha256": {"$ref": "#/$defs/sha256"},
+        "normalization_record_sha256": {"$ref": "#/$defs/sha256"},
+        "dispatch_evidence_sha256": {"$ref": "#/$defs/sha256"},
+        "transport_configuration_sha256": {"$ref": "#/$defs/sha256"},
+        "transport_profile": {"const": "chiap08.direct-qwen.v1"},
+        "requested_model": {"const": "qwen3.8-27b-huihui-abliterated-q4_k_m"},
+        "served_model_revision": {"minLength": 1, "type": "string"},
+        "response_sha256": {"$ref": "#/$defs/sha256"},
+        "retrieval_trace_sha256": {"$ref": "#/$defs/sha256"},
+        "schema_sha256": {"$ref": "#/$defs/sha256"},
+        "served_model": {"const": "qwen3.8-27b-huihui-abliterated-q4_k_m"},
+        "server_attestation_sha256": {"$ref": "#/$defs/sha256"}
+      },
+      "required": ["agent_run_id", "logical_route", "transport_profile", "gateway_revision", "gateway_revision_required", "requested_model", "served_model", "served_model_revision", "request_sha256", "prompt_sha256", "schema_sha256", "retrieval_trace_sha256", "response_sha256", "raw_provider_response_sha256", "normalization_record_sha256", "dispatch_evidence_sha256", "transport_configuration_sha256", "server_attestation_sha256", "frontier_model_used", "frontier_rewrite", "frontier_invocation_count", "protected_egress"],
+      "type": "object"
+    },
+    "qwen_run_receipt_sha256": {"$ref": "#/$defs/sha256"},
+    "rights": {
+      "additionalProperties": false,
+      "properties": {
+        "classification": {"const": "confidential_personal_use_research"},
+        "private_rights_isolation": {"const": true},
+        "public_redistribution": {"const": false}
+      },
+      "required": ["classification", "private_rights_isolation", "public_redistribution"],
+      "type": "object"
+    },
+    "schema": {"const": "sklegal.htwc-workflow-pack/v2"},
+    "source_manifest_sha256": {"$ref": "#/$defs/sha256"},
+    "unresolved_gaps": {
+      "items": {"$ref": "#/$defs/unresolved_record"},
+      "minItems": 1,
+      "type": "array"
+    }
+  },
+  "required": ["schema", "card", "source_manifest_sha256", "qwen_run_receipt_sha256", "qwen_run", "rights", "lanes", "jurisdiction_overlay", "external_actions", "model_boundary", "propositions", "contradictions", "unresolved_gaps", "coverage"],
+  "title": "SKLegal source-complete HowToWinInCourt workflow pack",
+  "type": "object"
+}
