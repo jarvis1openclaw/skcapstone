@@ -39,6 +39,10 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 - Card `7ad5f0c1`: lane admission now uses an explicit bounded endpoint timeout
   above measured gateway health latency, without weakening fail-closed checks.
 
+- Card `5e2a9f10`: added bounded Seraph review dispatch, active-host seat
+  placement, a Seraph-only selector filter, and one-launch-per-cycle service
+  and timer templates while preserving Link recommendation and claim fencing.
+
 - Card `c1a1c003`: atomic task creation resolves identity in the canonical
   `SKAGENT`, `SKCAPSTONE_AGENT`, `SKMEMORY_AGENT`, `SK_DEFAULT_AGENT`, then
   sole-installed-agent order and requires the published SKCoord atomic
