@@ -103,6 +103,10 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ### Added
 
+- Card `5a71c2de`: added a proposal-only SKRSI experiment controller with
+  revision-fenced transitions, bounded budgets, replay safety, and recovery
+  proposals that cannot actuate changes.
+
 - Card `5a71c2dd`: added deterministic SKRSI cohort and quality evaluation
   with bounded evidence-backed scoring and fail-closed input validation.
 
