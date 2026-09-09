@@ -74,12 +74,22 @@ def _canonical_review(home: Path) -> tuple[CardStore, str]:
             initial_labels=["do-not-claim"],
         )
     )
+    store.append_event(
+        "9c71f24a",
+        "link",
+        "mero",
+        link_key="repository",
+        link_value="https://github.com/smilinTux/skcapstone",
+    )
+    store.append_event("9c71f24a", "link", "mero", link_key="base_ref", link_value="main")
     result = reconcile_review_work(
         card_home,
         {
             "kind": "review-work",
             "reason": "missing_terminal_review",
             "repository": "smilinTux/skcapstone",
+            "workspace_repository": "https://github.com/smilinTux/skcapstone",
+            "base_ref": "main",
             "pr": 548,
             "head_revision": "a" * 40,
             "base_revision": "b" * 40,
@@ -119,6 +129,16 @@ def test_real_selector_claims_and_launches_one_canonical_seraph_review(
     launch_argv = tmp_path / "systemd-run.argv"
     unit_state = tmp_path / "active-unit"
     _executable(fake_bin / "tmux", "exit 0")
+    _executable(
+        fake_bin / "git",
+        'if [ "$1" = "clone" ]; then '
+        'for arg do target="$arg"; done; mkdir -p "$target/.git"; exit 0; fi\n'
+        'if [ "$3" = "remote" ]; then '
+        'printf "%s\\n" "https://github.com/smilinTux/skcapstone"; exit 0; fi\n'
+        'if [ "$3" = "status" ] || [ "$3" = "fetch" ]; then exit 0; fi\n'
+        'if [ "$3" = "rev-parse" ]; then printf "%s\\n" "abc123"; exit 0; fi\n'
+        "exit 1",
+    )
     _executable(
         fake_bin / "python3",
         f'if [ "${{1:-}}" = "-" ]; then printf "%s\\n" {GATEWAY_REVISION}; exit 0; fi\n'

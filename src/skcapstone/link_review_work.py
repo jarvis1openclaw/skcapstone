@@ -8,6 +8,7 @@ import re
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Iterable
+from urllib.parse import urlsplit
 
 from skcoord.card_store import CardCore, CardStore, card_mutation_lock
 
@@ -18,6 +19,7 @@ _SHA = re.compile(r"^[0-9a-f]{40}$")
 _DIGEST = re.compile(r"^[0-9a-f]{64}$")
 _CARD_ID = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$")
 MAX_RECOMMENDATIONS = 50
+_BASE_REF = re.compile(r"^[A-Za-z0-9._/-]{1,255}$")
 
 
 @dataclass(frozen=True)
@@ -68,6 +70,81 @@ def review_card_id(
         (source_card, head_revision, card_generation, evidence_sha256, review_class)
     )
     return hashlib.sha256(identity.encode()).hexdigest()[:8]
+
+
+def _validated_workspace_binding(repository: object, base_ref: object) -> tuple[str, str]:
+    """Validate one credential-free source workspace binding."""
+
+    repository_value = str(repository or "").strip()
+    base_ref_value = str(base_ref or "").strip()
+    parsed = urlsplit(repository_value)
+    if (
+        len(repository_value) > 2048
+        or parsed.scheme != "https"
+        or not parsed.hostname
+        or parsed.username
+        or parsed.password
+        or parsed.query
+        or parsed.fragment
+    ):
+        raise ValueError("source_workspace_repository_invalid")
+    if not _BASE_REF.fullmatch(base_ref_value) or base_ref_value.startswith("-"):
+        raise ValueError("source_workspace_base_ref_invalid")
+    return repository_value, base_ref_value
+
+
+def _source_workspace_binding(source: Any, item: dict[str, Any]) -> tuple[str, str]:
+    """Resolve one exact recommendation or folded-parent workspace binding."""
+
+    links = source.links if hasattr(source, "links") else source.get("links", {})
+    parent_raw = (links.get("repository"), links.get("base_ref"))
+    recommendation_present = "workspace_repository" in item or "base_ref" in item
+    parent_present = bool(parent_raw[0] or parent_raw[1])
+    recommendation = None
+    parent = None
+    if recommendation_present:
+        recommendation = _validated_workspace_binding(
+            item.get("workspace_repository"), item.get("base_ref")
+        )
+    if parent_present:
+        parent = _validated_workspace_binding(*parent_raw)
+    if recommendation is not None and parent is not None and recommendation != parent:
+        raise ValueError("source_workspace_binding_conflict")
+    binding = recommendation or parent
+    if binding is None:
+        raise ValueError("source_workspace_binding_missing")
+    return binding
+
+
+def _persist_workspace_binding(
+    store: CardStore, card_id: str, repository: str, base_ref: str
+) -> None:
+    """Idempotently inherit an exact parent workspace onto a canonical review card."""
+
+    card = store.fold(card_id)
+    if card is None:
+        raise ValueError("review_card_missing")
+    for key, expected in (("repository", repository), ("base_ref", base_ref)):
+        observed = str(card.links.get(key) or "").strip()
+        if observed and observed != expected:
+            raise ValueError("review_workspace_binding_conflict")
+        if not observed:
+            store.append_event(
+                card_id,
+                "link",
+                "link",
+                transition_id=f"link-review-workspace-{key}-{card_id}",
+                link_key=key,
+                link_value=expected,
+            )
+    if "source-only" not in card.labels:
+        store.append_event(
+            card_id,
+            "add_label",
+            "link",
+            transition_id=f"link-review-workspace-label-{card_id}",
+            label="source-only",
+        )
 
 
 def reconcile_review_work(
@@ -121,6 +198,10 @@ def reconcile_review_work(
             return ReviewWorkResult(
                 source_card, head_revision, card_id, False, False, "source_generation_changed"
             )
+        try:
+            repository, base_ref = _source_workspace_binding(source, item)
+        except ValueError as exc:
+            return ReviewWorkResult(source_card, head_revision, card_id, False, False, str(exc))
         if _cards_by_key is None:
             _cards_by_key = _review_card_index(store.list_cards())
         key = (source_card, head_revision, supplied_generation, evidence_sha256, review_class)
@@ -172,7 +253,12 @@ def reconcile_review_work(
                             f"Review source card {source_card} at exact head {head_revision}.",
                             "Return a terminal PASS, FAIL, or BLOCKED verdict with evidence.",
                         ],
-                        initial_labels=["review", "seat-seraph", f"parent-{source_card}"],
+                        initial_labels=[
+                            "review",
+                            "seat-seraph",
+                            "source-only",
+                            f"parent-{source_card}",
+                        ],
                         meta=expected_meta,
                     )
                 )
@@ -199,6 +285,10 @@ def reconcile_review_work(
                 link_key="candidate_evidence_sha256",
                 link_value=evidence_sha256,
             )
+        try:
+            _persist_workspace_binding(store, card_id, repository, base_ref)
+        except ValueError as exc:
+            return ReviewWorkResult(source_card, head_revision, card_id, created, False, str(exc))
         card = store.fold(card_id)
         parent_labels = (
             [label for label in card.labels if label.startswith("parent-")] if card else []
@@ -222,6 +312,19 @@ def reconcile_review_work(
                 observed_process={"sessions": []},
                 evidence_sha256=evidence_sha256,
             )
+            try:
+                current_binding = _source_workspace_binding(store.fold(source_card), item)
+            except (AttributeError, ValueError):
+                current_binding = None
+            if current_binding != (repository, base_ref):
+                return ReviewWorkResult(
+                    source_card,
+                    head_revision,
+                    card_id,
+                    created,
+                    False,
+                    "source_workspace_binding_drifted",
+                )
             if card_generation(store.fold(source_card)) != supplied_generation:
                 return ReviewWorkResult(
                     source_card,

@@ -70,7 +70,17 @@ def test_single_source_missing_review_emits_exact_bounded_review_work(tmp_path):
     _home(tmp_path, "source01")
     out = mod.reconcile(
         [{"repository": "org/repo", "number": 7, "headRefOid": "a" * 40, "baseRefOid": "b" * 40}],
-        [{"id": "source01", "title": "Implement PR #7", "owner": "builder"}],
+        [
+            {
+                "id": "source01",
+                "title": "Implement PR #7",
+                "owner": "builder",
+                "links": {
+                    "repository": "https://github.com/org/repo",
+                    "base_ref": "main",
+                },
+            }
+        ],
         tmp_path,
         reviewer_candidates=[_reviewer()],
     )
@@ -81,6 +91,8 @@ def test_single_source_missing_review_emits_exact_bounded_review_work(tmp_path):
             "kind": "review-work",
             "reason": "missing_terminal_review",
             "repository": "org/repo",
+            "workspace_repository": "https://github.com/org/repo",
+            "base_ref": "main",
             "pr": 7,
             "head_revision": "a" * 40,
             "base_revision": "b" * 40,
