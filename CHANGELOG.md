@@ -91,6 +91,9 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ### Added
 
+- Card `5a71c2dd`: added deterministic SKRSI cohort and quality evaluation
+  with bounded evidence-backed scoring and fail-closed input validation.
+
 - Card `5a71c2dc`: added bounded, restart-safe SKRSI metadata collection with
   hash-only dead-letter evidence, deterministic replay, and OTel-compatible
   freshness and quality measurements.
