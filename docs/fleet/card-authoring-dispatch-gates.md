@@ -11,8 +11,10 @@ this document must be corrected.
 
 ## Governed review cards
 
-A review, rereview, or repair card is governed when it carries the `review`
-label or a review marker in its title. Author it with all four admission facts:
+A review or rereview card is governed when it carries the `review` label or a
+`[REVIEW]` or `[REREVIEW]` marker in its title. `[REPAIR]` alone identifies
+ordinary producer work and does not make a card a governed review. Author a
+governed review with all four admission facts:
 `review`, `seat-seraph`, a non-empty `producer_identity`, and a lowercase
 64-hex `candidate_evidence_sha256`. The CLI fails before writing a card and
 lists every missing field:

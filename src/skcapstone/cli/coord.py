@@ -220,6 +220,16 @@ def register_coord_commands(main: click.Group) -> None:
                 )
         console.print()
 
+    @coord.command("gates")
+    @click.argument("task_id")
+    @click.option("--home", default=AGENT_HOME, type=click.Path())
+    def coord_gates(task_id, home):
+        """Explain why TASK_ID is or is not admitted for dispatch."""
+        validate_task_id(task_id)
+        from ..coord_gate_diagnostic import diagnose
+
+        console.print(json.dumps(diagnose(Path(home).expanduser(), task_id), sort_keys=True))
+
     @coord.command(
         "create",
         epilog=(
@@ -370,7 +380,7 @@ def register_coord_commands(main: click.Group) -> None:
 
         labels = {str(value).strip().lower() for value in tag}
         governed_review = "review" in labels or any(
-            marker in title.upper() for marker in ("[REVIEW]", "[REREVIEW]", "[REPAIR]")
+            marker in title.upper() for marker in ("[REVIEW]", "[REREVIEW]")
         )
         if governed_review:
             missing = []

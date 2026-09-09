@@ -9,7 +9,9 @@
 - Card `be4e7d37`: make governed review authoring fail fast, keep consumer
   review metadata out of consumer outcomes, require terminal review verdicts
   with no pending checks, and validate Seraph launch receipts against the exact
-  reviewer claim identity.
+  reviewer claim identity. Add `coord gates` parity and bounded POOL_V2 review
+  diagnostics, preserve ordinary `[REPAIR]` authoring, and serialize concurrent
+  SQLite handoff initialization across Python runtimes.
 
 - Card `2d2a6d4d`: define SKRSI as SK Recursive SELF Improvement, with
   SELF meaning Systematic Evaluation, Learning, and Feedback, and link the

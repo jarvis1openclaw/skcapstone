@@ -126,3 +126,30 @@ def test_complete_governed_review_metadata_is_stored_atomically(tmp_path, monkey
     assert card is not None
     assert card.meta["producer_identity"] == "source-worker"
     assert card.meta["candidate_evidence_sha256"] == digest
+
+
+def test_ordinary_repair_card_does_not_require_review_metadata(tmp_path, monkeypatch):
+    monkeypatch.setenv("SKCOORD_CARD_STORE", "1")
+    from skcoord.card_store import CardCore
+
+    CardStore(tmp_path).create(CardCore(id="deadbeef", title="source", created_by="source-worker"))
+    result = CliRunner().invoke(
+        main,
+        [
+            "coord",
+            "create",
+            "--home",
+            str(tmp_path),
+            "--id",
+            "be4e7d38",
+            "--title",
+            "[COMPONENT][S][REPAIR] Repair ordinary producer work",
+            "--tag",
+            "parent-deadbeef",
+        ],
+    )
+
+    assert result.exit_code == 0, result.output
+    card = CardStore(tmp_path).fold("be4e7d38")
+    assert card is not None
+    assert card.meta == {}

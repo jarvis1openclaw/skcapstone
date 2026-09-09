@@ -120,7 +120,11 @@ class HandoffRuntime:
 
     @contextmanager
     def _db(self):
-        db = sqlite3.connect(self.path, timeout=0.1)
+        # Parallel runtime instances may initialize or finish the same handoff.
+        # Give SQLite's native busy handler enough time to serialize that brief
+        # write instead of leaking a platform-dependent "database is locked".
+        db = sqlite3.connect(self.path, timeout=5.0)
+        db.execute("PRAGMA busy_timeout=5000")
         try:
             with db:
                 yield db
