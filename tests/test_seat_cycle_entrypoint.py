@@ -258,9 +258,19 @@ def test_link_materialization_race_launches_once_and_replay_is_denied(
             created_at="2026-09-08T00:00:00+00:00",
         )
     )
+    store.append_event(
+        "source01",
+        "link",
+        "builder",
+        link_key="repository",
+        link_value="https://github.com/org/repo",
+    )
+    store.append_event("source01", "link", "builder", link_key="base_ref", link_value="main")
     item = {
         "source_card": "source01",
         "head_revision": "a" * 40,
+        "workspace_repository": "https://github.com/org/repo",
+        "base_ref": "main",
         "card_generation": card_generation(store.fold("source01")),
         "source_owner": "builder",
         "reviewer_candidates": [{"name": "Seraph", "seat": "seraph", "identity": "seraph"}],

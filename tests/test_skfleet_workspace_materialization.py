@@ -96,7 +96,7 @@ def test_source_checkout_is_cloned_atomically(tmp_path: Path) -> None:
             checkout.mkdir()
             (checkout / ".git").mkdir()
             return subprocess.CompletedProcess(command, 0, "", "")
-        if command[-2:] == ["get-url", "origin"]:
+        if command[-2:] == ["--get", "remote.origin.url"]:
             return subprocess.CompletedProcess(
                 command, 0, "https://github.com/smilinTux/sklegal\n", ""
             )
@@ -182,7 +182,7 @@ def test_interrupted_clone_cleans_up_and_can_retry(tmp_path: Path) -> None:
             checkout.mkdir()
             (checkout / ".git").mkdir()
             return subprocess.CompletedProcess(command, 0, "", "")
-        if command[-2:] == ["get-url", "origin"]:
+        if command[-2:] == ["--get", "remote.origin.url"]:
             output = "https://github.com/smilinTux/sklegal\n"
         elif "status" in command or "fetch" in command:
             output = ""
@@ -200,7 +200,7 @@ def test_existing_dirty_workspace_is_preserved_and_rejected(tmp_path: Path) -> N
     (target / ".git").mkdir(parents=True)
 
     def dirty(command: list[str], **_: object) -> subprocess.CompletedProcess[str]:
-        if command[-2:] == ["get-url", "origin"]:
+        if command[-2:] == ["--get", "remote.origin.url"]:
             output = "https://github.com/smilinTux/sklegal\n"
         elif "status" in command:
             output = " M preserved.py\n"
@@ -229,7 +229,7 @@ def test_existing_clean_source_workspace_is_reused(tmp_path: Path) -> None:
     (target / ".git").mkdir(parents=True)
 
     def clean(command: list[str], **_: object) -> subprocess.CompletedProcess[str]:
-        if command[-2:] == ["get-url", "origin"]:
+        if command[-2:] == ["--get", "remote.origin.url"]:
             output = "https://github.com/smilinTux/sklegal\n"
         elif "status" in command or "fetch" in command:
             output = ""
@@ -260,7 +260,7 @@ def test_configured_source_workspace_is_still_verified(
     monkeypatch.setenv("SKFLEET_WORKSPACE", str(target))
 
     def wrong_origin(command: list[str], **_: object) -> subprocess.CompletedProcess[str]:
-        if command[-2:] == ["get-url", "origin"]:
+        if command[-2:] == ["--get", "remote.origin.url"]:
             output = "https://github.com/example/wrong\n"
         elif "status" in command or "fetch" in command:
             output = ""

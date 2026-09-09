@@ -36,6 +36,12 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ### Fixed
 
+- Card `1f1a9e21`: Link now validates and durably inherits credential-free
+  repository and base-ref bindings onto canonical Seraph review cards before
+  launch authorization. Unsafe, missing, conflicting, or drifted bindings fail
+  closed, while concurrent and replayed reconciliation remains single-card and
+  idempotent.
+
 - Card `7ad5f0c1`: lane admission now uses an explicit bounded endpoint timeout
   above measured gateway health latency, without weakening fail-closed checks.
 

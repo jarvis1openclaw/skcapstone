@@ -292,24 +292,31 @@ def reconcile(
             ]
             source_generation = _revision(home, source["id"], source)
             if source_generation and eligible_reviewers and len(review_work) < _MAX_REVIEW_WORK:
-                review_work.append(
-                    {
-                        "kind": "review-work",
-                        "reason": (
-                            "missing_terminal_review"
-                            if not terminal_reviews
-                            else "review_not_bound_to_head"
-                        ),
-                        "repository": repository,
-                        "pr": number,
-                        "head_revision": str(pr.get("headRefOid") or ""),
-                        "base_revision": str(pr.get("baseRefOid") or ""),
-                        "source_card": source["id"],
-                        "card_generation": source_generation,
-                        "source_owner": source_owner,
-                        "reviewer_candidates": eligible_reviewers,
-                    }
-                )
+                source_links = source.get("links") if isinstance(source.get("links"), dict) else {}
+                recommendation = {
+                    "kind": "review-work",
+                    "reason": (
+                        "missing_terminal_review"
+                        if not terminal_reviews
+                        else "review_not_bound_to_head"
+                    ),
+                    "repository": repository,
+                    "pr": number,
+                    "head_revision": str(pr.get("headRefOid") or ""),
+                    "base_revision": str(pr.get("baseRefOid") or ""),
+                    "source_card": source["id"],
+                    "card_generation": source_generation,
+                    "source_owner": source_owner,
+                    "reviewer_candidates": eligible_reviewers,
+                }
+                if "repository" in source_links or "base_ref" in source_links:
+                    recommendation.update(
+                        {
+                            "workspace_repository": source_links.get("repository"),
+                            "base_ref": source_links.get("base_ref"),
+                        }
+                    )
+                review_work.append(recommendation)
     counts = {
         k: sum(r["classification"] == k for r in diagnostics) for k in ("excluded", "unresolved")
     }

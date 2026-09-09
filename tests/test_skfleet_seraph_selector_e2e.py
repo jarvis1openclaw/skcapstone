@@ -74,12 +74,22 @@ def _canonical_review(home: Path) -> tuple[CardStore, str]:
             initial_labels=["do-not-claim"],
         )
     )
+    store.append_event(
+        "9c71f24a",
+        "link",
+        "mero",
+        link_key="repository",
+        link_value="https://github.com/smilinTux/skcapstone",
+    )
+    store.append_event("9c71f24a", "link", "mero", link_key="base_ref", link_value="main")
     result = reconcile_review_work(
         card_home,
         {
             "kind": "review-work",
             "reason": "missing_terminal_review",
             "repository": "smilinTux/skcapstone",
+            "workspace_repository": "https://github.com/smilinTux/skcapstone",
+            "base_ref": "main",
             "pr": 548,
             "head_revision": "a" * 40,
             "base_revision": "b" * 40,
@@ -105,6 +115,43 @@ def _canonical_review(home: Path) -> tuple[CardStore, str]:
 def test_real_selector_claims_and_launches_one_canonical_seraph_review(
     tmp_path: Path,
 ) -> None:
+    repository = "https://github.com/smilinTux/skcapstone"
+    origin = tmp_path / "origin.git"
+    seed = tmp_path / "seed"
+    subprocess.run(["git", "init", "--bare", str(origin)], check=True, capture_output=True)
+    subprocess.run(
+        ["git", "init", "--initial-branch=main", str(seed)], check=True, capture_output=True
+    )
+    (seed / "REAL-GIT-WORKSPACE.txt").write_text(
+        "real Link to Seraph workspace\n", encoding="utf-8"
+    )
+    subprocess.run(["git", "-C", str(seed), "add", "."], check=True, capture_output=True)
+    subprocess.run(
+        [
+            "git",
+            "-C",
+            str(seed),
+            "-c",
+            "user.name=SKCapstone Test",
+            "-c",
+            "user.email=test@localhost",
+            "commit",
+            "-m",
+            "seed real workspace",
+        ],
+        check=True,
+        capture_output=True,
+    )
+    subprocess.run(["git", "-C", str(seed), "remote", "add", "origin", str(origin)], check=True)
+    subprocess.run(
+        ["git", "-C", str(seed), "push", "origin", "main"], check=True, capture_output=True
+    )
+    expected_revision = subprocess.run(
+        ["git", "-C", str(seed), "rev-parse", "HEAD"],
+        check=True,
+        capture_output=True,
+        text=True,
+    ).stdout.strip()
     home = tmp_path / "home"
     home.mkdir()
     store, card_id = _canonical_review(home)
@@ -199,6 +246,10 @@ cycle("replay", "seraph")
             + str(skcoord_root)
             + (os.pathsep + os.environ["PYTHONPATH"] if os.environ.get("PYTHONPATH") else ""),
             "SKCOORD_SRC": str(skcoord_root),
+            "GIT_ALLOW_PROTOCOL": "file",
+            "GIT_CONFIG_COUNT": "1",
+            "GIT_CONFIG_KEY_0": f"url.file://{origin}.insteadOf",
+            "GIT_CONFIG_VALUE_0": repository,
             "SKFLEET_TEST_PYTHON": sys.executable,
             "SKFLEET_TARGET": "2",
             "SKFLEET_GLM_TARGET": "0",
@@ -280,3 +331,28 @@ cycle("replay", "seraph")
     ]
     assert len(claim_events) == 1
     assert len(receipt_events) == 1
+    workspace = home / ".skcapstone" / "fleet" / "workspaces" / folded.owner
+    assert (workspace / "REAL-GIT-WORKSPACE.txt").read_text(encoding="utf-8") == (
+        "real Link to Seraph workspace\n"
+    )
+    git_checks = {
+        "origin": ["config", "--get", "remote.origin.url"],
+        "branch": ["branch", "--show-current"],
+        "status": ["status", "--porcelain=v1"],
+        "revision": ["rev-parse", "HEAD"],
+    }
+    observed = {
+        name: subprocess.run(
+            ["git", "-C", str(workspace), *command],
+            check=True,
+            capture_output=True,
+            text=True,
+        ).stdout.strip()
+        for name, command in git_checks.items()
+    }
+    assert observed == {
+        "origin": repository,
+        "branch": "main",
+        "status": "",
+        "revision": expected_revision,
+    }

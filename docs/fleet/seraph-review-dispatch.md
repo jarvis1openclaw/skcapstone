@@ -5,6 +5,15 @@ card identity binds the source card, exact source head, source generation, and
 candidate evidence hash. Existing matching cards are reused and ambiguous
 duplicates fail closed.
 
+Every source-only review card also carries the exact workspace repository and
+base reference from its signed Link recommendation or folded parent. The
+repository must be credential-free HTTPS and the base reference must satisfy
+the bounded Git-ref syntax. Link validates both before creating a card,
+idempotently adds missing bindings to an existing canonical card, and rejects
+recommendation-parent conflicts or parent drift before authorization. This
+inheritance adds no approval authority and does not rewrite identity, source
+head, generation, evidence, claim, or launch receipts.
+
 Seraph runs as a bounded recurring seat on the active control-plane host. Each
 cycle invokes the ordinary fleet selector with `SKFLEET_ONLY_SEAT=seraph`, a
 dedicated target of one, and a host Codex limit of three on `sk-codex-mid`.

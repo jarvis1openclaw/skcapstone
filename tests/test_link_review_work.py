@@ -1,5 +1,6 @@
 import hashlib
 import json
+from concurrent.futures import ThreadPoolExecutor
 
 import pytest
 
@@ -35,6 +36,8 @@ def _item(home=None):
         "kind": "review-work",
         "reason": "missing_terminal_review",
         "repository": "org/repo",
+        "workspace_repository": "https://github.com/org/repo",
+        "base_ref": "main",
         "pr": 7,
         "head_revision": "a" * 40,
         "base_revision": "b" * 40,
@@ -53,7 +56,8 @@ def _item(home=None):
 def _home_with_source(tmp_path, name=".skcapstone"):
     home = tmp_path / name
     home.mkdir()
-    CardStore(home).create(
+    store = CardStore(home)
+    store.create(
         CardCore(
             id="source01",
             title="Source",
@@ -61,6 +65,14 @@ def _home_with_source(tmp_path, name=".skcapstone"):
             created_at="2026-09-07T00:00:00+00:00",
         )
     )
+    store.append_event(
+        "source01",
+        "link",
+        "builder",
+        link_key="repository",
+        link_value="https://github.com/org/repo",
+    )
+    store.append_event("source01", "link", "builder", link_key="base_ref", link_value="main")
     return home
 
 
@@ -117,6 +129,9 @@ def test_reconcile_is_restart_idempotent_and_launchable(tmp_path):
     assert card.status.value == "backlog"
     assert "review" in card.labels
     assert card.links["producer_identity"] == "builder"
+    assert card.links["repository"] == "https://github.com/org/repo"
+    assert card.links["base_ref"] == "main"
+    assert "source-only" in card.labels
 
 
 def test_reconcile_converges_for_cross_host_order(tmp_path):
@@ -351,3 +366,138 @@ def test_changed_source_generation_has_distinct_review_identity(tmp_path):
 
     assert first.launchable is second.launchable is True
     assert first.review_card_id != second.review_card_id
+
+
+@pytest.mark.parametrize(
+    "repository,base_ref,reason",
+    [
+        ("https://token@github.com/org/repo", "main", "source_workspace_repository_invalid"),
+        ("http://github.com/org/repo", "main", "source_workspace_repository_invalid"),
+        ("https://github.com/org/repo", "--upload-pack=x", "source_workspace_base_ref_invalid"),
+    ],
+)
+def test_workspace_binding_rejects_unsafe_recommendations(tmp_path, repository, base_ref, reason):
+    home = _home_with_source(tmp_path)
+    item = _item(home)
+    item["workspace_repository"] = repository
+    item["base_ref"] = base_ref
+
+    result = reconcile_review_work(home, item, evidence_sha256="1" * 64)
+
+    assert result.created is False
+    assert result.launchable is False
+    assert result.reason == reason
+
+
+def test_workspace_binding_falls_back_to_parent_and_rejects_conflict(tmp_path):
+    home = _home_with_source(tmp_path)
+    inherited = _item(home)
+    inherited.pop("workspace_repository")
+    inherited.pop("base_ref")
+    first = reconcile_review_work(home, inherited, evidence_sha256="2" * 64)
+    card = CardStore(home).fold(first.review_card_id)
+
+    assert first.launchable is True
+    assert card.links["repository"] == "https://github.com/org/repo"
+    assert card.links["base_ref"] == "main"
+
+    conflicting = _item(home)
+    conflicting["workspace_repository"] = "https://github.com/org/other"
+    second = reconcile_review_work(home, conflicting, evidence_sha256="3" * 64)
+    assert second.reason == "source_workspace_binding_conflict"
+    assert second.created is False
+
+
+def test_existing_canonical_card_inherits_binding_without_identity_rewrite(tmp_path):
+    home = _home_with_source(tmp_path)
+    item = _item(home)
+    card_id = review_card_id("source01", "a" * 40, item["card_generation"], "0" * 64)
+    meta = {
+        "link_source_card": "source01",
+        "link_head_revision": "a" * 40,
+        "link_card_generation": item["card_generation"],
+        "link_evidence_sha256": "0" * 64,
+        "link_review_class": "review",
+    }
+    CardStore(home).create(
+        CardCore(
+            id=card_id,
+            title="legacy canonical review",
+            created_by="link",
+            initial_labels=["review", "seat-seraph", "parent-source01"],
+            meta=meta,
+        )
+    )
+    before = CardStore(home).fold(card_id)
+
+    result = reconcile_review_work(home, item, evidence_sha256="0" * 64)
+    after = CardStore(home).fold(card_id)
+
+    assert result.created is False
+    assert result.launchable is True
+    assert after.id == before.id
+    assert after.meta == before.meta
+    assert after.owner == before.owner
+    assert after.links["repository"] == "https://github.com/org/repo"
+    assert after.links["base_ref"] == "main"
+
+
+def test_parent_workspace_drift_after_recommendation_fails_closed(tmp_path, monkeypatch):
+    home = _home_with_source(tmp_path)
+    item = _item(home)
+    original = review_work_module.recommend_reviewer
+
+    def drift_after_recommendation(*args, **kwargs):
+        recommendation = original(*args, **kwargs)
+        CardStore(home).append_event(
+            "source01",
+            "link",
+            "builder",
+            link_key="repository",
+            link_value="https://github.com/org/drifted",
+        )
+        return recommendation
+
+    monkeypatch.setattr(review_work_module, "recommend_reviewer", drift_after_recommendation)
+    result = reconcile_review_work(home, item, evidence_sha256="9" * 64)
+
+    assert result.launchable is False
+    assert result.reason == "source_workspace_binding_drifted"
+
+
+def test_missing_workspace_binding_fails_before_card_creation(tmp_path):
+    home = tmp_path / "missing-binding"
+    home.mkdir()
+    store = CardStore(home)
+    store.create(CardCore(id="source01", title="Source", created_by="builder"))
+    item = _item()
+    item.pop("workspace_repository")
+    item.pop("base_ref")
+    item["card_generation"] = card_generation(store.fold("source01"))
+
+    result = reconcile_review_work(home, item, evidence_sha256="8" * 64)
+
+    assert result.reason == "source_workspace_binding_missing"
+    assert result.created is False
+    assert store.fold(result.review_card_id) is None
+
+
+def test_concurrent_reconcile_persists_one_card_and_one_binding(tmp_path):
+    home = _home_with_source(tmp_path)
+    item = _item(home)
+
+    with ThreadPoolExecutor(max_workers=8) as pool:
+        results = list(
+            pool.map(
+                lambda _: reconcile_review_work(home, item, evidence_sha256="7" * 64),
+                range(8),
+            )
+        )
+
+    assert sum(result.created for result in results) == 1
+    assert all(result.launchable for result in results)
+    card_id = results[0].review_card_id
+    assert {result.review_card_id for result in results} == {card_id}
+    events = CardStore(home)._read_events(card_id)
+    assert sum(event.get("link_key") == "repository" for event in events) == 1
+    assert sum(event.get("link_key") == "base_ref" for event in events) == 1

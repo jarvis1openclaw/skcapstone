@@ -384,7 +384,7 @@ def _source_workspace_spec(core, labels):
 def _verify_source_workspace(path, repository, base_ref, runner=subprocess.run):
     """Verify source identity, cleanliness, and the fetched base revision."""
     commands = (
-        (["git", "-C", str(path), "remote", "get-url", "origin"], "origin"),
+        (["git", "-C", str(path), "config", "--get", "remote.origin.url"], "origin"),
         (["git", "-C", str(path), "status", "--porcelain=v1"], "clean"),
         (["git", "-C", str(path), "fetch", "--quiet", "origin", base_ref], "fetch"),
         (["git", "-C", str(path), "rev-parse", "HEAD"], "head"),
