@@ -9,6 +9,10 @@
 
 ## Unreleased
 
+- Card `d2771026`: preserve executable startup evidence after the Pi Node
+  process replaces its command line with its process title, while retaining
+  exact descendant, interpreter, shebang, title, and fleet identity checks.
+
 - Card `c6a5ce66`: preserve the invoked virtualenv interpreter directory when
   resolving the adjacent SKMail executable under a restricted service PATH.
 
