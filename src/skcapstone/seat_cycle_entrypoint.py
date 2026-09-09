@@ -35,6 +35,9 @@ _LAUNCH = re.compile(
     r"\|lane=(?P<lane>[^|]+)\|model=(?P<model>[^|]+)"
     r"\|owner=(?P<owner>[^|]+)\|claim_revision=(?P<revision>[^|]+)$"
 )
+_NOOP = re.compile(
+    r"^NOOP_RECEIPT\|(?P<host>[^|]+)\|reason=(?P<reason>[^|]+)" r"\|seat=(?P<seat>[^|]+)$"
+)
 
 
 def _now() -> str:
@@ -188,30 +191,21 @@ def mero_operation(home: Path) -> dict[str, int]:
     }
 
 
-def seraph_operation(home: Path) -> dict[str, int | str]:
-    """Launch at most one governed Seraph review through the fleet selector."""
+def verify_seraph_dispatch(
+    home: Path,
+    completed: subprocess.CompletedProcess[str],
+) -> dict[str, int | str]:
+    """Verify one selector result against CardStore and its live worker unit."""
 
-    dispatcher = Path.home() / ".local/bin/skfleet-rotate.py"
-    env = os.environ.copy()
-    env.update(
-        {
-            "SKFLEET_ONLY_SEAT": "seraph",
-            "SKFLEET_TARGET": "1",
-            "SKFLEET_CODEX_TARGET": "1",
-            "SKFLEET_CODEX_MODEL_S": "sk-codex-mid",
-            "SKFLEET_QWEN_TARGET": "0",
-            "SKFLEET_GLM_TARGET": "0",
-            "SKFLEET_KIMI_TARGET": "0",
-            "SKFLEET_MAX_LAUNCH": "1",
-        }
-    )
-    completed = subprocess.run(
-        [str(dispatcher), "--go"], env=env, capture_output=True, text=True, timeout=240
-    )
     launches = [
         match.groupdict()
         for line in completed.stdout.splitlines()
         if (match := _LAUNCH.fullmatch(line.strip()))
+    ]
+    noops = [
+        match.groupdict()
+        for line in completed.stdout.splitlines()
+        if (match := _NOOP.fullmatch(line.strip()))
     ]
     if completed.returncode != 0:
         return {
@@ -220,7 +214,16 @@ def seraph_operation(home: Path) -> dict[str, int | str]:
             "suppressed": 1,
             "reason": "seraph_dispatch_failed",
         }
-    if len(launches) != 1:
+    if not launches and len(noops) == 1 and noops[0]["seat"] == "seraph":
+        reason = noops[0]["reason"]
+        if reason in {"no_eligible_work", "no_available_capacity"}:
+            return {
+                "cards_examined": 0,
+                "recommendations": 0,
+                "suppressed": 0,
+                "reason": f"seraph_{reason}",
+            }
+    if len(launches) != 1 or noops:
         return {
             "cards_examined": len(launches),
             "recommendations": 0,
@@ -266,6 +269,28 @@ def seraph_operation(home: Path) -> dict[str, int | str]:
         "suppressed": 0,
         "reason": "seraph_dispatch_complete",
     }
+
+
+def seraph_operation(home: Path) -> dict[str, int | str]:
+    """Launch at most one governed Seraph review through the fleet selector."""
+
+    dispatcher = Path.home() / ".local/bin/skfleet-rotate.py"
+    env = os.environ.copy()
+    env.update(
+        {
+            "SKFLEET_ONLY_SEAT": "seraph",
+            "SKFLEET_SEAT_TARGET": "1",
+            "SKFLEET_CODEX_MODEL_S": "sk-codex-mid",
+            "SKFLEET_QWEN_TARGET": "0",
+            "SKFLEET_GLM_TARGET": "0",
+            "SKFLEET_KIMI_TARGET": "0",
+            "SKFLEET_MAX_LAUNCH": "1",
+        }
+    )
+    completed = subprocess.run(
+        [str(dispatcher), "--go"], env=env, capture_output=True, text=True, timeout=240
+    )
+    return verify_seraph_dispatch(home, completed)
 
 
 def _emit_review_work(home: Path, lineage_path: Path, feed_reason: str) -> dict[str, int | str]:

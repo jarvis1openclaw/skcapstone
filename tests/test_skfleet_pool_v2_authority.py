@@ -81,6 +81,63 @@ def test_malformed_review_stale_drift_and_unknown_fail_closed() -> None:
     assert ready_ids(decisions, admissions, failed=True) == set()
 
 
+def test_canonical_review_card_enters_only_seraph_selector() -> None:
+    """A complete canonical review reaches Seraph without becoming generic work."""
+    helpers = _load_helpers(
+        "_governed_review_metadata",
+        "_pool_v2_admission",
+        "_pool_v2_dispatchable",
+        "_pool_v2_ready_ids",
+    )
+    helpers.update(
+        {
+            "_ONLY_SEAT": "seraph",
+            "_pool_v2_overlay": lambda _cid, _core, reason: {"reason": reason},
+            "seat_for": lambda _cid, _core: "seraph",
+        }
+    )
+    card_id = "3ca49674"
+    core = {
+        "id": card_id,
+        "kind": "task",
+        "title": "[LINK-source-head][S][REVIEW] Review exact source head",
+        "initial_priority": "medium",
+        "links": {
+            "producer_identity": "mero",
+            "candidate_evidence_sha256": "a" * 64,
+        },
+    }
+    claimability = {
+        "claimable": False,
+        "reason": "review",
+        "host_pin": None,
+        "title": core["title"],
+        "labels": ["review", "seat-seraph", "parent-source"],
+        "core": core,
+        "source_revision": "b" * 64,
+    }
+
+    admission = helpers["_pool_v2_admission"](card_id, core, claimability)
+    decisions = [SimpleNamespace(card_id=card_id, eligible=True)]
+
+    assert admission["governed_review"] is True
+    assert admission["seraph_review_admitted"] is True
+    assert helpers["_pool_v2_ready_ids"](decisions, {card_id: admission}) == {card_id}
+
+    helpers["_ONLY_SEAT"] = ""
+    generic = helpers["_pool_v2_admission"](card_id, core, claimability)
+    assert generic["seraph_review_admitted"] is False
+    assert helpers["_pool_v2_ready_ids"](decisions, {card_id: generic}) == set()
+
+    incomplete = dict(core)
+    incomplete["links"] = {"producer_identity": "mero"}
+    incomplete_claimability = dict(claimability, core=incomplete)
+    helpers["_ONLY_SEAT"] = "seraph"
+    rejected = helpers["_pool_v2_admission"](card_id, incomplete, incomplete_claimability)
+    assert rejected["seraph_review_admitted"] is False
+    assert helpers["_pool_v2_ready_ids"](decisions, {card_id: rejected}) == set()
+
+
 def test_preclaim_requires_identical_snapshot_fingerprint() -> None:
     """Any source, overlay, or claimability drift produces zero launch authority."""
     matches = _load_helpers(

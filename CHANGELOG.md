@@ -39,6 +39,18 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 - Card `7ad5f0c1`: lane admission now uses an explicit bounded endpoint timeout
   above measured gateway health latency, without weakening fail-closed checks.
 
+- Card `a6f04d31`: isolated Seraph's single review slot from chiap08's two
+  ordinary Codex slots, retained the three-worker physical ceiling, and added
+  truthful no-work versus no-capacity receipts without overwriting generic
+  fleet liveness. Complete canonical review cards now enter POOL_V2 only in a
+  matching Seraph seat cycle, with their governed admission included in the
+  final preclaim fingerprint and generic workers still excluded. A portable
+  subprocess integration test now creates review work through Link's production
+  reconciler and proves generic exclusion, one real Seraph claim and active
+  launch receipt, and duplicate-free replay through the actual selector. Its
+  hermetic loopback gateway supplies real health, capacity, and revision-aligned
+  lane evidence in hosted CI without bypassing production lane admission.
+
 - Card `5e2a9f10`: added bounded Seraph review dispatch, active-host seat
   placement, a Seraph-only selector filter, and one-launch-per-cycle service
   and timer templates while preserving Link recommendation and claim fencing.
