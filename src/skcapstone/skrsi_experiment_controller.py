@@ -70,14 +70,34 @@ class ExperimentController:
         return list(reader(experiment_id))
 
     def _prior(self, experiment_id: str, transition_id: str) -> TransitionResult | None:
-        for event in self._events(experiment_id):
-            if (
-                event.get("transition_id") == transition_id
-                and event.get("action") == "experiment_transition"
-            ):
-                return TransitionResult(
-                    experiment_id, event["state"], int(event["revision"]), transition_id, True
-                )
+        events = self._events(experiment_id)
+        transition = next(
+            (
+                event
+                for event in events
+                if event.get("action") == "experiment_transition"
+                and event.get("transition_id") == transition_id
+            ),
+            None,
+        )
+        evidence = next(
+            (
+                event
+                for event in events
+                if event.get("action") == "experiment_evidence"
+                and event.get("transition_id") == f"{transition_id}:evidence"
+                and event.get("source_transition_id") == transition_id
+            ),
+            None,
+        )
+        if transition is not None and evidence is not None:
+            return TransitionResult(
+                experiment_id,
+                transition["state"],
+                int(transition["revision"]),
+                transition_id,
+                True,
+            )
         return None
 
     def _current(self, experiment_id: str) -> tuple[str | None, int, list[dict[str, Any]]]:
@@ -106,22 +126,7 @@ class ExperimentController:
         replay = self._prior(experiment_id, transition_id)
         if replay:
             return replay
-        current, actual_revision, events = self._current(experiment_id)
-        if revision != actual_revision + 1:
-            raise ExperimentLifecycleError(
-                f"revision fence: expected {actual_revision + 1}, got {revision}"
-            )
-        if state not in _ALLOWED.get(current, set()):
-            raise ExperimentLifecycleError(f"invalid transition {current!r} -> {state!r}")
         limits = {**self.default_budget, **dict(budget or {})}
-        if len([e for e in events if e.get("action") == "experiment_transition"]) >= int(
-            limits["transitions"]
-        ):
-            raise ExperimentLifecycleError("transition budget exhausted")
-        if state == "rollout_observation" and len(
-            [e for e in events if e.get("action") == "experiment_evidence"]
-        ) >= int(limits["observations"]):
-            raise ExperimentLifecycleError("observation budget exhausted")
         common = {
             "transition_id": transition_id,
             "revision": revision,
@@ -140,13 +145,49 @@ class ExperimentController:
             replay = self._prior(experiment_id, transition_id)
             if replay:
                 return replay
-            current, actual_revision, _ = self._current(experiment_id)
+            events = self._events(experiment_id)
+            transition = next(
+                (
+                    event
+                    for event in events
+                    if event.get("action") == "experiment_transition"
+                    and event.get("transition_id") == transition_id
+                ),
+                None,
+            )
+            if transition is not None:
+                self.store.append_event(
+                    experiment_id,
+                    "experiment_evidence",
+                    self.agent,
+                    transition_id=f"{transition_id}:evidence",
+                    source_transition_id=transition_id,
+                    revision=int(transition["revision"]),
+                    experiment_id=experiment_id,
+                    evidence=dict(evidence),
+                )
+                return TransitionResult(
+                    experiment_id,
+                    transition["state"],
+                    int(transition["revision"]),
+                    transition_id,
+                    True,
+                )
+            current, actual_revision, events = self._current(experiment_id)
             if revision != actual_revision + 1:
                 raise ExperimentLifecycleError(
                     f"revision fence: expected {actual_revision + 1}, got {revision}"
                 )
             if state not in _ALLOWED.get(current, set()):
                 raise ExperimentLifecycleError(f"invalid transition {current!r} -> {state!r}")
+            if len(
+                [event for event in events if event.get("action") == "experiment_transition"]
+            ) >= int(limits["transitions"]):
+                raise ExperimentLifecycleError("transition budget exhausted")
+            if state == "rollout_observation" and len(
+                [event for event in events if event.get("action") == "experiment_evidence"]
+            ) >= int(limits["observations"]):
+                raise ExperimentLifecycleError("observation budget exhausted")
             self.store.append_event(
                 experiment_id,
                 "experiment_transition",

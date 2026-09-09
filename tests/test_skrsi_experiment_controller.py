@@ -68,6 +68,53 @@ def test_replay_is_exactly_once_by_natural_key(tmp_path) -> None:
     assert events[1]["source_transition_id"] == "same-key"
 
 
+def test_retry_repairs_evidence_interrupted_after_transition_append(tmp_path) -> None:
+    subject = controller(tmp_path)
+    append_event = subject.store.append_event
+    interrupted = False
+
+    def interrupt_evidence(*args, **kwargs):
+        nonlocal interrupted
+        if args[1] == "experiment_evidence" and not interrupted:
+            interrupted = True
+            raise OSError("deterministic interruption after transition append")
+        return append_event(*args, **kwargs)
+
+    subject.store.append_event = interrupt_evidence
+    with pytest.raises(OSError, match="deterministic interruption"):
+        subject.transition(
+            "exp00001",
+            "hypothesis",
+            revision=1,
+            transition_id="interrupted-key",
+            evidence={"sha256": "a" * 64},
+        )
+
+    subject.store.append_event = append_event
+    replay = subject.transition(
+        "exp00001",
+        "hypothesis",
+        revision=1,
+        transition_id="interrupted-key",
+        evidence={"sha256": "a" * 64},
+    )
+    second_replay = subject.transition(
+        "exp00001",
+        "hypothesis",
+        revision=1,
+        transition_id="interrupted-key",
+        evidence={"sha256": "a" * 64},
+    )
+
+    events = subject.store._read_events("exp00001")
+    transitions = [event for event in events if event["action"] == "experiment_transition"]
+    evidence = [event for event in events if event["action"] == "experiment_evidence"]
+    assert replay.replayed is True and second_replay.replayed is True
+    assert len(transitions) == len(evidence) == 1
+    assert evidence[0]["transition_id"] == "interrupted-key:evidence"
+    assert evidence[0]["source_transition_id"] == "interrupted-key"
+
+
 def test_regression_and_recovery_are_non_actuating_proposals(tmp_path) -> None:
     subject = controller(tmp_path)
     for revision, state in enumerate(("hypothesis", "experiment", "evaluation"), 1):
