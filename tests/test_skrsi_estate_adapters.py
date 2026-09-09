@@ -49,6 +49,9 @@ def test_every_handoff_names_complete_bounded_ownership_without_new_approval():
         assert handoff.retry_attempts >= 0 and handoff.backoff_seconds >= 0
         assert handoff.terminal_evidence and handoff.recovery_owner
         assert handoff.escalation_recipient and handoff.notification_only is True
+    review_handoff = ESTATE_HANDOFFS["evidence-to-review"]
+    assert review_handoff.natural_key == "source_card+head_revision"
+    assert review_handoff.escalation_recipient == "mero"
 
 
 @pytest.mark.parametrize(
@@ -125,7 +128,7 @@ def test_concurrent_review_materialization_and_replay_has_one_launch_receipt():
     assert len({r.claim_id for r in receipts}) == 1
     assert len({r.process_id for r in receipts}) == 1
     assert len({r.receipt_id for r in receipts}) == 1
-    assert receipts[0].review_card == canonical_review_card("card-1")
+    assert receipts[0].review_card == canonical_review_card("card-1", "a" * 40)
     assert launch() == receipts[0]
 
 
@@ -133,11 +136,10 @@ def test_concurrent_review_materialization_and_replay_has_one_launch_receipt():
     "change, message",
     [
         ({"reviewer": "builder"}, "independent"),
-        ({"head_revision": "b" * 40}, "immutable"),
         ({"process_id": "pid-99"}, "immutable"),
     ],
 )
-def test_review_handoff_rejects_producer_and_second_revision_or_process(change, message):
+def test_review_handoff_rejects_producer_or_second_process_for_same_head(change, message):
     handoff = ReviewHandoff()
     args = dict(
         source_card="card-1",
@@ -152,6 +154,24 @@ def test_review_handoff_rejects_producer_and_second_revision_or_process(change, 
     args.update(change)
     with pytest.raises(SKRSIError, match=message):
         handoff.launch(**args)
+
+
+def test_changed_head_gets_one_distinct_canonical_review_launch():
+    handoff = ReviewHandoff()
+    common = dict(
+        source_card="card-1",
+        producer="builder",
+        reviewer="seraph",
+        authority_revision="cards-9",
+    )
+    first = handoff.launch(head_revision="a" * 40, process_id="pid-1", **common)
+    second = handoff.launch(head_revision="b" * 40, process_id="pid-2", **common)
+
+    assert first.review_card != second.review_card
+    assert first.receipt_id != second.receipt_id
+    assert first.review_card == canonical_review_card("card-1", "a" * 40)
+    assert second.review_card == canonical_review_card("card-1", "b" * 40)
+    assert handoff.launch(head_revision="b" * 40, process_id="pid-2", **common) == second
 
 
 def metric_event(event_id="evt-1", event_type="review.verdict", **changes):

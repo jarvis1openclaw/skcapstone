@@ -85,7 +85,16 @@ ESTATE_HANDOFFS = {
         "SKMail", "SKRSI", "envelope_id", 5_000, 2.0, 2, 0.25, "envelope_hash", "mero", "jarvis"
     ),
     "evidence-to-review": HandoffContract(
-        "Link", "Seraph", "source_card", 500, 30.0, 1, 1.0, "launch_receipt", "link", "lumina"
+        "Link",
+        "Seraph",
+        "source_card+head_revision",
+        500,
+        30.0,
+        1,
+        1.0,
+        "launch_receipt",
+        "link",
+        "mero",
     ),
 }
 
@@ -251,17 +260,18 @@ class ReviewLaunchReceipt:
     receipt_id: str
 
 
-def canonical_review_card(source_card: str) -> str:
-    """One stable review-card identity per source card."""
+def canonical_review_card(source_card: str, head_revision: str) -> str:
+    """One stable review-card identity per source card and immutable head."""
 
-    return hashlib.sha256(("seraph-review\0" + source_card).encode()).hexdigest()[:8]
+    identity = canonical_json({"source_card": source_card, "head_revision": head_revision})
+    return hashlib.sha256(b"seraph-review\0" + identity).hexdigest()[:8]
 
 
 class ReviewHandoff:
     """Atomically fence one independent reviewer, process, and launch receipt."""
 
     def __init__(self) -> None:
-        self._receipts: dict[str, ReviewLaunchReceipt] = {}
+        self._receipts: dict[tuple[str, str], ReviewLaunchReceipt] = {}
         self._lock = threading.Lock()
 
     def launch(
@@ -282,7 +292,8 @@ class ReviewHandoff:
             raise SKRSIError("review handoff is malformed")
         if producer == reviewer:
             raise SKRSIError("reviewer must be independent from producer")
-        review_card = canonical_review_card(source_card)
+        review_key = (source_card, head_revision)
+        review_card = canonical_review_card(*review_key)
         claim_id = hashlib.sha256(
             canonical_json(
                 {
@@ -300,9 +311,9 @@ class ReviewHandoff:
             source_card, review_card, head_revision, claim_id, reviewer, process_id, receipt_id
         )
         with self._lock:
-            prior = self._receipts.get(source_card)
+            prior = self._receipts.get(review_key)
             if prior is None:
-                self._receipts[source_card] = candidate
+                self._receipts[review_key] = candidate
                 return candidate
             if prior == candidate:
                 return prior
