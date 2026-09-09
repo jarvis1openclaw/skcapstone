@@ -109,6 +109,10 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ### Added
 
+- Card `5a71c2df`: added read-only SKRSI estate adapters for bounded lifecycle
+  metrics, authority-fenced fleet fan-out, complete notification-only handoff
+  contracts, and one independent Link and Seraph review launch per source head.
+
 - Card `5a71c2de`: added a proposal-only SKRSI experiment controller with
   revision-fenced transitions, bounded budgets, replay safety, and recovery
   proposals that cannot actuate changes.
