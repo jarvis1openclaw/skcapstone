@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Card `20a637fe`: enforce a nonblank Casey direction record for every Jarvis
+  emergency mutation and cover the complete emergency tool set in the runtime
+  boundary.
+
 - Card `44ad0d49`: add bounded elastic independent-review admission with
   source-head deduplication, reviewer independence, and physical-capacity
   limits.

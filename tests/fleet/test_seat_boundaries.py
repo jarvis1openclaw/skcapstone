@@ -144,12 +144,33 @@ def test_niobe_fleet_authority_does_not_imply_application_actuation() -> None:
         require_authority("niobe", Action.ACTUATE_APPLICATION)
 
 
-def test_jarvis_retains_emergency_fleet_capability_only() -> None:
-    """Jarvis keeps emergency process tools but no application actuation."""
+@pytest.mark.parametrize(
+    "action",
+    [
+        Action.CREATE_CARD,
+        Action.CLAIM,
+        Action.COMPLETE_CARD,
+        Action.LAUNCH,
+        Action.MERGE,
+        Action.DEPLOY,
+        Action.RELEASE_ARTIFACT,
+        Action.VERIFY,
+        Action.ACTUATE_APPLICATION,
+    ],
+)
+def test_jarvis_emergency_tools_require_casey_direction(action: Action) -> None:
+    """Every Jarvis emergency tool fails closed without Casey's direction."""
 
-    require_authority("jarvis", Action.LAUNCH)
-    with pytest.raises(BoundaryError):
-        require_authority("jarvis", Action.ACTUATE_APPLICATION)
+    with pytest.raises(BoundaryError, match="explicit Casey direction"):
+        require_authority("jarvis", action)
+    require_authority("jarvis", action, casey_direction="casey-card-c4e7a9b2")
+
+
+def test_blank_casey_direction_fails_closed() -> None:
+    """Whitespace cannot masquerade as a Casey direction record."""
+
+    with pytest.raises(BoundaryError, match="explicit Casey direction"):
+        require_authority("jarvis", Action.MERGE, casey_direction="   ")
 
 
 def test_only_explicit_fenced_actor_may_mutate_fleet() -> None:

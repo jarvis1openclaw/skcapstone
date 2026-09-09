@@ -49,6 +49,10 @@ class Action(StrEnum):
     REPAIR_WORKER = "repair_worker"
     DEPLOY = "deploy"
     ACTUATE_APPLICATION = "actuate_application"
+    CREATE_CARD = "create_card"
+    COMPLETE_CARD = "complete_card"
+    RELEASE_ARTIFACT = "release_artifact"
+    VERIFY = "verify"
 
 
 _ALLOWED = {
@@ -90,6 +94,13 @@ _ALLOWED = {
             Action.REASSIGN,
             Action.ROTATE,
             Action.REPAIR_WORKER,
+            Action.CREATE_CARD,
+            Action.COMPLETE_CARD,
+            Action.MERGE,
+            Action.DEPLOY,
+            Action.RELEASE_ARTIFACT,
+            Action.VERIFY,
+            Action.ACTUATE_APPLICATION,
         }
     ),
 }
@@ -112,6 +123,7 @@ def require_authority(
     action: Action,
     *,
     fenced_system_actors: Collection[str] = (),
+    casey_direction: str | None = None,
 ) -> None:
     """Reject actions not owned by the named seat or fenced system actor."""
 
@@ -124,6 +136,9 @@ def require_authority(
         raise BoundaryError(f"unknown or unfenced actor: {actor}") from exc
     if action not in _ALLOWED[seat]:
         raise BoundaryError(f"{seat.value} is not authorized for {action.value}")
+    if seat is Seat.JARVIS and action is not Action.OBSERVE:
+        if not casey_direction or not casey_direction.strip():
+            raise BoundaryError(f"jarvis requires an explicit Casey direction for {action.value}")
 
 
 def assign_distinct_reviewer(*, author: str, assigner: str, candidates: Collection[str]) -> str:

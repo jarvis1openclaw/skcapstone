@@ -124,6 +124,8 @@ Routine catalog-authorized work is notify-only.
 Jarvis remains Casey's assistant. Jarvis may use emergency card, fleet, merge,
 deployment, release, verification, and actuation tools when Casey directs it,
 but does not claim recurring lifecycle ownership or enter lifecycle timers.
+The runtime boundary requires a nonblank Casey direction record for each Jarvis
+emergency mutation and fails closed when that record is absent.
 
 ## Rollback
 
