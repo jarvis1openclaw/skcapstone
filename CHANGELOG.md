@@ -6,6 +6,11 @@
   allocation with source-head deduplication, the `sk-codex-mid` child default,
   and explicit exclusion of Jarvis from recurring lifecycle scheduling.
 
+- Card `be4e7d37`: make governed review authoring fail fast, keep consumer
+  review metadata out of consumer outcomes, require terminal review verdicts
+  with no pending checks, and validate Seraph launch receipts against the exact
+  reviewer claim identity.
+
 - Card `2d2a6d4d`: define SKRSI as SK Recursive SELF Improvement, with
   SELF meaning Systematic Evaluation, Learning, and Feedback, and link the
   canonical standalone project documentation.

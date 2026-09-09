@@ -66,16 +66,53 @@ def test_completing_a_silent_review_is_refused(tmp_path):
     assert "recorded no verdict" in str(err.value)
 
 
-@pytest.mark.parametrize(
-    "verdict", ["PASS", "BLOCKED blocked_on=card referent=inc-01", "PASS_FOR_REVIEW"]
-)
-def test_any_recorded_verdict_satisfies_it(tmp_path, verdict):
-    """This rule requires a verdict to exist. It does not judge the verdict."""
+@pytest.mark.parametrize("verdict", ["PASS", "FAIL", "BLOCKED blocked_on=card referent=inc-01"])
+def test_terminal_recorded_verdict_satisfies_it(tmp_path, verdict):
     home = _home(
         tmp_path,
         "bbbbbbbb",
         "[X][REVIEW] review",
         [("verdict", verdict, "2026-08-28T03:00:00")],
+    )
+    validate_review_completion("bbbbbbbb", "[X][REVIEW] review", home)
+
+
+@pytest.mark.parametrize("verdict", ["PASS_FOR_REVIEW", "PASS_FOR_REREVIEW"])
+def test_provisional_verdict_cannot_complete_review(tmp_path, verdict):
+    home = _home(
+        tmp_path,
+        "bbbbbbbb",
+        "[X][REVIEW] review",
+        [("verdict", verdict, "2026-08-28T03:00:00")],
+    )
+    with pytest.raises(ValueError, match="nonterminal verdict"):
+        validate_review_completion("bbbbbbbb", "[X][REVIEW] review", home)
+
+
+def test_pending_required_check_blocks_terminal_pass(tmp_path):
+    home = _home(
+        tmp_path,
+        "bbbbbbbb",
+        "[X][REVIEW] review",
+        [
+            ("verdict", "PASS", "2026-08-28T03:00:00"),
+            ("ci_check_python312", "pending", "2026-08-28T03:01:00"),
+        ],
+    )
+    with pytest.raises(ValueError, match="pending required checks"):
+        validate_review_completion("bbbbbbbb", "[X][REVIEW] review", home)
+
+
+def test_later_green_check_allows_terminal_pass(tmp_path):
+    home = _home(
+        tmp_path,
+        "bbbbbbbb",
+        "[X][REVIEW] review",
+        [
+            ("verdict", "PASS", "2026-08-28T03:00:00"),
+            ("ci_check_python312", "pending", "2026-08-28T03:01:00"),
+            ("ci_check_python312", "success", "2026-08-28T03:02:00"),
+        ],
     )
     validate_review_completion("bbbbbbbb", "[X][REVIEW] review", home)
 

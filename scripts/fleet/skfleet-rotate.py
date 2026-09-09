@@ -1550,10 +1550,19 @@ def _load_outcomes():
 
     for cid,rows in _load_evidence_events().items():
         blocked_parts={}
+        has_independent_review=any(
+            e.get("action")=="link"
+            and _fold_key(e.get("link_key"))=="independent_review"
+            and str(e.get("link_value") or "").strip()
+            for e in rows)
         for e in rows:
             if e.get("action") != "link": continue
             fk = _fold_key(e.get("link_key"))
             val = str(e.get("link_value") or "")
+            # A consumer may copy its dependency's result for audit. That is
+            # not the consumer's own outcome and must not park it in review.
+            if fk=="review_verdict" and has_independent_review:
+                continue
             if any(o in fk for o in _OUTCOME_KEYS):
                 blocked_parts.clear()
                 # A link named verdict_artifact is not an outcome. Several such

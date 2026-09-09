@@ -46,6 +46,9 @@ _REVIEW_TITLE_RE = re.compile(r"\[REVIEW", re.IGNORECASE)
 _OUTCOME_KEY_RE = re.compile(
     r"(verdict|outcome|result|disposition|review_decision)", re.IGNORECASE
 )
+_TERMINAL_VERDICT_RE = re.compile(r"^\s*(PASS(?!_FOR)|FAIL|BLOCKED)\b", re.IGNORECASE)
+_CHECK_KEY_RE = re.compile(r"(?:^|_)(?:check|checks|ci)(?:_|$)", re.IGNORECASE)
+_PENDING_CHECK_RE = re.compile(r"\b(?:pending|queued|in_progress|waiting)\b", re.IGNORECASE)
 
 
 def is_review_card(title: str) -> bool:
@@ -94,6 +97,32 @@ def recorded_verdict(card_id: str, home: Path) -> str | None:
     return latest[1] if latest else None
 
 
+def pending_checks(card_id: str, home: Path) -> list[str]:
+    """Return check links whose latest recorded state is still nonterminal."""
+    evidence_dir = Path(home) / "coordination" / "card_events"
+    latest: dict[str, tuple[str, str]] = {}
+    for path in sorted(glob.glob(str(evidence_dir / "*.jsonl"))):
+        try:
+            with open(path, encoding="utf-8", errors="replace") as handle:
+                for line in handle:
+                    try:
+                        row = json.loads(line)
+                    except ValueError:
+                        continue
+                    if row.get("card_id") != card_id or row.get("action") != "link":
+                        continue
+                    key = str(row.get("link_key") or row.get("key") or "")
+                    value = str(row.get("link_value") or row.get("value") or "")
+                    if not _CHECK_KEY_RE.search(key):
+                        continue
+                    candidate = (str(row.get("ts") or ""), value)
+                    if key not in latest or candidate[0] >= latest[key][0]:
+                        latest[key] = candidate
+        except OSError:
+            continue
+    return sorted(key for key, (_, value) in latest.items() if _PENDING_CHECK_RE.search(value))
+
+
 def validate_review_completion(card_id: str, title: str, home: Path) -> None:
     """Raise ValueError if a review card is being completed with no verdict.
 
@@ -107,8 +136,19 @@ def validate_review_completion(card_id: str, title: str, home: Path) -> None:
     """
     if not is_review_card(title):
         return
-    if recorded_verdict(card_id, home):
-        return
+    verdict = recorded_verdict(card_id, home)
+    if verdict and _TERMINAL_VERDICT_RE.match(verdict):
+        checks = pending_checks(card_id, home)
+        if not checks:
+            return
+        raise ValueError(
+            f"review card {card_id} still has pending required checks: " + ", ".join(checks)
+        )
+    if verdict:
+        raise ValueError(
+            f"review card {card_id} has nonterminal verdict {verdict!r}; "
+            "record terminal PASS, FAIL, or structured BLOCKED before completion"
+        )
     raise ValueError(
         f"review card {card_id} has recorded no verdict, so it cannot be "
         "completed. A review exists to produce a judgement, and completing one "

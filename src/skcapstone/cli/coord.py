@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import re
 import sys
 from pathlib import Path
 
@@ -335,18 +336,37 @@ def register_coord_commands(main: click.Group) -> None:
     @click.option("--by", default="human", help="Creator name.")
     @click.option("--criteria", multiple=True, help="Acceptance criteria (repeatable).")
     @click.option("--dep", multiple=True, help="Dependency task IDs (repeatable).")
-    @click.option("--producer-identity", default=None, help="Typed producer identity for governed review cards.")
-    @click.option("--candidate-evidence-sha256", default=None, help="64-hex candidate evidence digest for governed review cards.")
+    @click.option(
+        "--producer-identity",
+        default=None,
+        help="Typed producer identity for governed review cards.",
+    )
+    @click.option(
+        "--candidate-evidence-sha256",
+        default=None,
+        help="64-hex candidate evidence digest for governed review cards.",
+    )
     @click.option(
         "--claim-for-me",
         is_flag=True,
         help="Atomically create and claim for the resolved active agent.",
     )
-    def coord_create(home, task_id, title, desc, priority, tag, by, criteria, dep,
-                     producer_identity, candidate_evidence_sha256, claim_for_me):
+    def coord_create(
+        home,
+        task_id,
+        title,
+        desc,
+        priority,
+        tag,
+        by,
+        criteria,
+        dep,
+        producer_identity,
+        candidate_evidence_sha256,
+        claim_for_me,
+    ):
         """Create a new task on the board."""
         from ..coordination import Board, Task, TaskPriority
-        import re
 
         labels = {str(value).strip().lower() for value in tag}
         governed_review = "review" in labels or any(
