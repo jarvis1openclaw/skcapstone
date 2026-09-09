@@ -1,4 +1,4 @@
-"""Fail-closed authority boundaries for the five operating seats."""
+"""Fail-closed authority boundaries for lifecycle seats."""
 
 from __future__ import annotations
 
@@ -25,6 +25,10 @@ class Seat(StrEnum):
     JARVIS = "jarvis"
     LINK = "link"
     MERO = "mero"
+    SERAPH = "seraph"
+    NIOBE = "niobe"
+    TANK = "tank"
+    ATLAS = "atlas"
 
 
 class Action(StrEnum):
@@ -59,6 +63,23 @@ _ALLOWED = {
             Action.MERGE,
         }
     ),
+    Seat.SERAPH: frozenset({Action.OBSERVE}),
+    Seat.NIOBE: frozenset(
+        {
+            Action.OBSERVE,
+            Action.CLAIM,
+            Action.RELEASE,
+            Action.LAUNCH,
+            Action.STOP,
+            Action.REASSIGN,
+            Action.ROTATE,
+            Action.REPAIR_WORKER,
+        }
+    ),
+    Seat.TANK: frozenset({Action.OBSERVE, Action.DEPLOY}),
+    Seat.ATLAS: frozenset({Action.OBSERVE, Action.ACTUATE_APPLICATION}),
+    # Jarvis is not scheduled as a recurring seat. These capabilities remain
+    # available only for explicit Casey-directed emergency assistance.
     Seat.JARVIS: frozenset(
         {
             Action.OBSERVE,
@@ -119,7 +140,7 @@ def assign_distinct_reviewer(*, author: str, assigner: str, candidates: Collecti
 
 @dataclass(frozen=True)
 class DispatchRecommendation:
-    """Advisory observation that only Jarvis may evaluate and act upon."""
+    """Advisory observation that the dispatcher may evaluate and act upon."""
 
     card_id: str
     recommendation_id: str
@@ -197,12 +218,12 @@ def authorize_recommendation_action(
     current_process: Mapping[str, object],
     used_recommendation_ids: Collection[str],
 ) -> None:
-    """Fence Jarvis action against replay and stale CardStore/process state."""
+    """Fence Niobe action against replay and stale CardStore/process state."""
 
     recommendation.validate()
     require_authority(actor, action)
-    if actor.strip().lower() != Seat.JARVIS:
-        raise BoundaryError("only jarvis may act on a recommendation")
+    if actor.strip().lower() != Seat.NIOBE:
+        raise BoundaryError("only niobe may act on a recurring recommendation")
     if recommendation.recommendation_id in used_recommendation_ids:
         raise BoundaryError("recommendation replay denied")
     if recommendation.observed_claim_owner != current_claim_owner:

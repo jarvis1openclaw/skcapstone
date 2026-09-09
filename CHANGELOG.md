@@ -6,6 +6,12 @@
   source-head deduplication, reviewer independence, and physical-capacity
   limits.
 
+- Card `20a637fe`: activate source-backed Link, Mero, Seraph, Niobe, Tank,
+  and ATLAS lifecycle profiles on chiap08 with `sk-codex-mid` defaults,
+  startup SKMail hello, direct and all-mail polling, bounded beats, and safe
+  one-shot retirement. Jarvis is excluded from recurring lifecycle work while
+  retaining Casey-directed emergency tools.
+
 - Cards `2e6bb78e` and `30c6909d`: add role-bounded lifecycle-seat fan-out
   allocation with source-head deduplication, the `sk-codex-mid` child default,
   and explicit exclusion of Jarvis from recurring lifecycle scheduling.

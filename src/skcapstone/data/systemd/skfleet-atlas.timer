@@ -1,0 +1,11 @@
+[Unit]
+Description=Run the bounded ATLAS lifecycle presence cycle every fifteen minutes
+
+[Timer]
+OnBootSec=4min
+OnUnitActiveSec=15min
+Persistent=false
+Unit=skfleet-atlas.service
+
+[Install]
+WantedBy=timers.target
