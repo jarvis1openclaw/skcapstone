@@ -9,6 +9,25 @@ The selector's `authoritative_claimability()` function is the dispatch
 authority. If this document and that function disagree, the function wins and
 this document must be corrected.
 
+## Governed review cards
+
+A review, rereview, or repair card is governed when it carries the `review`
+label or a review marker in its title. Author it with all four admission facts:
+`review`, `seat-seraph`, a non-empty `producer_identity`, and a lowercase
+64-hex `candidate_evidence_sha256`. The CLI fails before writing a card and
+lists every missing field:
+
+```text
+skcapstone coord create --title '[REVIEW] verify candidate' \
+  --tag review --tag seat-seraph \
+  --producer-identity pi-codex-source \
+  --candidate-evidence-sha256 <64-hex-digest>
+```
+
+The typed producer and digest are retained as creation metadata and are read by
+the same selector contract used by POOL_V2. Do not infer review admission from
+lifecycle state, links, or a successful create operation alone.
+
 Human approval is separate from machine state. A complete dependency, a label,
 an elapsed deadline, or a successful CLI write never manufactures human
 authority. Record the exact human decision and its evidence first, then make

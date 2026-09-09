@@ -171,8 +171,9 @@ def _governed_review_metadata(core, labels):
     if "review" not in {str(label).strip().lower() for label in labels}:
         return None
     links = core.get("links") if isinstance(core.get("links"), dict) else {}
-    typed_producer = links.get("producer_identity")
-    typed_evidence = links.get("candidate_evidence_sha256")
+    meta = core.get("meta") if isinstance(core.get("meta"), dict) else {}
+    typed_producer = links.get("producer_identity") or meta.get("producer_identity")
+    typed_evidence = links.get("candidate_evidence_sha256") or meta.get("candidate_evidence_sha256")
     if typed_producer is not None or typed_evidence is not None:
         producer = str(typed_producer or "").strip()
         evidence = str(typed_evidence or "").strip().lower()

@@ -335,14 +335,44 @@ def register_coord_commands(main: click.Group) -> None:
     @click.option("--by", default="human", help="Creator name.")
     @click.option("--criteria", multiple=True, help="Acceptance criteria (repeatable).")
     @click.option("--dep", multiple=True, help="Dependency task IDs (repeatable).")
+    @click.option("--producer-identity", default=None, help="Typed producer identity for governed review cards.")
+    @click.option("--candidate-evidence-sha256", default=None, help="64-hex candidate evidence digest for governed review cards.")
     @click.option(
         "--claim-for-me",
         is_flag=True,
         help="Atomically create and claim for the resolved active agent.",
     )
-    def coord_create(home, task_id, title, desc, priority, tag, by, criteria, dep, claim_for_me):
+    def coord_create(home, task_id, title, desc, priority, tag, by, criteria, dep,
+                     producer_identity, candidate_evidence_sha256, claim_for_me):
         """Create a new task on the board."""
         from ..coordination import Board, Task, TaskPriority
+        import re
+
+        labels = {str(value).strip().lower() for value in tag}
+        governed_review = "review" in labels or any(
+            marker in title.upper() for marker in ("[REVIEW]", "[REREVIEW]", "[REPAIR]")
+        )
+        if governed_review:
+            missing = []
+            if "review" not in labels:
+                missing.append("review label")
+            if "seat-seraph" not in labels:
+                missing.append("seat-seraph")
+            if not str(producer_identity or "").strip():
+                missing.append("producer_identity")
+            if not re.fullmatch(r"[0-9a-fA-F]{64}", str(candidate_evidence_sha256 or "")):
+                missing.append("candidate_evidence_sha256")
+            if missing:
+                raise click.ClickException(
+                    "incomplete governed review card; missing: " + ", ".join(missing)
+                )
+
+        meta = {}
+        if governed_review:
+            meta = {
+                "producer_identity": str(producer_identity).strip(),
+                "candidate_evidence_sha256": str(candidate_evidence_sha256).lower(),
+            }
 
         validate_agent_name(by)
         if task_id:
@@ -361,6 +391,7 @@ def register_coord_commands(main: click.Group) -> None:
             created_by=by,
             acceptance_criteria=list(criteria),
             dependencies=list(dep),
+            meta=meta,
         )
         if claim_for_me:
             from .. import active_agent_name
