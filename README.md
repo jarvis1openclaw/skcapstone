@@ -658,6 +658,9 @@ wandering the graph:
   envelope transport the daemon polls to send/receive agent messages.
 - ↔️ **Sibling:** [skchat](https://github.com/smilinTux/skchat) — the messaging layer
   (threads, inbox, history) the consciousness loop uses to converse with peers.
+- ↔️ **Sibling:** [SKRSI](https://github.com/smilinTux/skrsi): SK Recursive SELF
+  Improvement, the Systematic Evaluation, Learning, and Feedback loop whose
+  first-wave runtime components currently live in this repository.
 - 📐 **Standards:** [sk-standards](https://github.com/smilinTux/sk-standards) — the
   canonical crypto / data-flow / version / doc-SOP standards this repo conforms to.
 
