@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Card `c80e3512`: consume first-wave SKRSI handoff contracts through a
+  card-authorized metadata runtime and CLI. Bound admission, deadlines and safe
+  retry; retain immutable recovery receipts and fence replay by source identity.
+
 - Cut pull-request CI duplication by running the full deterministic suite once
   on Python 3.12 and a packaging, import, schema, and changed-test compatibility
   lane on Python 3.11. Main, weekly, and release calls retain the complete

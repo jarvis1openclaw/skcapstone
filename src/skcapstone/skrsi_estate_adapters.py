@@ -14,6 +14,7 @@ from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
 from typing import Any, Iterable, Mapping
 
+from .skrsi_handoffs import FIRST_WAVE_HANDOFFS, HandoffContract  # noqa: F401
 from .skrsi_registry import AppendOnlyOutbox, SKRSIError, canonical_json, make_record
 
 
@@ -21,81 +22,9 @@ class AuthorityUnavailableError(SKRSIError):
     """Authority truth cannot safely be used."""
 
 
-@dataclass(frozen=True)
-class HandoffContract:
-    """Complete operational ownership contract for one lifecycle boundary."""
-
-    producer: str
-    consumer: str
-    natural_key: str
-    queue_bound: int
-    timeout_seconds: float
-    retry_attempts: int
-    backoff_seconds: float
-    terminal_evidence: str
-    recovery_owner: str
-    escalation_recipient: str
-    notification_only: bool = True
-
-    def __post_init__(self) -> None:
-        strings = (
-            self.producer,
-            self.consumer,
-            self.natural_key,
-            self.terminal_evidence,
-            self.recovery_owner,
-            self.escalation_recipient,
-        )
-        if not all(value.strip() for value in strings):
-            raise ValueError("handoff identity and ownership fields are required")
-        if self.queue_bound < 1 or self.timeout_seconds <= 0:
-            raise ValueError("handoff queue and timeout must be positive")
-        if self.retry_attempts < 0 or self.backoff_seconds < 0:
-            raise ValueError("handoff retry bounds cannot be negative")
-        if not self.notification_only:
-            raise ValueError("escalation must be notification-only")
-
-
 ESTATE_HANDOFFS = {
-    "cardstore-to-skrsi": HandoffContract(
-        "CardStore",
-        "SKRSI",
-        "card_event_id",
-        10_000,
-        2.0,
-        2,
-        0.25,
-        "evidence_ref",
-        "atlas",
-        "jarvis",
-    ),
-    "fleet-to-skrsi": HandoffContract(
-        "SKFleet",
-        "SKRSI",
-        "fleet_event_id",
-        2_000,
-        2.0,
-        2,
-        0.25,
-        "fleet_receipt",
-        "niobe",
-        "jarvis",
-    ),
-    "mail-to-skrsi": HandoffContract(
-        "SKMail", "SKRSI", "envelope_id", 5_000, 2.0, 2, 0.25, "envelope_hash", "mero", "jarvis"
-    ),
-    "evidence-to-review": HandoffContract(
-        "Link",
-        "Seraph",
-        "source_card+head_revision",
-        500,
-        30.0,
-        1,
-        1.0,
-        "launch_receipt",
-        "link",
-        "mero",
-    ),
+    name: FIRST_WAVE_HANDOFFS[name]
+    for name in ("cardstore-to-skrsi", "fleet-to-skrsi", "mail-to-skrsi", "evidence-to-review")
 }
 
 
