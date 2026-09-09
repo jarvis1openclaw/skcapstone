@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Card `2d2a6d4d`: define SKRSI as SK Recursive SELF Improvement, with
+  SELF meaning Systematic Evaluation, Learning, and Feedback, and link the
+  canonical standalone project documentation.
+
 - Card `c80e3512`: consume first-wave SKRSI handoff contracts through a
   card-authorized metadata runtime and CLI. Bound admission, deadlines and safe
   retry; retain immutable recovery receipts and fence replay by source identity.
