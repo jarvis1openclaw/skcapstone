@@ -1,5 +1,7 @@
 # Changelog
 
+- Card 5e7a3f11: retire an exact running reviewer generation when its source is explicitly superseded, while preserving its output and leaving current or newer claim generations untouched.
+
 - `coord bootstrap` now creates `evidence/decisions/` explicitly, not only its
   `evidence/` parent. The decision log is where a discharged human gate is
   recorded, and leaving it absent meant the first writer had to `mkdir` it by
