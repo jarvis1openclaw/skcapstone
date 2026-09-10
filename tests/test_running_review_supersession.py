@@ -6,6 +6,8 @@ import importlib.util
 from pathlib import Path
 from types import SimpleNamespace
 
+import pytest
+
 ROOT = Path(__file__).parents[1]
 SCRIPT = ROOT / "scripts" / "fleet" / "skfleet-worker-wrapper.py"
 
@@ -120,3 +122,47 @@ def test_exact_superseded_generation_stops_only_its_process_group(monkeypatch) -
 
     assert killed == [(123, module.signal.SIGTERM)]
     assert values.review_supersession["claim_revision"] == "generation-1"
+
+
+def test_superseded_review_releases_only_exact_claim(monkeypatch) -> None:
+    module = load_module()
+    calls = []
+
+    class Board:
+        def __init__(self, home):
+            calls.append(("home", home))
+
+        def release_claim(self, owner, card, *, actor, expected_claim_revision):
+            calls.append((owner, card, actor, expected_claim_revision))
+            return True
+
+    monkeypatch.setattr("skcoord.coordination.Board", Board)
+    values = args()
+    values.review_supersession = {"current_head": "2" * 40}
+
+    module.release_superseded_review_claim(values)
+
+    assert calls[-1] == (
+        values.owner,
+        values.card,
+        values.owner,
+        "generation-1",
+    )
+
+
+def test_superseded_review_keeps_custody_when_exact_release_fails(monkeypatch) -> None:
+    module = load_module()
+
+    class Board:
+        def __init__(self, _home):
+            pass
+
+        def release_claim(self, *_args, **_kwargs):
+            return False
+
+    monkeypatch.setattr("skcoord.coordination.Board", Board)
+    values = args()
+    values.review_supersession = {"current_head": "2" * 40}
+
+    with pytest.raises(RuntimeError, match="exact claim was not released"):
+        module.release_superseded_review_claim(values)

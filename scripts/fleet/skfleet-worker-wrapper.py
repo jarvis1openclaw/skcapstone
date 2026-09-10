@@ -240,6 +240,22 @@ def record_review_supersession(args: argparse.Namespace, stderr: bytes) -> Path 
     return path
 
 
+def release_superseded_review_claim(args: argparse.Namespace) -> None:
+    """CAS-release only the obsolete review generation after evidence publication."""
+    if not hasattr(args, "review_supersession"):
+        return
+    from skcoord.coordination import Board
+
+    released = Board(Path.home() / ".skcapstone").release_claim(
+        args.owner,
+        args.card,
+        actor=args.owner,
+        expected_claim_revision=args.claim_revision,
+    )
+    if not released:
+        raise RuntimeError("superseded review exact claim was not released")
+
+
 def write_startup_report(
     args: argparse.Namespace, pid: int, state: str, observation: StartupObservation | None = None
 ) -> None:
@@ -636,6 +652,7 @@ def main() -> int:
             publish_terminal_capacity(args, child)
         except OSError as exc:
             sys.stderr.write(f"terminal capacity publication failed: {exc}\n")
+        release_superseded_review_claim(args)
 
 
 if __name__ == "__main__":
