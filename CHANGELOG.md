@@ -1,5 +1,7 @@
 # Changelog
 
+- Card `3fa62ebd`: CAS-release an obsolete reviewer claim only after its findings and terminal-capacity evidence are published, while retaining custody on release failure.
+
 - Card 5e7a3f11: retire an exact running reviewer generation when its source is explicitly superseded, while preserving its output and leaving current or newer claim generations untouched.
 
 - `coord bootstrap` now creates `evidence/decisions/` explicitly, not only its
