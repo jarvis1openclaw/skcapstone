@@ -37,6 +37,7 @@ def diagnose(home: Path, card_id: str) -> dict[str, object]:
         and "seat-seraph" in {str(label).strip().lower() for label in row.labels}
         for row in cards.values()
     )
+    labels = {str(label).strip().lower() for label in card.labels}
     reasons = list(
         governed_review_gate_reasons(
             {
@@ -52,16 +53,14 @@ def diagnose(home: Path, card_id: str) -> dict[str, object]:
             capacity_available=busy < target,
         )
     )
-    if card.status.value in {"done", "archived", "void"}:
+    if "do-not-claim" in labels:
+        reasons.append("do-not-claim")
+    if card.status.value == "done" or card.archived or card.meta.get("voided"):
         reasons.append("terminal")
     return {
         "card_id": card.id,
         "eligible": not reasons,
         "reasons": list(dict.fromkeys(reasons)),
-        "seat": (
-            "seraph"
-            if "seat-seraph" in {str(label).strip().lower() for label in card.labels}
-            else None
-        ),
+        "seat": ("seraph" if "seat-seraph" in labels else None),
         "capacity": {"busy": busy, "target": target},
     }
