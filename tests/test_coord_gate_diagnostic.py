@@ -151,6 +151,21 @@ def test_coord_gates_reports_do_not_claim_exclusion(tmp_path, monkeypatch) -> No
     assert report["reasons"] == ["do-not-claim"]
 
 
+@pytest.mark.parametrize("action", ["archive", "void"])
+def test_coord_gates_reports_folded_terminal_exclusion(tmp_path, monkeypatch, action) -> None:
+    monkeypatch.setenv("SKCOORD_CARD_STORE", "1")
+    store = CardStore(tmp_path)
+    store.create(CardCore(id="aabb0004", title="terminal card", created_by="scheduler"))
+    store.append_event("aabb0004", action, "scheduler")
+
+    result = CliRunner().invoke(main, ["coord", "gates", "aabb0004", "--home", str(tmp_path)])
+
+    assert result.exit_code == 0, result.output
+    report = json.loads(result.output)
+    assert report["eligible"] is False
+    assert report["reasons"] == ["terminal"]
+
+
 def test_governed_review_claim_rejects_exact_producer_identity(tmp_path) -> None:
     CardStore(tmp_path).create(
         CardCore(

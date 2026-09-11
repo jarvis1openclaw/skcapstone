@@ -55,7 +55,7 @@ def diagnose(home: Path, card_id: str) -> dict[str, object]:
     )
     if "do-not-claim" in labels:
         reasons.append("do-not-claim")
-    if card.status.value in {"done", "archived", "void"}:
+    if card.status.value == "done" or card.archived or card.meta.get("voided"):
         reasons.append("terminal")
     return {
         "card_id": card.id,
