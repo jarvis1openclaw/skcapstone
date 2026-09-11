@@ -1,5 +1,9 @@
 # Changelog
 
+- Cards `c0ee3907`, `0e849032`: bind review CI applicability to immutable
+  repository policy and candidate receipts while preserving the six-check
+  legacy gate. Local Git verification forbids promisor lazy fetch and transport.
+
 - Card `c5a81d4b`: reserve source-only logical-route cards for the Niobe
   builder queue and derive its sole offer host from public seat placement.
 
