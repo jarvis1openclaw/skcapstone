@@ -276,7 +276,9 @@ if not _LIFECYCLE_OK:
     assess=None
 
 HOST=os.uname().nodename
-ROTATION_HOSTS=("chiap01", "chiap02", "chiap03", "chiap04", "chiap08")
+# Canonical governed placement. ZIOWK01 is a Pi-through-SKGateway builder pool,
+# not a Codex rotation host; Niobe offers bounded work to it separately.
+ROTATION_HOSTS=("chiap01", "chiap02", "chiap03", "chiap04", "chiap08", "ziowk01")
 SKC=os.path.expanduser("~/.skenv/bin/skcapstone")
 TARGET=_required_lane_target("SKFLEET_TARGET")
 GLM_TARGET=_required_lane_target("SKFLEET_GLM_TARGET")
@@ -778,7 +780,12 @@ except BlockingIOError:
 
 
 if HOST not in ROTATION_HOSTS:
-    log(d,"NOOP|%s|host is outside the authorized chiap01-chiap03 worker fleet"%HOST)
+    log(d,"NOOP|%s|host is outside the governed worker fleet"%HOST)
+    sys.exit(0)
+if HOST == "ziowk01":
+    # ZIOWK01 has no Codex CLI path and no local rotation timer. Its only
+    # admission path is Niobe's governed Pi-through-SKGateway builder offer.
+    log(d, "NOOP|%s|builder standby is not a Codex rotation host" % HOST)
     sys.exit(0)
 
 # Mandatory read-only graph validation precedes slot and assignment decisions.

@@ -28,6 +28,9 @@ PROVIDER = "skgateway"
 LEASE_SECONDS = 900
 TERMINAL_STATES = {"completed", "blocked", "failed", "stale"}
 MAX_ATTEMPTS = 2
+# ZIOWK01 is a bounded Pi-through-SKGateway builder pool.  Niobe remains the
+# only scheduler, and each node admission is independently capacity checked.
+BUILDER_CAPACITY = {"ziowk01": 4}
 _PROCESSES: dict[str, object] = {}
 _WORKER_TOOLS = "read,bash,edit,write,grep,find,ls"
 _BUNDLED_GUARD = Path(__file__).resolve().parents[3] / "scripts/fleet/pi-cardstore-guard.mjs"
@@ -138,8 +141,9 @@ def _ready_builders(paths: FleetPaths) -> list[NodeView]:
 
 
 def _node_busy(paths: FleetPaths, node: str) -> bool:
-    """Return whether a node has one nonterminal remote dispatch."""
+    """Return whether a node has reached its governed dispatch capacity."""
     directory = paths.root / "dispatch" / node
+    busy = 0
     for path in sorted(directory.glob("*.json")) if directory.exists() else ():
         request = _load(path) or {}
         status = _load(status_path(paths, node, str(request.get("card_id") or ""))) or {}
@@ -148,8 +152,9 @@ def _node_busy(paths: FleetPaths, node: str) -> bool:
             and status.get("state") in TERMINAL_STATES
         ):
             continue
-        return True
-    return False
+        busy += 1
+    capacity_key = node.removeprefix("node-").lower()
+    return busy >= BUILDER_CAPACITY.get(capacity_key, 1)
 
 
 def offer(

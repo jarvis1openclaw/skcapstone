@@ -37,9 +37,9 @@ def _node(paths, operator, noded41) -> None:
     sknoded.run_once(paths, "node-ziowk01")
 
 
-def _card() -> dict:
+def _card(card_id: str = "24b00003") -> dict:
     return {
-        "id": "24b00003",
+        "id": card_id,
         "meta": {
             "repository": "https://github.com/smilinTux/skcapstone.git",
             "base_ref": "main",
@@ -76,6 +76,18 @@ def test_niobe_places_one_generic_medium_card(paths, operator, noded41) -> None:
     assert store.read_placement(paths, "job", "24b00003")["node"] == "node-ziowk01"
     repeated = builder_dispatch.offer(paths, _card(), ["sk-m", "source-only"], writer=writer)
     assert repeated == request
+
+
+def test_ziowk01_capacity_is_four_and_fifth_offer_is_no_capacity(paths, operator, noded41) -> None:
+    _node(paths, operator, noded41)
+    writer = store.Writer(role="scheduler", node="niobe", identity="capauth:niobe")
+    requests = []
+    for index in range(4):
+        request = builder_dispatch.offer(paths, _card(f"24b0000{index + 3}"), ["sk-m", "source-only"], writer=writer)
+        assert request is not None
+        requests.append(request)
+    assert {request["node"] for request in requests} == {"node-ziowk01"}
+    assert builder_dispatch.offer(paths, _card("24b00007"), ["sk-m", "source-only"], writer=writer) is None
 
 
 def test_offer_rejects_wrong_scheduler_and_lane_pins(paths) -> None:
