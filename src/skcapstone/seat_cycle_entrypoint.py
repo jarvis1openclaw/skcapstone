@@ -15,6 +15,7 @@ import re
 import socket
 import subprocess
 import sys
+from collections.abc import Iterable, Mapping
 from dataclasses import asdict, dataclass
 from datetime import datetime, timezone
 from pathlib import Path
@@ -44,6 +45,64 @@ _MAX_ROLE_BATCH = 8
 _NOOP = re.compile(
     r"^NOOP_RECEIPT\|(?P<host>[^|]+)\|reason=(?P<reason>[^|]+)" r"\|seat=(?P<seat>[^|]+)$"
 )
+
+# A seat asks SKGateway for a SIZE, never for a provider. The gateway resolves
+# sk-s, sk-m, sk-l, or sk-xl to a member that meets the capability floor and the
+# trust zone of the request, so one estate can run Claude, an OpenRouter free
+# tier, NIM, or a local backend while another runs a subscription lane, with no
+# code change on either. Provider-pinned ids (sk-codex-mid, sk-glm-l, sk-kimi-*)
+# stay valid operator overrides; they are no longer the built-in default.
+#
+# A size with no qualifying member fails closed at the gateway. That is correct
+# and deliberate: nothing here substitutes a smaller bucket, because a silent
+# downgrade hides a real capability gap behind work that quietly got weaker.
+_SIZE_CLASSES: tuple[str, ...] = ("S", "M", "L", "XL")
+_SIZE_MODEL_DEFAULTS: dict[str, str] = {"S": "sk-s", "M": "sk-m", "L": "sk-l", "XL": "sk-xl"}
+_SIZE_MODEL_ENV = "SKFLEET_MODEL_{size}"
+# Deprecated provider-named spelling, still read so an estate configured before
+# the rename keeps its exact behaviour across the upgrade.
+_LEGACY_SIZE_MODEL_ENV = "SKFLEET_CODEX_MODEL_{size}"
+
+
+def resolve_size_class_models(
+    environ: Mapping[str, str] | None = None,
+    sizes: Iterable[str] = _SIZE_CLASSES,
+) -> dict[str, str]:
+    """Resolve the SKGateway bucket each card size class dispatches to.
+
+    Operator configuration wins over the built-in default. This function is the
+    fix for a defect where the dispatch path copied the environment and then
+    overwrote these variables, so a systemd drop-in setting them was silently
+    defeated and every estate was pinned to one subscription provider.
+
+    Precedence, highest first: ``SKFLEET_MODEL_<size>``, the deprecated
+    ``SKFLEET_CODEX_MODEL_<size>``, then the provider-neutral default. A value
+    that is empty or whitespace counts as unset, so a blank ``Environment=``
+    line cannot blank a bucket.
+
+    Args:
+        environ: Environment mapping to read. Defaults to ``os.environ``.
+        sizes: Size classes to resolve. Unknown size names are ignored.
+
+    Returns:
+        An environment overlay mapping both the current and the deprecated
+        variable name of every resolved size class to its chosen bucket, ready
+        to pass to :func:`subprocess.run` as part of a child environment.
+    """
+
+    values = os.environ if environ is None else environ
+    overlay: dict[str, str] = {}
+    for size in sizes:
+        default = _SIZE_MODEL_DEFAULTS.get(size)
+        if default is None:
+            continue
+        configured = values.get(_SIZE_MODEL_ENV.format(size=size)) or values.get(
+            _LEGACY_SIZE_MODEL_ENV.format(size=size)
+        )
+        model = str(configured or "").strip() or default
+        overlay[_SIZE_MODEL_ENV.format(size=size)] = model
+        overlay[_LEGACY_SIZE_MODEL_ENV.format(size=size)] = model
+    return overlay
 
 
 def _now() -> str:
@@ -484,13 +543,14 @@ def seraph_operation(home: Path) -> dict[str, int | str]:
         {
             "SKFLEET_ONLY_SEAT": "seraph",
             "SKFLEET_SEAT_TARGET": str(batch_size),
-            "SKFLEET_CODEX_MODEL_S": "sk-codex-mid",
             "SKFLEET_QWEN_TARGET": "0",
             "SKFLEET_GLM_TARGET": "0",
             "SKFLEET_KIMI_TARGET": "0",
             "SKFLEET_MAX_LAUNCH": str(batch_size),
         }
     )
+    # Seraph reviews only [S] work, so only that bucket is resolved here.
+    env.update(resolve_size_class_models(env, sizes=("S",)))
     completed = subprocess.run(
         [str(dispatcher), "--go"], env=env, capture_output=True, text=True, timeout=240
     )
@@ -498,9 +558,26 @@ def seraph_operation(home: Path) -> dict[str, int | str]:
 
 
 def verify_role_dispatch(
-    home: Path, completed: subprocess.CompletedProcess[str], seat: str
+    home: Path,
+    completed: subprocess.CompletedProcess[str],
+    seat: str,
+    accepted_models: Iterable[str] | None = None,
 ) -> dict[str, int | str]:
-    """Verify a bounded Tank or ATLAS selector result."""
+    """Verify a bounded Tank or ATLAS selector result.
+
+    Args:
+        home: Estate home holding the card store.
+        completed: Finished dispatcher process whose receipts are verified.
+        seat: ``tank`` or ``atlas``.
+        accepted_models: Models a receipt may name. Defaults to the resolved
+            size class buckets, which is what the dispatch path asked for. This
+            check used to require the literal ``sk-codex-mid``, which no launch
+            receipt has ever carried since the launcher started emitting the
+            job's logical route, so every real launch was counted invalid.
+
+    Returns:
+        Bounded counters and a reason string describing the verified outcome.
+    """
 
     output = "\n".join(
         value
@@ -541,6 +618,11 @@ def verify_role_dispatch(
         }
 
     store = CardStore(home)
+    accepted = (
+        set(accepted_models)
+        if accepted_models is not None
+        else set(resolve_size_class_models().values())
+    )
     succeeded = failed = 0
     invalid = int(completed.returncode != 0)
     seen_cards: set[str] = set()
@@ -556,7 +638,7 @@ def verify_role_dispatch(
             and seat_labels == {f"seat-{seat}"}
             and "dispatch-approved" in labels
             and launch["lane"] == "codex"
-            and launch["model"] == "sk-codex-mid"
+            and launch["model"] in accepted
         )
         seen_cards.add(launch["card"])
         if not valid:
@@ -672,16 +754,16 @@ def role_dispatch_operation(home: Path, seat: str) -> dict[str, int | str]:
         {
             "SKFLEET_ONLY_SEAT": seat,
             "SKFLEET_SEAT_TARGET": str(batch_size),
-            "SKFLEET_CODEX_MODEL_S": "sk-codex-mid",
-            "SKFLEET_CODEX_MODEL_M": "sk-codex-mid",
-            "SKFLEET_CODEX_MODEL_L": "sk-codex-mid",
-            "SKFLEET_CODEX_MODEL_XL": "sk-codex-mid",
             "SKFLEET_QWEN_TARGET": "0",
             "SKFLEET_GLM_TARGET": "0",
             "SKFLEET_KIMI_TARGET": "0",
             "SKFLEET_MAX_LAUNCH": str(batch_size),
         }
     )
+    # Resolved last, and from `env` rather than from a literal, so operator
+    # configuration wins instead of being overwritten by a hardcoded default.
+    size_models = resolve_size_class_models(env)
+    env.update(size_models)
     completed = subprocess.run(
         [str(dispatcher), "--go"],
         env=env,
@@ -689,7 +771,8 @@ def role_dispatch_operation(home: Path, seat: str) -> dict[str, int | str]:
         text=True,
         timeout=240,
     )
-    return verify_role_dispatch(home, completed, seat)
+    # Verification accepts exactly the buckets this dispatch asked for.
+    return verify_role_dispatch(home, completed, seat, set(size_models.values()))
 
 
 def _emit_review_work(home: Path, lineage_path: Path, feed_reason: str) -> dict[str, int | str]:
