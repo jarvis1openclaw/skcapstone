@@ -1,5 +1,9 @@
 # Changelog
 
+- Card `2dea585b`: use current advertised SKGateway routes and shared capacity
+  domains for bounded ordinary producer selection instead of treating unrelated
+  long-lived Pi sessions as active gateway work.
+
 - Card `d2126814`: admit up to four concurrent nonterminal dispatch requests
   per builder node while preserving exact-request idempotency and terminal
   capacity release.
