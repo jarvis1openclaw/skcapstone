@@ -1,5 +1,9 @@
 # Changelog
 
+- Card `3b881689`: align governed review diagnostics with Seraph's packaged
+  two-seat target, preserve nonterminal partial findings, and reject producer
+  self-review at the claim boundary.
+
 - Card `3fa62ebd`: CAS-release an obsolete reviewer claim only after its findings and terminal-capacity evidence are published, while retaining custody on release failure.
 
 - Card `e9fc91b4`: skip Niobe fanout reconciliation for cards without an exact request and matching receipt, avoiding false activation failures for unrelated and terminal cards.
@@ -19,6 +23,13 @@
   currently claimable. The default remains `sk-codex-mid`.
 
 ## Unreleased
+
+- Card `bf7317af`: filter fleet worker mail recipients through configured,
+  case-insensitive exclusions and prohibit implicit all-recipient broadcasts.
+
+- Card `3fd609ed`: serialize ZIOWK01 builder selection, durable claim, workspace
+  preparation, and launch so competing dispatchers cannot consume an attempt
+  before claim durability or leave a partial worker after failure.
 
 - Card `2ebebda8`: admit governed reviews to bounded elastic Codex fanout while
   preserving exact source, producer, reviewer identity, claim generation,
