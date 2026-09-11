@@ -132,6 +132,25 @@ def test_coord_gates_uses_two_seat_seraph_default(tmp_path, monkeypatch) -> None
     assert store.fold("aabb0002").owner == "pi-seraph-second"
 
 
+def test_coord_gates_reports_do_not_claim_exclusion(tmp_path, monkeypatch) -> None:
+    monkeypatch.setenv("SKCOORD_CARD_STORE", "1")
+    CardStore(tmp_path).create(
+        CardCore(
+            id="733e74b0",
+            title="Correct source repository",
+            created_by="scheduler",
+            initial_labels=["source-only", "do-not-claim"],
+        )
+    )
+
+    result = CliRunner().invoke(main, ["coord", "gates", "733e74b0", "--home", str(tmp_path)])
+
+    assert result.exit_code == 0, result.output
+    report = json.loads(result.output)
+    assert report["eligible"] is False
+    assert report["reasons"] == ["do-not-claim"]
+
+
 def test_governed_review_claim_rejects_exact_producer_identity(tmp_path) -> None:
     CardStore(tmp_path).create(
         CardCore(
