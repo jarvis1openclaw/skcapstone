@@ -1,5 +1,8 @@
 # Changelog
 
+- Card `9012e178`: report the existing `do-not-claim` dispatcher exclusion in
+  `coord gates` instead of incorrectly describing excluded cards as eligible.
+
 - Card `3b881689`: align governed review diagnostics with Seraph's packaged
   two-seat target, preserve nonterminal partial findings, and reject producer
   self-review at the claim boundary.

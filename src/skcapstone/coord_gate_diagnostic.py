@@ -61,10 +61,6 @@ def diagnose(home: Path, card_id: str) -> dict[str, object]:
         "card_id": card.id,
         "eligible": not reasons,
         "reasons": list(dict.fromkeys(reasons)),
-        "seat": (
-            "seraph"
-            if "seat-seraph" in labels
-            else None
-        ),
+        "seat": ("seraph" if "seat-seraph" in labels else None),
         "capacity": {"busy": busy, "target": target},
     }
