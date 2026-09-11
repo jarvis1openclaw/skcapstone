@@ -1,5 +1,9 @@
 # Changelog
 
+- Card `d2126814`: admit up to four concurrent nonterminal dispatch requests
+  per builder node while preserving exact-request idempotency and terminal
+  capacity release.
+
 - Card `7f9751c7`: keep current available provider capacity eligible for Seraph
   while excluding only current throttled or unavailable capacity.
 
