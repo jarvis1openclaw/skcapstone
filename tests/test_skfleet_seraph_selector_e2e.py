@@ -606,10 +606,19 @@ def test_generic_niobe_launches_seraph_review_through_codex(tmp_path: Path) -> N
     ).stdout.strip()
     home = tmp_path / "home"
     home.mkdir()
-    store, card_id = _canonical_review(
+    launched_card_ids = ("c2d84daf", "c3236a0f")
+    store, _ = _canonical_review(
         home,
+        source_card="ea8962c0",
         base_revision=revision,
-        review_card_id_override="64c201a1",
+        review_card_id_override=launched_card_ids[0],
+    )
+    store, _ = _canonical_review(
+        home,
+        source_card="1e2c0274",
+        head_revision="f" * 40,
+        base_revision=revision,
+        review_card_id_override=launched_card_ids[1],
     )
     for stale_id, source_id in (
         ("1280a113", "1280a110"),
@@ -624,24 +633,17 @@ def test_generic_niobe_launches_seraph_review_through_codex(tmp_path: Path) -> N
         )
         store.append_event(stale_id, "add_label", "mero", label="codex-only")
         store.append_event(stale_id, "add_label", "mero", label="sk-s")
-    store.append_event(card_id, "add_label", "mero", label="codex-only")
-    store.append_event(card_id, "add_label", "mero", label="sk-s")
-    claim = store.append_event(
-        card_id,
-        "claim",
-        "prior-reviewer",
-        owner="prior-reviewer",
+    tail_id = "d0000001"
+    store, _ = _canonical_review(
+        home,
+        source_card="d0000000",
+        head_revision="9" * 40,
+        base_revision="8" * 40,
+        review_card_id_override=tail_id,
     )
-    store.append_event(card_id, "move", "prior-reviewer", column="doing")
-    store.append_event(card_id, "describe", "prior-reviewer", title="")
-    store.append_event(
-        card_id,
-        "release_claim",
-        "prior-reviewer",
-        released_owner="prior-reviewer",
-        expected_claim_revision=claim["event_id"],
-    )
-    assert "codex-only" in store.fold(card_id).labels
+    for card_id in (*launched_card_ids, tail_id):
+        store.append_event(card_id, "add_label", "mero", label="codex-only")
+        store.append_event(card_id, "add_label", "mero", label="sk-s")
     placement = home / ".skcapstone" / "coordination" / "seat-placement.json"
     placement.write_text(
         json.dumps({"schema_version": 1, "seats": {"niobe": ["chiap08"]}}),
@@ -709,9 +711,9 @@ print(output.getvalue(), end="")
             "SKFLEET_GLM_TARGET": "0",
             "SKFLEET_QWEN_TARGET": "0",
             "SKFLEET_KIMI_TARGET": "0",
-            "SKFLEET_ESC_TARGET": "0",
+            "SKFLEET_ESC_TARGET": "1",
             "SKFLEET_CODEX_PHYSICAL_LIMIT": "3",
-            "SKFLEET_MAX_LAUNCH": "1",
+            "SKFLEET_MAX_LAUNCH": "3",
             "SKFLEET_REVIEW_MAXIMUM": "2",
             "SKFLEET_PI_CARDSTORE_GUARD": str(
                 ROOT / "scripts" / "fleet" / "pi-cardstore-guard.mjs"
@@ -719,8 +721,8 @@ print(output.getvalue(), end="")
         }
     )
     gateway = ThreadingHTTPServer(("127.0.0.1", 0), _HealthyGateway)
-    gateway.RequestHandlerClass.providers = ("provider-alpha",)
-    gateway.RequestHandlerClass.include_provider_models = False
+    gateway.RequestHandlerClass.providers = ("provider-alpha", "provider-beta")
+    gateway.RequestHandlerClass.include_provider_models = True
     env["SKFLEET_GATEWAY_URL"] = f"http://127.0.0.1:{gateway.server_port}"
     thread = threading.Thread(target=gateway.serve_forever, daemon=True)
     thread.start()
@@ -744,15 +746,22 @@ print(output.getvalue(), end="")
 
     assert completed.returncode == 0, completed.stderr
     assert env["SKFLEET_GLM_TARGET"] == env["SKFLEET_QWEN_TARGET"] == "0"
-    assert env["SKFLEET_KIMI_TARGET"] == env["SKFLEET_ESC_TARGET"] == "0"
+    assert env["SKFLEET_KIMI_TARGET"] == "0"
+    assert env["SKFLEET_ESC_TARGET"] == "1"
     assert "reason=foreign-hash-partition" not in completed.stdout
-    launch = f"LAUNCHED|chiap08|codex-auto-{card_id}|{card_id}|lane=codex"
     first_blocked = "WORKSPACE_BLOCKED|chiap08|1280a113|"
     second_blocked = "WORKSPACE_BLOCKED|chiap08|1280a115|"
-    assert completed.stdout.count(launch) == 1
+    launches = [
+        f"LAUNCHED|chiap08|codex-auto-{card_id}|{card_id}|lane=codex"
+        for card_id in launched_card_ids
+    ]
+    assert completed.stdout.count("LAUNCHED|") == 2
+    assert all(completed.stdout.count(launch) == 1 for launch in launches)
     assert completed.stdout.index(first_blocked) < completed.stdout.index(second_blocked)
-    assert completed.stdout.index(second_blocked) < completed.stdout.index(launch)
-    assert "CYCLE_RECEIPT|chiap08|seat=niobe|launched=1|attempted=3|receipts=1" in (
+    assert completed.stdout.index(second_blocked) < completed.stdout.index(launches[0])
+    assert completed.stdout.index(launches[0]) < completed.stdout.index(launches[1])
+    assert f"WORKSPACE_BLOCKED|chiap08|{tail_id}|" not in completed.stdout
+    assert "CYCLE_RECEIPT|chiap08|seat=niobe|launched=2|attempted=4|receipts=2" in (
         completed.stdout
     )
     assert "SKIPPED_LOGICAL_ROUTE_RACE" not in completed.stdout
@@ -761,11 +770,17 @@ print(output.getvalue(), end="")
     route_snapshot = json.loads(
         (home / ".skcapstone/evidence/fleet-review-routes.json").read_text(encoding="utf-8")
     )
-    assert [route["logical_route"] for route in route_snapshot["routes"]] == ["sk-s"]
+    assert {route["logical_route"] for route in route_snapshot["routes"]} == {
+        "review-provider-alpha",
+        "review-provider-beta",
+        "sk-s",
+    }
     assert [
         route
         for route in route_snapshot["routes"]
         if "codex" in (route["provider"] + " " + route["logical_route"]).lower()
     ] == []
-    assert store.fold(card_id).owner == f"pi-codex-review-chiap08-{card_id}"
+    assert [store.fold(card_id).owner for card_id in launched_card_ids] == [
+        f"pi-codex-review-chiap08-{card_id}" for card_id in launched_card_ids
+    ]
     assert launch_argv.is_file()

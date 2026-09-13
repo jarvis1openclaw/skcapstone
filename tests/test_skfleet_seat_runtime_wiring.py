@@ -29,7 +29,7 @@ def test_dry_run_exits_before_link_writes() -> None:
     """A selector dry run never appends a recommendation or observation."""
 
     source = (ROOT / "scripts/fleet/skfleet-rotate.py").read_text()
-    loop = source.index("for _LANE,")
+    loop = source.index("for _pick_index,")
     dry = source.index("if DRY:", loop)
     assignment = source.index("_pool_v2_preclaim_handoff(", dry)
     assert dry < assignment

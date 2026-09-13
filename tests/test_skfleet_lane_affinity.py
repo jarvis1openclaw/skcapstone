@@ -323,7 +323,7 @@ def test_pool_and_immediate_preclaim_use_the_same_affinity_predicate() -> None:
     assert "qwen_suitable(_card[3]),_qwen_exclusive" in source
     assert 'qwen_suitable(fresh_claimability["core"]),' in source
     assert 'qwen_first_exclusive(cid,fresh_claimability["labels"])' in source
-    assert source.count("QWEN_TARGET>0,GLM_TARGET>0") == 3
+    assert source.count("QWEN_TARGET>0,GLM_TARGET>0") == 4
     assert "DRY_SELECTION|" in source
     health_check = source.index("admitted,health_reason=_health_for(")
     claim = source.index('claim=subprocess.run([SKC,"coord","claim"')
