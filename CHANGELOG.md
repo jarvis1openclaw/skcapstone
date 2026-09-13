@@ -27,7 +27,8 @@
   `%t/skfleet/tmux.sock` by its `PrivateTmp=yes` unit). A missing, non-socket,
   or unreachable socket fails closed without replacing the last published
   snapshot; `failed to connect` is no longer accepted as empty-success
-  evidence.
+  evidence. The oneshot preserves that runtime directory after exit so the
+  explicit socket remains available to the next publication cycle.
 
 - Review completion now uses exact-head hosted check totals for non-SKCapstone
   repositories instead of imposing SKCapstone's Python check names. Missing,
