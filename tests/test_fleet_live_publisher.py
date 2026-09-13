@@ -277,8 +277,8 @@ def test_publisher_has_no_dispatch_surface() -> None:
         assert forbidden not in source
 
 
-def test_service_uses_an_explicit_namespace_safe_socket_contract() -> None:
-    """PrivateTmp stays; the socket lives under the shared runtime directory."""
+def test_service_preserves_the_explicit_namespace_safe_socket_contract() -> None:
+    """The oneshot preserves its shared socket while retaining safety guards."""
     root = Path(__file__).parents[1]
     units = [
         (root / "systemd" / "skfleet-live-publisher.service").read_text(encoding="utf-8"),
@@ -288,9 +288,11 @@ def test_service_uses_an_explicit_namespace_safe_socket_contract() -> None:
     ]
     assert units[0] == units[1]
     for service in units:
+        assert "Type=oneshot" in service
         assert "PrivateTmp=yes" in service
         assert "Environment=SKFLEET_TMUX_SOCKET=%t/skfleet/tmux.sock" in service
         assert "RuntimeDirectory=skfleet" in service
+        assert "RuntimeDirectoryPreserve=yes" in service
         assert "/tmp" not in service.split("ExecStart", 1)[0]
         assert "-m skcapstone.fleet_live_publisher" in service
         assert "skfleet-rotate" not in service
