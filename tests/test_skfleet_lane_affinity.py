@@ -135,6 +135,18 @@ def test_ordinary_card_reassigns_only_to_compatible_healthy_lane() -> None:
     ) == (None, "no-compatible-healthy-lane:qwen")
 
 
+def test_elastic_review_capacity_masks_free_producer_lanes() -> None:
+    namespace = _load_lane_helpers()
+    remaining = {"qwen": 2, "glm": 2, "codex": 1, "kimi": 2, "escalate": 2}
+    elastic_remaining = {
+        name: slots if name == "codex" else 0 for name, slots in remaining.items()
+    }
+
+    assert namespace["select_compatible_lane"](
+        [], False, ["qwen", "glm", "codex", "kimi", "escalate"], elastic_remaining
+    ) == ("codex", "compatible")
+
+
 def test_qwen_first_is_exclusive_until_hash_bound_semantic_completion() -> None:
     namespace = _load_lane_helpers()
     namespace["event_rows"] = lambda cid: []
