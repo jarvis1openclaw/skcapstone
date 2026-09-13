@@ -721,10 +721,14 @@ def _preclaim_source_ref(repository, base_ref, base_revision, runner=subprocess.
     candidates = [base_ref] if base_ref.startswith("refs/") else [
         f"refs/heads/{base_ref}", f"refs/tags/{base_ref}"
     ]
-    result = runner(
-        ["git", "ls-remote", "--exit-code", repository, *candidates],
-        capture_output=True, text=True,
-        env=dict(os.environ, GIT_TERMINAL_PROMPT="0", GIT_ASKPASS="/bin/false"))
+    try:
+        result = runner(
+            ["git", "ls-remote", "--exit-code", repository, *candidates],
+            capture_output=True, text=True,
+            timeout=15,
+            env=dict(os.environ, GIT_TERMINAL_PROMPT="0", GIT_ASKPASS="/bin/false"))
+    except subprocess.TimeoutExpired as exc:
+        raise ValueError("reconstructability_blocked: source ref probe timed out") from exc
     if result.returncode != 0:
         raise ValueError("reconstructability_blocked: exact source ref absent from credential-free remote")
     refs = {line.split("\t", 1)[1] for line in result.stdout.splitlines() if "\t" in line}

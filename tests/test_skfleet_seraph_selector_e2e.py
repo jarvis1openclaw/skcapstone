@@ -8,6 +8,7 @@ import stat
 import subprocess
 import sys
 import threading
+import time
 from datetime import UTC, datetime
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
@@ -610,6 +611,19 @@ def test_generic_niobe_launches_seraph_review_through_codex(tmp_path: Path) -> N
         base_revision=revision,
         review_card_id_override="64c201a1",
     )
+    for stale_id, source_id in (
+        ("1280a113", "1280a110"),
+        ("1280a115", "1280a112"),
+    ):
+        store, _ = _canonical_review(
+            home,
+            source_card=source_id,
+            head_revision=stale_id * 5,
+            base_revision="e" * 40,
+            review_card_id_override=stale_id,
+        )
+        store.append_event(stale_id, "add_label", "mero", label="codex-only")
+        store.append_event(stale_id, "add_label", "mero", label="sk-s")
     store.append_event(card_id, "add_label", "mero", label="codex-only")
     store.append_event(card_id, "add_label", "mero", label="sk-s")
     claim = store.append_event(
@@ -687,13 +701,14 @@ print(output.getvalue(), end="")
             "GIT_CONFIG_VALUE_0": repository,
             "SKFLEET_TEST_PYTHON": sys.executable,
             "SKFLEET_ROTATION_HOSTS": "chiap01,chiap02,chiap03,chiap04,chiap08",
-            "SKFLEET_TARGET": "1",
+            "SKFLEET_TARGET": "3",
             "SKFLEET_GLM_TARGET": "0",
             "SKFLEET_QWEN_TARGET": "0",
             "SKFLEET_KIMI_TARGET": "0",
             "SKFLEET_ESC_TARGET": "0",
-            "SKFLEET_CODEX_PHYSICAL_LIMIT": "1",
+            "SKFLEET_CODEX_PHYSICAL_LIMIT": "3",
             "SKFLEET_MAX_LAUNCH": "1",
+            "SKFLEET_REVIEW_MAXIMUM": "3",
             "SKFLEET_PI_CARDSTORE_GUARD": str(
                 ROOT / "scripts" / "fleet" / "pi-cardstore-guard.mjs"
             ),
@@ -706,6 +721,7 @@ print(output.getvalue(), end="")
     thread = threading.Thread(target=gateway.serve_forever, daemon=True)
     thread.start()
     try:
+        started = time.monotonic()
         completed = subprocess.run(
             [sys.executable, "-c", harness, str(ROTATE)],
             env=env,
@@ -714,6 +730,7 @@ print(output.getvalue(), end="")
             timeout=30,
             check=False,
         )
+        elapsed = time.monotonic() - started
     finally:
         gateway.shutdown()
         gateway.server_close()
@@ -728,6 +745,9 @@ print(output.getvalue(), end="")
     assert f"LAUNCHED|chiap08|codex-auto-{card_id}|{card_id}|lane=codex" in completed.stdout
     assert "SKIPPED_LOGICAL_ROUTE_RACE" not in completed.stdout
     assert "LANE_DEFER|" not in completed.stdout
+    assert "WORKSPACE_BLOCKED|chiap08|1280a113|" in completed.stdout
+    assert "WORKSPACE_BLOCKED|chiap08|1280a115|" in completed.stdout
+    assert elapsed < 15
     route_snapshot = json.loads(
         (home / ".skcapstone/evidence/fleet-review-routes.json").read_text(encoding="utf-8")
     )

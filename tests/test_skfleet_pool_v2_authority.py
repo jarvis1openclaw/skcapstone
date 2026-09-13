@@ -6,9 +6,13 @@ import ast
 import collections
 import hashlib
 import json
+import os
 import re
+import subprocess
 from pathlib import Path
 from types import SimpleNamespace
+
+import pytest
 
 from skcapstone.review_admission import governed_review_seat, qualified_reviewer_seats
 
@@ -29,7 +33,9 @@ def _load_helpers(*names: str) -> dict[str, object]:
         "collections": collections,
         "hashlib": hashlib,
         "json": json,
+        "os": os,
         "re": re,
+        "subprocess": subprocess,
         "governed_review_seat": governed_review_seat,
         "qualified_reviewer_seats": qualified_reviewer_seats,
         "blocked_backoff": lambda _cid: False,
@@ -440,3 +446,16 @@ def test_authority_and_preclaim_are_wired_into_launcher() -> None:
     assert "POOL_AUTHORITY|%s|source=POOL_V2" in source
     assert "_pool_v2_preclaim_handoff(" in source
     assert "SKIPPED_ADMISSION_DRIFT|" in source
+
+
+def test_source_reconstructability_probe_has_a_hard_deadline() -> None:
+    probe = _load_helpers("_preclaim_source_ref")["_preclaim_source_ref"]
+    calls: list[dict[str, object]] = []
+
+    def timeout(_command, **kwargs):
+        calls.append(kwargs)
+        raise subprocess.TimeoutExpired("git ls-remote", kwargs["timeout"])
+
+    with pytest.raises(ValueError, match="reconstructability_blocked"):
+        probe("https://github.com/example/repo", "main", "a" * 40, runner=timeout)
+    assert calls[0]["timeout"] <= 15
