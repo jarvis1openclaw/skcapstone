@@ -5532,7 +5532,28 @@ def _bounded_candidate_sequence(candidates, limit):
             break
     return result
 
+
+def _has_launchable_pick(picks, remaining, elastic_remaining, lane_order,
+                         admission_by_id, qwen_enabled=True, glm_enabled=True):
+    """Return whether a remaining pick can use a healthy lane with live budget."""
+    for _lane, candidate in picks:
+        card_id, core, labels = candidate[2], candidate[3], candidate[4]
+        escalation, qwen_exclusive, health, elastic = admission_by_id[card_id]
+        available = (
+            {name: min(slots, elastic_remaining) if name == "codex" else 0
+             for name, slots in remaining.items()}
+            if elastic else remaining
+        )
+        lane_name, _reason = select_compatible_lane(
+            labels, escalation, lane_order, available, qwen_suitable(core),
+            qwen_exclusive, health, qwen_enabled, glm_enabled,
+        )
+        if lane_name is not None:
+            return True
+    return False
+
 picks=[]; _i=0
+_pick_admission={}
 remaining={lane["name"]:lane["free"] for lane in LANES}
 _LANE_RANK={"qwen":0,"glm":1,"codex":2,"kimi":3,"escalate":4}
 lane_order=sorted(LANES,key=lambda lane:_LANE_RANK.get(lane["name"],9))
@@ -5599,6 +5620,8 @@ while _i<len(owned) and _i<len(_candidate_scan):
     if DRY:
         log(d,"DRY_SELECTION|%s|%s|selected=%s|reason=%s"%
             (HOST,_card[2],_lane_name,"qwen-first" if _qwen_exclusive else "compatible"))
+    _pick_admission[_card[2]]=(
+        _esc,_qwen_exclusive,_card_lane_health,_elastic_review)
     picks.append((_lane,_card))
 if _lane_deferred:
     log(d,"LANE_DEFER|%s|%s"%(HOST,",".join(
@@ -5724,8 +5747,16 @@ processed_picks=0
 launch_remaining={lane["name"]:lane["free"] for lane in LANES}
 _review_route_reservations={}
 logdir=os.path.join(HOME,".skcapstone/fleet/logs"); os.makedirs(logdir,exist_ok=True)
-for _LANE,(_,_,cid,core,_labels,_nb) in picks:
-    if launched>=MAX_LAUNCH or not any(launch_remaining.values()):
+for _pick_index,(_LANE,(_,_,cid,core,_labels,_nb)) in enumerate(picks):
+    if launched>=MAX_LAUNCH:
+        break
+    if not _has_launchable_pick(
+            picks[_pick_index:],launch_remaining,elastic_launch_remaining,
+            lane_order,_pick_admission,QWEN_TARGET>0,GLM_TARGET>0):
+        _exhausted_ids,_exhausted_omitted=_bounded_ids(
+            candidate[1][2] for candidate in picks[_pick_index:])
+        log(d,"LAUNCH_BUDGET_EXHAUSTED|%s|remaining=%d ids=%s omitted=%d"%
+            (HOST,len(picks)-_pick_index,_exhausted_ids,_exhausted_omitted))
         break
     processed_picks+=1
     _attempt_escalation=needs_escalation(cid,core,_labels)

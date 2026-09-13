@@ -22,6 +22,23 @@ def _bounded_sequence():
     return namespace["_bounded_candidate_sequence"]
 
 
+def _launchable_predicate():
+    tree = ast.parse(ROTATE.read_text(encoding="utf-8"))
+    node = next(
+        item
+        for item in tree.body
+        if isinstance(item, ast.FunctionDef) and item.name == "_has_launchable_pick"
+    )
+
+    def select(labels, _escalation, _order, remaining, *_args):
+        lane = "escalate" if "escalation-only" in labels else "codex"
+        return (lane, "compatible") if remaining.get(lane, 0) else (None, "full")
+
+    namespace = {"qwen_suitable": lambda _core: True, "select_compatible_lane": select}
+    exec(compile(ast.Module(body=[node], type_ignores=[]), str(ROTATE), "exec"), namespace)
+    return namespace["_has_launchable_pick"]
+
+
 def _fill(outcomes: list[tuple[str, bool]], seats: int, pool_bound: int) -> list[str]:
     candidates = [(0, 0, card_id) for card_id, _ok in outcomes]
     bounded = _bounded_sequence()(candidates, pool_bound)
@@ -71,10 +88,28 @@ def test_duplicate_candidates_are_attempted_once_in_order() -> None:
 def test_runtime_counts_only_successful_launches() -> None:
     source = ROTATE.read_text(encoding="utf-8")
     assert "_bounded_candidate_sequence(owned, MAX_CANDIDATE_SCAN)" in source
-    assert "if launched>=MAX_LAUNCH or not any(launch_remaining.values()):" in source
+    assert "if not _has_launchable_pick(" in source
     assert "_attempt_lane_name,_attempt_defer=select_compatible_lane(" in source
     assert "_attempt_remaining," in source
     assert "else:\n        launched+=1" in source
+
+
+def test_exhausted_elastic_budget_preserves_later_other_lane() -> None:
+    predicate = _launchable_predicate()
+    codex = ({"name": "codex"}, (0, 0, "codex-tail", {}, ["codex-only"], 0))
+    escalation = (
+        {"name": "escalate"},
+        (0, 0, "escalation", {}, ["escalation-only"], 0),
+    )
+    admissions = {
+        "codex-tail": (False, False, {"codex": (True, "healthy")}, True),
+        "escalation": (True, False, {"escalate": (True, "healthy")}, False),
+    }
+    remaining = {"codex": 1, "escalate": 1}
+    lane_order = ["codex", "escalate"]
+
+    assert predicate([codex], remaining, 0, lane_order, admissions) is False
+    assert predicate([codex, escalation], remaining, 0, lane_order, admissions) is True
 
 
 def test_prelaunch_recheck_uses_gateway_routes_for_producer_health() -> None:
