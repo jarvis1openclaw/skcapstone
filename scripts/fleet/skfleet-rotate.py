@@ -681,7 +681,13 @@ def _verify_source_workspace(path, repository, base_ref, base_revision,
             kwargs["env"] = dict(
                 os.environ, GIT_TERMINAL_PROMPT="0", GIT_ASKPASS="/bin/false"
             )
-        result = runner(command, **kwargs)
+            kwargs["timeout"] = 15
+        try:
+            result = runner(command, **kwargs)
+        except subprocess.TimeoutExpired as exc:
+            raise ValueError(
+                "reconstructability_blocked: workspace fetch timed out"
+            ) from exc
         if result.returncode != 0:
             raise ValueError(f"workspace {name} verification failed")
         return result.stdout.strip()
@@ -770,6 +776,7 @@ def _materialize_worker_workspace(default, core, labels, runner=subprocess.run):
             clone_command,
             capture_output=True,
             text=True,
+            timeout=15,
             env=dict(os.environ, GIT_TERMINAL_PROMPT="0", GIT_ASKPASS="/bin/false"),
         )
         if result.returncode != 0:
@@ -783,6 +790,10 @@ def _materialize_worker_workspace(default, core, labels, runner=subprocess.run):
             target.rmdir()
         temporary.replace(target)
         return str(target)
+    except subprocess.TimeoutExpired as exc:
+        if temporary.exists():
+            shutil.rmtree(temporary)
+        raise ValueError("workspace materialization timed out") from exc
     except BaseException:
         if temporary.exists():
             shutil.rmtree(temporary)

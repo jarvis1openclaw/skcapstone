@@ -742,11 +742,14 @@ print(output.getvalue(), end="")
     assert env["SKFLEET_GLM_TARGET"] == env["SKFLEET_QWEN_TARGET"] == "0"
     assert env["SKFLEET_KIMI_TARGET"] == env["SKFLEET_ESC_TARGET"] == "0"
     assert "reason=foreign-hash-partition" not in completed.stdout
-    assert f"LAUNCHED|chiap08|codex-auto-{card_id}|{card_id}|lane=codex" in completed.stdout
+    launch = f"LAUNCHED|chiap08|codex-auto-{card_id}|{card_id}|lane=codex"
+    first_blocked = "WORKSPACE_BLOCKED|chiap08|1280a113|"
+    second_blocked = "WORKSPACE_BLOCKED|chiap08|1280a115|"
+    assert completed.stdout.count(launch) == 1
+    assert completed.stdout.index(first_blocked) < completed.stdout.index(second_blocked)
+    assert completed.stdout.index(second_blocked) < completed.stdout.index(launch)
     assert "SKIPPED_LOGICAL_ROUTE_RACE" not in completed.stdout
     assert "LANE_DEFER|" not in completed.stdout
-    assert "WORKSPACE_BLOCKED|chiap08|1280a113|" in completed.stdout
-    assert "WORKSPACE_BLOCKED|chiap08|1280a115|" in completed.stdout
     assert elapsed < 15
     route_snapshot = json.loads(
         (home / ".skcapstone/evidence/fleet-review-routes.json").read_text(encoding="utf-8")
