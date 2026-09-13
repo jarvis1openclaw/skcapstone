@@ -5490,6 +5490,8 @@ while _i<len(owned) and _i<len(_candidate_scan):
     _labels=_card[4]
     _esc=needs_escalation(_card[2], _card[3], _labels)
     _qwen_exclusive=qwen_first_exclusive(_card[2],_labels)
+    _elastic_review = _POOL_V2_ADMISSIONS.get(_card[2], {}).get(
+        "elastic_review_admitted") is True
     _card_lane_health={lane["name"]:_health_for(
         lane["name"],_lane_model(lane,_card[3]))
         for lane in LANES}
@@ -5502,8 +5504,14 @@ while _i<len(owned) and _i<len(_candidate_scan):
     if _ONLY_SEAT in {"link","mero","seraph"}:
         _card_lane_health["codex"]=(
             remaining.get("codex",0)>0,"review-route-capacity")
+    if _elastic_review:
+        _card_lane_health["codex"]=(
+            remaining.get("codex",0)>0,"review-route-capacity")
+    _selection_remaining=(
+        {name:slots if name=="codex" else 0 for name,slots in remaining.items()}
+        if _elastic_review else remaining)
     _lane_name,_defer=select_compatible_lane(
-        _labels,_esc,lane_order,remaining,qwen_suitable(_card[3]),_qwen_exclusive,
+        _labels,_esc,lane_order,_selection_remaining,qwen_suitable(_card[3]),_qwen_exclusive,
         _card_lane_health,QWEN_TARGET>0,GLM_TARGET>0)
     if _lane_name is None:
         _lane_deferred[_defer]+=1

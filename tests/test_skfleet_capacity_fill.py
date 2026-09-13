@@ -87,3 +87,15 @@ def test_prelaunch_recheck_uses_gateway_routes_for_producer_health() -> None:
     assert '"codex" if "codex-only"' in block
     assert '_attempt_health["codex"]=(' in block
     assert 'bool(_producer_routes),"gateway-route-capacity"' in block
+
+
+def test_first_pass_elastic_review_uses_codex_health_and_capacity_only() -> None:
+    source = ROTATE.read_text(encoding="utf-8")
+    start = source.index("while _i<len(owned)")
+    end = source.index("if _lane_deferred:", start)
+    block = source[start:end]
+
+    assert "_elastic_review = _POOL_V2_ADMISSIONS.get(_card[2], {}).get(" in block
+    assert '_card_lane_health["codex"]=(' in block
+    assert 'remaining.get("codex",0)>0,"review-route-capacity"' in block
+    assert "if _elastic_review else remaining" in block

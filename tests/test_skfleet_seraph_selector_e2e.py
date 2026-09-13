@@ -23,25 +23,32 @@ GATEWAY_REVISION = "d" * 40
 
 
 class _HealthyGateway(BaseHTTPRequestHandler):
+    providers = ("provider-alpha", "provider-beta")
+    include_provider_models = True
+
     def do_GET(self) -> None:  # noqa: N802
         now = datetime.now(UTC)
         if self.path == "/v1/models":
             body = {
-                "data": [
-                    {
-                        "id": f"review-{provider}",
-                        "provider": provider,
-                        "advertised": True,
-                        "stale": False,
-                        "tools": True,
-                        "card": {
-                            "size_class": "M",
-                            "reasoning": True,
-                            "tier": "local" if provider == "provider-alpha" else "cloud",
-                        },
-                    }
-                    for provider in ("provider-alpha", "provider-beta")
-                ]
+                "data": (
+                    [
+                        {
+                            "id": f"review-{provider}",
+                            "provider": provider,
+                            "advertised": True,
+                            "stale": False,
+                            "tools": True,
+                            "card": {
+                                "size_class": "M",
+                                "reasoning": True,
+                                "tier": "local" if provider == "provider-alpha" else "cloud",
+                            },
+                        }
+                        for provider in self.providers
+                    ]
+                    if self.include_provider_models
+                    else []
+                )
                 + [
                     {
                         "id": "sk-s",
@@ -67,7 +74,7 @@ class _HealthyGateway(BaseHTTPRequestHandler):
                         "quarantined": False,
                         "lastCheck": int(now.timestamp() * 1000),
                     }
-                    for provider in ("provider-alpha", "provider-beta")
+                    for provider in self.providers
                 },
             }
         elif self.path == "/queue":
@@ -80,7 +87,7 @@ class _HealthyGateway(BaseHTTPRequestHandler):
                         "max": 1,
                         "active": 0,
                     }
-                    for provider in ("provider-alpha", "provider-beta")
+                    for provider in self.providers
                 },
             }
         else:
@@ -517,3 +524,150 @@ cycle("replay", "seraph")
         "status": "",
         "revision": expected_revision,
     }
+
+
+def test_generic_niobe_launches_seraph_review_through_codex(tmp_path: Path) -> None:
+    repository = "https://github.com/smilinTux/skcapstone"
+    origin = tmp_path / "origin.git"
+    seed = tmp_path / "seed"
+    subprocess.run(["git", "init", "--bare", str(origin)], check=True, capture_output=True)
+    subprocess.run(
+        ["git", "init", "--initial-branch=main", str(seed)], check=True, capture_output=True
+    )
+    (seed / "README.md").write_text("elastic review\n", encoding="utf-8")
+    subprocess.run(["git", "-C", str(seed), "add", "."], check=True, capture_output=True)
+    subprocess.run(
+        [
+            "git",
+            "-C",
+            str(seed),
+            "-c",
+            "user.name=SKCapstone Test",
+            "-c",
+            "user.email=test@localhost",
+            "commit",
+            "-m",
+            "seed",
+        ],
+        check=True,
+        capture_output=True,
+    )
+    subprocess.run(["git", "-C", str(seed), "remote", "add", "origin", str(origin)], check=True)
+    subprocess.run(
+        ["git", "-C", str(seed), "push", "origin", "main"], check=True, capture_output=True
+    )
+    revision = subprocess.run(
+        ["git", "-C", str(seed), "rev-parse", "HEAD"],
+        check=True,
+        capture_output=True,
+        text=True,
+    ).stdout.strip()
+    home = tmp_path / "home"
+    home.mkdir()
+    store, card_id = _canonical_review(home, base_revision=revision)
+    store.append_event(card_id, "add_label", "mero", label="codex-only")
+    assert "codex-only" in store.fold(card_id).labels
+    fake_bin = tmp_path / "bin"
+    fake_bin.mkdir()
+    launch_argv = tmp_path / "systemd-run.argv"
+    _executable(fake_bin / "tmux", "exit 0")
+    _executable(
+        fake_bin / "python3",
+        f'if [ "${{1:-}}" = "-" ]; then printf "%s\\n" {GATEWAY_REVISION}; exit 0; fi\n'
+        f'exec "{sys.executable}" "$@"',
+    )
+    _executable(
+        fake_bin / "systemctl",
+        'if [ "$1" = "--user" ] && [ "$2" = "list-units" ]; then exit 0; fi\nexit 1',
+    )
+    _executable(fake_bin / "systemd-run", f'printf "%s\\n" "$@" >> {launch_argv}')
+    skc = home / ".skenv" / "bin" / "skcapstone"
+    skc.parent.mkdir(parents=True)
+    _executable(skc, 'exec "$SKFLEET_TEST_PYTHON" -m skcapstone "$@"')
+    harness = """
+import contextlib
+import fcntl
+import io
+import os
+import runpy
+import skcapstone
+import sys
+from types import SimpleNamespace
+
+os.uname = lambda: SimpleNamespace(nodename="chiap08")
+fcntl.flock = lambda *_args: None
+sys.argv = [sys.argv[1], "--go"]
+output = io.StringIO()
+with contextlib.redirect_stdout(output):
+    try:
+        runpy.run_path(sys.argv[0], run_name="__main__")
+    except SystemExit as exc:
+        if exc.code not in (None, 0):
+            raise
+print(output.getvalue(), end="")
+"""
+    skcoord_root = Path(lifecycle_reassessment.__file__).resolve().parents[1]
+    env = os.environ.copy()
+    env.update(
+        {
+            "HOME": str(home),
+            "SKCAPSTONE_HOME": str(home / ".skcapstone"),
+            "PATH": str(fake_bin) + os.pathsep + os.environ["PATH"],
+            "PYTHONPATH": str(ROOT / "src") + os.pathsep + str(skcoord_root),
+            "SKCOORD_SRC": str(skcoord_root),
+            "GIT_ALLOW_PROTOCOL": "file",
+            "GIT_CONFIG_COUNT": "1",
+            "GIT_CONFIG_KEY_0": f"url.file://{origin}.insteadOf",
+            "GIT_CONFIG_VALUE_0": repository,
+            "SKFLEET_TEST_PYTHON": sys.executable,
+            "SKFLEET_ROTATION_HOSTS": "chiap08",
+            "SKFLEET_TARGET": "1",
+            "SKFLEET_GLM_TARGET": "0",
+            "SKFLEET_QWEN_TARGET": "0",
+            "SKFLEET_KIMI_TARGET": "0",
+            "SKFLEET_ESC_TARGET": "0",
+            "SKFLEET_CODEX_PHYSICAL_LIMIT": "1",
+            "SKFLEET_MAX_LAUNCH": "1",
+            "SKFLEET_PI_CARDSTORE_GUARD": str(
+                ROOT / "scripts" / "fleet" / "pi-cardstore-guard.mjs"
+            ),
+        }
+    )
+    gateway = ThreadingHTTPServer(("127.0.0.1", 0), _HealthyGateway)
+    gateway.RequestHandlerClass.providers = ("provider-alpha",)
+    gateway.RequestHandlerClass.include_provider_models = False
+    env["SKFLEET_GATEWAY_URL"] = f"http://127.0.0.1:{gateway.server_port}"
+    thread = threading.Thread(target=gateway.serve_forever, daemon=True)
+    thread.start()
+    try:
+        completed = subprocess.run(
+            [sys.executable, "-c", harness, str(ROTATE)],
+            env=env,
+            capture_output=True,
+            text=True,
+            timeout=30,
+            check=False,
+        )
+    finally:
+        gateway.shutdown()
+        gateway.server_close()
+        thread.join()
+        _HealthyGateway.providers = ("provider-alpha", "provider-beta")
+        _HealthyGateway.include_provider_models = True
+
+    assert completed.returncode == 0, completed.stderr
+    assert env["SKFLEET_GLM_TARGET"] == env["SKFLEET_QWEN_TARGET"] == "0"
+    assert env["SKFLEET_KIMI_TARGET"] == env["SKFLEET_ESC_TARGET"] == "0"
+    assert f"LAUNCHED|chiap08|codex-auto-{card_id}|{card_id}|lane=codex" in completed.stdout
+    assert "LANE_DEFER|" not in completed.stdout
+    route_snapshot = json.loads(
+        (home / ".skcapstone/evidence/fleet-review-routes.json").read_text(encoding="utf-8")
+    )
+    assert [route["logical_route"] for route in route_snapshot["routes"]] == ["sk-s"]
+    assert [
+        route
+        for route in route_snapshot["routes"]
+        if "codex" in (route["provider"] + " " + route["logical_route"]).lower()
+    ] == []
+    assert store.fold(card_id).owner == f"pi-codex-review-chiap08-{card_id}"
+    assert launch_argv.is_file()
