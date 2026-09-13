@@ -461,6 +461,66 @@ def test_matching_non_origin_remote_passes_repository_verification() -> None:
     ] in calls
 
 
+def test_remote_fetch_timeout_is_bounded_without_timing_out_local_git() -> None:
+    verify = _helpers()["_verify_source_workspace"]
+    observed: list[tuple[list[str], object]] = []
+
+    def runner(command: list[str], **kwargs: object) -> subprocess.CompletedProcess[str]:
+        observed.append((command, kwargs.get("timeout")))
+        if _is_remote_listing(command):
+            return subprocess.CompletedProcess(
+                command,
+                0,
+                _remote_listing({"origin": "https://github.com/smilinTux/sklegal"}),
+                "",
+            )
+        if "fetch" in command:
+            raise subprocess.TimeoutExpired(command, kwargs["timeout"])
+        return subprocess.CompletedProcess(command, 0, "", "")
+
+    with pytest.raises(ValueError, match="reconstructability_blocked: workspace fetch timed out"):
+        verify(
+            "/tmp/workspace",
+            "https://github.com/smilinTux/sklegal",
+            "main",
+            "a" * 40,
+            runner=runner,
+        )
+    assert next(timeout for command, timeout in observed if "fetch" in command) <= 15
+    assert all(timeout is None for command, timeout in observed if "fetch" not in command)
+
+
+def test_remote_clone_timeout_is_bounded_and_cleans_temporary_workspace(tmp_path: Path) -> None:
+    materialize = _helpers()["_materialize_worker_workspace"]
+    target = tmp_path / "worker"
+    observed_timeout: object = None
+
+    def timeout(command: list[str], **kwargs: object) -> subprocess.CompletedProcess[str]:
+        nonlocal observed_timeout
+        observed_timeout = kwargs.get("timeout")
+        temporary = Path(command[-1])
+        temporary.mkdir()
+        (temporary / "partial").write_text("partial", encoding="utf-8")
+        raise subprocess.TimeoutExpired(command, observed_timeout)
+
+    with pytest.raises(ValueError, match="workspace materialization timed out"):
+        materialize(
+            str(target),
+            {
+                "links": {
+                    "repository": "https://github.com/smilinTux/sklegal",
+                    "base_ref": "main",
+                    "base_revision": "a" * 40,
+                }
+            },
+            ["source-only"],
+            runner=timeout,
+        )
+    assert observed_timeout <= 15
+    assert not target.exists()
+    assert not list(tmp_path.glob(".*.materializing-*"))
+
+
 def test_ambiguous_matching_remotes_fail_closed() -> None:
     select = _helpers()["_select_matching_source_remote"]
 

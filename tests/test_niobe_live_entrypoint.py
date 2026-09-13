@@ -1,5 +1,6 @@
 import hashlib
 import json
+import os
 import subprocess
 import sys
 from pathlib import Path
@@ -348,6 +349,40 @@ def test_live_wrapper_returns_auditable_timeout_with_diagnostics(
     assert receipt["exception_type"] == "TimeoutExpired"
     assert receipt["dispatcher_stdout"] == "POOL|ready=1\n"
     assert receipt["dispatcher_stderr"] == "deadline\n"
+
+
+def test_live_timeout_terminates_and_reaps_dispatcher_process_group(
+    tmp_path: Path, monkeypatch
+) -> None:
+    revision = approval_card(tmp_path)
+    path = tmp_path / "home/coordination/niobe-activation.json"
+    path.parent.mkdir(parents=True)
+    path.write_text(json.dumps(activation(revision)))
+    child_pid = tmp_path / "child.pid"
+    dispatcher = tmp_path / "dispatcher.py"
+    dispatcher.write_text(
+        "import pathlib, subprocess, time\n"
+        f"child = subprocess.Popen(['sleep', '30'])\n"
+        f"pathlib.Path({str(child_pid)!r}).write_text(str(child.pid))\n"
+        "print('partial stdout', flush=True)\n"
+        "time.sleep(30)\n"
+    )
+    mailbox = SimpleNamespace(as_dict=lambda: {"mailbox_ok": True})
+    monkeypatch.setattr("skcapstone.niobe_live_entrypoint.startup_hello", lambda *a, **k: True)
+    monkeypatch.setattr("skcapstone.niobe_live_entrypoint.poll_mail", lambda *a, **k: mailbox)
+    monkeypatch.setattr("skcapstone.niobe_live_entrypoint._DISPATCH_TIMEOUT_SECONDS", 0.2)
+    monkeypatch.setattr("skcapstone.niobe_live_entrypoint._TERMINATE_GRACE_SECONDS", 0.2)
+
+    assert run_live(activation_path=path, dispatcher=dispatcher, local_host="chiap08") == 70
+
+    pid = int(child_pid.read_text())
+    with pytest.raises(ProcessLookupError):
+        os.kill(pid, 0)
+    receipt = json.loads(
+        (tmp_path / "home/coordination/seat-cycles/niobe.health.jsonl").read_text()
+    )
+    assert receipt["exception_type"] == "TimeoutExpired"
+    assert receipt["dispatcher_stdout"] == "partial stdout\n"
 
 
 def test_live_wrapper_refuses_stale_well_formed_card_revision(tmp_path: Path) -> None:

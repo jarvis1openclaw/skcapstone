@@ -7,6 +7,7 @@ import fcntl
 import hashlib
 import json
 import os
+import signal
 import socket
 import subprocess
 import sys
@@ -17,6 +18,44 @@ from .niobe_activation import LIVE_UNIT, parse_activation
 from .seat_mail import poll_mail, startup_hello
 
 _DISPATCH_TIMEOUT_SECONDS = 270
+_TERMINATE_GRACE_SECONDS = 5
+
+
+def _run_dispatcher(
+    command: list[str], *, environment: dict[str, str]
+) -> subprocess.CompletedProcess:
+    """Run one isolated dispatcher and reap its whole process group on timeout."""
+
+    process = subprocess.Popen(
+        command,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        text=True,
+        env=environment,
+        start_new_session=True,
+    )
+    try:
+        stdout, stderr = process.communicate(timeout=_DISPATCH_TIMEOUT_SECONDS)
+    except subprocess.TimeoutExpired as exc:
+        try:
+            os.killpg(process.pid, signal.SIGTERM)
+        except ProcessLookupError:
+            pass
+        try:
+            stdout, stderr = process.communicate(timeout=_TERMINATE_GRACE_SECONDS)
+        except subprocess.TimeoutExpired:
+            try:
+                os.killpg(process.pid, signal.SIGKILL)
+            except ProcessLookupError:
+                pass
+            stdout, stderr = process.communicate()
+        raise subprocess.TimeoutExpired(
+            command,
+            _DISPATCH_TIMEOUT_SECONDS,
+            output=stdout if stdout is not None else exc.stdout,
+            stderr=stderr if stderr is not None else exc.stderr,
+        ) from exc
+    return subprocess.CompletedProcess(command, process.returncode, stdout, stderr)
 
 
 def _append_health(
@@ -126,14 +165,19 @@ def run_live(
     )
     environment["SKFLEET_ROTATION_ID"] = cycle_id
     evidence_path = home / "evidence" / "fleet-rotation" / cycle_id / "actions.log"
+    command = [sys.executable, str(dispatcher), "--go"]
     try:
-        completed = runner(
-            [sys.executable, str(dispatcher), "--go"],
-            capture_output=True,
-            text=True,
-            check=False,
-            env=environment,
-            timeout=_DISPATCH_TIMEOUT_SECONDS,
+        completed = (
+            _run_dispatcher(command, environment=environment)
+            if runner is subprocess.run
+            else runner(
+                command,
+                capture_output=True,
+                text=True,
+                check=False,
+                env=environment,
+                timeout=_DISPATCH_TIMEOUT_SECONDS,
+            )
         )
     except subprocess.TimeoutExpired as exc:
         stdout = (

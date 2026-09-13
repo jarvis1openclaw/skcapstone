@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Card `d49c82a1`: bound stale source-ref probes so selectable Niobe
+  candidates cannot consume the cycle deadline, and terminate and reap the
+  dispatcher process group before recording timeout rc=70 diagnostics.
+
 - Card `970454ed`: bound Niobe scheduler work to ready and governed-review
   candidates, and convert its fixed 270-second dispatcher timeout into an
   auditable nonzero health receipt with preserved stdout and stderr.
