@@ -4695,6 +4695,8 @@ if not DRY:
 
 _PINNED_IDS=set()
 pool=[]
+_pool_v2_inputs=[]
+_pool_v2_input_ids=set()
 blocked=0
 foreign_skipped=0
 skipped_unclaimable=0
@@ -4721,6 +4723,12 @@ for cd in sorted(glob.glob(CARDS+"/*")):
         _structural_core = json.load(open(core_p))
     except Exception:
         _structural_core = {}
+    if "review" in {
+        str(label).strip().lower()
+        for label in _structural_core.get("initial_labels", ())
+    }:
+        _pool_v2_inputs.append((cid, _structural_core))
+        _pool_v2_input_ids.add(cid)
     if lifecycle_state(cid) == "open":
         human_gated += int(_human_gate(cid))
     legacy = _legacy_selector_decision(cid, core_p)
@@ -4787,6 +4795,9 @@ for cd in sorted(glob.glob(CARDS+"/*")):
     elif any(up.startswith(e) for e in ENG): lane=1
     else: lane=2
     pool.append([lane,PRI.get(str(core.get("initial_priority")),4),cid,core,labels])
+    if cid not in _pool_v2_input_ids:
+        _pool_v2_inputs.append((cid, core))
+        _pool_v2_input_ids.add(cid)
 
 # How many OTHER cards would this card unblock if it completed? A card sitting at
 # the head of a dependency chain is worth far more than an isolated one, because
@@ -5088,17 +5099,16 @@ def _shadow_pool_v2():
     _POOL_V2_CLASSES = class_ids
     _POOL_V2_EXCLUDED = all_excluded
     population = []
-    for card_dir in sorted(glob.glob(CARDS + "/*")):
-        cid = os.path.basename(card_dir)
-        core_path = os.path.join(card_dir, "core.json")
-        if not os.path.exists(core_path):
-            continue
+    # The legacy pass immediately above already excluded the full CardStore.
+    # Revalidate only its ready rows and structurally labeled review candidates;
+    # the latter are required because POOL_V2 can safely re-admit them. On the
+    # measured 5,500-card estate, folding every unrelated card a second time
+    # exhausted Niobe's 270-second outer deadline before selection began.
+    for cid, core in _pool_v2_inputs:
         adapter_facets = tuple(
             sorted("skcoord:" + name for name, ids in class_ids.items() if cid in ids)
         )
         try:
-            with open(core_path, encoding="utf-8") as handle:
-                core = json.load(handle)
             lifecycle = lifecycle_state(cid)
             claimability = authoritative_claimability(cid, core)
             reason = str(claimability.get("reason") or "")

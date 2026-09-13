@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Card `970454ed`: bound Niobe scheduler work to ready and governed-review
+  candidates, and convert its fixed 270-second dispatcher timeout into an
+  auditable nonzero health receipt with preserved stdout and stderr.
+
 - Card `fe620f49`: route elastic governed reviews to the single configured
   Niobe placement host, failing closed on missing, ambiguous, dirty, or
   conflicting pinned placement while preserving ordinary and seat ownership.

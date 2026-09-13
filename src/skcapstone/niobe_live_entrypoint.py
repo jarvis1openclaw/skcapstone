@@ -31,6 +31,8 @@ def _append_health(
     cycle_id: str,
     evidence_path: Path | None = None,
     outcome: str | None = None,
+    dispatcher_stdout: str = "",
+    dispatcher_stderr: str = "",
 ) -> None:
     """Append one truthful receipt for every live dispatcher invocation."""
 
@@ -47,6 +49,8 @@ def _append_health(
         "reason": None if returncode == 0 else f"dispatcher_exit_{returncode}",
         "dispatcher_returncode": returncode,
         "exception_type": exception_type,
+        "dispatcher_stdout": dispatcher_stdout,
+        "dispatcher_stderr": dispatcher_stderr,
         "activation_decision": activation.decision_id,
         "activation_card_revision": activation.card_revision,
         "unit": LIVE_UNIT,
@@ -125,11 +129,38 @@ def run_live(
     try:
         completed = runner(
             [sys.executable, str(dispatcher), "--go"],
+            capture_output=True,
+            text=True,
             check=False,
             env=environment,
             timeout=_DISPATCH_TIMEOUT_SECONDS,
         )
-    except (OSError, subprocess.TimeoutExpired) as exc:
+    except subprocess.TimeoutExpired as exc:
+        stdout = (
+            exc.stdout.decode(errors="replace")
+            if isinstance(exc.stdout, bytes)
+            else exc.stdout or ""
+        )
+        stderr = (
+            exc.stderr.decode(errors="replace")
+            if isinstance(exc.stderr, bytes)
+            else exc.stderr or ""
+        )
+        _append_health(
+            home,
+            host=host,
+            returncode=70,
+            mailbox=mailbox,
+            activation=activation,
+            started_at=started_at,
+            exception_type=type(exc).__name__,
+            cycle_id=cycle_id,
+            evidence_path=evidence_path,
+            dispatcher_stdout=stdout,
+            dispatcher_stderr=stderr,
+        )
+        return 70
+    except OSError as exc:
         _append_health(
             home,
             host=host,
