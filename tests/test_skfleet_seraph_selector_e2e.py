@@ -194,6 +194,7 @@ def _canonical_review(
                 link_key=key,
                 link_value=value,
             )
+        store.append_event(review_card_id_override, "move", "link", column="review")
         return store, review_card_id_override
     result = reconcile_review_work(
         card_home,

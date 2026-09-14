@@ -572,6 +572,7 @@ def register_coord_commands(main: click.Group) -> None:
         from skcoord.coordination import _board_mutation_lock
 
         from ..coordination import Board
+        from ..review_admission import governed_review_metadata
 
         validate_task_id(task_id)
         validate_agent_name(owner)
@@ -583,6 +584,20 @@ def register_coord_commands(main: click.Group) -> None:
         try:
             with _board_mutation_lock(home_path), card_mutation_lock(home_path, task_id):
                 current_revision = current_claim_precondition(home_path, task_id, owner)
+                current_card = CardStore(home_path).fold(task_id)
+                restore_review = bool(
+                    current_revision is not None
+                    and current_card is not None
+                    and governed_review_metadata(
+                        {
+                            "title": current_card.title,
+                            "description": current_card.description,
+                            "links": current_card.links,
+                            "meta": current_card.meta,
+                        },
+                        current_card.labels,
+                    )
+                )
                 if current_revision != expected_claim_revision:
                     exact_replay = current_revision is None and any(
                         event.get("action") == "release_claim"
@@ -604,6 +619,8 @@ def register_coord_commands(main: click.Group) -> None:
                         agent,
                         expected_claim_revision,
                     )
+                    if restore_review:
+                        CardStore(home_path).append_event(task_id, "move", agent, column="review")
                 released = CardStore(home_path).fold(task_id)
                 if released is None or released.owner is not None:
                     raise ValueError(f"CardStore release readback failed for {task_id}")

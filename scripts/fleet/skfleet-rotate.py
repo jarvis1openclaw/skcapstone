@@ -1991,7 +1991,9 @@ def _fold_claimability(core, rows):
                 state["owner"] = None
                 state["claim_revision"] = None
                 if not state["terminal"]:
-                    state["status"] = "backlog"
+                    state["status"] = (
+                        "review" if _complete_governed_review(core,state) else "backlog"
+                    )
         elif action == "claim":
             owner = event.get("owner")
             if not isinstance(owner, str) or not owner:
@@ -4982,6 +4984,7 @@ def _pool_v2_admission(cid, core, claimability, fresh=False):
     folded_core = claimability.get("core") or core
     labels = claimability.get("labels") or ()
     governed_review = _governed_review_metadata(folded_core, labels) is not None
+    review_status = claimability.get("status") == "review"
     review_seat = governed_review_seat(labels,qualified_reviewer_seats(folded_core))
     # Reason: overlay.backoff is the single admission hold bit (from
     # blocked_backoff in production). Read it here so Seraph/elastic bits and
@@ -4992,6 +4995,7 @@ def _pool_v2_admission(cid, core, claimability, fresh=False):
     seraph_review_admitted = bool(
         globals().get("_ONLY_SEAT", "") == review_seat
         and review_seat is not None
+        and review_status
         and reason == "review"
         and claimability.get("claimable") is False
         and governed_review
@@ -5003,6 +5007,7 @@ def _pool_v2_admission(cid, core, claimability, fresh=False):
         and claimability.get("claimable") is False
         and governed_review
         and review_seat is not None
+        and review_status
         and not hold
     )
     return {
