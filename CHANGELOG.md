@@ -7,6 +7,10 @@
   enablement without activating allowed-only timers, and record every enable
   or disable attempt in append-only attributable evidence.
 
+- Card `74a0c101`: make the authoritative review column mandatory for pool,
+  recommendation, and launch admission; exact governed-review claim release
+  restores review while a later explicit backlog move suspends dispatch.
+
 - Card `d49c82a1`: bound stale source-ref probes so selectable Niobe
   candidates cannot consume the cycle deadline, and terminate and reap the
   dispatcher process group before recording timeout rc=70 diagnostics.
