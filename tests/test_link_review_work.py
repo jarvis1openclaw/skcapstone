@@ -126,7 +126,7 @@ def test_reconcile_is_restart_idempotent_and_launchable(tmp_path):
     card = CardStore(home).fold(first.review_card_id)
     assert card is not None
     assert card.owner is None
-    assert card.status.value == "backlog"
+    assert card.status.value == "review"
     assert "review" in card.labels
     assert card.links["producer_identity"] == "builder"
     assert card.links["repository"] == "https://github.com/org/repo"
@@ -174,6 +174,7 @@ def test_ready_review_card_reproduces_reviewer_preflight_rejection(tmp_path):
             },
         )
     )
+    store.append_event(card_id, "move", "link", column="review")
     store.append_event(card_id, "move", "coordinator", column="ready")
 
     result = reconcile_review_work(home, item, evidence_sha256="6" * 64)
@@ -428,6 +429,7 @@ def test_existing_canonical_card_inherits_binding_without_identity_rewrite(tmp_p
             meta=meta,
         )
     )
+    CardStore(home).append_event(card_id, "move", "link", column="review")
     before = CardStore(home).fold(card_id)
 
     result = reconcile_review_work(home, item, evidence_sha256="0" * 64)

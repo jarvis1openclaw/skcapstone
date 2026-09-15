@@ -202,6 +202,47 @@ def test_release_claim_command_is_owner_and_revision_specific(tmp_path: Path):
     assert len(releases) == 1
 
 
+def test_release_claim_restores_review_until_explicit_backlog_move(tmp_path: Path):
+    """Exact review release restores its lane; a later operator move pauses it."""
+
+    board = Board(tmp_path)
+    board.ensure_dirs()
+    board.create_task(Task(id="a1e10005", title="review target", tags=["review", "seat-seraph"]))
+    store = CardStore(tmp_path)
+    for key, value in {
+        "producer_identity": "producer",
+        "candidate_evidence_sha256": "a" * 64,
+        "link_source_card": "source01",
+        "link_head_revision": "b" * 40,
+    }.items():
+        store.append_event("a1e10005", "link", "producer", link_key=key, link_value=value)
+    transition_task(tmp_path, task_id="a1e10005", column="review", actor="producer")
+    board.claim_task("reviewer", "a1e10005")
+    revision = current_claim_precondition(tmp_path, "a1e10005", "reviewer")
+    args = [
+        "coord",
+        "release-claim",
+        "a1e10005",
+        "--owner",
+        "reviewer",
+        "--expected-claim-revision",
+        revision,
+        "--agent",
+        "repair",
+        "--home",
+        str(tmp_path),
+    ]
+
+    result = CliRunner().invoke(_main(), args)
+    assert result.exit_code == 0, result.output
+    assert CardStore(tmp_path).fold("a1e10005").status.value == "review"
+
+    transition_task(tmp_path, task_id="a1e10005", column="backlog", actor="operator")
+    replay = CliRunner().invoke(_main(), args)
+    assert replay.exit_code == 0, replay.output
+    assert CardStore(tmp_path).fold("a1e10005").status.value == "backlog"
+
+
 def test_release_claim_uses_authoritative_claim_when_agent_projection_is_stale(
     tmp_path: Path,
 ):

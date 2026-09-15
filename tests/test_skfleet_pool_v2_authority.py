@@ -118,6 +118,7 @@ def test_seraph_admission_clears_when_blocked_backoff_holds() -> None:
     claimability = {
         "claimable": False,
         "reason": "review",
+        "status": "review",
         "host_pin": None,
         "title": core["title"],
         "labels": ["review", "seat-seraph", "parent-383a7834"],
@@ -205,6 +206,7 @@ def test_canonical_review_card_enters_seraph_or_elastic_codex_selector() -> None
     claimability = {
         "claimable": False,
         "reason": "review",
+        "status": "review",
         "host_pin": None,
         "title": core["title"],
         "labels": ["review", "seat-seraph", "parent-source"],
@@ -218,6 +220,9 @@ def test_canonical_review_card_enters_seraph_or_elastic_codex_selector() -> None
     assert admission["governed_review"] is True
     assert admission["seraph_review_admitted"] is True
     assert helpers["_pool_v2_ready_ids"](decisions, {card_id: admission}) == {card_id}
+
+    backlog = helpers["_pool_v2_admission"](card_id, core, dict(claimability, status="backlog"))
+    assert backlog["seraph_review_admitted"] is False
 
     helpers["_ONLY_SEAT"] = ""
     generic = helpers["_pool_v2_admission"](card_id, core, claimability)

@@ -403,6 +403,22 @@ def test_released_64c201a1_review_keeps_elastic_admission_after_empty_title() ->
     assert reason == "review"
     assert admission["elastic_review_admitted"] is True
 
+    paused = namespace["_fold_claimability"](
+        core,
+        [*events, _event("2026-09-13T01:04:00Z", "operator", "move", column="backlog")],
+    )
+    paused.update(
+        claimable=False,
+        reason=namespace["_claimability_reason"](core, paused),
+        core={**core, "title": paused["title"], "links": paused["links"]},
+        source_revision="d" * 64,
+        host_pin=None,
+    )
+    assert (
+        namespace["_pool_v2_admission"]("64c201a1", core, paused)["elastic_review_admitted"]
+        is False
+    )
+
 
 @pytest.mark.parametrize(
     ("core_update", "events", "expected"),
