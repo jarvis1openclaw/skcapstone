@@ -135,6 +135,8 @@ def test_pool_v2_rejects_duplicate_card_decisions() -> None:
 
 def _launcher_function(name: str, namespace: dict) -> object:
     namespace.setdefault("re", re)
+    if name == "_pool_v2_dispatchable" and "_pool_v2_candidate_allowed" not in namespace:
+        _launcher_function("_pool_v2_candidate_allowed", namespace)
     source = SCRIPT.read_text(encoding="utf-8")
     tree = ast.parse(source)
     function = next(
@@ -234,13 +236,13 @@ def test_pool_v2_authority_includes_only_claimable_rows_and_fails_closed() -> No
     dispatchable = _launcher_function("_pool_v2_dispatchable", {})
     ready_ids = _launcher_function("_pool_v2_ready_ids", {"_pool_v2_dispatchable": dispatchable})
     decisions = (
-        SchedulerDecision("claim000", "ready", True),
+        SchedulerDecision("c1a10000", "ready", True),
         SchedulerDecision("review00", "ready", True),
         SchedulerDecision("unsafe00", "ready", True),
         SchedulerDecision("blocked0", "dependency", False),
     )
     admissions = {
-        "claim000": _admission("claim000"),
+        "c1a10000": _admission("c1a10000"),
         "review00": _admission(
             "review00",
             claimable=False,
@@ -252,7 +254,7 @@ def test_pool_v2_authority_includes_only_claimable_rows_and_fails_closed() -> No
         "blocked0": _admission("blocked0"),
     }
 
-    assert ready_ids(decisions, admissions) == {"claim000"}
+    assert ready_ids(decisions, admissions) == {"c1a10000"}
     assert ready_ids(decisions, admissions, failed=True) == set()
 
 
@@ -295,7 +297,7 @@ def test_pool_v2_preclaim_accepts_unchanged_claimable_only() -> None:
             "_pool_v2_fingerprint": fingerprint,
         },
     )
-    selected = _admission("claim000")
+    selected = _admission("c1a10000")
 
     assert matches(selected, dict(selected)) is True
     assert matches(selected, {**selected, "source_revision": "b"}) is False

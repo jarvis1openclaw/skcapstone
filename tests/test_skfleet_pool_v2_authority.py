@@ -21,14 +21,20 @@ ROTATE = ROOT / "scripts" / "fleet" / "skfleet-rotate.py"
 
 
 def _load_helpers(*names: str) -> dict[str, object]:
+    requested = set(names)
+    if "_pool_v2_dispatchable" in requested:
+        requested.add("_pool_v2_candidate_allowed")
     tree = ast.parse(ROTATE.read_text(encoding="utf-8"))
     functions = {
         node.name: node
         for node in tree.body
-        if isinstance(node, ast.FunctionDef) and node.name in names
+        if isinstance(node, ast.FunctionDef) and node.name in requested
     }
-    assert set(functions) == set(names)
-    module = ast.Module(body=[functions[name] for name in names], type_ignores=[])
+    assert set(functions) == requested
+    ordered = ["_pool_v2_candidate_allowed", *names]
+    module = ast.Module(
+        body=[functions[name] for name in ordered if name in functions], type_ignores=[]
+    )
     namespace: dict[str, object] = {
         "collections": collections,
         "hashlib": hashlib,
@@ -210,6 +216,42 @@ def test_pool_v2_is_authoritative_for_large_only_v2_population() -> None:
     assert authoritative == set(ids)
     assert authoritative - legacy_ids == set(ids[2:])
     assert len(authoritative) == 45
+
+
+def test_pool_v2_ready_set_matches_tank_authority_for_live_65_row_shape() -> None:
+    """Seat fencing cannot turn a reported ready pool into empty authority."""
+    helpers = _load_helpers(
+        "_role_seat_metadata",
+        "_pool_v2_dispatchable",
+        "_pool_v2_ready_ids",
+        "_pool_v2_authority_rows",
+    )
+    helpers.update(
+        {
+            "_ONLY_SEAT": "tank",
+            "_CATEGORY_OPT_IN": "dispatch-approved",
+        }
+    )
+    ids = [f"{index:08x}" for index in range(65)]
+    decisions = [SimpleNamespace(card_id=card_id, eligible=True) for card_id in ids]
+    admissions = {card_id: _admission(card_id) for card_id in ids}
+
+    ready_ids = helpers["_pool_v2_ready_ids"](decisions, admissions)
+    rows, _ = helpers["_pool_v2_authority_rows"](
+        decisions,
+        admissions,
+        False,
+        {},
+        {"high": 1},
+        (),
+        "chiap08",
+    )
+
+    assert ready_ids == {row[2] for row in rows}
+    assert (
+        "or not _pool_v2_candidate_allowed(_POOL_V2_ADMISSIONS[cid])"
+        in ROTATE.read_text(encoding="utf-8")
+    )
 
 
 def test_malformed_review_stale_drift_and_unknown_fail_closed() -> None:
