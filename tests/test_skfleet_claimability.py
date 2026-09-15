@@ -8,6 +8,7 @@ import json
 import os
 import re
 from pathlib import Path
+from types import SimpleNamespace
 
 import pytest
 
@@ -30,6 +31,9 @@ def _load_claimability() -> dict[str, object]:
         "authoritative_claimability",
         "_governed_review_metadata",
         "_pool_v2_admission",
+        "_pool_v2_authority_rows",
+        "_pool_v2_dispatchable",
+        "_pool_v2_ready_ids",
     }
     tree = ast.parse(ROTATE.read_text(encoding="utf-8"))
     nodes = {
@@ -400,7 +404,7 @@ def test_released_64c201a1_review_stays_withheld_until_explicit_move_review() ->
     )
     admission = namespace["_pool_v2_admission"]("64c201a1", core, state)
 
-    assert state["status"] == "doing"
+    assert state["status"] == "backlog"
     assert reason == "review"
     assert admission["governed_review"] is True
     assert admission["elastic_review_admitted"] is False
@@ -467,6 +471,101 @@ def test_release_claim_preserves_nonreview_column(column: str) -> None:
 
     assert state["status"] == column
     assert namespace["_claimability_reason"](core, state) == "review"
+
+
+def test_claim_origin_status_is_captured_once_per_claim_generation() -> None:
+    """Owned moves cannot replace either generation's pre-claim column."""
+    namespace = _load_claimability()
+    core = _core("deadbeef")
+    events = [
+        _claim("2026-09-15T01:00:00Z", "owner", "revision-1"),
+        _event("2026-09-15T01:01:00Z", "owner", "move", column="ready"),
+        _event("2026-09-15T01:02:00Z", "owner", "move", column="review"),
+        _release("2026-09-15T01:03:00Z", "owner", "owner", "revision-1"),
+        _event("2026-09-15T01:04:00Z", "operator", "move", column="ready"),
+        _claim("2026-09-15T01:05:00Z", "owner", "revision-2"),
+        _event("2026-09-15T01:06:00Z", "owner", "move", column="doing"),
+        _release("2026-09-15T01:07:00Z", "owner", "owner", "revision-2"),
+    ]
+
+    state = namespace["_fold_claimability"](core, events)
+
+    assert state["status"] == "ready"
+    assert state["claim_origin_status"] is None
+
+
+def test_a6a2f0f9_owned_moves_do_not_replace_preclaim_backlog() -> None:
+    """The exact live lifecycle is withheld before bounded selection."""
+    namespace = _load_claimability()
+    core = {
+        **_core("a6a2f0f9", labels=["sklegal", "review", "source-only", "sk-s", "seat-seraph"]),
+        "title": "[SKLEGAL][S][REVIEW] Verify migration",
+        "links": {
+            "producer_identity": "codex-3406cf8d",
+            "candidate_evidence_sha256": "a" * 64,
+            "link_source_card": "3406cf8d",
+            "link_head_revision": "b" * 40,
+        },
+    }
+    lifecycle = [
+        _claim("2026-09-11T23:46:41Z", "seraph", "revision-1"),
+        _event("2026-09-11T23:46:44Z", "seraph", "move", column="doing"),
+        _event("2026-09-11T23:48:30Z", "seraph", "move", column="ready"),
+        _event("2026-09-11T23:52:05Z", "seraph", "move", column="review"),
+        _release("2026-09-12T01:13:58Z", "jarvis", "seraph", "revision-1"),
+    ]
+    stale = namespace["_fold_claimability"](core, lifecycle)
+    stale_reason = namespace["_claimability_reason"](core, stale)
+    stale.update(
+        claimable=stale_reason in {"claimable", "governed-review"},
+        reason=stale_reason,
+        core={**core, "title": stale["title"], "links": stale["links"]},
+        source_revision="c" * 64,
+        host_pin=None,
+    )
+    stale_admission = namespace["_pool_v2_admission"]("a6a2f0f9", core, stale)
+    valid_admission = {
+        "card_id": "feedface",
+        "claimable": True,
+        "reason": "claimable",
+        "governed_review": False,
+        "host_pin": None,
+        "title": "Later valid work",
+        "labels": ["skcapstone", "sk-s"],
+        "core": {"id": "feedface"},
+        "overlay": {"backoff": False},
+        "source_revision": "d" * 64,
+    }
+    decisions = [
+        SimpleNamespace(card_id="a6a2f0f9", eligible=True),
+        SimpleNamespace(card_id="feedface", eligible=True),
+    ]
+
+    ready = namespace["_pool_v2_ready_ids"](
+        decisions,
+        {"a6a2f0f9": stale_admission, "feedface": valid_admission},
+    )
+    rows, _pinned = namespace["_pool_v2_authority_rows"](
+        decisions,
+        {"a6a2f0f9": stale_admission, "feedface": valid_admission},
+        False,
+        {},
+        {None: 4},
+        (),
+        "chiap03",
+    )
+
+    assert stale["status"] == "backlog"
+    assert stale_reason == "sensitive-category"
+    assert stale_admission["elastic_review_admitted"] is False
+    assert ready == {"feedface"}
+    assert [row[2] for row in rows[:1]] == ["feedface"]
+
+    explicit_review = namespace["_fold_claimability"](
+        core,
+        [*lifecycle, _event("2026-09-12T01:14:00Z", "jarvis", "move", column="review")],
+    )
+    assert namespace["_claimability_reason"](core, explicit_review) == "governed-review"
 
 
 @pytest.mark.parametrize(
