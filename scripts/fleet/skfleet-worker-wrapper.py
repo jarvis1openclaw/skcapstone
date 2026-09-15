@@ -310,7 +310,20 @@ def release_superseded_review_claim(args: argparse.Namespace) -> bool:
     from skcoord.coordination import Board
 
     home = Path.home() / ".skcapstone"
-    card = CardStore(home).fold(args.card)
+    store = CardStore(home)
+    card = store.fold(args.card)
+    if (
+        card is not None
+        and card.owner is None
+        and not card.meta.get("_claim_revision")
+        and any(
+            event.get("action") == "release_claim"
+            and event.get("released_owner") == args.owner
+            and event.get("expected_claim_revision") == args.claim_revision
+            for event in store._read_events(args.card)
+        )
+    ):
+        return True
     if (
         card is None
         or card.owner != args.owner
@@ -342,7 +355,6 @@ def release_superseded_review_claim(args: argparse.Namespace) -> bool:
             released = False
             break
     if not released:
-        store = CardStore(home)
         card = store.fold(args.card)
         released = bool(
             card is not None
