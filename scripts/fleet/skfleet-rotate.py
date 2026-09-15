@@ -1971,8 +1971,6 @@ def _fold_claimability(core, rows):
             column = str(event.get("column") or "").strip().lower()
             if column in _COLUMNS:
                 state["status"] = column
-                if state["owner"] is not None:
-                    state["claim_origin_status"] = column
                 state["review_seen"] = column == "review"
                 if (column in {"backlog", "ready", "doing"}
                         and not _complete_governed_review(core,state)):
