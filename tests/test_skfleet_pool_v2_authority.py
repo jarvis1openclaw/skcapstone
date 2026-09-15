@@ -248,9 +248,8 @@ def test_pool_v2_ready_set_matches_tank_authority_for_live_65_row_shape() -> Non
     )
 
     assert ready_ids == {row[2] for row in rows}
-    assert (
-        "or not _pool_v2_candidate_allowed(_POOL_V2_ADMISSIONS[cid])"
-        in ROTATE.read_text(encoding="utf-8")
+    assert "or not _pool_v2_candidate_allowed(_POOL_V2_ADMISSIONS[cid])" in ROTATE.read_text(
+        encoding="utf-8"
     )
 
 
