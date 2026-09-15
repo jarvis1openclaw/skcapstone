@@ -4955,6 +4955,33 @@ def _pool_v2_fingerprint(admission):
                                      separators=(",", ":")).encode()).hexdigest()
 
 
+def _pool_v2_candidate_allowed(admission):
+    """Apply card-shape and seat authority fences once for every pool path."""
+    if not isinstance(admission, dict):
+        return False
+    cid = admission.get("card_id")
+    labels = admission.get("labels")
+    if not isinstance(cid, str) or not re.fullmatch(r"[0-9a-f]{8}", cid):
+        return False
+    if not isinstance(labels, list):
+        return False
+    normalized_labels = {str(label).strip().lower() for label in labels}
+    only_seat = globals().get("_ONLY_SEAT", "")
+    seat_labels = {label for label in normalized_labels if label.startswith("seat-")}
+    if only_seat and seat_labels != {"seat-" + only_seat}:
+        return False
+    if not only_seat and seat_labels & {"seat-tank", "seat-atlas"}:
+        return False
+    return not (
+        only_seat in {"tank", "atlas"}
+        and (
+            globals().get("_CATEGORY_OPT_IN", "dispatch-approved")
+            not in normalized_labels
+            or _role_seat_metadata(admission.get("core") or {}, only_seat) is None
+        )
+    )
+
+
 def _pool_v2_dispatchable(admission):
     """Allow only explicitly claimable work from the bounded snapshot."""
     if not isinstance(admission, dict):
@@ -4968,6 +4995,9 @@ def _pool_v2_dispatchable(admission):
     # unchanged blocked_on dependency because dispatchable ignored backoff.
     if overlay.get("backoff") is True:
         return False
+    if not _pool_v2_candidate_allowed(admission):
+        return False
+    cid = admission["card_id"]
     ordinary = (
         admission.get("claimable") is True
         and admission.get("reason") in {"claimable", "governed-review"}
@@ -4987,11 +5017,10 @@ def _pool_v2_dispatchable(admission):
         and admission.get("elastic_review_admitted") is True
     )
     return bool(
-        isinstance(admission.get("card_id"), str)
+        cid == admission.get("card_id")
         and isinstance(admission.get("core"), dict)
-        and admission["core"].get("id") == admission["card_id"]
+        and admission["core"].get("id") == cid
         and isinstance(admission.get("title"), str)
-        and isinstance(admission.get("labels"), list)
         and re.fullmatch(r"[0-9a-f]{64}", str(admission.get("source_revision") or ""))
         and (ordinary or seraph_review or elastic_review)
     )
@@ -5092,26 +5121,8 @@ def _pool_v2_authority_rows(decisions, admissions, failed, unblocks, priorities,
     rows = []
     pinned = set()
     for cid in sorted(ready_ids):
-        if not re.fullmatch(r"[0-9a-f]{8}", cid):
-            continue
         admission = admissions[cid]
         core = admission["core"]
-        only_seat = globals().get("_ONLY_SEAT", "")
-        seat_labels = {
-            str(label).strip().lower()
-            for label in admission["labels"]
-            if str(label).strip().lower().startswith("seat-")
-        }
-        if only_seat and seat_labels != {"seat-" + only_seat}:
-            continue
-        if not only_seat and seat_labels & {"seat-tank", "seat-atlas"}:
-            continue
-        if only_seat in {"tank", "atlas"} and _CATEGORY_OPT_IN not in {
-            str(label).strip().lower() for label in admission["labels"]
-        }:
-            continue
-        if only_seat in {"tank", "atlas"} and _role_seat_metadata(core, only_seat) is None:
-            continue
         title = admission["title"]
         labels = admission["labels"]
         blob = (title + " " + json.dumps(labels)).upper()
@@ -5265,6 +5276,7 @@ def _shadow_pool_v2():
                         cid in _REVIEW_READBACK_BLOCKED
                         or terminal_review_verdict(cid, core)
                         or str(core.get("title") or "").startswith("CMDB drift")
+                        or not _pool_v2_candidate_allowed(_POOL_V2_ADMISSIONS[cid])
                     ),
                     terminal_cardstore=lifecycle in {"complete", "void"},
                     terminal_itil=itil_terminal(cid),
