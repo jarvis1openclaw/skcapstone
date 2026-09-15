@@ -13,6 +13,7 @@ while only a successful release may idle it.
 from __future__ import annotations
 
 import argparse
+import hashlib
 import importlib.util
 import json
 import sys
@@ -331,3 +332,82 @@ def test_persistent_release_failure_keeps_owner_projection_active(monkeypatch, t
         and event.get("expected_claim_revision") == values.claim_revision
     ]
     assert releases == []
+
+
+def test_incomplete_pass_keeps_exact_claim_and_projection(monkeypatch, tmp_path) -> None:
+    """Hashed PASS evidence without canonical CI cannot escape cleanup."""
+    module, store, projection, values = _terminal_board_setup(tmp_path)
+    card = tmp_path / ".skcapstone" / "cards" / values.card
+    core = json.loads((card / "core.json").read_text(encoding="utf-8"))
+    core["title"] = "[SKFLEET][REVIEW] exact candidate"
+    (card / "core.json").write_text(json.dumps(core), encoding="utf-8")
+    evidence = tmp_path / "review.md"
+    evidence.write_text("reviewed exact bytes\n", encoding="utf-8")
+    events = tmp_path / ".skcapstone" / "coordination" / "card_events"
+    events.mkdir(parents=True, exist_ok=True)
+    rows = [
+        {
+            "card_id": values.card,
+            "action": "link",
+            "link_key": "verdict",
+            "link_value": "PASS",
+            "ts": "2026-09-15T16:00:00Z",
+        },
+        {
+            "card_id": values.card,
+            "action": "link",
+            "link_key": "evidence",
+            "link_value": str(evidence),
+            "ts": "2026-09-15T16:00:01Z",
+        },
+        {
+            "card_id": values.card,
+            "action": "link",
+            "link_key": "evidence_sha256",
+            "link_value": hashlib.sha256(evidence.read_bytes()).hexdigest(),
+            "ts": "2026-09-15T16:00:02Z",
+        },
+    ]
+    (events / "review.jsonl").write_text(
+        "".join(json.dumps(row) + "\n" for row in rows), encoding="utf-8"
+    )
+    monkeypatch.setattr(module.Path, "home", classmethod(lambda _cls: tmp_path))
+    idle_calls = []
+    monkeypatch.setattr(module, "idle_owner_projection", lambda *call: idle_calls.append(call))
+
+    for _attempt in range(2):
+        with pytest.raises(RuntimeError, match="review completion rejected"):
+            module.finalize_worker_exit(values, None)
+
+    assert store.fold(values.card).owner == values.owner
+    assert idle_calls == []
+    assert json.loads(projection.read_text(encoding="utf-8"))["current_task"] == values.card
+    records = list(values.evidence_dir.glob("*.json"))
+    assert len(records) == 1
+    rejection = json.loads(records[0].read_text(encoding="utf-8"))
+    assert rejection["completion_failure"] == "review_completion_rejected"
+    assert rejection["claim_revision"] == values.claim_revision
+    assert "ci_check_python311" in rejection["reason"]
+
+
+def test_newer_same_owner_revision_fences_review_cleanup(claimed_board, monkeypatch) -> None:
+    module, values, home = claimed_board
+    store = CardStore(home)
+    store.append_event(
+        values.card,
+        "claim",
+        values.owner,
+        owner=values.owner,
+        claim_revision="generation-2",
+    )
+    calls = []
+    monkeypatch.setattr(
+        "skcoord.coordination.Board.release_claim",
+        lambda *_args, **kwargs: calls.append(kwargs) or True,
+    )
+
+    with pytest.raises(RuntimeError, match="exact claim was not released"):
+        module.release_superseded_review_claim(values)
+
+    assert calls == []
+    assert store.fold(values.card).meta["_claim_revision"] == "generation-2"

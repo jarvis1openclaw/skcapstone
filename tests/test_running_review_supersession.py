@@ -158,6 +158,17 @@ def test_superseded_review_releases_only_exact_claim(monkeypatch) -> None:
     monkeypatch.setattr("skcoord.coordination.Board", Board)
     values = args()
     values.review_supersession = {"current_head": "2" * 40}
+    install_store(
+        module,
+        {
+            values.card: SimpleNamespace(
+                owner=values.owner,
+                title="review",
+                meta={"_claim_revision": values.claim_revision},
+            )
+        },
+    )
+    monkeypatch.setattr(module, "validate_review_completion", lambda *_args: None)
 
     module.release_superseded_review_claim(values)
 
