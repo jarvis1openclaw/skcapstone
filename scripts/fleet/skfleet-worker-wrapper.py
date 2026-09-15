@@ -19,6 +19,7 @@ from pathlib import Path
 from skcapstone.card_store import CardStore
 from skcapstone.fleet.terminal_capacity import retire_worker_generation
 from skcapstone.fleet.worker_watchdog import StartupObservation, classify_startup
+from skcapstone.review_verdict import validate_review_completion
 from skcapstone.seat_mail import poll_mail, startup_hello
 
 
@@ -267,6 +268,34 @@ LOCK_RELEASE_ATTEMPTS = 3
 LOCK_RELEASE_RETRY_BACKOFF_SECONDS = 0.5
 
 
+def record_review_completion_rejection(args: argparse.Namespace, reason: str) -> None:
+    """Persist one immutable rejection for the exact cleanup claim."""
+    attempted_at = datetime.datetime.now(datetime.timezone.utc).isoformat()
+    payload = {
+        "attempted_at": attempted_at,
+        "card_id": args.card,
+        "claim_revision": args.claim_revision,
+        "owner": args.owner,
+        "completion_failure": "review_completion_rejected",
+        "reason": reason,
+    }
+    digest = hashlib.sha256(f"{args.card}\0{args.claim_revision}\0{reason}".encode()).hexdigest()[
+        :16
+    ]
+    args.evidence_dir.mkdir(parents=True, exist_ok=True)
+    path = args.evidence_dir / f"{args.card}-{digest}.json"
+    try:
+        fd = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
+    except FileExistsError:
+        existing = json.loads(path.read_text(encoding="utf-8"))
+        if all(existing.get(key) == payload[key] for key in payload if key != "attempted_at"):
+            return
+        raise
+    with os.fdopen(fd, "w", encoding="utf-8") as handle:
+        json.dump(payload, handle, sort_keys=True)
+        handle.write("\n")
+
+
 def release_superseded_review_claim(args: argparse.Namespace) -> bool:
     """CAS-release this exact terminal generation through the locked Board.
 
@@ -281,6 +310,18 @@ def release_superseded_review_claim(args: argparse.Namespace) -> bool:
     from skcoord.coordination import Board
 
     home = Path.home() / ".skcapstone"
+    card = CardStore(home).fold(args.card)
+    if (
+        card is None
+        or card.owner != args.owner
+        or card.meta.get("_claim_revision") != args.claim_revision
+    ):
+        raise RuntimeError("terminal worker exact claim was not released")
+    try:
+        validate_review_completion(args.card, card.title, home)
+    except ValueError as exc:
+        record_review_completion_rejection(args, str(exc))
+        raise RuntimeError(f"review completion rejected: {exc}") from exc
     released = False
     contention: TimeoutError | None = None
     for attempt in range(LOCK_RELEASE_ATTEMPTS):

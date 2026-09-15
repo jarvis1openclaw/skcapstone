@@ -45,6 +45,7 @@ from skcapstone.review_admission import (
     governed_review_seat,
     qualified_reviewer_seats,
 )
+from skcapstone.review_verdict import validate_review_completion
 from skcapstone.fleet.review_pool import elastic_reviewer_identity, review_fanout_limit
 from skcapstone.estate import (
     EstateConfigError,
@@ -3075,6 +3076,7 @@ _COMPLETION_FAILURE_CLASSES = frozenset(
         "claim_missing",
         "claim_released",
         "stale_claim",
+        "review_completion_rejected",
     }
 )
 _GATEWAY_ERROR_RE = re.compile(r"^\s*(400|404|408|429|502|504):\s*(\{.*\})\s*$", re.S)
@@ -4644,6 +4646,33 @@ def _durable_review_outcome(cid):
     return None
 
 
+def _record_review_completion_rejection(cid, owner, revision, reason):
+    """Persist one immutable cleanup rejection for an exact review claim."""
+    attempted_at = datetime.datetime.now(datetime.timezone.utc).isoformat()
+    payload = {
+        "attempted_at": attempted_at,
+        "card_id": cid,
+        "claim_revision": revision,
+        "owner": owner,
+        "completion_failure": "review_completion_rejected",
+        "reason": reason,
+    }
+    digest = hashlib.sha256((cid + "\0" + revision + "\0" + reason).encode()).hexdigest()[:16]
+    os.makedirs(_WORKER_EXIT_DIR, exist_ok=True)
+    path = os.path.join(_WORKER_EXIT_DIR, "%s-%s.json" % (cid, digest))
+    try:
+        fd = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
+    except FileExistsError:
+        with open(path, encoding="utf-8") as handle:
+            existing = json.load(handle)
+        if all(existing.get(key) == payload[key] for key in payload if key != "attempted_at"):
+            return
+        raise
+    with os.fdopen(fd, "w", encoding="utf-8") as handle:
+        json.dump(payload, handle, sort_keys=True)
+        handle.write("\n")
+
+
 def release_finished_review_claims():
     """Release exact local review generations after durable terminal outcomes."""
     if HOST != AUTHORITY_HOST or DRY:
@@ -4669,6 +4698,18 @@ def release_finished_review_claims():
         # generation. A new owner or revision loses the race and is untouched.
         fresh_owner, _fresh_at, fresh_revision = _current_claim_identity_fresh(cid)
         if fresh_owner != owner or fresh_revision != revision:
+            continue
+        folded = CardStore(Path(CARDS).parent).fold(cid)
+        if (
+            folded is None
+            or folded.owner != owner
+            or folded.meta.get("_claim_revision") != revision
+        ):
+            continue
+        try:
+            validate_review_completion(cid, folded.title, Path(CARDS).parent)
+        except ValueError as exc:
+            _record_review_completion_rejection(cid, owner, revision, str(exc))
             continue
         result = subprocess.run(
             [SKC, "coord", "release-claim", cid, "--owner", owner,
