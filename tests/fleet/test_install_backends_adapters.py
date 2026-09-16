@@ -123,6 +123,15 @@ def test_core_backend_enables_each_unit_via_systemctl_when_enable_set():
     assert ["systemctl", "--user", "enable", "skgateway.service"] in runner.calls
 
 
+def test_core_backend_starts_each_non_timer_unit_when_start_set():
+    runner = _FakeRunner()
+    backend = default_backends(runner=runner)["core"]
+    status, _ = backend(["skgateway.service"], dry_run=False, enable=True, start=True)
+    assert status == "ok"
+    assert ["systemctl", "--user", "enable", "skgateway.service"] in runner.calls
+    assert ["systemctl", "--user", "start", "skgateway.service"] in runner.calls
+
+
 def test_core_backend_installs_timer_and_paired_service_before_enable(monkeypatch, tmp_path):
     monkeypatch.setenv("SKCAPSTONE_REPOS", "/opt/custom-repos")
     monkeypatch.setenv("XDG_CONFIG_HOME", str(tmp_path / "config"))
@@ -167,6 +176,19 @@ def test_core_backend_skips_systemctl_enable_in_dry_run():
     b = default_backends(runner=runner)
     status, _ = b["core"](["skgateway.service"], dry_run=True, enable=True, start=False)
     assert status == "would-write"
+    assert runner.calls == []
+
+
+def test_core_dry_run_reports_install_reload_enable_and_start_without_mutation():
+    runner = _FakeRunner()
+    backend = default_backends(runner=runner)["core"]
+    status, detail = backend(["skgateway.service"], dry_run=True, enable=True, start=True)
+    assert status == "would-write"
+    assert "scripts/install.sh --non-interactive" in detail
+    assert "install -D -m 0644" in detail
+    assert "systemctl --user daemon-reload" in detail
+    assert "systemctl --user enable skgateway.service" in detail
+    assert "systemctl --user start skgateway.service" in detail
     assert runner.calls == []
 
 

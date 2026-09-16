@@ -144,10 +144,13 @@ service exactly `inactive`. A failed `systemctl show`, an unknown or transitiona
 state, or a failed stop aborts rollback before any legacy timer is enabled.
 Use the operational entrypoint below; it constructs the reverse profile and
 will not call required-timer convergence unless the forbidden-first proof
-succeeds. Preserve its append-only evidence file.
+succeeds. It requires exactly Tank, Seraph, and the Niobe timer selected from
+the validated activation. This example shows the fail-closed shadow selection.
+Preserve its append-only evidence file.
 
 ```bash
 python -m skcapstone.fleet.timer_enablement rollback-legacy \
+  --home "$HOME/.skcapstone" \
   --legacy-timer skfleet-tank.timer \
   --legacy-timer skfleet-seraph.timer \
   --legacy-timer skfleet-niobe.timer \

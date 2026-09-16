@@ -46,6 +46,12 @@ _TIER: dict[str, int] = {
 }
 
 
+def ships_core_unit(name: str) -> bool:
+    """Return whether this distribution owns and packages a systemd unit."""
+
+    return (Path(__file__).parents[1] / "data" / "systemd" / name).is_file()
+
+
 def tier_of(backend_id: str) -> int:
     """Return the install tier for a backend ID.
 
@@ -159,17 +165,20 @@ def default_backends(runner: Callable = subprocess.run) -> dict[str, Callable]:
     """
     repos = _repos_root()
 
-    def _enable_units(names: list[str]) -> tuple[str, str]:
-        """Run `systemctl --user enable <name>` for each name, stopping on failure."""
+    def _activate_units(names: list[str], *, enable: bool, start: bool) -> tuple[str, str]:
+        """Enable/start requested units, stopping at the first failed command."""
         status, detail = "ok", ""
         for name in names:
-            status, detail = _run(runner, ["systemctl", "--user", "enable", name], dry_run=False)
-            if status == "failed":
-                break
+            for verb, requested in (("enable", enable), ("start", start)):
+                if requested:
+                    status, detail = _run(
+                        runner, ["systemctl", "--user", verb, name], dry_run=False
+                    )
+                    if status == "failed":
+                        return status, detail
         return status, detail
 
-    def _install_core_units(names: list[str]) -> tuple[str, str]:
-        """Copy requested core units (and timer services), then reload systemd."""
+    def _core_unit_names(names: list[str]) -> list[str]:
         unit_names = set(names)
         unit_names.update(
             name.removesuffix(".timer") + ".service" for name in names if name.endswith(".timer")
@@ -178,22 +187,28 @@ def default_backends(runner: Callable = subprocess.run) -> dict[str, Callable]:
             unit_names.update(
                 f"skfleet-{seat}.service" for seat in ("tank", "seraph", "niobe", "niobe-live")
             )
+        return sorted(unit_names)
+
+    def _core_copy_commands(names: list[str]) -> list[list[str]]:
         unit_dir = (
             Path(os.environ.get("XDG_CONFIG_HOME", "~/.config")).expanduser() / "systemd/user"
         )
-        for name in sorted(unit_names):
-            status, detail = _run(
-                runner,
-                [
-                    "install",
-                    "-D",
-                    "-m",
-                    "0644",
-                    str(repos / "skcapstone" / "systemd" / name),
-                    str(unit_dir / name),
-                ],
-                dry_run=False,
-            )
+        return [
+            [
+                "install",
+                "-D",
+                "-m",
+                "0644",
+                str(repos / "skcapstone" / "systemd" / name),
+                str(unit_dir / name),
+            ]
+            for name in _core_unit_names(names)
+        ]
+
+    def _install_core_units(names: list[str]) -> tuple[str, str]:
+        """Copy requested core units (and timer services), then reload systemd."""
+        for command in _core_copy_commands(names):
+            status, detail = _run(runner, command, dry_run=False)
             if status == "failed":
                 return status, detail
         return _run(runner, ["systemctl", "--user", "daemon-reload"], dry_run=False)
@@ -226,7 +241,7 @@ def default_backends(runner: Callable = subprocess.run) -> dict[str, Callable]:
         cmd = ["bash", str(repos / "skcomms" / "scripts" / "bootstrap.sh"), "--no-service"]
         status, detail = _run(runner, cmd, dry_run=dry_run)
         if status == "ok" and enable:
-            status, detail = _enable_units(names)
+            status, detail = _activate_units(names, enable=True, start=False)
         return status, detail
 
     def core(names: list[str], *, dry_run: bool, enable: bool, start: bool) -> tuple[str, str]:
@@ -236,11 +251,20 @@ def default_backends(runner: Callable = subprocess.run) -> dict[str, Callable]:
         # and it does so explicitly via systemctl below (the installer
         # itself takes no --enable flag).
         cmd = ["bash", str(repos / "skcapstone" / "scripts" / "install.sh"), "--non-interactive"]
+        if dry_run:
+            commands = [cmd, *_core_copy_commands(names), ["systemctl", "--user", "daemon-reload"]]
+            commands.extend(
+                ["systemctl", "--user", verb, name]
+                for name in names
+                for verb, requested in (("enable", enable), ("start", start))
+                if requested
+            )
+            return "would-write", " && ".join(" ".join(command) for command in commands)
         status, detail = _run(runner, cmd, dry_run=dry_run)
         if status == "ok":
             status, detail = _install_core_units(names)
-        if status == "ok" and enable:
-            status, detail = _enable_units(names)
+        if status == "ok" and (enable or start):
+            status, detail = _activate_units(names, enable=enable, start=start)
         return status, detail
 
     def agent(names: list[str], *, dry_run: bool, enable: bool, start: bool) -> tuple[str, str]:

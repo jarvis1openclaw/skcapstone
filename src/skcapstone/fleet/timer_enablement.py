@@ -33,12 +33,24 @@ def forbidden_timers(profile: dict) -> list[str]:
     return sorted({unit for unit in forbidden if unit.endswith(".timer")})
 
 
-def legacy_timer_rollback_profile(legacy_timers: list[str]) -> dict:
+def approved_legacy_timers(home: Path) -> frozenset[str]:
+    """Return Tank, Seraph, and exactly one activation-selected Niobe timer."""
+
+    from .seat_cycle_orchestrator import select_niobe_timer
+
+    return frozenset({"skfleet-tank.timer", "skfleet-seraph.timer", select_niobe_timer(home)})
+
+
+def legacy_timer_rollback_profile(legacy_timers: list[str], *, home: Path) -> dict:
     """Build the reverse-migration fence for restoring legacy seat timers."""
 
+    requested = set(legacy_timers)
+    approved = approved_legacy_timers(home)
+    if requested != approved or len(legacy_timers) != len(requested):
+        raise ValueError("legacy rollback requires exactly: " + ", ".join(sorted(approved)))
     return {
         "units": {
-            "required": sorted(set(legacy_timers)),
+            "required": sorted(requested),
             "mustNot": ["skfleet-seat-cycle.timer"],
         }
     }
@@ -298,6 +310,7 @@ def converge_forbidden_timers(
 def rollback_to_legacy_timers(
     legacy_timers: list[str],
     *,
+    home: Path,
     runner: Runner,
     config_home: Path,
     evidence_path: Path,
@@ -305,7 +318,7 @@ def rollback_to_legacy_timers(
 ) -> dict:
     """Stop the orchestrator fence before restoring legacy seat timers."""
 
-    profile = legacy_timer_rollback_profile(legacy_timers)
+    profile = legacy_timer_rollback_profile(legacy_timers, home=home)
     forbidden = converge_forbidden_timers(
         profile,
         runner=runner,
@@ -336,17 +349,22 @@ def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("command", choices=("rollback-legacy",))
     parser.add_argument("--legacy-timer", action="append", required=True)
+    parser.add_argument("--home", type=Path, default=Path("~/.skcapstone").expanduser())
     parser.add_argument("--config-home", type=Path, default=Path("~/.config").expanduser())
     parser.add_argument("--evidence", type=Path, required=True)
     parser.add_argument("--actor", required=True)
     args = parser.parse_args()
-    result = rollback_to_legacy_timers(
-        args.legacy_timer,
-        runner=subprocess.run,
-        config_home=args.config_home,
-        evidence_path=args.evidence,
-        actor=args.actor,
-    )
+    try:
+        result = rollback_to_legacy_timers(
+            args.legacy_timer,
+            home=args.home,
+            runner=subprocess.run,
+            config_home=args.config_home,
+            evidence_path=args.evidence,
+            actor=args.actor,
+        )
+    except ValueError as exc:
+        parser.error(str(exc))
     print(json.dumps(result, sort_keys=True))
     return 0 if result["ok"] else 1
 

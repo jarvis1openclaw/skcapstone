@@ -131,7 +131,13 @@ def apply(
             # convergence boundary. Let the backend install their unit files,
             # but never let it perform an unattributed enable mutation first.
             backend_enable = enable and not step.name.endswith(".timer")
-            status, detail = fn([step.name], dry_run=dry_run, enable=backend_enable, start=start)
+            backend_start = start and not step.name.endswith(".timer")
+            status, detail = fn(
+                [step.name],
+                dry_run=dry_run,
+                enable=backend_enable,
+                start=backend_start,
+            )
         except Exception as exc:
             status, detail = "failed", str(exc)
 
@@ -376,6 +382,7 @@ def run_install(
         unit
         for unit in (profile.get("units") or {}).get("required", [])
         if install_backends.resolve(unit, "unit") == "core"
+        and install_backends.ships_core_unit(unit)
         and (selected is None or unit in selected)
     )
     if core_units:
@@ -383,32 +390,38 @@ def run_install(
             steps=[step for step in install_plan.steps if step.name not in core_units]
         )
     install_results = apply(install_plan, backends, dry_run=dry_run, enable=enable, start=start)
+    core_services = [unit for unit in core_units if not unit.endswith(".timer")]
+    core_timers = [unit for unit in core_units if unit.endswith(".timer")]
     if core_units:
         backend = backends.get("core")
-        try:
-            if backend is None:
-                core_status, core_detail = "needs_manual", "backend core unregistered"
-            else:
-                core_status, core_detail = backend(
-                    core_units,
-                    dry_run=dry_run,
-                    enable=False,
-                    start=False,
+        for units, activate in ((core_services, True), (core_timers, False)):
+            if not units:
+                continue
+            try:
+                if backend is None:
+                    core_status, core_detail = "needs_manual", "backend core unregistered"
+                else:
+                    core_status, core_detail = backend(
+                        units,
+                        dry_run=dry_run,
+                        enable=enable and activate,
+                        start=start and activate,
+                    )
+            except Exception as exc:
+                core_status, core_detail = "failed", str(exc)
+            install_results.extend(
+                InstallResult(
+                    InstallStep(unit, "unit", install_backends.tier_of("core"), "core"),
+                    core_status,
+                    core_detail,
                 )
-        except Exception as exc:
-            core_status, core_detail = "failed", str(exc)
-        install_results.extend(
-            InstallResult(
-                InstallStep(unit, "unit", install_backends.tier_of("core"), "core"),
-                core_status,
-                core_detail,
+                for unit in units
             )
-            for unit in core_units
-        )
     results = [_result_dict(r) for r in install_results]
     ok = all(r["status"] in _OK_STEP_STATUSES for r in results)
 
-    if ok and enable and not dry_run:
+    scheduler_selected = selected is None or "skfleet-seat-cycle.timer" in selected
+    if ok and enable and not dry_run and scheduler_selected:
         evidence_path = paths.root.parent / "evidence" / "timer-enablement.jsonl"
         actor = (
             os.environ.get("SKAGENT") or os.environ.get("SKCAPSTONE_AGENT") or "skfleet-install"

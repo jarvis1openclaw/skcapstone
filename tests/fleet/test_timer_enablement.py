@@ -382,7 +382,8 @@ def test_read_only_forbidden_audit_distinguishes_absent_from_unknown(tmp_path):
 def test_rollback_stops_orchestrator_before_enabling_legacy_timers(tmp_path):
     """Reverse migration uses the same fail-closed forbidden-first fence."""
 
-    policy = timer_enablement.legacy_timer_rollback_profile(["skfleet-tank.timer"])
+    legacy = sorted(timer_enablement.approved_legacy_timers(tmp_path))
+    policy = timer_enablement.legacy_timer_rollback_profile(legacy, home=tmp_path)
     assert policy["units"]["mustNot"] == ["skfleet-seat-cycle.timer"]
     systemd = TransitionSystemd(
         timer_file="enabled",
@@ -391,7 +392,8 @@ def test_rollback_stops_orchestrator_before_enabling_legacy_timers(tmp_path):
         config_home=tmp_path,
     )
     result = timer_enablement.rollback_to_legacy_timers(
-        ["skfleet-tank.timer"],
+        legacy,
+        home=tmp_path,
         runner=systemd,
         config_home=tmp_path,
         evidence_path=tmp_path / "evidence.jsonl",
@@ -405,7 +407,8 @@ def test_rollback_stops_orchestrator_before_enabling_legacy_timers(tmp_path):
 def test_rollback_entrypoint_never_enables_legacy_when_reverse_fence_unknown(tmp_path):
     systemd = TransitionSystemd(show_failure=True)
     result = timer_enablement.rollback_to_legacy_timers(
-        ["skfleet-tank.timer"],
+        sorted(timer_enablement.approved_legacy_timers(tmp_path)),
+        home=tmp_path,
         runner=systemd,
         config_home=tmp_path,
         evidence_path=tmp_path / "evidence.jsonl",
@@ -413,6 +416,57 @@ def test_rollback_entrypoint_never_enables_legacy_when_reverse_fence_unknown(tmp
     )
     assert result["ok"] is False
     assert not any(call[2] == "enable" for call in systemd.calls)
+
+
+@pytest.mark.parametrize(
+    "timers",
+    [
+        ["skfleet-tank.timer"],
+        ["skfleet-seat-cycle.timer"],
+        [
+            "skfleet-tank.timer",
+            "skfleet-seraph.timer",
+            "skfleet-niobe.timer",
+            "skfleet-niobe-live.timer",
+        ],
+        [
+            "skfleet-tank.timer",
+            "skfleet-seraph.timer",
+            "skfleet-niobe.timer",
+            "skfleet-niobe.timer",
+        ],
+    ],
+)
+def test_rollback_rejects_partial_conflicting_or_unapproved_timer_sets(tmp_path, timers):
+    with pytest.raises(ValueError, match="requires exactly"):
+        timer_enablement.legacy_timer_rollback_profile(timers, home=tmp_path)
+
+
+def test_rollback_timer_set_selects_live_niobe_from_valid_activation(tmp_path, monkeypatch):
+    activation = tmp_path / "coordination/niobe-activation.json"
+    activation.parent.mkdir(parents=True)
+    activation.write_text("{}", encoding="utf-8")
+    monkeypatch.setattr(
+        "skcapstone.fleet.seat_cycle_orchestrator.parse_activation",
+        lambda *_args, **_kwargs: object(),
+    )
+    selected = timer_enablement.approved_legacy_timers(tmp_path)
+    assert selected == {
+        "skfleet-tank.timer",
+        "skfleet-seraph.timer",
+        "skfleet-niobe-live.timer",
+    }
+    assert "skfleet-niobe.timer" not in selected
+
+
+def test_rollback_timer_set_selects_shadow_for_missing_or_invalid_activation(tmp_path):
+    selected = timer_enablement.approved_legacy_timers(tmp_path)
+    assert selected == {
+        "skfleet-tank.timer",
+        "skfleet-seraph.timer",
+        "skfleet-niobe.timer",
+    }
+    assert "skfleet-niobe-live.timer" not in selected
 
 
 def test_failed_mutation_is_recorded(tmp_path):
@@ -569,6 +623,73 @@ def test_apply_refreshes_required_core_unit_bytes_even_without_inventory_drift(
     assert calls == [
         (["skfleet-seat-cycle.timer"], {"dry_run": False, "enable": False, "start": False})
     ]
+
+
+def test_apply_preserves_activation_for_services_but_not_timers(tmp_path, monkeypatch):
+    paths = type("Paths", (), {"root": tmp_path / "fleet"})()
+    policy = {
+        "units": {
+            "required": ["skcapstone.service", "skfleet-seat-cycle.timer"],
+            "mustNot": [],
+        }
+    }
+    monkeypatch.setattr(installer.store, "is_frozen", lambda paths: False)
+    monkeypatch.setattr(installer.converge, "actuation_enabled", lambda paths, node: True)
+    monkeypatch.setattr(installer, "load_drift", lambda *args, **kwargs: DriftReport())
+    monkeypatch.setattr(installer, "_profile_spec", lambda *args: policy)
+    calls = []
+
+    def core(names, **kwargs):
+        calls.append((names, kwargs))
+        return "ok", ""
+
+    installer.run_install(
+        paths,
+        "control",
+        node="node",
+        mode="apply",
+        dry_run=False,
+        enable=True,
+        start=True,
+        only=None,
+        backends={"core": core},
+        timer_runner=TransitionSystemd(config_home=tmp_path / "config"),
+    )
+    assert calls == [
+        (["skcapstone.service"], {"dry_run": False, "enable": True, "start": True}),
+        (["skfleet-seat-cycle.timer"], {"dry_run": False, "enable": False, "start": False}),
+    ]
+
+
+def test_only_unrelated_service_does_not_touch_scheduler_fence(tmp_path, monkeypatch):
+    paths = type("Paths", (), {"root": tmp_path / "fleet"})()
+    policy = {
+        "units": {
+            "required": ["skgateway.service", "skfleet-seat-cycle.timer"],
+            "mustNot": ["skfleet-tank.timer"],
+        }
+    }
+    monkeypatch.setattr(installer.store, "is_frozen", lambda paths: False)
+    monkeypatch.setattr(installer.converge, "actuation_enabled", lambda paths, node: True)
+    monkeypatch.setattr(installer, "load_drift", lambda *args, **kwargs: DriftReport())
+    monkeypatch.setattr(installer, "_profile_spec", lambda *args: policy)
+    systemd = TransitionSystemd(show_failure=True)
+
+    result = installer.run_install(
+        paths,
+        "control",
+        node="node",
+        mode="apply",
+        dry_run=False,
+        enable=True,
+        start=True,
+        only=["skgateway.service"],
+        backends={"core": lambda names, **kwargs: ("ok", "")},
+        timer_runner=systemd,
+    )
+
+    assert result["ok"] is True
+    assert systemd.calls == []
 
 
 def test_installer_apply_repairs_enablement_without_backend_enable(tmp_path, monkeypatch):

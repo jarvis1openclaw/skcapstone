@@ -69,6 +69,25 @@ def test_seat_units_resolve_to_the_backend_that_installs_them() -> None:
         assert install_backends.resolve(name, "unit") == "core"
 
 
+def test_zero_drift_refresh_selects_only_units_this_distribution_ships() -> None:
+    """External skgateway must not be copied from a nonexistent local source."""
+
+    required = _control_spec()["units"]["required"]
+    selected = [
+        unit
+        for unit in required
+        if install_backends.resolve(unit, "unit") == "core"
+        and install_backends.ships_core_unit(unit)
+    ]
+    assert "skgateway.service" in required
+    assert "skgateway.service" not in selected
+    assert "skfleet-seat-cycle.timer" in selected
+    assert all(
+        (Path(__file__).parents[1] / "src/skcapstone/data/systemd" / unit).is_file()
+        for unit in selected
+    )
+
+
 @pytest.mark.parametrize("name", SEAT_TIMERS)
 def test_seat_units_are_planned_not_shrugged_at(name: str) -> None:
     """A planned step must name a real backend, never needs_manual."""

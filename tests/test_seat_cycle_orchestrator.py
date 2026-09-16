@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import subprocess
 from collections.abc import Mapping
 from pathlib import Path
 from types import SimpleNamespace
@@ -38,6 +39,60 @@ def test_generation_runs_exact_order_and_continues_after_failure(tmp_path, monke
     )
     assert [seat["unit"] for seat in receipt["seats"]] == [command[-1] for command in calls]
     assert [seat["returncode"] for seat in receipt["seats"]] == [1, 0, 0]
+
+
+def test_timeout_stops_and_proves_seat_inactive_before_continuing(tmp_path, monkeypatch):
+    monkeypatch.setattr(
+        "skcapstone.fleet.seat_cycle_orchestrator.select_niobe_service",
+        lambda _home: "skfleet-niobe.service",
+    )
+    calls = []
+
+    def runner(command, **_kwargs):
+        calls.append(command)
+        if command[2:4] == ["start", "--wait"] and command[-1] == "skfleet-tank.service":
+            raise subprocess.TimeoutExpired(command, 310)
+        if command[2] == "show":
+            return SimpleNamespace(
+                returncode=0, stdout="LoadState=loaded\nActiveState=inactive\n", stderr=""
+            )
+        return SimpleNamespace(returncode=0, stdout="", stderr="")
+
+    result = run_generation(tmp_path, runner=runner)
+
+    verbs = [(call[2], call[-1]) for call in calls]
+    assert verbs[:3] == [
+        ("start", "skfleet-tank.service"),
+        ("stop", "skfleet-tank.service"),
+        ("show", "--property=LoadState,ActiveState"),
+    ]
+    assert ("start", "skfleet-seraph.service") in verbs
+    assert result["aborted"] is False
+
+
+def test_timeout_aborts_generation_when_inactive_state_cannot_be_proven(tmp_path, monkeypatch):
+    monkeypatch.setattr(
+        "skcapstone.fleet.seat_cycle_orchestrator.select_niobe_service",
+        lambda _home: "skfleet-niobe.service",
+    )
+    calls = []
+
+    def runner(command, **_kwargs):
+        calls.append(command)
+        if command[2:4] == ["start", "--wait"]:
+            raise subprocess.TimeoutExpired(command, 310)
+        if command[2] == "show":
+            return SimpleNamespace(
+                returncode=0, stdout="LoadState=loaded\nActiveState=deactivating\n", stderr=""
+            )
+        return SimpleNamespace(returncode=0, stdout="", stderr="")
+
+    result = run_generation(tmp_path, runner=runner)
+
+    assert result["aborted"] is True
+    assert [call for call in calls if call[2:4] == ["start", "--wait"]] == [
+        ["systemctl", "--user", "start", "--wait", "skfleet-tank.service"]
+    ]
 
 
 def test_niobe_activation_selects_live_or_shadow(tmp_path, monkeypatch) -> None:
