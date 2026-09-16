@@ -12,6 +12,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Callable
 
+from skcapstone.estate import sovereign_home
 from skcapstone.niobe_activation import parse_activation
 
 _TANK = "skfleet-tank.service"
@@ -118,30 +119,63 @@ def _recovery_required(home: Path) -> bool:
         return True
     if receipt.get("schema") != "skfleet.seat-cycle-generation/v1":
         return True
-    if not isinstance(receipt.get("aborted"), bool):
+    aborted = receipt.get("aborted")
+    if not isinstance(aborted, bool):
+        return True
+    if aborted:
         return True
     if not isinstance(receipt.get("failures"), int):
         return True
+    for timestamp in ("started_at", "finished_at"):
+        value = receipt.get(timestamp)
+        if not isinstance(value, str):
+            return True
+        try:
+            datetime.fromisoformat(value)
+        except ValueError:
+            return True
     seats = receipt.get("seats")
     if not isinstance(seats, list):
         return True
-    if any(
-        not isinstance(seat, dict)
-        or not isinstance(seat.get("unit"), str)
-        or not isinstance(seat.get("returncode"), int)
-        for seat in seats
-    ):
+    expected_units = [_TANK, _SERAPH, select_niobe_service(home)]
+    if [seat.get("unit") for seat in seats if isinstance(seat, dict)] != expected_units:
         return True
-    return receipt["aborted"]
+    for seat in seats:
+        if not isinstance(seat.get("returncode"), int):
+            return True
+        if seat.get("error") is not None and not isinstance(seat.get("error"), str):
+            return True
+        if seat.get("timeout_cleanup_proven") is not None and not isinstance(
+            seat.get("timeout_cleanup_proven"), bool
+        ):
+            return True
+    failures = sum(seat["returncode"] != 0 for seat in seats)
+    return receipt["failures"] != failures
 
 
-def _prove_recovery_inactive(runner: Callable[..., Any]) -> bool:
+def _prove_recovery_inactive(runner: Callable[..., Any], *, cancel_jobs: bool = False) -> bool:
     """Fail closed unless every governed service is exactly inactive."""
 
     for unit in _GOVERNED_SERVICES:
         try:
+            if cancel_jobs:
+                stopped = runner(
+                    ["systemctl", "--user", "stop", unit],
+                    check=False,
+                    capture_output=True,
+                    text=True,
+                    timeout=5,
+                )
+                if int(getattr(stopped, "returncode", 1)) != 0:
+                    return False
             shown = runner(
-                ["systemctl", "--user", "show", unit, "--property=LoadState,ActiveState"],
+                [
+                    "systemctl",
+                    "--user",
+                    "show",
+                    unit,
+                    "--property=LoadState,ActiveState,Job",
+                ],
                 check=False,
                 capture_output=True,
                 text=True,
@@ -162,6 +196,8 @@ def _prove_recovery_inactive(runner: Callable[..., Any]) -> bool:
         if state.get("LoadState") not in {"loaded", "not-found"}:
             return False
         if state.get("ActiveState") != "inactive":
+            return False
+        if state.get("Job") not in {"", "0", "n/a"}:
             return False
     return True
 
@@ -215,7 +251,7 @@ def _run_generation_locked(
     started_at = datetime.now(timezone.utc).isoformat()
     recovery_required = _recovery_marker(home).exists() or _recovery_required(home)
     _arm_recovery_fence(home)
-    if recovery_required and not _prove_recovery_inactive(runner):
+    if recovery_required and not _prove_recovery_inactive(runner, cancel_jobs=True):
         receipt = {
             "schema": "skfleet.seat-cycle-generation/v1",
             "started_at": started_at,
@@ -304,7 +340,7 @@ def main() -> int:
     """Run one generation from the systemd entrypoint."""
 
     parser = argparse.ArgumentParser()
-    parser.add_argument("--home", type=Path, required=True)
+    parser.add_argument("--home", type=Path, default=sovereign_home())
     args = parser.parse_args()
     result = run_generation(args.home)
     return 1 if result["aborted"] else 0

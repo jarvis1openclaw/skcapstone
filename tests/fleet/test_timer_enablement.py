@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import multiprocessing
 from datetime import datetime, timezone
 from pathlib import Path
 from subprocess import CompletedProcess
@@ -868,3 +869,105 @@ def test_installer_never_enables_required_timer_when_forbidden_fence_is_unknown(
 
     assert result["ok"] is False
     assert not any(call[2] == "enable" for call in systemd.calls)
+
+
+def test_forward_and_rollback_share_one_scheduler_migration_transaction(tmp_path):
+    ctx = multiprocessing.get_context("fork")
+    manager = ctx.Manager()
+    state = manager.dict()
+    legacy = sorted(timer_enablement.approved_legacy_timers(tmp_path))
+    orchestrator = "skfleet-seat-cycle.timer"
+    for unit in [*legacy, orchestrator]:
+        state[f"{unit}:enabled"] = unit != orchestrator
+        state[f"{unit}:active"] = unit != orchestrator
+    entered = ctx.Event()
+    release = ctx.Event()
+    forward_result = ctx.Queue()
+    rollback_result = ctx.Queue()
+    rollback_calls = ctx.Value("i", 0)
+    config = tmp_path / "config"
+    evidence = tmp_path / "evidence.jsonl"
+
+    def runner(command, **_kwargs):
+        verb = command[2]
+        unit = command[3] if verb == "show" else command[-1]
+        if verb == "show":
+            if unit.endswith(".service"):
+                output = (
+                    "LoadState=loaded\nUnitFileState=static\n"
+                    "ActiveState=inactive\nSubState=dead\nFragmentPath=/unit\n"
+                )
+            else:
+                enabled = bool(state.get(f"{unit}:enabled", False))
+                active = bool(state.get(f"{unit}:active", False))
+                output = (
+                    "LoadState=loaded\n"
+                    f"UnitFileState={'enabled' if enabled else 'disabled'}\n"
+                    f"ActiveState={'active' if active else 'inactive'}\n"
+                    f"SubState={'waiting' if active else 'dead'}\nFragmentPath=/unit\n"
+                )
+            return CompletedProcess(command, 0, output, "")
+        if verb == "disable":
+            if unit == legacy[0]:
+                entered.set()
+                assert release.wait(10)
+            state[f"{unit}:enabled"] = False
+            state[f"{unit}:active"] = False
+        elif verb == "enable":
+            state[f"{unit}:enabled"] = True
+            link = config / "systemd/user/timers.target.wants" / unit
+            link.parent.mkdir(parents=True, exist_ok=True)
+            if not link.exists():
+                link.symlink_to("/unit")
+        elif verb == "start":
+            state[f"{unit}:active"] = True
+        return CompletedProcess(command, 0, "", "")
+
+    def forward():
+        forward_result.put(
+            timer_enablement.converge_scheduler_transition(
+                {"units": {"required": [orchestrator], "mustNot": legacy}},
+                runner=runner,
+                config_home=config,
+                evidence_path=evidence,
+                actor="forward",
+                source_revision="forward",
+                enable=True,
+                start=True,
+            )
+        )
+
+    def rollback():
+        def forbidden_runner(*args, **kwargs):
+            with rollback_calls.get_lock():
+                rollback_calls.value += 1
+            return runner(*args, **kwargs)
+
+        rollback_result.put(
+            timer_enablement.rollback_to_legacy_timers(
+                legacy,
+                home=tmp_path,
+                runner=forbidden_runner,
+                config_home=config,
+                evidence_path=evidence,
+                actor="rollback",
+            )
+        )
+
+    forward_process = ctx.Process(target=forward)
+    forward_process.start()
+    assert entered.wait(10)
+    rollback_process = ctx.Process(target=rollback)
+    rollback_process.start()
+    rollback_process.join(10)
+    assert rollback_process.exitcode == 0
+    rollback_outcome = rollback_result.get(timeout=2)
+    assert rollback_outcome["lock_acquired"] is False
+    assert rollback_calls.value == 0
+    release.set()
+    forward_process.join(10)
+    assert forward_process.exitcode == 0
+    assert forward_result.get(timeout=2)["acquired"] is True
+    assert state[f"{orchestrator}:enabled"] is True
+    assert all(state[f"{unit}:enabled"] is False for unit in legacy)
+    manager.shutdown()

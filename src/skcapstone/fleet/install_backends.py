@@ -52,6 +52,12 @@ def ships_core_unit(name: str) -> bool:
     return (Path(__file__).parents[1] / "data" / "systemd" / name).is_file()
 
 
+def _packaged_core_unit(name: str) -> Path:
+    """Resolve one reviewed unit from this installed distribution."""
+
+    return Path(__file__).parents[1] / "data" / "systemd" / name
+
+
 def tier_of(backend_id: str) -> int:
     """Return the install tier for a backend ID.
 
@@ -199,7 +205,7 @@ def default_backends(runner: Callable = subprocess.run) -> dict[str, Callable]:
                 "-D",
                 "-m",
                 "0644",
-                str(repos / "skcapstone" / "systemd" / name),
+                str(_packaged_core_unit(name)),
                 str(unit_dir / name),
             ]
             for name in _core_unit_names(names)

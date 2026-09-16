@@ -1,5 +1,8 @@
 """Tests for the default backend adapters that shell out to per-repo installers."""
 
+import subprocess
+
+from skcapstone.fleet import install_backends
 from skcapstone.fleet.install_backends import default_backends
 
 
@@ -141,12 +144,13 @@ def test_core_backend_installs_timer_and_paired_service_before_enable(monkeypatc
     status, detail = backend(["skfleet-seat-cycle.timer"], dry_run=False, enable=True, start=False)
 
     assert (status, detail) == ("ok", "")
+    packaged = str(install_backends._packaged_core_unit("skfleet-seat-cycle.service"))
     service_install = [
         "install",
         "-D",
         "-m",
         "0644",
-        "/opt/custom-repos/skcapstone/systemd/skfleet-seat-cycle.service",
+        packaged,
         str(tmp_path / "config/systemd/user/skfleet-seat-cycle.service"),
     ]
     timer_install = [
@@ -154,7 +158,7 @@ def test_core_backend_installs_timer_and_paired_service_before_enable(monkeypatc
         "-D",
         "-m",
         "0644",
-        "/opt/custom-repos/skcapstone/systemd/skfleet-seat-cycle.timer",
+        str(install_backends._packaged_core_unit("skfleet-seat-cycle.timer")),
         str(tmp_path / "config/systemd/user/skfleet-seat-cycle.timer"),
     ]
     reload = ["systemctl", "--user", "daemon-reload"]
@@ -166,9 +170,27 @@ def test_core_backend_installs_timer_and_paired_service_before_enable(monkeypatc
         call[4] for call in runner.calls if call[:4] == ["install", "-D", "-m", "0644"]
     }
     assert installed_sources >= {
-        f"/opt/custom-repos/skcapstone/systemd/skfleet-{seat}.service"
+        str(install_backends._packaged_core_unit(f"skfleet-{seat}.service"))
         for seat in ("tank", "seraph", "niobe", "niobe-live")
     }
+
+
+def test_core_copy_uses_packaged_bytes_on_wheel_only_host(monkeypatch, tmp_path):
+    monkeypatch.setenv("SKCAPSTONE_REPOS", str(tmp_path / "absent-checkout"))
+    monkeypatch.setenv("XDG_CONFIG_HOME", str(tmp_path / "config"))
+
+    def runner(command, **kwargs):
+        if command[0] == "install":
+            return subprocess.run(command, **kwargs)
+        return _FakeRunner()(command, **kwargs)
+
+    status, detail = default_backends(runner=runner)["core"](
+        ["skfleet-seat-cycle.timer"], dry_run=False, enable=False, start=False
+    )
+    assert (status, detail) == ("ok", "")
+    installed = tmp_path / "config/systemd/user/skfleet-seat-cycle.timer"
+    packaged_timer = install_backends._packaged_core_unit("skfleet-seat-cycle.timer")
+    assert installed.read_bytes() == packaged_timer.read_bytes()
 
 
 def test_core_backend_skips_systemctl_enable_in_dry_run():

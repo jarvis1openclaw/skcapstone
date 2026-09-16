@@ -29,7 +29,7 @@ def test_generation_runs_exact_order_and_continues_after_failure(tmp_path, monke
         calls.append(command)
         if command[2] == "show":
             return SimpleNamespace(
-                returncode=0, stdout="LoadState=loaded\nActiveState=inactive\n", stderr=""
+                returncode=0, stdout="LoadState=loaded\nActiveState=inactive\nJob=\n", stderr=""
             )
         return SimpleNamespace(
             returncode=(
@@ -74,7 +74,7 @@ def test_nonzero_start_aborts_when_service_cannot_be_proven_inactive(tmp_path, m
         if command[2] == "show":
             return SimpleNamespace(
                 returncode=0,
-                stdout=f"LoadState=loaded\nActiveState={state}\n",
+                stdout=f"LoadState=loaded\nActiveState={state}\nJob=\n",
                 stderr="",
             )
         return SimpleNamespace(returncode=0, stdout="", stderr="")
@@ -99,7 +99,7 @@ def test_timeout_stops_and_proves_seat_inactive_before_continuing(tmp_path, monk
             raise subprocess.TimeoutExpired(command, 310)
         if command[2] == "show":
             return SimpleNamespace(
-                returncode=0, stdout="LoadState=loaded\nActiveState=inactive\n", stderr=""
+                returncode=0, stdout="LoadState=loaded\nActiveState=inactive\nJob=\n", stderr=""
             )
         return SimpleNamespace(returncode=0, stdout="", stderr="")
 
@@ -128,7 +128,9 @@ def test_timeout_aborts_generation_when_inactive_state_cannot_be_proven(tmp_path
             raise subprocess.TimeoutExpired(command, 310)
         if command[2] == "show":
             return SimpleNamespace(
-                returncode=0, stdout="LoadState=loaded\nActiveState=deactivating\n", stderr=""
+                returncode=0,
+                stdout="LoadState=loaded\nActiveState=deactivating\nJob=\n",
+                stderr="",
             )
         return SimpleNamespace(returncode=0, stdout="", stderr="")
 
@@ -157,7 +159,7 @@ def test_next_generation_stays_blocked_on_lingering_middle_seat(tmp_path, monkey
         state = "active" if unit == "skfleet-seraph.service" else "inactive"
         return SimpleNamespace(
             returncode=0,
-            stdout=f"LoadState=loaded\nActiveState={state}\n",
+            stdout=f"LoadState=loaded\nActiveState={state}\nJob=\n",
             stderr="",
         )
 
@@ -178,7 +180,7 @@ def test_malformed_recovery_receipt_fails_closed_before_any_seat_start(tmp_path)
         calls.append(command)
         return SimpleNamespace(
             returncode=0,
-            stdout="LoadState=loaded\nActiveState=active\n",
+            stdout="LoadState=loaded\nActiveState=active\nJob=\n",
             stderr="",
         )
 
@@ -205,6 +207,29 @@ def test_malformed_recovery_receipt_fails_closed_before_any_seat_start(tmp_path)
             "failures": 0,
             "seats": [{}],
         },
+        {
+            "schema": "skfleet.seat-cycle-generation/v1",
+            "started_at": "2026-09-15T00:00:00+00:00",
+            "finished_at": "2026-09-15T00:00:01+00:00",
+            "aborted": False,
+            "failures": 0,
+            "seats": [],
+        },
+        {
+            "schema": "skfleet.seat-cycle-generation/v1",
+            "started_at": "2026-09-15T00:00:00+00:00",
+            "finished_at": "2026-09-15T00:00:01+00:00",
+            "aborted": False,
+            "failures": 0,
+            "seats": [
+                {
+                    "unit": "arbitrary.service",
+                    "returncode": 0,
+                    "error": None,
+                    "timeout_cleanup_proven": None,
+                }
+            ],
+        },
     ],
 )
 def test_untrusted_receipt_shapes_require_recovery_proof(tmp_path, receipt):
@@ -216,7 +241,7 @@ def test_untrusted_receipt_shapes_require_recovery_proof(tmp_path, receipt):
     def runner(command, **_kwargs):
         calls.append(command)
         return SimpleNamespace(
-            returncode=0, stdout="LoadState=loaded\nActiveState=active\n", stderr=""
+            returncode=0, stdout="LoadState=loaded\nActiveState=active\nJob=\n", stderr=""
         )
 
     result = run_generation(tmp_path, runner=runner)
@@ -230,7 +255,7 @@ def test_receipt_fsync_failure_leaves_durable_fence_for_next_cycle(tmp_path, mon
     def healthy_runner(command, **_kwargs):
         if command[2] == "show":
             return SimpleNamespace(
-                returncode=0, stdout="LoadState=loaded\nActiveState=inactive\n", stderr=""
+                returncode=0, stdout="LoadState=loaded\nActiveState=inactive\nJob=\n", stderr=""
             )
         return SimpleNamespace(returncode=0, stdout="", stderr="")
 
@@ -253,7 +278,7 @@ def test_receipt_fsync_failure_leaves_durable_fence_for_next_cycle(tmp_path, mon
         state = "active" if unit == "skfleet-seraph.service" else "inactive"
         return SimpleNamespace(
             returncode=0,
-            stdout=f"LoadState=loaded\nActiveState={state}\n",
+            stdout=f"LoadState=loaded\nActiveState={state}\nJob=\n",
             stderr="",
         )
 
@@ -278,7 +303,7 @@ def test_concurrent_process_cannot_enter_or_clear_owner_fence(tmp_path):
             if command[2] == "show":
                 return SimpleNamespace(
                     returncode=0,
-                    stdout="LoadState=loaded\nActiveState=inactive\n",
+                    stdout="LoadState=loaded\nActiveState=inactive\nJob=\n",
                     stderr="",
                 )
             return SimpleNamespace(returncode=0, stdout="", stderr="")
@@ -338,7 +363,7 @@ def test_dead_lock_owner_releases_flock_but_leaves_recovery_fence(tmp_path):
         if command[2] == "show":
             return SimpleNamespace(
                 returncode=0,
-                stdout="LoadState=loaded\nActiveState=inactive\n",
+                stdout="LoadState=loaded\nActiveState=inactive\nJob=\n",
                 stderr="",
             )
         return SimpleNamespace(returncode=0, stdout="", stderr="")
@@ -346,6 +371,38 @@ def test_dead_lock_owner_releases_flock_but_leaves_recovery_fence(tmp_path):
     result = run_generation(tmp_path, runner=recovered_runner)
     assert result["aborted"] is False
     assert not marker.exists()
+
+
+def test_recovery_cancels_queued_jobs_before_starting_new_generation(tmp_path):
+    marker = tmp_path / "coordination/seat-cycles/recovery-required"
+    marker.parent.mkdir(parents=True)
+    marker.write_text("recovery-required\n", encoding="utf-8")
+    jobs = {unit: "99" for unit in seat_cycle_orchestrator._GOVERNED_SERVICES}
+    calls = []
+
+    def runner(command, **_kwargs):
+        calls.append(command)
+        unit = command[3]
+        if command[2] == "stop":
+            jobs[unit] = ""
+            return SimpleNamespace(returncode=0, stdout="", stderr="")
+        if command[2] == "show":
+            return SimpleNamespace(
+                returncode=0,
+                stdout=f"LoadState=loaded\nActiveState=inactive\nJob={jobs[unit]}\n",
+                stderr="",
+            )
+        return SimpleNamespace(returncode=0, stdout="", stderr="")
+
+    result = run_generation(tmp_path, runner=runner)
+    assert result["aborted"] is False
+    first_start = next(i for i, call in enumerate(calls) if call[2:4] == ["start", "--wait"])
+    for unit in seat_cycle_orchestrator._GOVERNED_SERVICES:
+        assert (
+            next(i for i, call in enumerate(calls) if call[2] == "stop" and call[-1] == unit)
+            < first_start
+        )
+    assert all(job == "" for job in jobs.values())
 
 
 def test_main_returns_nonzero_for_aborted_generation(tmp_path, monkeypatch):
@@ -356,6 +413,19 @@ def test_main_returns_nonzero_for_aborted_generation(tmp_path, monkeypatch):
     )
     monkeypatch.setattr("sys.argv", ["seat-cycle", "--home", str(tmp_path)])
     assert seat_cycle_orchestrator.main() == 1
+
+
+def test_main_resolves_configured_sovereign_home(monkeypatch, tmp_path):
+    captured = []
+    monkeypatch.setenv("SKCAPSTONE_HOME", str(tmp_path / "relocated"))
+    monkeypatch.setattr(
+        seat_cycle_orchestrator,
+        "run_generation",
+        lambda home: captured.append(home) or {"aborted": False},
+    )
+    monkeypatch.setattr("sys.argv", ["seat-cycle"])
+    assert seat_cycle_orchestrator.main() == 0
+    assert captured == [tmp_path / "relocated"]
 
 
 def test_niobe_activation_selects_live_or_shadow(tmp_path, monkeypatch) -> None:
@@ -415,6 +485,7 @@ def test_orchestrator_units_are_packaged_and_prevent_overlapping_generations() -
     service = (root / "systemd/skfleet-seat-cycle.service").read_text()
     timer = (root / "systemd/skfleet-seat-cycle.timer").read_text()
     assert "TimeoutStartSec=960" in service
+    assert "--home" not in service
     assert "OnUnitInactiveSec=5min" in timer
     assert "OnUnitActiveSec" not in timer and "OnCalendar" not in timer
     for suffix in ("service", "timer"):

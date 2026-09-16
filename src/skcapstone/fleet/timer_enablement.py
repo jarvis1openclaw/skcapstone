@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import argparse
+import fcntl
 import hashlib
 import json
 import os
@@ -20,6 +21,27 @@ GOVERNED_SEAT_SERVICES = (
     "skfleet-niobe.service",
     "skfleet-niobe-live.service",
 )
+
+
+def _acquire_scheduler_migration_lock(config_home: Path) -> int | None:
+    """Acquire the shared forward/rollback scheduler transaction lock."""
+
+    path = config_home / "skcapstone" / "scheduler-migration.lock"
+    path.parent.mkdir(parents=True, exist_ok=True)
+    fd = os.open(path, os.O_CREAT | os.O_RDWR, 0o600)
+    try:
+        fcntl.flock(fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
+    except BlockingIOError:
+        os.close(fd)
+        return None
+    return fd
+
+
+def _release_scheduler_migration_lock(fd: int) -> None:
+    """Release a scheduler migration lock descriptor."""
+
+    fcntl.flock(fd, fcntl.LOCK_UN)
+    os.close(fd)
 
 
 def policy_revision(profile: dict) -> str:
@@ -367,6 +389,48 @@ def converge_governed_services_inactive(
     return results
 
 
+def converge_scheduler_transition(
+    profile: dict,
+    *,
+    runner: Runner,
+    config_home: Path,
+    evidence_path: Path,
+    actor: str,
+    source_revision: str,
+    enable: bool,
+    start: bool,
+) -> dict:
+    """Atomically cut over from forbidden timers to the required scheduler."""
+
+    lock_fd = _acquire_scheduler_migration_lock(config_home)
+    if lock_fd is None:
+        return {"acquired": False, "forbidden": [], "required": []}
+    try:
+        forbidden = converge_forbidden_timers(
+            profile,
+            runner=runner,
+            config_home=config_home,
+            evidence_path=evidence_path,
+            actor=actor,
+            source_revision=source_revision,
+        )
+        if not all(row["safe"] for row in forbidden):
+            return {"acquired": True, "forbidden": forbidden, "required": []}
+        required = converge_required_timers(
+            profile,
+            runner=runner,
+            config_home=config_home,
+            evidence_path=evidence_path,
+            actor=actor,
+            source_revision=source_revision,
+            enable=enable,
+            start=start,
+        )
+        return {"acquired": True, "forbidden": forbidden, "required": required}
+    finally:
+        _release_scheduler_migration_lock(lock_fd)
+
+
 def rollback_to_legacy_timers(
     legacy_timers: list[str],
     *,
@@ -379,37 +443,62 @@ def rollback_to_legacy_timers(
     """Stop the orchestrator fence before restoring legacy seat timers."""
 
     profile = legacy_timer_rollback_profile(legacy_timers, home=home)
-    forbidden = converge_forbidden_timers(
-        profile,
-        runner=runner,
-        config_home=config_home,
-        evidence_path=evidence_path,
-        actor=actor,
-    )
-    if not all(row["safe"] for row in forbidden):
-        return {"ok": False, "forbidden": forbidden, "services": [], "required": []}
-    services = converge_governed_services_inactive(
-        runner=runner,
-        evidence_path=evidence_path,
-        actor=actor,
-        source_revision=policy_revision(profile),
-    )
-    if not all(row["safe"] for row in services):
-        return {"ok": False, "forbidden": forbidden, "services": services, "required": []}
-    required = converge_required_timers(
-        profile,
-        runner=runner,
-        config_home=config_home,
-        evidence_path=evidence_path,
-        actor=actor,
-    )
-    return {
-        "ok": len(required) == len(required_timers(profile))
-        and all(row["converged"] for row in required),
-        "forbidden": forbidden,
-        "services": services,
-        "required": required,
-    }
+    lock_fd = _acquire_scheduler_migration_lock(config_home)
+    if lock_fd is None:
+        return {
+            "ok": False,
+            "lock_acquired": False,
+            "forbidden": [],
+            "services": [],
+            "required": [],
+        }
+    try:
+        forbidden = converge_forbidden_timers(
+            profile,
+            runner=runner,
+            config_home=config_home,
+            evidence_path=evidence_path,
+            actor=actor,
+        )
+        if not all(row["safe"] for row in forbidden):
+            return {
+                "ok": False,
+                "lock_acquired": True,
+                "forbidden": forbidden,
+                "services": [],
+                "required": [],
+            }
+        services = converge_governed_services_inactive(
+            runner=runner,
+            evidence_path=evidence_path,
+            actor=actor,
+            source_revision=policy_revision(profile),
+        )
+        if not all(row["safe"] for row in services):
+            return {
+                "ok": False,
+                "lock_acquired": True,
+                "forbidden": forbidden,
+                "services": services,
+                "required": [],
+            }
+        required = converge_required_timers(
+            profile,
+            runner=runner,
+            config_home=config_home,
+            evidence_path=evidence_path,
+            actor=actor,
+        )
+        return {
+            "ok": len(required) == len(required_timers(profile))
+            and all(row["converged"] for row in required),
+            "lock_acquired": True,
+            "forbidden": forbidden,
+            "services": services,
+            "required": required,
+        }
+    finally:
+        _release_scheduler_migration_lock(lock_fd)
 
 
 def main() -> int:

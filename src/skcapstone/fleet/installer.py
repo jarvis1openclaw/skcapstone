@@ -482,14 +482,39 @@ def run_install(
             os.environ.get("SKAGENT") or os.environ.get("SKCAPSTONE_AGENT") or "skfleet-install"
         )
         revision = timer_enablement.policy_revision(profile)
-        forbidden_rows = timer_enablement.converge_forbidden_timers(
-            profile,
+        required = timer_enablement.required_timers(profile)
+        if selected is not None:
+            required = [unit for unit in required if unit in selected]
+        timer_profile = {
+            "units": {
+                "required": required,
+                "mustNot": timer_enablement.forbidden_timers(profile),
+            }
+        }
+        config_home = Path(os.environ.get("XDG_CONFIG_HOME", "~/.config")).expanduser()
+        transition = timer_enablement.converge_scheduler_transition(
+            timer_profile,
             runner=timer_runner or subprocess.run,
-            config_home=Path(os.environ.get("XDG_CONFIG_HOME", "~/.config")).expanduser(),
+            config_home=config_home,
             evidence_path=evidence_path,
             actor=actor,
             source_revision=revision,
+            enable=enable,
+            start=start,
         )
+        if not transition["acquired"]:
+            results.append(
+                {
+                    "name": "scheduler-migration.lock",
+                    "kind": "unit",
+                    "tier": install_backends.tier_of("core"),
+                    "backend_id": "timer-enablement",
+                    "status": "failed",
+                    "detail": "scheduler migration already in progress",
+                }
+            )
+            return {"role": role, "mode": "apply", "results": results, "ok": False}
+        forbidden_rows = transition["forbidden"]
         for row in forbidden_rows:
             results.append(
                 {
@@ -508,21 +533,7 @@ def run_install(
             ok = ok and row["safe"]
         if not ok:
             return {"role": role, "mode": "apply", "results": results, "ok": False}
-        required = timer_enablement.required_timers(profile)
-        if selected is not None:
-            required = [unit for unit in required if unit in selected]
-        timer_profile = {"units": {"required": required}}
-        config_home = Path(os.environ.get("XDG_CONFIG_HOME", "~/.config")).expanduser()
-        timer_rows = timer_enablement.converge_required_timers(
-            timer_profile,
-            runner=timer_runner or subprocess.run,
-            config_home=config_home,
-            evidence_path=evidence_path,
-            actor=actor,
-            source_revision=revision,
-            enable=enable,
-            start=start,
-        )
+        timer_rows = transition["required"]
         by_unit = {row["unit"]: row for row in timer_rows}
         reported = {result["name"] for result in results}
         for result in results:
