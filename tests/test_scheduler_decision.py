@@ -219,6 +219,7 @@ def _authoritative_claimability_for(card_home: Path):
             "CARDS": str(card_home / "cards"),
             "_strict_card_events": lambda cid, fresh=False: store._read_events(cid),
             "_legacy_claimability_events": lambda fresh=False: {},
+            "_legacy_projection_owners": lambda cid, fresh=False: (),
             "_fold_claimability": fold,
         },
     )
