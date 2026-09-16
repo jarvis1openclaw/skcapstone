@@ -124,7 +124,7 @@ def _recovery_required(home: Path) -> bool:
         return True
     if aborted:
         return True
-    if not isinstance(receipt.get("failures"), int):
+    if type(receipt.get("failures")) is not int:
         return True
     timestamps = []
     for timestamp in ("started_at", "finished_at"):

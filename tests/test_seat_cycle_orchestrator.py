@@ -325,6 +325,41 @@ def test_contradictory_success_receipts_require_recovery_proof(tmp_path, mutatio
     assert not any(call[2:4] == ["start", "--wait"] for call in calls)
 
 
+def test_receipt_failures_boolean_is_not_accepted_as_integer(tmp_path):
+    receipt = {
+        "schema": "skfleet.seat-cycle-generation/v1",
+        "started_at": "2026-09-15T00:00:00+00:00",
+        "finished_at": "2026-09-15T00:00:01+00:00",
+        "aborted": False,
+        "failures": True,
+        "seats": [
+            {
+                "unit": "skfleet-tank.service",
+                "returncode": 7,
+                "error": "systemctl_start_failed",
+                "timeout_cleanup_proven": True,
+            },
+            {
+                "unit": "skfleet-seraph.service",
+                "returncode": 0,
+                "error": None,
+                "timeout_cleanup_proven": None,
+            },
+            {
+                "unit": "skfleet-niobe.service",
+                "returncode": 0,
+                "error": None,
+                "timeout_cleanup_proven": None,
+            },
+        ],
+    }
+    path = tmp_path / "coordination/seat-cycles/orchestrator.health.jsonl"
+    path.parent.mkdir(parents=True)
+    path.write_text(json.dumps(receipt) + "\n", encoding="utf-8")
+
+    assert seat_cycle_orchestrator._recovery_required(tmp_path) is True
+
+
 def test_receipt_fsync_failure_leaves_durable_fence_for_next_cycle(tmp_path, monkeypatch):
     original_append = seat_cycle_orchestrator._append_receipt
 
