@@ -74,6 +74,22 @@ def test_non_object_niobe_activation_roots_fail_closed_to_shadow(tmp_path, monke
         assert select_niobe_service(tmp_path) == "skfleet-niobe.service"
 
 
+def test_structurally_malformed_object_activation_fails_closed_to_shadow(
+    tmp_path, monkeypatch
+) -> None:
+    """An object rejected with TypeError cannot abort Tank-first execution."""
+
+    activation = tmp_path / "coordination/niobe-activation.json"
+    activation.parent.mkdir(parents=True)
+    activation.write_text(json.dumps({"product_scope": 1}), encoding="utf-8")
+    monkeypatch.setattr(
+        "skcapstone.fleet.seat_cycle_orchestrator.parse_activation",
+        lambda *_args, **_kwargs: (_ for _ in ()).throw(TypeError("not iterable")),
+    )
+
+    assert select_niobe_service(tmp_path) == "skfleet-niobe.service"
+
+
 def test_orchestrator_units_are_packaged_and_prevent_overlapping_generations() -> None:
     """Only the orchestrator recurs, five minutes after a generation ends."""
 

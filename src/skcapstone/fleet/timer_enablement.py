@@ -31,6 +31,17 @@ def forbidden_timers(profile: dict) -> list[str]:
     return sorted({unit for unit in forbidden if unit.endswith(".timer")})
 
 
+def legacy_timer_rollback_profile(legacy_timers: list[str]) -> dict:
+    """Build the reverse-migration fence for restoring legacy seat timers."""
+
+    return {
+        "units": {
+            "required": sorted(set(legacy_timers)),
+            "mustNot": ["skfleet-seat-cycle.timer"],
+        }
+    }
+
+
 def _state(unit: str, runner: Runner) -> dict[str, str]:
     try:
         result = runner(
@@ -46,14 +57,26 @@ def _state(unit: str, runner: Runner) -> dict[str, str]:
             timeout=10,
         )
     except Exception:
-        return {"LoadState": "unknown", "UnitFileState": "unknown", "ActiveState": "unknown"}
+        return {
+            "_known": "false",
+            "LoadState": "unknown",
+            "UnitFileState": "unknown",
+            "ActiveState": "unknown",
+        }
     if getattr(result, "returncode", 1) != 0:
-        return {"LoadState": "unknown", "UnitFileState": "unknown", "ActiveState": "unknown"}
-    return dict(
+        return {
+            "_known": "false",
+            "LoadState": "unknown",
+            "UnitFileState": "unknown",
+            "ActiveState": "unknown",
+        }
+    state = dict(
         line.split("=", 1)
         for line in str(getattr(result, "stdout", "")).splitlines()
         if "=" in line
     )
+    state["_known"] = "true"
+    return state
 
 
 def audit_timer(unit: str, *, runner: Runner, config_home: Path) -> dict:
@@ -191,53 +214,59 @@ def converge_forbidden_timers(
     for unit in forbidden_timers(profile):
         service = unit.removesuffix(".timer") + ".service"
         before = _state(unit, runner)
-        loaded = before.get("LoadState") == "loaded"
-        enabled = before.get("UnitFileState") == "enabled"
-        active = before.get("ActiveState") == "active"
-        if loaded and (enabled or active):
-            try:
-                completed = runner(
-                    ["systemctl", "--user", "disable", "--now", unit],
-                    capture_output=True,
-                    text=True,
-                    timeout=10,
-                )
-                ok = getattr(completed, "returncode", 1) == 0
-                detail = str(getattr(completed, "stderr", "") or "")[-500:]
-            except Exception as exc:
-                ok = False
-                detail = str(exc)[-500:]
-            try:
-                stopped = runner(
-                    ["systemctl", "--user", "stop", service],
-                    capture_output=True,
-                    text=True,
-                    timeout=310,
-                )
-                stop_ok = getattr(stopped, "returncode", 1) == 0
-                if not stop_ok:
-                    detail = (detail + "; " + str(getattr(stopped, "stderr", "") or ""))[-500:]
-            except Exception as exc:
-                stop_ok = False
-                detail = (detail + "; " + str(exc))[-500:]
-            ok = ok and stop_ok
-            _append(
-                evidence_path,
-                {
-                    "actor": actor,
-                    "prior_state": f"{before.get('UnitFileState', 'unknown')}/"
-                    f"{before.get('ActiveState', 'unknown')}",
-                    "requested_state": "disabled_inactive",
-                    "result": "ok" if ok else "failed",
-                    "result_detail": detail,
-                    "source_revision": revision,
-                    "timestamp": datetime.now(timezone.utc).isoformat(),
-                    "unit": unit,
-                },
+        try:
+            completed = runner(
+                ["systemctl", "--user", "disable", "--now", unit],
+                capture_output=True,
+                text=True,
+                timeout=10,
             )
+            disable_ok = getattr(completed, "returncode", 1) == 0
+            detail = str(getattr(completed, "stderr", "") or "")[-500:]
+        except Exception as exc:
+            disable_ok = False
+            detail = str(exc)[-500:]
+        try:
+            stopped = runner(
+                ["systemctl", "--user", "stop", service],
+                capture_output=True,
+                text=True,
+                timeout=310,
+            )
+            stop_ok = getattr(stopped, "returncode", 1) == 0
+            if not stop_ok:
+                detail = (detail + "; " + str(getattr(stopped, "stderr", "") or ""))[-500:]
+        except Exception as exc:
+            stop_ok = False
+            detail = (detail + "; " + str(exc))[-500:]
         after = _state(unit, runner)
         service_after = _state(service, runner)
-        service_inactive = service_after.get("ActiveState") != "active"
+        timer_safe = (
+            after.get("_known") == "true"
+            and after.get("LoadState") == "loaded"
+            and after.get("UnitFileState") == "disabled"
+            and after.get("ActiveState") == "inactive"
+        )
+        service_inactive = (
+            service_after.get("_known") == "true"
+            and service_after.get("LoadState") == "loaded"
+            and service_after.get("ActiveState") == "inactive"
+        )
+        safe = disable_ok and stop_ok and timer_safe and service_inactive
+        _append(
+            evidence_path,
+            {
+                "actor": actor,
+                "prior_state": f"{before.get('UnitFileState', 'unknown')}/"
+                f"{before.get('ActiveState', 'unknown')}",
+                "requested_state": "disabled_inactive",
+                "result": "ok" if safe else "failed",
+                "result_detail": detail,
+                "source_revision": revision,
+                "timestamp": datetime.now(timezone.utc).isoformat(),
+                "unit": unit,
+            },
+        )
         results.append(
             {
                 "unit": unit,
@@ -246,14 +275,7 @@ def converge_forbidden_timers(
                 "active": after.get("ActiveState") == "active",
                 "service": service,
                 "service_inactive": service_inactive,
-                "safe": (
-                    after.get("LoadState") != "loaded"
-                    or (
-                        after.get("UnitFileState") != "enabled"
-                        and after.get("ActiveState") != "active"
-                    )
-                )
-                and service_inactive,
+                "safe": safe,
             }
         )
     return results

@@ -168,6 +168,36 @@ def default_backends(runner: Callable = subprocess.run) -> dict[str, Callable]:
                 break
         return status, detail
 
+    def _install_core_units(names: list[str]) -> tuple[str, str]:
+        """Copy requested core units (and timer services), then reload systemd."""
+        unit_names = set(names)
+        unit_names.update(
+            name.removesuffix(".timer") + ".service" for name in names if name.endswith(".timer")
+        )
+        if "skfleet-seat-cycle.timer" in names:
+            unit_names.update(
+                f"skfleet-{seat}.service" for seat in ("tank", "seraph", "niobe", "niobe-live")
+            )
+        unit_dir = (
+            Path(os.environ.get("XDG_CONFIG_HOME", "~/.config")).expanduser() / "systemd/user"
+        )
+        for name in sorted(unit_names):
+            status, detail = _run(
+                runner,
+                [
+                    "install",
+                    "-D",
+                    "-m",
+                    "0644",
+                    str(repos / "skcapstone" / "systemd" / name),
+                    str(unit_dir / name),
+                ],
+                dry_run=False,
+            )
+            if status == "failed":
+                return status, detail
+        return _run(runner, ["systemctl", "--user", "daemon-reload"], dry_run=False)
+
     def packages(names: list[str], *, dry_run: bool, enable: bool, start: bool) -> tuple[str, str]:
         # install.sh recognizes --dev/--force/--non-interactive; it has no
         # units of its own to enable, so enable/start are no-ops here.
@@ -207,6 +237,8 @@ def default_backends(runner: Callable = subprocess.run) -> dict[str, Callable]:
         # itself takes no --enable flag).
         cmd = ["bash", str(repos / "skcapstone" / "scripts" / "install.sh"), "--non-interactive"]
         status, detail = _run(runner, cmd, dry_run=dry_run)
+        if status == "ok":
+            status, detail = _install_core_units(names)
         if status == "ok" and enable:
             status, detail = _enable_units(names)
         return status, detail

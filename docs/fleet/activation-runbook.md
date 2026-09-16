@@ -135,6 +135,17 @@ calling the mutation. A missing or mismatched direction fails closed.
 Disable only the affected unit, preserve evidence, and return the seat to its
 last safe state. The approved Niobe rollback is:
 
+The serialized seat scheduler has a symmetric migration fence. Before any
+legacy Tank, Seraph, or Niobe timer is restored, converge a rollback profile
+whose `units.mustNot` contains `skfleet-seat-cycle.timer`: disable and stop the
+orchestrator timer, independently stop the active orchestrator service with a
+310-second bound, and prove the timer is exactly `disabled`/`inactive` and the
+service exactly `inactive`. A failed `systemctl show`, an unknown or transitional
+state, or a failed stop aborts rollback before any legacy timer is enabled.
+`timer_enablement.legacy_timer_rollback_profile(...)` constructs this reverse
+profile; `converge_forbidden_timers(...)` must succeed before
+`converge_required_timers(...)` is called. Preserve both convergence receipts.
+
 ```bash
 systemctl --user disable --now skfleet-link.timer
 systemctl --user disable --now skfleet-niobe-live.timer

@@ -5,6 +5,8 @@ from datetime import datetime, timezone
 from pathlib import Path
 from subprocess import CompletedProcess
 
+import pytest
+
 from skcapstone.fleet import installer, timer_enablement
 from skcapstone.fleet.profile_doctor import DriftReport
 
@@ -44,6 +46,54 @@ class Systemd:
             self.enabled = False
             if "--now" in command:
                 self.active = False
+        return CompletedProcess(command, 0, "", "")
+
+
+class TransitionSystemd:
+    """Model timer and service states independently for migration fences."""
+
+    def __init__(
+        self,
+        *,
+        timer_file="disabled",
+        timer_active="inactive",
+        service_active="inactive",
+        show_failure=False,
+        stop_failure=False,
+    ):
+        self.timer_file = timer_file
+        self.timer_active = timer_active
+        self.service_active = service_active
+        self.show_failure = show_failure
+        self.stop_failure = stop_failure
+        self.calls = []
+
+    def __call__(self, command, **_kwargs):
+        self.calls.append(command)
+        verb = command[2]
+        unit = command[3] if verb == "show" else command[-1]
+        is_timer = unit.endswith(".timer")
+        if verb == "show":
+            if self.show_failure:
+                return CompletedProcess(command, 1, "", "show failed")
+            active = self.timer_active if is_timer else self.service_active
+            output = (
+                "LoadState=loaded\n"
+                f"UnitFileState={self.timer_file if is_timer else 'static'}\n"
+                f"ActiveState={active}\nSubState=dead\nFragmentPath=/unit\n"
+            )
+            return CompletedProcess(command, 0, output, "")
+        if verb == "disable":
+            self.timer_file = "disabled"
+            self.timer_active = "inactive"
+        elif verb == "enable":
+            self.timer_file = "enabled"
+        elif verb == "start":
+            self.timer_active = "active"
+        elif verb == "stop":
+            if self.stop_failure:
+                return CompletedProcess(command, 1, "", "stop failed")
+            self.service_active = "inactive"
         return CompletedProcess(command, 0, "", "")
 
 
@@ -160,6 +210,82 @@ def test_forbidden_pre_enabled_timers_stop_before_orchestrator_starts(tmp_path):
     event = json.loads(evidence.read_text().splitlines()[0])
     assert event["actor"] == "jarvis"
     assert event["requested_state"] == "disabled_inactive"
+
+
+@pytest.mark.parametrize("service_state", ["active", "activating", "deactivating"])
+def test_forbidden_service_is_stopped_even_when_timer_already_disabled(tmp_path, service_state):
+    systemd = TransitionSystemd(service_active=service_state)
+    rows = timer_enablement.converge_forbidden_timers(
+        {"units": {"mustNot": ["skfleet-tank.timer"]}},
+        runner=systemd,
+        config_home=tmp_path,
+        evidence_path=tmp_path / "evidence.jsonl",
+        actor="jarvis",
+    )
+    assert [call[-1] for call in systemd.calls if call[2] == "stop"] == ["skfleet-tank.service"]
+    assert rows[0]["safe"] is True
+
+
+@pytest.mark.parametrize(
+    ("systemd", "expected_safe"),
+    [
+        (TransitionSystemd(show_failure=True), False),
+        (TransitionSystemd(service_active="active", stop_failure=True), False),
+    ],
+)
+def test_forbidden_transition_fails_closed_on_unknown_or_failed_stop(
+    tmp_path, systemd, expected_safe
+):
+    rows = timer_enablement.converge_forbidden_timers(
+        {"units": {"mustNot": ["skfleet-tank.timer"]}},
+        runner=systemd,
+        config_home=tmp_path,
+        evidence_path=tmp_path / "evidence.jsonl",
+        actor="jarvis",
+    )
+    assert rows[0]["safe"] is expected_safe
+
+
+def test_forbidden_enabled_runtime_timer_is_explicitly_disabled(tmp_path):
+    systemd = TransitionSystemd(timer_file="enabled-runtime", timer_active="active")
+    rows = timer_enablement.converge_forbidden_timers(
+        {"units": {"mustNot": ["skfleet-tank.timer"]}},
+        runner=systemd,
+        config_home=tmp_path,
+        evidence_path=tmp_path / "evidence.jsonl",
+        actor="jarvis",
+    )
+    assert rows[0]["safe"] is True
+    assert [call[2:] for call in systemd.calls if call[2] == "disable"] == [
+        ["disable", "--now", "skfleet-tank.timer"]
+    ]
+
+
+def test_rollback_stops_orchestrator_before_enabling_legacy_timers(tmp_path):
+    """Reverse migration uses the same fail-closed forbidden-first fence."""
+
+    policy = timer_enablement.legacy_timer_rollback_profile(["skfleet-tank.timer"])
+    assert policy["units"]["mustNot"] == ["skfleet-seat-cycle.timer"]
+    systemd = TransitionSystemd(
+        timer_file="enabled", timer_active="active", service_active="active"
+    )
+    rows = timer_enablement.converge_forbidden_timers(
+        policy,
+        runner=systemd,
+        config_home=tmp_path,
+        evidence_path=tmp_path / "evidence.jsonl",
+        actor="jarvis",
+    )
+    assert rows[0]["safe"] is True
+    timer_enablement.converge_required_timers(
+        policy,
+        runner=systemd,
+        config_home=tmp_path,
+        evidence_path=tmp_path / "evidence.jsonl",
+        actor="jarvis",
+    )
+    verbs = [call[2] for call in systemd.calls]
+    assert verbs.index("disable") < verbs.index("stop") < verbs.index("enable")
 
 
 def test_failed_mutation_is_recorded(tmp_path):
@@ -291,3 +417,36 @@ def test_installer_apply_repairs_enablement_without_backend_enable(tmp_path, mon
     assert backend_calls[0][1]["enable"] is False
     assert [call[2] for call in systemd.calls].count("enable") == 1
     assert (tmp_path / "evidence" / "timer-enablement.jsonl").is_file()
+
+
+def test_installer_never_enables_required_timer_when_forbidden_fence_is_unknown(
+    tmp_path, monkeypatch
+):
+    systemd = TransitionSystemd(show_failure=True)
+    paths = type("Paths", (), {"root": tmp_path / "fleet"})()
+    policy = {
+        "units": {
+            "required": ["skfleet-seat-cycle.timer"],
+            "mustNot": ["skfleet-tank.timer"],
+        }
+    }
+    monkeypatch.setattr(installer.store, "is_frozen", lambda paths: False)
+    monkeypatch.setattr(installer.converge, "actuation_enabled", lambda paths, node: True)
+    monkeypatch.setattr(installer, "load_drift", lambda *args, **kwargs: DriftReport())
+    monkeypatch.setattr(installer, "_profile_spec", lambda *args: policy)
+
+    result = installer.run_install(
+        paths,
+        "control",
+        node="node",
+        mode="apply",
+        dry_run=False,
+        enable=True,
+        start=True,
+        only=None,
+        backends={},
+        timer_runner=systemd,
+    )
+
+    assert result["ok"] is False
+    assert not any(call[2] == "enable" for call in systemd.calls)

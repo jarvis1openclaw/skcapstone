@@ -70,30 +70,27 @@ CONTROL_REQUIRED = [
     "skoperator.timer",
 ]
 
-#: The six bounded lifecycle seat timers plus the Link producer that feeds
-#: the Link seat. A seat's .service is a oneshot; the TIMER is what makes it
-#: recur, so a service without its timer is a seat that never runs.
+#: Legacy independently scheduled seat timers. The control role forbids them
+#: because the single seat-cycle timer serializes Tank, Seraph, and Niobe.
 SERIALIZED_SEAT_MUST_NOT = [
     "skfleet-niobe-live.timer",
     "skfleet-niobe.timer",
     "skfleet-seraph.timer",
     "skfleet-tank.timer",
 ]
-SEAT_CYCLE_TIMERS = [
-    f"skfleet-{seat}.timer" for seat in ("atlas", "link", "mero")
-] + ["skfleet-link-producer.timer", "skfleet-seat-cycle.timer"]
+SEAT_CYCLE_TIMERS = [f"skfleet-{seat}.timer" for seat in ("atlas", "link", "mero")] + [
+    "skfleet-link-producer.timer",
+    "skfleet-seat-cycle.timer",
+]
 
-#: Seat units the control role permits but does not mandate. Their oneshot
-#: services come along with their timers, and skfleet-niobe-live is
-#: deliberately allowed-only: it launches real agent runs, which is an
-#: activation decision and never an install baseline.
+#: Seat services the control role permits but does not mandate. Niobe live is
+#: selected per generation from activation; its independent timer is forbidden.
 SEAT_ALLOWED_EXTRA = [
     f"skfleet-{seat}.service" for seat in ("atlas", "link", "mero", "niobe", "seraph", "tank")
 ] + [
     "skfleet-link-producer.service",
     "skfleet-seat-cycle.service",
     "skfleet-niobe-live.service",
-    "skfleet-niobe-live.timer",
 ]
 
 #: Required BY THE ROLE, as opposed to CONTROL_REQUIRED which is additionally

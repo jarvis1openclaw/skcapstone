@@ -29,7 +29,7 @@ def select_niobe_service(home: Path) -> str:
         if not isinstance(value, Mapping):
             return _NIOBE_SHADOW
         parse_activation(value, home=home)
-    except (OSError, ValueError, json.JSONDecodeError):
+    except (OSError, TypeError, ValueError, json.JSONDecodeError):
         return _NIOBE_SHADOW
     return _NIOBE_LIVE
 

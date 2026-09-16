@@ -123,6 +123,45 @@ def test_core_backend_enables_each_unit_via_systemctl_when_enable_set():
     assert ["systemctl", "--user", "enable", "skgateway.service"] in runner.calls
 
 
+def test_core_backend_installs_timer_and_paired_service_before_enable(monkeypatch, tmp_path):
+    monkeypatch.setenv("SKCAPSTONE_REPOS", "/opt/custom-repos")
+    monkeypatch.setenv("XDG_CONFIG_HOME", str(tmp_path / "config"))
+    runner = _FakeRunner()
+    backend = default_backends(runner=runner)["core"]
+
+    status, detail = backend(["skfleet-seat-cycle.timer"], dry_run=False, enable=True, start=False)
+
+    assert (status, detail) == ("ok", "")
+    service_install = [
+        "install",
+        "-D",
+        "-m",
+        "0644",
+        "/opt/custom-repos/skcapstone/systemd/skfleet-seat-cycle.service",
+        str(tmp_path / "config/systemd/user/skfleet-seat-cycle.service"),
+    ]
+    timer_install = [
+        "install",
+        "-D",
+        "-m",
+        "0644",
+        "/opt/custom-repos/skcapstone/systemd/skfleet-seat-cycle.timer",
+        str(tmp_path / "config/systemd/user/skfleet-seat-cycle.timer"),
+    ]
+    reload = ["systemctl", "--user", "daemon-reload"]
+    enable = ["systemctl", "--user", "enable", "skfleet-seat-cycle.timer"]
+    assert runner.calls.index(service_install) < runner.calls.index(timer_install)
+    assert runner.calls.index(timer_install) < runner.calls.index(reload)
+    assert runner.calls.index(reload) < runner.calls.index(enable)
+    installed_sources = {
+        call[4] for call in runner.calls if call[:4] == ["install", "-D", "-m", "0644"]
+    }
+    assert installed_sources >= {
+        f"/opt/custom-repos/skcapstone/systemd/skfleet-{seat}.service"
+        for seat in ("tank", "seraph", "niobe", "niobe-live")
+    }
+
+
 def test_core_backend_skips_systemctl_enable_in_dry_run():
     runner = _FakeRunner()
     b = default_backends(runner=runner)
