@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Card `f6d18fcf`: serialize Tank, Seraph, and activation-selected Niobe in one
+  non-overlapping systemd generation, continue after bounded seat failures,
+  and retain the shared rotation lock as defense in depth.
+
 - Card `f6d18fcf`: give Seraph a bounded wait for the shared fleet rotation
   lock while preserving Niobe's existing wait and nonblocking Tank and Atlas
   behavior, with the Seraph lock, dispatch, and cleanup budget below the
