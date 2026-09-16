@@ -94,9 +94,12 @@ def test_legacy_only_owner_is_excluded_and_cleared_owner_reenters_pool() -> None
     owned = namespace["authoritative_claimability"]("f16c182c", core)
     assert owned["claimable"] is False
     assert owned["reason"] == "legacy-owned"
-    assert namespace["_pool_v2_dispatchable"](
-        namespace["_pool_v2_admission"]("f16c182c", core, owned)
-    ) is False
+    assert (
+        namespace["_pool_v2_dispatchable"](
+            namespace["_pool_v2_admission"]("f16c182c", core, owned)
+        )
+        is False
+    )
 
     namespace["_legacy_projection_owners"] = lambda _cid, fresh=False: ()
     cleared = namespace["authoritative_claimability"]("f16c182c", core, fresh=True)
@@ -126,7 +129,8 @@ def test_legacy_claim_arriving_after_selection_blocks_preclaim() -> None:
     )
     namespace["_legacy_projection_owners"] = lambda _cid, fresh=False: ("jarvis",)
     fresh = namespace["_pool_v2_admission"](
-        "f16c182c", core,
+        "f16c182c",
+        core,
         namespace["authoritative_claimability"]("f16c182c", core, fresh=True),
     )
     assert selected["source_revision"] != fresh["source_revision"]
@@ -146,10 +150,24 @@ def test_natural_projection_read_tracks_claim_and_clear(tmp_path: Path) -> None:
         collections=collections,
         _legacy_projection_claims=None,
     )
-    exec(compile(ast.Module(body=[next(
-        node for node in ast.parse(ROTATE.read_text()).body
-        if isinstance(node, ast.FunctionDef) and node.name == "_legacy_projection_owners"
-    )], type_ignores=[]), str(ROTATE), "exec"), namespace)
+    exec(
+        compile(
+            ast.Module(
+                body=[
+                    next(
+                        node
+                        for node in ast.parse(ROTATE.read_text()).body
+                        if isinstance(node, ast.FunctionDef)
+                        and node.name == "_legacy_projection_owners"
+                    )
+                ],
+                type_ignores=[],
+            ),
+            str(ROTATE),
+            "exec",
+        ),
+        namespace,
+    )
     assert namespace["_legacy_projection_owners"]("f16c182c") == ("jarvis",)
     board.save_agent(AgentFile(agent="jarvis", claimed_tasks=[]))
     assert namespace["_legacy_projection_owners"]("f16c182c", fresh=True) == ()
@@ -190,27 +208,51 @@ def test_projection_cycle_held_cleared_then_native_claimed(tmp_path: Path) -> No
     core_path.write_text(json.dumps(core), encoding="utf-8")
     namespace = _load_claimability()
     namespace.update(
-        Board=Board, Path=Path, HOME=str(tmp_path), collections=collections,
-        _legacy_projection_claims=None, excluded=set(),
-        _REVIEW_READBACK_BLOCKED=set(), unclaimable=lambda _cid: False,
-        itil_terminal=lambda _cid: False, lifecycle_state=lambda _cid: "open",
+        Board=Board,
+        Path=Path,
+        HOME=str(tmp_path),
+        collections=collections,
+        _legacy_projection_claims=None,
+        excluded=set(),
+        _REVIEW_READBACK_BLOCKED=set(),
+        unclaimable=lambda _cid: False,
+        itil_terminal=lambda _cid: False,
+        lifecycle_state=lambda _cid: "open",
         outcome_lifecycle_bucket=lambda _lifecycle, _review: "open",
-        awaiting_review=lambda _cid: False, blocked_backoff=lambda _cid: False,
+        awaiting_review=lambda _cid: False,
+        blocked_backoff=lambda _cid: False,
         terminal_review_verdict=lambda _cid, _core: False,
     )
-    exec(compile(ast.Module(body=[next(
-        node for node in ast.parse(ROTATE.read_text()).body
-        if isinstance(node, ast.FunctionDef) and node.name == "_legacy_projection_owners"
-    )], type_ignores=[]), str(ROTATE), "exec"), namespace)
+    exec(
+        compile(
+            ast.Module(
+                body=[
+                    next(
+                        node
+                        for node in ast.parse(ROTATE.read_text()).body
+                        if isinstance(node, ast.FunctionDef)
+                        and node.name == "_legacy_projection_owners"
+                    )
+                ],
+                type_ignores=[],
+            ),
+            str(ROTATE),
+            "exec",
+        ),
+        namespace,
+    )
 
     namespace["_strict_card_events"] = lambda _cid, fresh=False: [
         _claim("2026-09-15T10:00:00Z", "jarvis", "rev-old"),
         _release("2026-09-15T11:00:00Z", "jarvis", "jarvis", "rev-old"),
     ]
-    board.save_agent(AgentFile(
-        agent="jarvis", last_seen="2020-01-01T00:00:00Z",
-        claimed_tasks=["f16c182c"],
-    ))
+    board.save_agent(
+        AgentFile(
+            agent="jarvis",
+            last_seen="2020-01-01T00:00:00Z",
+            claimed_tasks=["f16c182c"],
+        )
+    )
     held = namespace["_legacy_selector_decision"]("f16c182c", core_path)
     assert held["reason"] == "legacy-owned"
     assert not held["eligible"]
