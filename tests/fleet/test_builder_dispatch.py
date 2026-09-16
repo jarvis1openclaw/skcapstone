@@ -217,13 +217,100 @@ def test_post_offer_card_amendment_blocks_materialization_and_claim(
         "claim_task",
         lambda *_args: pytest.fail("amended card was claimed"),
     )
-    with pytest.raises(builder_dispatch.BuilderDispatchError, match="changed after dispatch"):
+    assert (
         builder_dispatch.consume_one(
             paths,
             tmp_path,
             "node-ziowk01",
             materializer=lambda *_args: pytest.fail("amended source was materialized"),
         )
+        is None
+    )
+    status = builder_dispatch._load(
+        builder_dispatch.status_path(paths, "node-ziowk01", "24b00003")
+    )
+    assert status["state"] == "blocked"
+    assert status["attempt"] == 0
+    assert "changed after dispatch" in status["error"]
+    assert sknoded.run_once(paths, "node-ziowk01")["heartbeat"] is True
+
+
+@pytest.mark.parametrize("mismatch_fold", [1, 2, 4])
+def test_transient_mismatch_refolds_before_launch(
+    paths, operator, noded41, monkeypatch, tmp_path, mismatch_fold
+) -> None:
+    _node(paths, operator, noded41)
+    builder_dispatch.offer(
+        paths,
+        _card(),
+        ["sk-m", "source-only"],
+        writer=store.Writer(role="scheduler", node="niobe", identity=""),
+    )
+    folded = _folded()
+    folds = 0
+    launches = []
+
+    def fold(_self, _card_id):
+        nonlocal folds
+        folds += 1
+        if folds == mismatch_fold:
+            return _folded(meta=dict(folded.meta, base_revision="a" * 40))
+        return folded
+
+    def claim(_self, owner, _card_id):
+        folded.owner = owner
+        folded.meta["_claim_revision"] = "exact-generation"
+
+    monkeypatch.setattr(builder_dispatch.CardStore, "fold", fold)
+    monkeypatch.setattr(builder_dispatch.Board, "claim_task", claim)
+    monkeypatch.setattr(builder_dispatch, "startup_hello", lambda *_args, **_kwargs: True)
+    result = builder_dispatch.consume_one(
+        paths,
+        tmp_path,
+        "node-ziowk01",
+        materializer=lambda _request, workspace: workspace,
+        launcher=lambda *_args: (launches.append(1) or SimpleNamespace(pid=43, poll=lambda: None)),
+    )
+    assert result["state"] == "running"
+    assert result["attempt"] == 1
+    assert launches == [1]
+
+
+def test_durable_mismatch_after_materialization_preserves_attempt_and_claim(
+    paths, operator, noded41, monkeypatch, tmp_path
+) -> None:
+    _node(paths, operator, noded41)
+    builder_dispatch.offer(
+        paths,
+        _card(),
+        ["sk-m", "source-only"],
+        writer=store.Writer(role="scheduler", node="niobe", identity=""),
+    )
+    folded = _folded()
+
+    def materialize(_request, workspace):
+        folded.meta["base_revision"] = "a" * 40
+        return workspace
+
+    monkeypatch.setattr(builder_dispatch.CardStore, "fold", lambda *_args: folded)
+    monkeypatch.setattr(
+        builder_dispatch.Board, "claim_task", lambda *_args: pytest.fail("mismatch claimed")
+    )
+    assert (
+        builder_dispatch.consume_one(
+            paths,
+            tmp_path,
+            "node-ziowk01",
+            materializer=materialize,
+        )
+        is None
+    )
+    status = builder_dispatch._load(
+        builder_dispatch.status_path(paths, "node-ziowk01", "24b00003")
+    )
+    assert status["state"] == "blocked"
+    assert status["attempt"] == 0
+    assert status["claim_released"] is False
 
 
 def test_reoffer_after_source_amendment_mints_a_new_bound_request(
@@ -323,7 +410,7 @@ def test_amendment_during_claim_releases_generation_without_launch(
     monkeypatch.setattr(builder_dispatch.Board, "claim_task", claim)
     monkeypatch.setattr(builder_dispatch.Board, "release_claim", release)
     monkeypatch.setattr(builder_dispatch, "startup_hello", lambda *_args, **_kwargs: True)
-    with pytest.raises(builder_dispatch.BuilderDispatchError, match="changed after dispatch"):
+    assert (
         builder_dispatch.consume_one(
             paths,
             tmp_path,
@@ -331,6 +418,8 @@ def test_amendment_during_claim_releases_generation_without_launch(
             launcher=lambda *_args: pytest.fail("amended generation launched"),
             materializer=lambda _request, workspace: workspace,
         )
+        is None
+    )
 
     status = builder_dispatch._load(
         builder_dispatch.status_path(paths, "node-ziowk01", request["card_id"])

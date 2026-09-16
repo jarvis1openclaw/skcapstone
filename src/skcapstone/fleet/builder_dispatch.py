@@ -29,6 +29,7 @@ LOGICAL_ROUTES = frozenset({"sk-s", "sk-m", "sk-l", "sk-xl"})
 LEASE_SECONDS = 900
 TERMINAL_STATES = {"completed", "blocked", "failed", "stale"}
 MAX_ATTEMPTS = 2
+MATCH_RETRY_LIMIT = 3
 BUILDER_CAPACITY = 4
 _PROCESSES: dict[str, object] = {}
 _WORKER_TOOLS = "read,bash,edit,write,grep,find,ls"
@@ -133,6 +134,17 @@ def _request_matches_current_card(coordination_home: Path, request: dict) -> Non
         or labels != expected_labels
     ):
         raise BuilderDispatchError("offered card changed after dispatch request")
+
+
+def _ensure_request_matches_current_card(coordination_home: Path, request: dict) -> None:
+    """Re-fold a request briefly before treating a mismatch as durable."""
+    for check in range(MATCH_RETRY_LIMIT):
+        try:
+            _request_matches_current_card(coordination_home, request)
+            return
+        except BuilderDispatchError:
+            if check == MATCH_RETRY_LIMIT - 1:
+                raise
 
 
 def _ready_builders(paths: FleetPaths) -> list[NodeView]:
@@ -586,7 +598,19 @@ def consume_one(
             workspace = paths.root / "workspaces" / owner
             if not store.actuation_allowed(paths):
                 return None
-            _request_matches_current_card(coordination_home, request)
+            try:
+                _ensure_request_matches_current_card(coordination_home, request)
+            except BuilderDispatchError as exc:
+                _write_status(
+                    paths,
+                    node,
+                    request,
+                    "blocked",
+                    attempt=int(prior.get("attempt") or 0),
+                    claim_released=False,
+                    error=str(exc),
+                )
+                continue
             try:
                 materializer(request, workspace)
             except BuilderDispatchError as exc:
@@ -610,15 +634,27 @@ def consume_one(
                     attempt=int(prior.get("attempt") or 0),
                     claim_released=False,
                 )
-            _request_matches_current_card(coordination_home, request)
+            try:
+                _ensure_request_matches_current_card(coordination_home, request)
+            except BuilderDispatchError as exc:
+                _write_status(
+                    paths,
+                    node,
+                    request,
+                    "blocked",
+                    attempt=int(prior.get("attempt") or 0),
+                    claim_released=False,
+                    error=str(exc),
+                )
+                continue
             Board(coordination_home).claim_task(owner, request["card_id"])
             card = CardStore(coordination_home).fold(request["card_id"])
             revision = str(card.meta.get("_claim_revision") or "") if card else ""
             if not card or card.owner != owner or not revision:
                 raise BuilderDispatchError("claimed generation is not authoritative")
             try:
-                _request_matches_current_card(coordination_home, request)
-            except BuilderDispatchError:
+                _ensure_request_matches_current_card(coordination_home, request)
+            except BuilderDispatchError as exc:
                 released = _release_exact(
                     coordination_home, request["card_id"], owner, revision, actor=owner
                 )
@@ -631,8 +667,9 @@ def consume_one(
                     claim_revision=revision,
                     attempt=int(prior.get("attempt") or 0),
                     claim_released=released,
+                    error=str(exc),
                 )
-                raise
+                continue
             frozen = _frozen_claim_status(
                 paths,
                 coordination_home,
