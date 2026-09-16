@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 import json
+import multiprocessing
+import os
 import subprocess
 from collections.abc import Mapping
 from pathlib import Path
@@ -259,6 +261,91 @@ def test_receipt_fsync_failure_leaves_durable_fence_for_next_cycle(tmp_path, mon
     assert result["aborted"] is True
     assert marker.is_file()
     assert not any(call[2:4] == ["start", "--wait"] for call in calls)
+
+
+def test_concurrent_process_cannot_enter_or_clear_owner_fence(tmp_path):
+    ctx = multiprocessing.get_context("fork")
+    entered = ctx.Event()
+    release = ctx.Event()
+    owner_result = ctx.Queue()
+    contender_result = ctx.Queue()
+
+    def owner():
+        def runner(command, **_kwargs):
+            if command[2:4] == ["start", "--wait"] and command[-1] == "skfleet-tank.service":
+                entered.set()
+                assert release.wait(10)
+            if command[2] == "show":
+                return SimpleNamespace(
+                    returncode=0,
+                    stdout="LoadState=loaded\nActiveState=inactive\n",
+                    stderr="",
+                )
+            return SimpleNamespace(returncode=0, stdout="", stderr="")
+
+        owner_result.put(run_generation(tmp_path, runner=runner))
+
+    def contender():
+        def runner(_command, **_kwargs):
+            raise AssertionError("contender must not invoke systemd")
+
+        contender_result.put(run_generation(tmp_path, runner=runner))
+
+    owner_process = ctx.Process(target=owner)
+    owner_process.start()
+    assert entered.wait(10)
+    marker = tmp_path / "coordination/seat-cycles/recovery-required"
+    assert marker.is_file()
+
+    contender_process = ctx.Process(target=contender)
+    contender_process.start()
+    contender_process.join(10)
+    assert contender_process.exitcode == 0
+    contender_receipt = contender_result.get(timeout=2)
+    assert contender_receipt["aborted"] is True
+    assert contender_receipt["recovery"] == "generation_lock_contended"
+    assert marker.is_file(), "contender must not clear the owner recovery fence"
+
+    release.set()
+    owner_process.join(10)
+    assert owner_process.exitcode == 0
+    assert owner_result.get(timeout=2)["aborted"] is False
+    assert not marker.exists()
+
+
+def test_dead_lock_owner_releases_flock_but_leaves_recovery_fence(tmp_path):
+    ctx = multiprocessing.get_context("fork")
+    entered = ctx.Event()
+
+    def crashing_owner():
+        def runner(command, **_kwargs):
+            if command[2:4] == ["start", "--wait"]:
+                entered.set()
+                os._exit(17)
+            return SimpleNamespace(returncode=0, stdout="", stderr="")
+
+        run_generation(tmp_path, runner=runner)
+
+    process = ctx.Process(target=crashing_owner)
+    process.start()
+    assert entered.wait(10)
+    process.join(10)
+    assert process.exitcode == 17
+    marker = tmp_path / "coordination/seat-cycles/recovery-required"
+    assert marker.is_file()
+
+    def recovered_runner(command, **_kwargs):
+        if command[2] == "show":
+            return SimpleNamespace(
+                returncode=0,
+                stdout="LoadState=loaded\nActiveState=inactive\n",
+                stderr="",
+            )
+        return SimpleNamespace(returncode=0, stdout="", stderr="")
+
+    result = run_generation(tmp_path, runner=recovered_runner)
+    assert result["aborted"] is False
+    assert not marker.exists()
 
 
 def test_main_returns_nonzero_for_aborted_generation(tmp_path, monkeypatch):

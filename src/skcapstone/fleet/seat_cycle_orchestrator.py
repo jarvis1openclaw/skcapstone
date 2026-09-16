@@ -25,6 +25,20 @@ def _recovery_marker(home: Path) -> Path:
     return home / "coordination" / "seat-cycles" / "recovery-required"
 
 
+def _acquire_generation_lock(home: Path) -> int | None:
+    """Acquire the process-lifetime generation lock without waiting."""
+
+    path = home / "coordination" / "seat-cycles" / "generation.lock"
+    path.parent.mkdir(parents=True, exist_ok=True)
+    fd = os.open(path, os.O_CREAT | os.O_RDWR, 0o600)
+    try:
+        fcntl.flock(fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
+    except BlockingIOError:
+        os.close(fd)
+        return None
+    return fd
+
+
 def _arm_recovery_fence(home: Path) -> None:
     """Durably fence future generations before any governed seat starts."""
 
@@ -191,12 +205,12 @@ def _stop_and_prove_inactive(unit: str, runner: Callable[..., Any]) -> bool:
     )
 
 
-def run_generation(
+def _run_generation_locked(
     home: Path,
     *,
     runner: Callable[..., Any] = subprocess.run,
 ) -> dict[str, Any]:
-    """Start every governed seat in order and continue after bounded failures."""
+    """Run one generation while the caller holds the process-lifetime lock."""
 
     started_at = datetime.now(timezone.utc).isoformat()
     recovery_required = _recovery_marker(home).exists() or _recovery_required(home)
@@ -259,6 +273,31 @@ def run_generation(
     if not aborted:
         _clear_recovery_fence(home)
     return receipt
+
+
+def run_generation(
+    home: Path,
+    *,
+    runner: Callable[..., Any] = subprocess.run,
+) -> dict[str, Any]:
+    """Run one serialized generation or fail closed on live contention."""
+
+    lock_fd = _acquire_generation_lock(home)
+    if lock_fd is None:
+        return {
+            "schema": "skfleet.seat-cycle-generation/v1",
+            "started_at": datetime.now(timezone.utc).isoformat(),
+            "finished_at": datetime.now(timezone.utc).isoformat(),
+            "seats": [],
+            "failures": 1,
+            "aborted": True,
+            "recovery": "generation_lock_contended",
+        }
+    try:
+        return _run_generation_locked(home, runner=runner)
+    finally:
+        fcntl.flock(lock_fd, fcntl.LOCK_UN)
+        os.close(lock_fd)
 
 
 def main() -> int:
