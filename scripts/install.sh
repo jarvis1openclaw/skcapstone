@@ -306,6 +306,7 @@ elif [[ "$(uname)" == "Linux" ]] && command -v systemctl &>/dev/null; then
                      skfleet-link.service skfleet-link.timer \
                      skfleet-mero.service skfleet-mero.timer \
                      skfleet-niobe.service skfleet-niobe.timer \
+                     skfleet-seat-cycle.service skfleet-seat-cycle.timer \
                      skfleet-seraph.service skfleet-seraph.timer \
                      skfleet-tank.service skfleet-tank.timer; do
             _src="$REPO_ROOT/systemd/$_unit"

@@ -73,9 +73,15 @@ CONTROL_REQUIRED = [
 #: The six bounded lifecycle seat timers plus the Link producer that feeds
 #: the Link seat. A seat's .service is a oneshot; the TIMER is what makes it
 #: recur, so a service without its timer is a seat that never runs.
+SERIALIZED_SEAT_MUST_NOT = [
+    "skfleet-niobe-live.timer",
+    "skfleet-niobe.timer",
+    "skfleet-seraph.timer",
+    "skfleet-tank.timer",
+]
 SEAT_CYCLE_TIMERS = [
-    f"skfleet-{seat}.timer" for seat in ("atlas", "link", "mero", "niobe", "seraph", "tank")
-] + ["skfleet-link-producer.timer"]
+    f"skfleet-{seat}.timer" for seat in ("atlas", "link", "mero")
+] + ["skfleet-link-producer.timer", "skfleet-seat-cycle.timer"]
 
 #: Seat units the control role permits but does not mandate. Their oneshot
 #: services come along with their timers, and skfleet-niobe-live is
@@ -85,6 +91,7 @@ SEAT_ALLOWED_EXTRA = [
     f"skfleet-{seat}.service" for seat in ("atlas", "link", "mero", "niobe", "seraph", "tank")
 ] + [
     "skfleet-link-producer.service",
+    "skfleet-seat-cycle.service",
     "skfleet-niobe-live.service",
     "skfleet-niobe-live.timer",
 ]
@@ -234,19 +241,16 @@ def build_control() -> dict:
             "description": (
                 "The single control seat (.158, node-noroc2027). Holds the full "
                 "sovereign tree and runs the control-plane loops. Changes almost "
-                "nothing, which is the point. The six bounded lifecycle seat "
-                "timers (skfleet-atlas/link/mero/niobe/seraph/tank) and the Link "
-                "producer timer are REQUIRED here because the seats are those "
-                "control-plane loops; they were in no profile at all, so an "
-                "estate running none of them still reported ok=True from "
-                "`fleet install --check`. skfleet-niobe-live.timer is allowed "
-                "but never required: it launches real agent runs and is an "
-                "activation decision, not an install baseline. " + _IGNORE_RULE + " " + _ADR_LINK
+                "nothing, which is the point. Atlas, Link, and Mero retain "
+                "bounded timers; one required seat-cycle timer serializes Tank, "
+                "Seraph, and activation-selected Niobe so generations cannot "
+                "overlap. Individual Tank, Seraph, Niobe, and Niobe-live timers "
+                "are forbidden alongside that orchestrator. " + _IGNORE_RULE + " " + _ADR_LINK
             ),
             "units": _units_block(
                 sorted(set(allowed) | set(SEAT_ALLOWED_EXTRA)),
                 CONTROL_ROLE_REQUIRED,
-                MODEL_SERVING,
+                MODEL_SERVING + SERIALIZED_SEAT_MUST_NOT,
             ),
             "unitsIgnore": sorted(DESKTOP_IGNORE),
             "packages": _units_block(load_packages("node-noroc2027"), ["skcapstone"], []),

@@ -15,7 +15,15 @@ import pytest
 from skcapstone.fleet import install_backends, installer, profile_doctor, profiles
 
 SEATS = ("atlas", "link", "mero", "niobe", "seraph", "tank")
-SEAT_TIMERS = tuple(f"skfleet-{seat}.timer" for seat in SEATS)
+SEAT_TIMERS = tuple(f"skfleet-{seat}.timer" for seat in ("atlas", "link", "mero")) + (
+    "skfleet-seat-cycle.timer",
+)
+SERIALIZED_TIMERS = (
+    "skfleet-niobe-live.timer",
+    "skfleet-niobe.timer",
+    "skfleet-seraph.timer",
+    "skfleet-tank.timer",
+)
 PROFILE_DIR = Path(__file__).resolve().parents[1] / "deploy" / "fleet-objects" / "profile"
 
 
@@ -25,8 +33,8 @@ def _control_spec() -> dict:
     )
 
 
-def test_control_profile_requires_every_seat_timer() -> None:
-    """Happy path: the six bounded seat timers are a control-node baseline."""
+def test_control_profile_requires_serialized_seat_orchestrator() -> None:
+    """Tank, Seraph, and Niobe recur only through one generation timer."""
     spec = _control_spec()
     assert set(SEAT_TIMERS) <= set(spec["units"]["required"])
     assert set(SEAT_TIMERS) <= set(spec["units"]["allowed"])
@@ -34,11 +42,11 @@ def test_control_profile_requires_every_seat_timer() -> None:
         assert f"skfleet-{seat}.service" in spec["units"]["allowed"]
 
 
-def test_control_profile_allows_but_never_requires_live_dispatch() -> None:
-    """Edge case: niobe-live launches real agent runs, so it is a decision."""
+def test_control_profile_forbids_competing_serialized_seat_timers() -> None:
+    """Individual timers cannot race the orchestrated generation."""
     spec = _control_spec()
-    assert "skfleet-niobe-live.timer" in spec["units"]["allowed"]
-    assert "skfleet-niobe-live.timer" not in spec["units"]["required"]
+    assert set(SERIALIZED_TIMERS) <= set(spec["units"]["mustNot"])
+    assert not set(SERIALIZED_TIMERS) & set(spec["units"]["allowed"])
 
 
 def test_an_estate_with_no_seat_units_no_longer_reports_ok() -> None:

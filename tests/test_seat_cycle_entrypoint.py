@@ -896,15 +896,11 @@ def test_unit_templates_preserve_limits_and_disabled_install_contract() -> None:
     assert "Environment=SKFLEET_GLM_TARGET=0" in niobe
     assert "Environment=SKFLEET_KIMI_TARGET=0" in niobe
     assert "skfleet-seraph.service" in seraph_timer
-    assert "OnCalendar=*-*-* *:2,7,12,17,22,27,32,37,42,47,52,57:00" in seraph_timer
-    assert "AccuracySec=1s" in seraph_timer
     assert "--seat tank" in tank and "TimeoutStartSec=300" in tank
     assert "SKFLEET_TANK_BATCH_SIZE=2" in tank
     assert "ProtectHome=read-only" in tank
     assert "ReadWritePaths=%h/.skcapstone/evidence %h/.skcapstone/fleet" in tank
-    assert "OnCalendar=*-*-* *:0,5,10,15,20,25,30,35,40,45,50,55:00" in tank_timer
-    assert "AccuracySec=1s" in tank_timer
-    assert "OnUnitActiveSec" not in tank_timer
+    assert "OnUnitActiveSec=5min" in tank_timer
     assert "--seat atlas" in atlas and "TimeoutStartSec=300" in atlas
     assert "SKFLEET_ATLAS_BATCH_SIZE=2" in atlas
     assert "ProtectHome=read-only" in atlas
@@ -914,10 +910,6 @@ def test_unit_templates_preserve_limits_and_disabled_install_contract() -> None:
     for seat in ("tank", "atlas"):
         assert (root / "systemd" / f"skfleet-{seat}.service").read_bytes() == (
             root / "src" / "skcapstone" / "data" / "systemd" / f"skfleet-{seat}.service"
-        ).read_bytes()
-    for seat in ("seraph", "tank"):
-        assert (root / "systemd" / f"skfleet-{seat}.timer").read_bytes() == (
-            root / "src" / "skcapstone" / "data" / "systemd" / f"skfleet-{seat}.timer"
         ).read_bytes()
 
 

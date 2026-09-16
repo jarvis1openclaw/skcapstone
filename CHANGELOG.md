@@ -2,9 +2,9 @@
 
 ## Unreleased
 
-- Card `f6d18fcf`: calendar-anchor Tank and start Seraph two minutes later so
-  a legitimate Tank cycle cannot erase the intended shared-lock stagger, while
-  preserving the exclusive lock and Seraph's existing sub-300-second budget.
+- Card `f6d18fcf`: serialize Tank, Seraph, and activation-selected Niobe in one
+  non-overlapping systemd generation, continue after bounded seat failures,
+  and retain the shared rotation lock as defense in depth.
 
 - Card `f6d18fcf`: give Seraph a bounded wait for the shared fleet rotation
   lock while preserving Niobe's existing wait and nonblocking Tank and Atlas
