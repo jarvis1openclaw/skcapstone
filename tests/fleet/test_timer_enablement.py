@@ -29,6 +29,7 @@ class Systemd:
                 f"UnitFileState={'enabled' if self.enabled else 'disabled'}\n"
                 f"ActiveState={'active' if self.active else 'inactive'}\n"
                 f"SubState={'waiting' if self.active else 'dead'}\n"
+                "Job=\n"
                 f"FragmentPath={self.fragment}\n"
             )
             return CompletedProcess(command, 0, output, "")
@@ -61,6 +62,8 @@ class TransitionSystemd:
         timer_active="inactive",
         service_load="loaded",
         service_active="inactive",
+        timer_job="",
+        service_job="",
         show_failure=False,
         disable_failure=False,
         stop_failure=False,
@@ -71,6 +74,8 @@ class TransitionSystemd:
         self.timer_active = timer_active
         self.service_load = service_load
         self.service_active = service_active
+        self.timer_job = timer_job
+        self.service_job = service_job
         self.show_failure = show_failure
         self.disable_failure = disable_failure
         self.stop_failure = stop_failure
@@ -91,6 +96,7 @@ class TransitionSystemd:
                 f"UnitFileState={self.timer_file if is_timer else 'static'}\n"
                 f"ActiveState={active}\n"
                 f"SubState={'waiting' if is_timer and active == 'active' else 'dead'}\n"
+                f"Job={self.timer_job if is_timer else self.service_job}\n"
                 "FragmentPath=/unit\n"
             )
             load = self.timer_load if is_timer else self.service_load
@@ -410,6 +416,33 @@ def test_read_only_forbidden_audit_distinguishes_absent_from_unknown(tmp_path):
         )["safe"]
         is False
     )
+
+
+@pytest.mark.parametrize(
+    "systemd",
+    [TransitionSystemd(timer_job="99"), TransitionSystemd(service_job="99")],
+)
+def test_forward_cutover_rejects_queued_forbidden_work(tmp_path, systemd):
+    rows = timer_enablement.converge_forbidden_timers(
+        {"units": {"mustNot": ["skfleet-tank.timer"]}},
+        runner=systemd,
+        config_home=tmp_path,
+        evidence_path=tmp_path / "evidence.jsonl",
+        actor="jarvis",
+    )
+
+    assert rows[0]["safe"] is False
+
+
+def test_rollback_rejects_queued_governed_service_work(tmp_path):
+    rows = timer_enablement.converge_governed_services_inactive(
+        runner=TransitionSystemd(service_job="99"),
+        evidence_path=tmp_path / "evidence.jsonl",
+        actor="jarvis",
+        source_revision="repair",
+    )
+
+    assert all(row["safe"] is False for row in rows)
 
 
 def test_rollback_stops_orchestrator_before_enabling_legacy_timers(tmp_path):
@@ -895,7 +928,7 @@ def test_forward_and_rollback_share_one_scheduler_migration_transaction(tmp_path
             if unit.endswith(".service"):
                 output = (
                     "LoadState=loaded\nUnitFileState=static\n"
-                    "ActiveState=inactive\nSubState=dead\nFragmentPath=/unit\n"
+                    "ActiveState=inactive\nSubState=dead\nJob=\nFragmentPath=/unit\n"
                 )
             else:
                 enabled = bool(state.get(f"{unit}:enabled", False))
@@ -904,7 +937,7 @@ def test_forward_and_rollback_share_one_scheduler_migration_transaction(tmp_path
                     "LoadState=loaded\n"
                     f"UnitFileState={'enabled' if enabled else 'disabled'}\n"
                     f"ActiveState={'active' if active else 'inactive'}\n"
-                    f"SubState={'waiting' if active else 'dead'}\nFragmentPath=/unit\n"
+                    f"SubState={'waiting' if active else 'dead'}\nJob=\nFragmentPath=/unit\n"
                 )
             return CompletedProcess(command, 0, output, "")
         if verb == "disable":

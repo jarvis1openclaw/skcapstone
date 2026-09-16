@@ -94,7 +94,7 @@ def _state(unit: str, runner: Runner) -> dict[str, str]:
                 "--user",
                 "show",
                 unit,
-                "--property=LoadState,UnitFileState,ActiveState,SubState,FragmentPath",
+                "--property=LoadState,UnitFileState,ActiveState,SubState,FragmentPath,Job",
             ],
             capture_output=True,
             text=True,
@@ -106,6 +106,7 @@ def _state(unit: str, runner: Runner) -> dict[str, str]:
             "LoadState": "unknown",
             "UnitFileState": "unknown",
             "ActiveState": "unknown",
+            "Job": "unknown",
         }
     state = dict(
         line.split("=", 1)
@@ -121,6 +122,7 @@ def _state(unit: str, runner: Runner) -> dict[str, str]:
             "LoadState": "unknown",
             "UnitFileState": "unknown",
             "ActiveState": "unknown",
+            "Job": "unknown",
         }
     state["_known"] = "true"
     return state
@@ -154,17 +156,28 @@ def audit_forbidden_timer(unit: str, *, runner: Runner) -> dict:
     timer = _state(unit, runner)
     service_name = unit.removesuffix(".timer") + ".service"
     service = _state(service_name, runner)
-    timer_safe = timer.get("_known") == "true" and (
-        (
-            timer.get("LoadState") == "loaded"
-            and timer.get("UnitFileState") == "disabled"
-            and timer.get("ActiveState") == "inactive"
+    timer_safe = (
+        timer.get("_known") == "true"
+        and timer.get("Job") in {"", "0", "n/a"}
+        and (
+            (
+                timer.get("LoadState") == "loaded"
+                and timer.get("UnitFileState") == "disabled"
+                and timer.get("ActiveState") == "inactive"
+            )
+            or (timer.get("LoadState") == "not-found" and timer.get("ActiveState") == "inactive")
         )
-        or (timer.get("LoadState") == "not-found" and timer.get("ActiveState") == "inactive")
     )
-    service_safe = service.get("_known") == "true" and (
-        (service.get("LoadState") == "loaded" and service.get("ActiveState") == "inactive")
-        or (service.get("LoadState") == "not-found" and service.get("ActiveState") == "inactive")
+    service_safe = (
+        service.get("_known") == "true"
+        and service.get("Job") in {"", "0", "n/a"}
+        and (
+            (service.get("LoadState") == "loaded" and service.get("ActiveState") == "inactive")
+            or (
+                service.get("LoadState") == "not-found"
+                and service.get("ActiveState") == "inactive"
+            )
+        )
     )
     return {
         "unit": unit,
@@ -371,6 +384,7 @@ def converge_governed_services_inactive(
             state.get("_known") == "true"
             and state.get("ActiveState") == "inactive"
             and state.get("LoadState") in {"loaded", "not-found"}
+            and state.get("Job") in {"", "0", "n/a"}
         )
         _append(
             evidence_path,
