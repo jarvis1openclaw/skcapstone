@@ -38,6 +38,8 @@ class Systemd:
             link.symlink_to(self.fragment)
         elif verb == "start":
             self.active = True
+        elif verb == "stop":
+            self.active = False
         elif verb == "disable":
             self.enabled = False
             if "--now" in command:
@@ -151,7 +153,10 @@ def test_forbidden_pre_enabled_timers_stop_before_orchestrator_starts(tmp_path):
         ["disable", "--now", "skfleet-tank.timer"]
     ]
     verbs = [call[2] for call in systemd.calls]
-    assert verbs.index("disable") < verbs.index("enable") < verbs.index("start")
+    assert (
+        verbs.index("disable") < verbs.index("stop") < verbs.index("enable") < verbs.index("start")
+    )
+    assert [call[-1] for call in systemd.calls if call[2] == "stop"] == ["skfleet-tank.service"]
     event = json.loads(evidence.read_text().splitlines()[0])
     assert event["actor"] == "jarvis"
     assert event["requested_state"] == "disabled_inactive"

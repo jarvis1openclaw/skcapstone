@@ -189,6 +189,7 @@ def converge_forbidden_timers(
     revision = source_revision or policy_revision(profile)
     results = []
     for unit in forbidden_timers(profile):
+        service = unit.removesuffix(".timer") + ".service"
         before = _state(unit, runner)
         loaded = before.get("LoadState") == "loaded"
         enabled = before.get("UnitFileState") == "enabled"
@@ -206,6 +207,20 @@ def converge_forbidden_timers(
             except Exception as exc:
                 ok = False
                 detail = str(exc)[-500:]
+            try:
+                stopped = runner(
+                    ["systemctl", "--user", "stop", service],
+                    capture_output=True,
+                    text=True,
+                    timeout=310,
+                )
+                stop_ok = getattr(stopped, "returncode", 1) == 0
+                if not stop_ok:
+                    detail = (detail + "; " + str(getattr(stopped, "stderr", "") or ""))[-500:]
+            except Exception as exc:
+                stop_ok = False
+                detail = (detail + "; " + str(exc))[-500:]
+            ok = ok and stop_ok
             _append(
                 evidence_path,
                 {
@@ -221,17 +236,24 @@ def converge_forbidden_timers(
                 },
             )
         after = _state(unit, runner)
+        service_after = _state(service, runner)
+        service_inactive = service_after.get("ActiveState") != "active"
         results.append(
             {
                 "unit": unit,
                 "loaded": after.get("LoadState") == "loaded",
                 "enabled": after.get("UnitFileState") == "enabled",
                 "active": after.get("ActiveState") == "active",
-                "safe": after.get("LoadState") != "loaded"
-                or (
-                    after.get("UnitFileState") != "enabled"
-                    and after.get("ActiveState") != "active"
-                ),
+                "service": service,
+                "service_inactive": service_inactive,
+                "safe": (
+                    after.get("LoadState") != "loaded"
+                    or (
+                        after.get("UnitFileState") != "enabled"
+                        and after.get("ActiveState") != "active"
+                    )
+                )
+                and service_inactive,
             }
         )
     return results
