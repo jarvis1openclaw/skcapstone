@@ -182,14 +182,34 @@ def test_core_backend_skips_systemctl_enable_in_dry_run():
 def test_core_dry_run_reports_install_reload_enable_and_start_without_mutation():
     runner = _FakeRunner()
     backend = default_backends(runner=runner)["core"]
-    status, detail = backend(["skgateway.service"], dry_run=True, enable=True, start=True)
+    status, detail = backend(["skcapstone.service"], dry_run=True, enable=True, start=True)
     assert status == "would-write"
     assert "scripts/install.sh --non-interactive" in detail
     assert "install -D -m 0644" in detail
     assert "systemctl --user daemon-reload" in detail
-    assert "systemctl --user enable skgateway.service" in detail
-    assert "systemctl --user start skgateway.service" in detail
+    assert "systemctl --user enable skcapstone.service" in detail
+    assert "systemctl --user start skcapstone.service" in detail
     assert runner.calls == []
+
+
+def test_core_backend_never_direct_copies_external_required_units(monkeypatch):
+    monkeypatch.setenv("SKCAPSTONE_REPOS", "/opt/custom-repos")
+    runner = _FakeRunner()
+    backend = default_backends(runner=runner)["core"]
+
+    status, _ = backend(
+        ["skgateway.service", "skoperator.timer"],
+        dry_run=False,
+        enable=False,
+        start=False,
+    )
+
+    assert status == "ok"
+    assert not any(call and call[0] == "install" for call in runner.calls)
+    assert ["systemctl", "--user", "daemon-reload"] not in runner.calls
+    assert runner.calls == [
+        ["bash", "/opt/custom-repos/skcapstone/scripts/install.sh", "--non-interactive"]
+    ]
 
 
 def test_skcomms_backend_passes_only_no_service_flag():
@@ -208,6 +228,16 @@ def test_skcomms_backend_enables_units_via_systemctl_when_enable_set():
     status, _ = b["skcomms"](["skcomms.service"], dry_run=False, enable=True, start=False)
     assert status == "ok"
     assert ["systemctl", "--user", "enable", "skcomms.service"] in runner.calls
+
+
+def test_skcomms_backend_honors_enable_start_flag_matrix():
+    for enable, start in ((False, False), (True, False), (False, True), (True, True)):
+        runner = _FakeRunner()
+        backend = default_backends(runner=runner)["skcomms"]
+        status, _ = backend(["skcomms.service"], dry_run=False, enable=enable, start=start)
+        assert status == "ok"
+        assert (["systemctl", "--user", "enable", "skcomms.service"] in runner.calls) is enable
+        assert (["systemctl", "--user", "start", "skcomms.service"] in runner.calls) is start
 
 
 def test_capauth_authz_backend_shells_to_capauth_deploy_script_with_no_flags():

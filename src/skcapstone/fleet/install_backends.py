@@ -203,6 +203,7 @@ def default_backends(runner: Callable = subprocess.run) -> dict[str, Callable]:
                 str(unit_dir / name),
             ]
             for name in _core_unit_names(names)
+            if ships_core_unit(name)
         ]
 
     def _install_core_units(names: list[str]) -> tuple[str, str]:
@@ -211,6 +212,8 @@ def default_backends(runner: Callable = subprocess.run) -> dict[str, Callable]:
             status, detail = _run(runner, command, dry_run=False)
             if status == "failed":
                 return status, detail
+        if not _core_copy_commands(names):
+            return "ok", ""
         return _run(runner, ["systemctl", "--user", "daemon-reload"], dry_run=False)
 
     def packages(names: list[str], *, dry_run: bool, enable: bool, start: bool) -> tuple[str, str]:
@@ -240,8 +243,8 @@ def default_backends(runner: Callable = subprocess.run) -> dict[str, Callable]:
         # unit enablement is a separate systemctl step.
         cmd = ["bash", str(repos / "skcomms" / "scripts" / "bootstrap.sh"), "--no-service"]
         status, detail = _run(runner, cmd, dry_run=dry_run)
-        if status == "ok" and enable:
-            status, detail = _activate_units(names, enable=True, start=False)
+        if status == "ok" and (enable or start):
+            status, detail = _activate_units(names, enable=enable, start=start)
         return status, detail
 
     def core(names: list[str], *, dry_run: bool, enable: bool, start: bool) -> tuple[str, str]:
@@ -252,7 +255,10 @@ def default_backends(runner: Callable = subprocess.run) -> dict[str, Callable]:
         # itself takes no --enable flag).
         cmd = ["bash", str(repos / "skcapstone" / "scripts" / "install.sh"), "--non-interactive"]
         if dry_run:
-            commands = [cmd, *_core_copy_commands(names), ["systemctl", "--user", "daemon-reload"]]
+            copy_commands = _core_copy_commands(names)
+            commands = [cmd, *copy_commands]
+            if copy_commands:
+                commands.append(["systemctl", "--user", "daemon-reload"])
             commands.extend(
                 ["systemctl", "--user", verb, name]
                 for name in names

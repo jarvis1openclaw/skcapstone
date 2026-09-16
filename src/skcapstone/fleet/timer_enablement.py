@@ -11,6 +11,8 @@ from collections.abc import Callable
 from datetime import datetime, timezone
 from pathlib import Path
 
+from skcapstone.estate import sovereign_home
+
 Runner = Callable[..., object]
 GOVERNED_SEAT_SERVICES = (
     "skfleet-tank.service",
@@ -416,7 +418,7 @@ def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("command", choices=("rollback-legacy",))
     parser.add_argument("--legacy-timer", action="append", required=True)
-    parser.add_argument("--home", type=Path, default=Path("~/.skcapstone").expanduser())
+    parser.add_argument("--home", type=Path, default=sovereign_home())
     parser.add_argument("--config-home", type=Path, default=Path("~/.config").expanduser())
     parser.add_argument("--evidence", type=Path, required=True)
     parser.add_argument("--actor", required=True)

@@ -501,6 +501,8 @@ def install_cmd(
         raise click.ClickException(
             f"actuation not enabled for {exc}: `skfleet actuation <name> --enable` first"
         ) from exc
+    except ValueError as exc:
+        raise click.ClickException(str(exc)) from exc
 
     if as_json:
         click.echo(jsonlib.dumps(summary, indent=2, sort_keys=True))

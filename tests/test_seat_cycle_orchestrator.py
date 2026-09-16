@@ -8,6 +8,8 @@ from collections.abc import Mapping
 from pathlib import Path
 from types import SimpleNamespace
 
+import pytest
+
 from skcapstone.fleet import seat_cycle_orchestrator
 from skcapstone.fleet.seat_cycle_orchestrator import run_generation, select_niobe_service
 
@@ -23,11 +25,24 @@ def test_generation_runs_exact_order_and_continues_after_failure(tmp_path, monke
 
     def runner(command, **_kwargs):
         calls.append(command)
-        return SimpleNamespace(returncode=1 if "skfleet-tank.service" in command else 0)
+        if command[2] == "show":
+            return SimpleNamespace(
+                returncode=0, stdout="LoadState=loaded\nActiveState=inactive\n", stderr=""
+            )
+        return SimpleNamespace(
+            returncode=(
+                1
+                if command[2:4] == ["start", "--wait"] and command[-1] == "skfleet-tank.service"
+                else 0
+            ),
+            stdout="",
+            stderr="",
+        )
 
     result = run_generation(tmp_path, runner=runner)
 
-    assert [command[-1] for command in calls] == [
+    start_calls = [command for command in calls if command[2:4] == ["start", "--wait"]]
+    assert [command[-1] for command in start_calls] == [
         "skfleet-tank.service",
         "skfleet-seraph.service",
         "skfleet-niobe-live.service",
@@ -38,8 +53,35 @@ def test_generation_runs_exact_order_and_continues_after_failure(tmp_path, monke
         .read_text()
         .splitlines()[-1]
     )
-    assert [seat["unit"] for seat in receipt["seats"]] == [command[-1] for command in calls]
+    assert [seat["unit"] for seat in receipt["seats"]] == [command[-1] for command in start_calls]
     assert [seat["returncode"] for seat in receipt["seats"]] == [1, 0, 0]
+
+
+@pytest.mark.parametrize("state", ["active", "deactivating"])
+def test_nonzero_start_aborts_when_service_cannot_be_proven_inactive(tmp_path, monkeypatch, state):
+    monkeypatch.setattr(
+        "skcapstone.fleet.seat_cycle_orchestrator.select_niobe_service",
+        lambda _home: "skfleet-niobe.service",
+    )
+    calls = []
+
+    def runner(command, **_kwargs):
+        calls.append(command)
+        if command[2:4] == ["start", "--wait"]:
+            return SimpleNamespace(returncode=7, stdout="", stderr="failed")
+        if command[2] == "show":
+            return SimpleNamespace(
+                returncode=0,
+                stdout=f"LoadState=loaded\nActiveState={state}\n",
+                stderr="",
+            )
+        return SimpleNamespace(returncode=0, stdout="", stderr="")
+
+    result = run_generation(tmp_path, runner=runner)
+    assert result["aborted"] is True
+    assert [call for call in calls if call[2:4] == ["start", "--wait"]] == [
+        ["systemctl", "--user", "start", "--wait", "skfleet-tank.service"]
+    ]
 
 
 def test_timeout_stops_and_proves_seat_inactive_before_continuing(tmp_path, monkeypatch):
@@ -140,6 +182,82 @@ def test_malformed_recovery_receipt_fails_closed_before_any_seat_start(tmp_path)
 
     result = run_generation(tmp_path, runner=runner)
     assert result["aborted"] is True
+    assert not any(call[2:4] == ["start", "--wait"] for call in calls)
+
+
+@pytest.mark.parametrize(
+    "receipt",
+    [
+        {},
+        {"schema": "wrong", "aborted": False, "failures": 0, "seats": []},
+        {
+            "schema": "skfleet.seat-cycle-generation/v1",
+            "aborted": "false",
+            "failures": 0,
+            "seats": [],
+        },
+        {"schema": "skfleet.seat-cycle-generation/v1", "failures": 0, "seats": []},
+        {
+            "schema": "skfleet.seat-cycle-generation/v1",
+            "aborted": False,
+            "failures": 0,
+            "seats": [{}],
+        },
+    ],
+)
+def test_untrusted_receipt_shapes_require_recovery_proof(tmp_path, receipt):
+    path = tmp_path / "coordination/seat-cycles/orchestrator.health.jsonl"
+    path.parent.mkdir(parents=True)
+    path.write_text(json.dumps(receipt) + "\n", encoding="utf-8")
+    calls = []
+
+    def runner(command, **_kwargs):
+        calls.append(command)
+        return SimpleNamespace(
+            returncode=0, stdout="LoadState=loaded\nActiveState=active\n", stderr=""
+        )
+
+    result = run_generation(tmp_path, runner=runner)
+    assert result["aborted"] is True
+    assert not any(call[2:4] == ["start", "--wait"] for call in calls)
+
+
+def test_receipt_fsync_failure_leaves_durable_fence_for_next_cycle(tmp_path, monkeypatch):
+    original_append = seat_cycle_orchestrator._append_receipt
+
+    def healthy_runner(command, **_kwargs):
+        if command[2] == "show":
+            return SimpleNamespace(
+                returncode=0, stdout="LoadState=loaded\nActiveState=inactive\n", stderr=""
+            )
+        return SimpleNamespace(returncode=0, stdout="", stderr="")
+
+    monkeypatch.setattr(
+        seat_cycle_orchestrator,
+        "_append_receipt",
+        lambda *_args, **_kwargs: (_ for _ in ()).throw(OSError("disk full")),
+    )
+    with pytest.raises(OSError, match="disk full"):
+        run_generation(tmp_path, runner=healthy_runner)
+    marker = tmp_path / "coordination/seat-cycles/recovery-required"
+    assert marker.is_file()
+
+    monkeypatch.setattr(seat_cycle_orchestrator, "_append_receipt", original_append)
+    calls = []
+
+    def lingering_runner(command, **_kwargs):
+        calls.append(command)
+        unit = command[3]
+        state = "active" if unit == "skfleet-seraph.service" else "inactive"
+        return SimpleNamespace(
+            returncode=0,
+            stdout=f"LoadState=loaded\nActiveState={state}\n",
+            stderr="",
+        )
+
+    result = run_generation(tmp_path, runner=lingering_runner)
+    assert result["aborted"] is True
+    assert marker.is_file()
     assert not any(call[2:4] == ["start", "--wait"] for call in calls)
 
 

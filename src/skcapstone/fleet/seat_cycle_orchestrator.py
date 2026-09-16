@@ -21,6 +21,40 @@ _NIOBE_SHADOW = "skfleet-niobe.service"
 _GOVERNED_SERVICES = (_TANK, _SERAPH, _NIOBE_SHADOW, _NIOBE_LIVE)
 
 
+def _recovery_marker(home: Path) -> Path:
+    return home / "coordination" / "seat-cycles" / "recovery-required"
+
+
+def _arm_recovery_fence(home: Path) -> None:
+    """Durably fence future generations before any governed seat starts."""
+
+    path = _recovery_marker(home)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    fd = os.open(path, os.O_CREAT | os.O_TRUNC | os.O_WRONLY, 0o600)
+    try:
+        os.write(fd, b"recovery-required\n")
+        os.fsync(fd)
+    finally:
+        os.close(fd)
+    directory = os.open(path.parent, os.O_RDONLY)
+    try:
+        os.fsync(directory)
+    finally:
+        os.close(directory)
+
+
+def _clear_recovery_fence(home: Path) -> None:
+    """Clear the fence only after durable success and exact inactivity proof."""
+
+    path = _recovery_marker(home)
+    path.unlink()
+    directory = os.open(path.parent, os.O_RDONLY)
+    try:
+        os.fsync(directory)
+    finally:
+        os.close(directory)
+
+
 def select_niobe_service(home: Path) -> str:
     """Select live Niobe only when its existing activation still validates."""
 
@@ -61,11 +95,30 @@ def _recovery_required(home: Path) -> bool:
     path = home / "coordination" / "seat-cycles" / "orchestrator.health.jsonl"
     try:
         last = path.read_text(encoding="utf-8").splitlines()[-1]
-        return bool(json.loads(last).get("aborted"))
+        receipt = json.loads(last)
     except FileNotFoundError:
         return False
     except (OSError, IndexError, TypeError, ValueError, json.JSONDecodeError):
         return True
+    if not isinstance(receipt, dict):
+        return True
+    if receipt.get("schema") != "skfleet.seat-cycle-generation/v1":
+        return True
+    if not isinstance(receipt.get("aborted"), bool):
+        return True
+    if not isinstance(receipt.get("failures"), int):
+        return True
+    seats = receipt.get("seats")
+    if not isinstance(seats, list):
+        return True
+    if any(
+        not isinstance(seat, dict)
+        or not isinstance(seat.get("unit"), str)
+        or not isinstance(seat.get("returncode"), int)
+        for seat in seats
+    ):
+        return True
+    return receipt["aborted"]
 
 
 def _prove_recovery_inactive(runner: Callable[..., Any]) -> bool:
@@ -146,7 +199,9 @@ def run_generation(
     """Start every governed seat in order and continue after bounded failures."""
 
     started_at = datetime.now(timezone.utc).isoformat()
-    if _recovery_required(home) and not _prove_recovery_inactive(runner):
+    recovery_required = _recovery_marker(home).exists() or _recovery_required(home)
+    _arm_recovery_fence(home)
+    if recovery_required and not _prove_recovery_inactive(runner):
         receipt = {
             "schema": "skfleet.seat-cycle-generation/v1",
             "started_at": started_at,
@@ -169,7 +224,8 @@ def run_generation(
                 timeout=310,
             )
             returncode = int(completed.returncode)
-            error = None
+            error = None if returncode == 0 else "systemctl_start_failed"
+            cleanup_ok = None if returncode == 0 else _stop_and_prove_inactive(unit, runner)
         except subprocess.TimeoutExpired:
             returncode = 124
             error = "systemctl_wait_timeout"
@@ -177,9 +233,7 @@ def run_generation(
         except OSError as exc:
             returncode = 126
             error = type(exc).__name__
-            cleanup_ok = None
-        else:
-            cleanup_ok = None
+            cleanup_ok = _stop_and_prove_inactive(unit, runner)
         seats.append(
             {
                 "unit": unit,
@@ -191,6 +245,8 @@ def run_generation(
         if cleanup_ok is False:
             aborted = True
             break
+    if not aborted and not _prove_recovery_inactive(runner):
+        aborted = True
     receipt = {
         "schema": "skfleet.seat-cycle-generation/v1",
         "started_at": started_at,
@@ -200,6 +256,8 @@ def run_generation(
         "aborted": aborted,
     }
     _append_receipt(home, receipt)
+    if not aborted:
+        _clear_recovery_fence(home)
     return receipt
 
 
