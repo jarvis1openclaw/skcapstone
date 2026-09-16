@@ -126,14 +126,20 @@ def _recovery_required(home: Path) -> bool:
         return True
     if not isinstance(receipt.get("failures"), int):
         return True
+    timestamps = []
     for timestamp in ("started_at", "finished_at"):
         value = receipt.get(timestamp)
         if not isinstance(value, str):
             return True
         try:
-            datetime.fromisoformat(value)
+            parsed = datetime.fromisoformat(value)
         except ValueError:
             return True
+        if parsed.tzinfo is None or parsed.utcoffset() is None:
+            return True
+        timestamps.append(parsed)
+    if timestamps[1] < timestamps[0]:
+        return True
     seats = receipt.get("seats")
     if not isinstance(seats, list):
         return True
@@ -141,13 +147,18 @@ def _recovery_required(home: Path) -> bool:
     if [seat.get("unit") for seat in seats if isinstance(seat, dict)] != expected_units:
         return True
     for seat in seats:
-        if not isinstance(seat.get("returncode"), int):
+        returncode = seat.get("returncode")
+        error = seat.get("error")
+        cleanup = seat.get("timeout_cleanup_proven")
+        if type(returncode) is not int:
             return True
-        if seat.get("error") is not None and not isinstance(seat.get("error"), str):
+        if error is not None and not isinstance(error, str):
             return True
-        if seat.get("timeout_cleanup_proven") is not None and not isinstance(
-            seat.get("timeout_cleanup_proven"), bool
-        ):
+        if cleanup is not None and not isinstance(cleanup, bool):
+            return True
+        if returncode == 0 and (error is not None or cleanup is not None):
+            return True
+        if returncode != 0 and (not isinstance(error, str) or cleanup is not True):
             return True
     failures = sum(seat["returncode"] != 0 for seat in seats)
     return receipt["failures"] != failures
@@ -219,7 +230,7 @@ def _stop_and_prove_inactive(unit: str, runner: Callable[..., Any]) -> bool:
                 "--user",
                 "show",
                 unit,
-                "--property=LoadState,ActiveState",
+                "--property=LoadState,ActiveState,Job",
             ],
             check=False,
             capture_output=True,
@@ -238,6 +249,7 @@ def _stop_and_prove_inactive(unit: str, runner: Callable[..., Any]) -> bool:
         and int(getattr(shown, "returncode", 1)) == 0
         and state.get("LoadState") == "loaded"
         and state.get("ActiveState") == "inactive"
+        and state.get("Job") in {"", "0", "n/a"}
     )
 
 

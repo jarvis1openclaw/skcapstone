@@ -109,7 +109,7 @@ def test_timeout_stops_and_proves_seat_inactive_before_continuing(tmp_path, monk
     assert verbs[:3] == [
         ("start", "skfleet-tank.service"),
         ("stop", "skfleet-tank.service"),
-        ("show", "--property=LoadState,ActiveState"),
+        ("show", "--property=LoadState,ActiveState,Job"),
     ]
     assert ("start", "skfleet-seraph.service") in verbs
     assert result["aborted"] is False
@@ -136,6 +136,32 @@ def test_timeout_aborts_generation_when_inactive_state_cannot_be_proven(tmp_path
 
     result = run_generation(tmp_path, runner=runner)
 
+    assert result["aborted"] is True
+    assert [call for call in calls if call[2:4] == ["start", "--wait"]] == [
+        ["systemctl", "--user", "start", "--wait", "skfleet-tank.service"]
+    ]
+
+
+def test_timeout_cleanup_rejects_inactive_service_with_pending_job(tmp_path, monkeypatch):
+    monkeypatch.setattr(
+        "skcapstone.fleet.seat_cycle_orchestrator.select_niobe_service",
+        lambda _home: "skfleet-niobe.service",
+    )
+    calls = []
+
+    def runner(command, **_kwargs):
+        calls.append(command)
+        if command[2:4] == ["start", "--wait"]:
+            raise subprocess.TimeoutExpired(command, 310)
+        if command[2] == "show":
+            return SimpleNamespace(
+                returncode=0,
+                stdout="LoadState=loaded\nActiveState=inactive\nJob=99\n",
+                stderr="",
+            )
+        return SimpleNamespace(returncode=0, stdout="", stderr="")
+
+    result = run_generation(tmp_path, runner=runner)
     assert result["aborted"] is True
     assert [call for call in calls if call[2:4] == ["start", "--wait"]] == [
         ["systemctl", "--user", "start", "--wait", "skfleet-tank.service"]
@@ -233,6 +259,56 @@ def test_malformed_recovery_receipt_fails_closed_before_any_seat_start(tmp_path)
     ],
 )
 def test_untrusted_receipt_shapes_require_recovery_proof(tmp_path, receipt):
+    path = tmp_path / "coordination/seat-cycles/orchestrator.health.jsonl"
+    path.parent.mkdir(parents=True)
+    path.write_text(json.dumps(receipt) + "\n", encoding="utf-8")
+    calls = []
+
+    def runner(command, **_kwargs):
+        calls.append(command)
+        return SimpleNamespace(
+            returncode=0, stdout="LoadState=loaded\nActiveState=active\nJob=\n", stderr=""
+        )
+
+    result = run_generation(tmp_path, runner=runner)
+    assert result["aborted"] is True
+    assert not any(call[2:4] == ["start", "--wait"] for call in calls)
+
+
+@pytest.mark.parametrize(
+    "mutation",
+    [
+        {"started_at": "2026-09-15T00:00:02+00:00", "finished_at": "2026-09-15T00:00:01+00:00"},
+        {"started_at": "2026-09-15T00:00:00", "finished_at": "2026-09-15T00:00:01"},
+        {"seat": 0, "returncode": 7, "error": None, "timeout_cleanup_proven": False},
+        {"seat": 0, "returncode": 0, "error": "unexpected", "timeout_cleanup_proven": True},
+    ],
+)
+def test_contradictory_success_receipts_require_recovery_proof(tmp_path, mutation):
+    units = ["skfleet-tank.service", "skfleet-seraph.service", "skfleet-niobe.service"]
+    receipt = {
+        "schema": "skfleet.seat-cycle-generation/v1",
+        "started_at": "2026-09-15T00:00:00+00:00",
+        "finished_at": "2026-09-15T00:00:01+00:00",
+        "aborted": False,
+        "failures": 0,
+        "seats": [
+            {
+                "unit": unit,
+                "returncode": 0,
+                "error": None,
+                "timeout_cleanup_proven": None,
+            }
+            for unit in units
+        ],
+    }
+    seat = mutation.get("seat")
+    if seat is None:
+        receipt.update(mutation)
+    else:
+        changes = {key: value for key, value in mutation.items() if key != "seat"}
+        receipt["seats"][seat].update(changes)
+        receipt["failures"] = sum(row["returncode"] != 0 for row in receipt["seats"])
     path = tmp_path / "coordination/seat-cycles/orchestrator.health.jsonl"
     path.parent.mkdir(parents=True)
     path.write_text(json.dumps(receipt) + "\n", encoding="utf-8")
