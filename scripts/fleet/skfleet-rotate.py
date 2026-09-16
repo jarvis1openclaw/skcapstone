@@ -15,6 +15,7 @@ from pathlib import Path
 from urllib.parse import urlsplit
 
 from skcapstone.card_store import CardStore
+from skcapstone.coordination import Board
 from skcapstone.fleet.worker_watchdog import StartupObservation, startup_actuation_fenced
 from skcapstone.fleet.worker_liveness_runtime import run_production_cycle
 from skcapstone.coord_eligibility import leaf_eligibility_counts
@@ -1809,6 +1810,21 @@ _OVERLAY_ACTIONS = {
 }
 _claim_rows = {}
 _legacy_claim_rows = None
+_legacy_projection_claims = None
+
+
+def _legacy_projection_owners(cid, fresh=False):
+    """Read legacy claim owners through the board's validated agent projection."""
+    global _legacy_projection_claims
+    if _legacy_projection_claims is None or fresh:
+        claims = collections.defaultdict(set)
+        board = Board(Path(HOME) / ".skcapstone")
+        for agent in board.load_agents():
+            for task_id in set(agent.claimed_tasks) | {agent.current_task}:
+                if task_id:
+                    claims[task_id].add(agent.agent)
+        _legacy_projection_claims = claims
+    return tuple(sorted(_legacy_projection_claims.get(cid, ())))
 
 
 def _role_seat_metadata(core, seat):
@@ -2140,11 +2156,14 @@ def _authoritative_card_snapshot(cid, core=None, fresh=False):
         raise ValueError("core identity mismatch")
     rows = list(_strict_card_events(cid, fresh=fresh))
     rows.extend(_legacy_claimability_events(fresh=fresh).get(cid, []))
+    legacy_owners = _legacy_projection_owners(cid, fresh=fresh)
+    state = _fold_claimability(core, rows)
+    state["legacy_owners"] = legacy_owners
     source_revision = hashlib.sha256(json.dumps(
-        {"core": core, "events": rows},
+        {"core": core, "events": rows, "legacy_owners": legacy_owners},
         sort_keys=True, separators=(",", ":")
     ).encode()).hexdigest()
-    return core, _fold_claimability(core, rows), source_revision
+    return core, state, source_revision
 
 
 def _authoritative_card_state(cid, core=None, fresh=False):
@@ -2171,6 +2190,12 @@ def authoritative_claimability(cid, core=None, fresh=False):
     folded_core["links"] = dict(state["links"])
     labels = state["labels"]
     reason = _claimability_reason(core, state)
+    legacy_owners = state["legacy_owners"]
+    if len(legacy_owners) > 1 or (state["owner"] and legacy_owners
+                                  and state["owner"] not in legacy_owners):
+        reason = "malformed:LegacyOwnerConflict"
+    elif legacy_owners and not state["owner"] and reason in {"claimable", "governed-review"}:
+        reason = "legacy-owned"
     state.update({
         "claimable": reason in {"claimable", "governed-review"},
         "reason": reason,
@@ -4849,6 +4874,14 @@ for cd in sorted(glob.glob(CARDS+"/*")):
             skipped_terminal += 1
         elif legacy_reason == "malformed":
             claimability_errors.append("%s:%s" % (cid, legacy.get("detail", "malformed")))
+        elif legacy_reason == "legacy-owned":
+            skipped_claimed += 1
+            log(d, "LEGACY_OWNER_HOLD|%s|%s|owner=%s|reconcile=legacy-projection" % (
+                HOST, cid, ",".join(legacy["decision"]["legacy_owners"])))
+        elif legacy_reason.startswith("malformed:LegacyOwnerConflict"):
+            claimability_errors.append("%s:%s" % (cid, legacy_reason))
+            log(d, "LEGACY_OWNER_CONFLICT|%s|%s|owners=%s|reconcile=owner-projection" % (
+                HOST, cid, ",".join(legacy["decision"]["legacy_owners"])))
         elif legacy_reason in {"claimed", "historical_review_claimed"}:
             skipped_claimed += 1
             historical_review_claimed += int(legacy_reason == "historical_review_claimed")
