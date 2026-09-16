@@ -40,6 +40,8 @@ class Systemd:
             self.active = True
         elif verb == "disable":
             self.enabled = False
+            if "--now" in command:
+                self.active = False
         return CompletedProcess(command, 0, "", "")
 
 
@@ -112,6 +114,47 @@ def test_allowed_policy_gated_timer_is_never_mutated(tmp_path):
     )
     assert systemd.calls == []
     assert not evidence.exists()
+
+
+def test_forbidden_pre_enabled_timers_stop_before_orchestrator_starts(tmp_path):
+    """Rollout closes legacy recurrence before enabling the orchestrator."""
+
+    config, fragment = layout(tmp_path)
+    systemd = Systemd(fragment, enabled=True, active=True)
+    evidence = tmp_path / "evidence.jsonl"
+    policy = {
+        "units": {
+            "required": ["skfleet-seat-cycle.timer"],
+            "mustNot": ["skfleet-tank.timer"],
+        }
+    }
+
+    rows = timer_enablement.converge_forbidden_timers(
+        policy,
+        runner=systemd,
+        config_home=config,
+        evidence_path=evidence,
+        actor="jarvis",
+        source_revision="repair",
+    )
+
+    assert rows[0]["safe"] is True
+    timer_enablement.converge_required_timers(
+        policy,
+        runner=systemd,
+        config_home=config,
+        evidence_path=evidence,
+        actor="jarvis",
+        source_revision="repair",
+    )
+    assert [call[2:] for call in systemd.calls if call[2] == "disable"] == [
+        ["disable", "--now", "skfleet-tank.timer"]
+    ]
+    verbs = [call[2] for call in systemd.calls]
+    assert verbs.index("disable") < verbs.index("enable") < verbs.index("start")
+    event = json.loads(evidence.read_text().splitlines()[0])
+    assert event["actor"] == "jarvis"
+    assert event["requested_state"] == "disabled_inactive"
 
 
 def test_failed_mutation_is_recorded(tmp_path):

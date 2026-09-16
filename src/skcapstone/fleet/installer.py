@@ -358,6 +358,37 @@ def run_install(
 
     if ok and enable and not dry_run:
         profile = _profile_spec(paths, role)
+        evidence_path = paths.root.parent / "evidence" / "timer-enablement.jsonl"
+        actor = (
+            os.environ.get("SKAGENT") or os.environ.get("SKCAPSTONE_AGENT") or "skfleet-install"
+        )
+        revision = timer_enablement.policy_revision(profile)
+        forbidden_rows = timer_enablement.converge_forbidden_timers(
+            profile,
+            runner=timer_runner or subprocess.run,
+            config_home=Path(os.environ.get("XDG_CONFIG_HOME", "~/.config")).expanduser(),
+            evidence_path=evidence_path,
+            actor=actor,
+            source_revision=revision,
+        )
+        for row in forbidden_rows:
+            results.append(
+                {
+                    "name": row["unit"],
+                    "kind": "unit",
+                    "tier": install_backends.tier_of("core"),
+                    "backend_id": "timer-enablement",
+                    "status": "ok" if row["safe"] else "failed",
+                    "detail": (
+                        "forbidden timer disabled and inactive"
+                        if row["safe"]
+                        else "forbidden timer remains enabled or active"
+                    ),
+                }
+            )
+            ok = ok and row["safe"]
+        if not ok:
+            return {"role": role, "mode": "apply", "results": results, "ok": False}
         selected = set(only) if only is not None else None
         required = timer_enablement.required_timers(profile)
         if selected is not None:
@@ -368,13 +399,9 @@ def run_install(
             timer_profile,
             runner=timer_runner or subprocess.run,
             config_home=config_home,
-            evidence_path=paths.root.parent / "evidence" / "timer-enablement.jsonl",
-            actor=(
-                os.environ.get("SKAGENT")
-                or os.environ.get("SKCAPSTONE_AGENT")
-                or "skfleet-install"
-            ),
-            source_revision=timer_enablement.policy_revision(profile),
+            evidence_path=evidence_path,
+            actor=actor,
+            source_revision=revision,
         )
         by_unit = {row["unit"]: row for row in timer_rows}
         reported = {result["name"] for result in results}

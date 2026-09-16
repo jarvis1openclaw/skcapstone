@@ -7,6 +7,7 @@ import fcntl
 import json
 import os
 import subprocess
+from collections.abc import Mapping
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Callable
@@ -25,6 +26,8 @@ def select_niobe_service(home: Path) -> str:
     activation = home / "coordination" / "niobe-activation.json"
     try:
         value = json.loads(activation.read_text(encoding="utf-8"))
+        if not isinstance(value, Mapping):
+            return _NIOBE_SHADOW
         parse_activation(value, home=home)
     except (OSError, ValueError, json.JSONDecodeError):
         return _NIOBE_SHADOW

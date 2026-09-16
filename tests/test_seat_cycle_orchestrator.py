@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+from collections.abc import Mapping
 from pathlib import Path
 from types import SimpleNamespace
 
@@ -56,6 +57,21 @@ def test_niobe_activation_selects_live_or_shadow(tmp_path, monkeypatch) -> None:
         lambda *_args, **_kwargs: (_ for _ in ()).throw(ValueError("expired")),
     )
     assert select_niobe_service(tmp_path) == "skfleet-niobe.service"
+
+
+def test_non_object_niobe_activation_roots_fail_closed_to_shadow(tmp_path, monkeypatch) -> None:
+    """Valid JSON with the wrong root type cannot abort the whole generation."""
+
+    activation = tmp_path / "coordination/niobe-activation.json"
+    activation.parent.mkdir(parents=True)
+
+    def parser(value, **_kwargs):
+        assert isinstance(value, Mapping)
+
+    monkeypatch.setattr("skcapstone.fleet.seat_cycle_orchestrator.parse_activation", parser)
+    for value in ([], None, 1, "active"):
+        activation.write_text(json.dumps(value), encoding="utf-8")
+        assert select_niobe_service(tmp_path) == "skfleet-niobe.service"
 
 
 def test_orchestrator_units_are_packaged_and_prevent_overlapping_generations() -> None:

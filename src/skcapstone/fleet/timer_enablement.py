@@ -24,6 +24,13 @@ def required_timers(profile: dict) -> list[str]:
     return sorted({unit for unit in required if unit.endswith(".timer")})
 
 
+def forbidden_timers(profile: dict) -> list[str]:
+    """Timers that must be disabled and inactive for the profile."""
+
+    forbidden = (profile.get("units") or {}).get("mustNot") or []
+    return sorted({unit for unit in forbidden if unit.endswith(".timer")})
+
+
 def _state(unit: str, runner: Runner) -> dict[str, str]:
     try:
         result = runner(
@@ -164,4 +171,67 @@ def converge_required_timers(
             except Exception:
                 pass
         results.append(audit_timer(unit, runner=runner, config_home=config_home))
+    return results
+
+
+def converge_forbidden_timers(
+    profile: dict,
+    *,
+    runner: Runner,
+    config_home: Path,
+    evidence_path: Path,
+    actor: str,
+    source_revision: str | None = None,
+) -> list[dict]:
+    """Disable and stop forbidden timers before required timers are enabled."""
+
+    del config_home
+    revision = source_revision or policy_revision(profile)
+    results = []
+    for unit in forbidden_timers(profile):
+        before = _state(unit, runner)
+        loaded = before.get("LoadState") == "loaded"
+        enabled = before.get("UnitFileState") == "enabled"
+        active = before.get("ActiveState") == "active"
+        if loaded and (enabled or active):
+            try:
+                completed = runner(
+                    ["systemctl", "--user", "disable", "--now", unit],
+                    capture_output=True,
+                    text=True,
+                    timeout=10,
+                )
+                ok = getattr(completed, "returncode", 1) == 0
+                detail = str(getattr(completed, "stderr", "") or "")[-500:]
+            except Exception as exc:
+                ok = False
+                detail = str(exc)[-500:]
+            _append(
+                evidence_path,
+                {
+                    "actor": actor,
+                    "prior_state": f"{before.get('UnitFileState', 'unknown')}/"
+                    f"{before.get('ActiveState', 'unknown')}",
+                    "requested_state": "disabled_inactive",
+                    "result": "ok" if ok else "failed",
+                    "result_detail": detail,
+                    "source_revision": revision,
+                    "timestamp": datetime.now(timezone.utc).isoformat(),
+                    "unit": unit,
+                },
+            )
+        after = _state(unit, runner)
+        results.append(
+            {
+                "unit": unit,
+                "loaded": after.get("LoadState") == "loaded",
+                "enabled": after.get("UnitFileState") == "enabled",
+                "active": after.get("ActiveState") == "active",
+                "safe": after.get("LoadState") != "loaded"
+                or (
+                    after.get("UnitFileState") != "enabled"
+                    and after.get("ActiveState") != "active"
+                ),
+            }
+        )
     return results
