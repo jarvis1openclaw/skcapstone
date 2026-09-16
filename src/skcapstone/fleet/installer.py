@@ -242,6 +242,21 @@ def _profile_spec(paths, role: str) -> dict:
         return {}
 
 
+def _validate_only(profile: dict, only: list[str] | None) -> None:
+    """Reject names outside the applied profile instead of silently no-oping."""
+
+    if only is None:
+        return
+    known = set()
+    for kind in ("units", "packages"):
+        block = profile.get(kind) or {}
+        for policy_field in ("required", "allowed", "mustNot"):
+            known.update(block.get(policy_field) or [])
+    unknown = sorted(set(only) - known)
+    if unknown:
+        raise ValueError(f"unknown --only names for profile: {', '.join(unknown)}")
+
+
 def _refresh_inventory(paths) -> None:
     """Re-observe this node and republish node.json (best-effort).
 
@@ -324,12 +339,15 @@ def run_install(
         raise ValueError(f"mode must be 'check' or 'apply', got {mode!r}")
 
     if mode == "check":
+        if enable or start:
+            raise ValueError("check mode does not accept --enable or --start")
+        profile = _profile_spec(paths, role)
+        _validate_only(profile, only)
         drift = load_drift(paths, role)
         results = [
             {"grade": grade, "category": category, "name": name}
             for grade, category, name in drift.findings()
         ]
-        profile = _profile_spec(paths, role)
         config_home = Path(os.environ.get("XDG_CONFIG_HOME", "~/.config")).expanduser()
         runner = timer_runner or subprocess.run
         timer_drift = [
@@ -375,6 +393,7 @@ def run_install(
         raise ActuationNotAllowed(role)
 
     profile = _profile_spec(paths, role)
+    _validate_only(profile, only)
     drift = load_drift(paths, role)
     install_plan = plan(drift, only=only)
     selected = set(only) if only is not None else None
@@ -421,7 +440,43 @@ def run_install(
     ok = all(r["status"] in _OK_STEP_STATUSES for r in results)
 
     scheduler_selected = selected is None or "skfleet-seat-cycle.timer" in selected
-    if ok and enable and not dry_run and scheduler_selected:
+    scheduler_requested = scheduler_selected and (enable or start)
+    if ok and dry_run and scheduler_requested:
+        for unit in timer_enablement.forbidden_timers(profile):
+            service = unit.removesuffix(".timer") + ".service"
+            results.append(
+                {
+                    "name": unit,
+                    "kind": "unit",
+                    "tier": install_backends.tier_of("core"),
+                    "backend_id": "timer-enablement",
+                    "status": "would-write",
+                    "detail": (
+                        f"systemctl --user disable --now {unit}; "
+                        f"systemctl --user stop {service}"
+                    ),
+                }
+            )
+        for unit in timer_enablement.required_timers(profile):
+            if selected is not None and unit not in selected:
+                continue
+            actions = []
+            if enable:
+                actions.append(f"systemctl --user enable {unit}")
+            if start:
+                actions.append(f"systemctl --user start {unit}")
+            results.append(
+                {
+                    "name": unit,
+                    "kind": "unit",
+                    "tier": install_backends.tier_of("core"),
+                    "backend_id": "timer-enablement",
+                    "status": "would-write",
+                    "detail": "; ".join(actions),
+                }
+            )
+
+    if ok and not dry_run and scheduler_requested:
         evidence_path = paths.root.parent / "evidence" / "timer-enablement.jsonl"
         actor = (
             os.environ.get("SKAGENT") or os.environ.get("SKCAPSTONE_AGENT") or "skfleet-install"
@@ -465,19 +520,21 @@ def run_install(
             evidence_path=evidence_path,
             actor=actor,
             source_revision=revision,
+            enable=enable,
+            start=start,
         )
         by_unit = {row["unit"]: row for row in timer_rows}
         reported = {result["name"] for result in results}
         for result in results:
             timer = by_unit.get(result["name"])
-            if timer is not None and timer["drift"]:
+            if timer is not None and not timer["converged"]:
                 result["status"] = "failed"
                 result["detail"] = "required timer did not converge enabled and active/waiting"
                 ok = False
         for unit, timer in by_unit.items():
             if unit in reported:
                 continue
-            landed = not timer["drift"]
+            landed = timer["converged"]
             results.append(
                 {
                     "name": unit,

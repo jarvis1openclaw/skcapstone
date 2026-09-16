@@ -186,6 +186,38 @@ def test_allowed_policy_gated_timer_is_never_mutated(tmp_path):
     assert not evidence.exists()
 
 
+def test_required_timer_enable_and_start_flags_are_independent(tmp_path):
+    config, fragment = layout(tmp_path)
+    enable_only = Systemd(fragment)
+    rows = timer_enablement.converge_required_timers(
+        profile(),
+        runner=enable_only,
+        config_home=config,
+        evidence_path=tmp_path / "enable.jsonl",
+        actor="jarvis",
+        enable=True,
+        start=False,
+    )
+    assert rows[0]["converged"] is True
+    assert "enable" in [call[2] for call in enable_only.calls]
+    assert "start" not in [call[2] for call in enable_only.calls]
+
+    config2, fragment2 = layout(tmp_path / "start")
+    start_only = Systemd(fragment2)
+    rows = timer_enablement.converge_required_timers(
+        profile(),
+        runner=start_only,
+        config_home=config2,
+        evidence_path=tmp_path / "start.jsonl",
+        actor="jarvis",
+        enable=False,
+        start=True,
+    )
+    assert rows[0]["converged"] is True
+    assert "enable" not in [call[2] for call in start_only.calls]
+    assert "start" in [call[2] for call in start_only.calls]
+
+
 def test_forbidden_pre_enabled_timers_stop_before_orchestrator_starts(tmp_path):
     """Rollout closes legacy recurrence before enabling the orchestrator."""
 
@@ -402,6 +434,11 @@ def test_rollback_stops_orchestrator_before_enabling_legacy_timers(tmp_path):
     assert result["ok"] is True
     verbs = [call[2] for call in systemd.calls]
     assert verbs.index("disable") < verbs.index("stop") < verbs.index("enable")
+    stopped = [call[-1] for call in systemd.calls if call[2] == "stop"]
+    assert set(timer_enablement.GOVERNED_SEAT_SERVICES) <= set(stopped)
+    assert max(stopped.index(unit) for unit in timer_enablement.GOVERNED_SEAT_SERVICES) < next(
+        index for index, call in enumerate(systemd.calls) if call[2] == "enable"
+    )
 
 
 def test_rollback_entrypoint_never_enables_legacy_when_reverse_fence_unknown(tmp_path):
@@ -690,6 +727,77 @@ def test_only_unrelated_service_does_not_touch_scheduler_fence(tmp_path, monkeyp
 
     assert result["ok"] is True
     assert systemd.calls == []
+
+
+def test_scheduler_dry_run_reports_complete_cutover_without_systemd_calls(tmp_path, monkeypatch):
+    paths = type("Paths", (), {"root": tmp_path / "fleet"})()
+    policy = {
+        "units": {
+            "required": ["skfleet-seat-cycle.timer"],
+            "mustNot": [
+                "skfleet-tank.timer",
+                "skfleet-seraph.timer",
+                "skfleet-niobe.timer",
+                "skfleet-niobe-live.timer",
+            ],
+        }
+    }
+    monkeypatch.setattr(installer.store, "is_frozen", lambda paths: False)
+    monkeypatch.setattr(installer.converge, "actuation_enabled", lambda paths, node: True)
+    monkeypatch.setattr(installer, "load_drift", lambda *args, **kwargs: DriftReport())
+    monkeypatch.setattr(installer, "_profile_spec", lambda *args: policy)
+    calls = []
+    result = installer.run_install(
+        paths,
+        "control",
+        node="node",
+        mode="apply",
+        dry_run=True,
+        enable=True,
+        start=True,
+        only=None,
+        backends={"core": lambda names, **kwargs: ("would-write", "copy units")},
+        timer_runner=lambda *args, **kwargs: calls.append(args),
+    )
+    details = "\n".join(row["detail"] for row in result["results"])
+    for timer in policy["units"]["mustNot"]:
+        assert f"disable --now {timer}" in details
+        assert f"stop {timer.removesuffix('.timer')}.service" in details
+    assert "enable skfleet-seat-cycle.timer" in details
+    assert "start skfleet-seat-cycle.timer" in details
+    assert calls == []
+
+
+def test_check_rejects_mutation_flags_and_apply_rejects_unknown_only(tmp_path, monkeypatch):
+    paths = type("Paths", (), {"root": tmp_path / "fleet"})()
+    policy = {"units": {"required": ["skgateway.service"], "mustNot": []}}
+    monkeypatch.setattr(installer, "_profile_spec", lambda *args: policy)
+    with pytest.raises(ValueError, match="check mode"):
+        installer.run_install(
+            paths,
+            "control",
+            node="node",
+            mode="check",
+            dry_run=False,
+            enable=True,
+            start=False,
+            only=None,
+            backends={},
+        )
+    monkeypatch.setattr(installer.store, "is_frozen", lambda paths: False)
+    monkeypatch.setattr(installer.converge, "actuation_enabled", lambda paths, node: True)
+    with pytest.raises(ValueError, match="unknown --only"):
+        installer.run_install(
+            paths,
+            "control",
+            node="node",
+            mode="apply",
+            dry_run=False,
+            enable=False,
+            start=False,
+            only=["not-a-profile-unit.service"],
+            backends={},
+        )
 
 
 def test_installer_apply_repairs_enablement_without_backend_enable(tmp_path, monkeypatch):

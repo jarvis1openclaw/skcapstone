@@ -8,6 +8,7 @@ from collections.abc import Mapping
 from pathlib import Path
 from types import SimpleNamespace
 
+from skcapstone.fleet import seat_cycle_orchestrator
 from skcapstone.fleet.seat_cycle_orchestrator import run_generation, select_niobe_service
 
 
@@ -93,6 +94,63 @@ def test_timeout_aborts_generation_when_inactive_state_cannot_be_proven(tmp_path
     assert [call for call in calls if call[2:4] == ["start", "--wait"]] == [
         ["systemctl", "--user", "start", "--wait", "skfleet-tank.service"]
     ]
+
+
+def test_next_generation_stays_blocked_on_lingering_middle_seat(tmp_path, monkeypatch):
+    prior = {
+        "schema": "skfleet.seat-cycle-generation/v1",
+        "aborted": True,
+        "seats": [{"unit": "skfleet-seraph.service", "returncode": 124}],
+    }
+    path = tmp_path / "coordination/seat-cycles/orchestrator.health.jsonl"
+    path.parent.mkdir(parents=True)
+    path.write_text(json.dumps(prior) + "\n", encoding="utf-8")
+    calls = []
+
+    def runner(command, **_kwargs):
+        calls.append(command)
+        unit = command[3]
+        state = "active" if unit == "skfleet-seraph.service" else "inactive"
+        return SimpleNamespace(
+            returncode=0,
+            stdout=f"LoadState=loaded\nActiveState={state}\n",
+            stderr="",
+        )
+
+    result = run_generation(tmp_path, runner=runner)
+
+    assert result["aborted"] is True
+    assert result["recovery"] == "governed_service_inactivity_unproven"
+    assert not any(call[2:4] == ["start", "--wait"] for call in calls)
+
+
+def test_malformed_recovery_receipt_fails_closed_before_any_seat_start(tmp_path):
+    path = tmp_path / "coordination/seat-cycles/orchestrator.health.jsonl"
+    path.parent.mkdir(parents=True)
+    path.write_text("not-json\n", encoding="utf-8")
+    calls = []
+
+    def runner(command, **_kwargs):
+        calls.append(command)
+        return SimpleNamespace(
+            returncode=0,
+            stdout="LoadState=loaded\nActiveState=active\n",
+            stderr="",
+        )
+
+    result = run_generation(tmp_path, runner=runner)
+    assert result["aborted"] is True
+    assert not any(call[2:4] == ["start", "--wait"] for call in calls)
+
+
+def test_main_returns_nonzero_for_aborted_generation(tmp_path, monkeypatch):
+    monkeypatch.setattr(
+        seat_cycle_orchestrator,
+        "run_generation",
+        lambda _home: {"aborted": True},
+    )
+    monkeypatch.setattr("sys.argv", ["seat-cycle", "--home", str(tmp_path)])
+    assert seat_cycle_orchestrator.main() == 1
 
 
 def test_niobe_activation_selects_live_or_shadow(tmp_path, monkeypatch) -> None:

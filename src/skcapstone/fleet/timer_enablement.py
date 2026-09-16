@@ -12,6 +12,12 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 Runner = Callable[..., object]
+GOVERNED_SEAT_SERVICES = (
+    "skfleet-tank.service",
+    "skfleet-seraph.service",
+    "skfleet-niobe.service",
+    "skfleet-niobe-live.service",
+)
 
 
 def policy_revision(profile: dict) -> str:
@@ -207,8 +213,10 @@ def converge_required_timers(
     evidence_path: Path,
     actor: str,
     source_revision: str | None = None,
+    enable: bool = True,
+    start: bool = True,
 ) -> list[dict]:
-    """Enable and start only profile-required timers, idempotently."""
+    """Enable and/or start only profile-required timers, idempotently."""
     revision = source_revision or policy_revision(profile)
     results = []
     for unit in required_timers(profile):
@@ -216,7 +224,7 @@ def converge_required_timers(
         if not before["loaded"]:
             results.append(before)
             continue
-        if not before["enabled"]:
+        if enable and not before["enabled"]:
             if not mutate(
                 unit,
                 enabled=True,
@@ -229,7 +237,7 @@ def converge_required_timers(
                 results.append(audit_timer(unit, runner=runner, config_home=config_home))
                 continue
         current = audit_timer(unit, runner=runner, config_home=config_home)
-        if not current["active_waiting"]:
+        if start and not current["active_waiting"]:
             try:
                 runner(
                     ["systemctl", "--user", "start", unit],
@@ -239,7 +247,11 @@ def converge_required_timers(
                 )
             except Exception:
                 pass
-        results.append(audit_timer(unit, runner=runner, config_home=config_home))
+        after = audit_timer(unit, runner=runner, config_home=config_home)
+        after["converged"] = (not enable or after["enabled"]) and (
+            not start or after["active_waiting"]
+        )
+        results.append(after)
     return results
 
 
@@ -307,6 +319,52 @@ def converge_forbidden_timers(
     return results
 
 
+def converge_governed_services_inactive(
+    *,
+    runner: Runner,
+    evidence_path: Path,
+    actor: str,
+    source_revision: str,
+) -> list[dict]:
+    """Stop and prove every governed seat service inactive before rollback."""
+
+    results = []
+    for unit in GOVERNED_SEAT_SERVICES:
+        try:
+            stopped = runner(
+                ["systemctl", "--user", "stop", unit],
+                capture_output=True,
+                text=True,
+                timeout=310,
+            )
+            stop_ok = getattr(stopped, "returncode", 1) == 0
+            detail = str(getattr(stopped, "stderr", "") or "")[-500:]
+        except Exception as exc:
+            stop_ok = False
+            detail = str(exc)[-500:]
+        state = _state(unit, runner)
+        safe = (
+            state.get("_known") == "true"
+            and state.get("ActiveState") == "inactive"
+            and state.get("LoadState") in {"loaded", "not-found"}
+        )
+        _append(
+            evidence_path,
+            {
+                "actor": actor,
+                "requested_state": "inactive",
+                "result": "ok" if safe else "failed",
+                "result_detail": detail,
+                "source_revision": source_revision,
+                "stop_result": "ok" if stop_ok else "failed",
+                "timestamp": datetime.now(timezone.utc).isoformat(),
+                "unit": unit,
+            },
+        )
+        results.append({"unit": unit, "safe": safe, "stop_ok": stop_ok})
+    return results
+
+
 def rollback_to_legacy_timers(
     legacy_timers: list[str],
     *,
@@ -327,7 +385,15 @@ def rollback_to_legacy_timers(
         actor=actor,
     )
     if not all(row["safe"] for row in forbidden):
-        return {"ok": False, "forbidden": forbidden, "required": []}
+        return {"ok": False, "forbidden": forbidden, "services": [], "required": []}
+    services = converge_governed_services_inactive(
+        runner=runner,
+        evidence_path=evidence_path,
+        actor=actor,
+        source_revision=policy_revision(profile),
+    )
+    if not all(row["safe"] for row in services):
+        return {"ok": False, "forbidden": forbidden, "services": services, "required": []}
     required = converge_required_timers(
         profile,
         runner=runner,
@@ -337,8 +403,9 @@ def rollback_to_legacy_timers(
     )
     return {
         "ok": len(required) == len(required_timers(profile))
-        and all(not row["drift"] for row in required),
+        and all(row["converged"] for row in required),
         "forbidden": forbidden,
+        "services": services,
         "required": required,
     }
 

@@ -18,6 +18,7 @@ _TANK = "skfleet-tank.service"
 _SERAPH = "skfleet-seraph.service"
 _NIOBE_LIVE = "skfleet-niobe-live.service"
 _NIOBE_SHADOW = "skfleet-niobe.service"
+_GOVERNED_SERVICES = (_TANK, _SERAPH, _NIOBE_SHADOW, _NIOBE_LIVE)
 
 
 def select_niobe_service(home: Path) -> str:
@@ -52,6 +53,50 @@ def _append_receipt(home: Path, receipt: dict[str, Any]) -> None:
         stream.write(json.dumps(receipt, sort_keys=True, separators=(",", ":")) + "\n")
         stream.flush()
         os.fsync(stream.fileno())
+
+
+def _recovery_required(home: Path) -> bool:
+    """Return whether the last durable generation receipt aborted unsafe."""
+
+    path = home / "coordination" / "seat-cycles" / "orchestrator.health.jsonl"
+    try:
+        last = path.read_text(encoding="utf-8").splitlines()[-1]
+        return bool(json.loads(last).get("aborted"))
+    except FileNotFoundError:
+        return False
+    except (OSError, IndexError, TypeError, ValueError, json.JSONDecodeError):
+        return True
+
+
+def _prove_recovery_inactive(runner: Callable[..., Any]) -> bool:
+    """Fail closed unless every governed service is exactly inactive."""
+
+    for unit in _GOVERNED_SERVICES:
+        try:
+            shown = runner(
+                ["systemctl", "--user", "show", unit, "--property=LoadState,ActiveState"],
+                check=False,
+                capture_output=True,
+                text=True,
+                timeout=5,
+            )
+        except (OSError, subprocess.TimeoutExpired):
+            return False
+        state = dict(
+            line.split("=", 1)
+            for line in str(getattr(shown, "stdout", "")).splitlines()
+            if "=" in line
+        )
+        known_absent = (
+            state.get("LoadState") == "not-found" and state.get("ActiveState") == "inactive"
+        )
+        if int(getattr(shown, "returncode", 1)) != 0 and not known_absent:
+            return False
+        if state.get("LoadState") not in {"loaded", "not-found"}:
+            return False
+        if state.get("ActiveState") != "inactive":
+            return False
+    return True
 
 
 def _stop_and_prove_inactive(unit: str, runner: Callable[..., Any]) -> bool:
@@ -101,6 +146,18 @@ def run_generation(
     """Start every governed seat in order and continue after bounded failures."""
 
     started_at = datetime.now(timezone.utc).isoformat()
+    if _recovery_required(home) and not _prove_recovery_inactive(runner):
+        receipt = {
+            "schema": "skfleet.seat-cycle-generation/v1",
+            "started_at": started_at,
+            "finished_at": datetime.now(timezone.utc).isoformat(),
+            "seats": [],
+            "failures": 1,
+            "aborted": True,
+            "recovery": "governed_service_inactivity_unproven",
+        }
+        _append_receipt(home, receipt)
+        return receipt
     units = (_TANK, _SERAPH, select_niobe_service(home))
     seats: list[dict[str, Any]] = []
     aborted = False
@@ -152,8 +209,8 @@ def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--home", type=Path, required=True)
     args = parser.parse_args()
-    run_generation(args.home)
-    return 0
+    result = run_generation(args.home)
+    return 1 if result["aborted"] else 0
 
 
 if __name__ == "__main__":
