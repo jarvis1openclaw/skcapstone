@@ -241,10 +241,15 @@ def converge_forbidden_timers(
             detail = (detail + "; " + str(exc))[-500:]
         after = _state(unit, runner)
         service_after = _state(service, runner)
-        timer_safe = (
+        timer_disabled = (
             after.get("_known") == "true"
             and after.get("LoadState") == "loaded"
             and after.get("UnitFileState") == "disabled"
+            and after.get("ActiveState") == "inactive"
+        )
+        timer_absent = (
+            after.get("_known") == "true"
+            and after.get("LoadState") == "not-found"
             and after.get("ActiveState") == "inactive"
         )
         service_inactive = (
@@ -252,7 +257,7 @@ def converge_forbidden_timers(
             and service_after.get("LoadState") == "loaded"
             and service_after.get("ActiveState") == "inactive"
         )
-        safe = disable_ok and stop_ok and timer_safe and service_inactive
+        safe = stop_ok and service_inactive and ((disable_ok and timer_disabled) or timer_absent)
         _append(
             evidence_path,
             {

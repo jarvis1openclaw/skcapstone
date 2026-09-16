@@ -55,16 +55,20 @@ class TransitionSystemd:
     def __init__(
         self,
         *,
+        timer_load="loaded",
         timer_file="disabled",
         timer_active="inactive",
         service_active="inactive",
         show_failure=False,
+        disable_failure=False,
         stop_failure=False,
     ):
+        self.timer_load = timer_load
         self.timer_file = timer_file
         self.timer_active = timer_active
         self.service_active = service_active
         self.show_failure = show_failure
+        self.disable_failure = disable_failure
         self.stop_failure = stop_failure
         self.calls = []
 
@@ -78,12 +82,14 @@ class TransitionSystemd:
                 return CompletedProcess(command, 1, "", "show failed")
             active = self.timer_active if is_timer else self.service_active
             output = (
-                "LoadState=loaded\n"
+                f"LoadState={self.timer_load if is_timer else 'loaded'}\n"
                 f"UnitFileState={self.timer_file if is_timer else 'static'}\n"
                 f"ActiveState={active}\nSubState=dead\nFragmentPath=/unit\n"
             )
             return CompletedProcess(command, 0, output, "")
         if verb == "disable":
+            if self.disable_failure:
+                return CompletedProcess(command, 1, "", "unit not found")
             self.timer_file = "disabled"
             self.timer_active = "inactive"
         elif verb == "enable":
@@ -259,6 +265,43 @@ def test_forbidden_enabled_runtime_timer_is_explicitly_disabled(tmp_path):
     assert [call[2:] for call in systemd.calls if call[2] == "disable"] == [
         ["disable", "--now", "skfleet-tank.timer"]
     ]
+
+
+def test_absent_forbidden_timer_is_safe_only_with_proven_inactive_service(tmp_path):
+    """Fresh estates omit the legacy live timer but still prove its service stopped."""
+
+    systemd = TransitionSystemd(
+        timer_load="not-found",
+        timer_file="",
+        disable_failure=True,
+        service_active="inactive",
+    )
+    rows = timer_enablement.converge_forbidden_timers(
+        {"units": {"mustNot": ["skfleet-niobe-live.timer"]}},
+        runner=systemd,
+        config_home=tmp_path,
+        evidence_path=tmp_path / "evidence.jsonl",
+        actor="jarvis",
+    )
+
+    assert rows[0]["safe"] is True
+    assert rows[0]["loaded"] is False
+    assert [call[-1] for call in systemd.calls if call[2] == "stop"] == [
+        "skfleet-niobe-live.service"
+    ]
+
+
+def test_absent_and_unknown_forbidden_timer_states_are_distinct(tmp_path):
+    unknown = TransitionSystemd(show_failure=True, disable_failure=True)
+    rows = timer_enablement.converge_forbidden_timers(
+        {"units": {"mustNot": ["skfleet-niobe-live.timer"]}},
+        runner=unknown,
+        config_home=tmp_path,
+        evidence_path=tmp_path / "evidence.jsonl",
+        actor="jarvis",
+    )
+
+    assert rows[0]["safe"] is False
 
 
 def test_rollback_stops_orchestrator_before_enabling_legacy_timers(tmp_path):
