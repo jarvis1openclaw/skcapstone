@@ -547,7 +547,9 @@ def run_install(
             timer = by_unit.get(result["name"])
             if timer is not None and not timer["converged"]:
                 result["status"] = "failed"
-                result["detail"] = "required timer did not converge enabled and active/waiting"
+                result["detail"] = (
+                    "required timer did not converge enabled and scheduled or executing"
+                )
                 ok = False
         for unit, timer in by_unit.items():
             if unit in reported:
