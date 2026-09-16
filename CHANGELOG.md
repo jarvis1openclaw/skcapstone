@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Card `3402048c`: re-fold builder offers before each prelaunch binding check;
+  durable mismatches block only the exact request generation without consuming
+  a launch attempt, while preserving source reconstruction and claim fences.
+
 - Card `53009558`: keep POOL_V2 source revisions anchored to raw `core.json`
   when criteria events change the folded card, so unchanged preclaim snapshots
   match while real source changes still fail closed.
