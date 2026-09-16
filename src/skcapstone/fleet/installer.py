@@ -337,7 +337,25 @@ def run_install(
             {"grade": "warn", "category": "missing_required_timer_enablement", "name": row["unit"]}
             for row in timer_drift
         )
-        ok = not (drift.missing_required_units or drift.missing_required_packages or timer_drift)
+        forbidden_drift = [
+            row
+            for unit in timer_enablement.forbidden_timers(profile)
+            if not (row := timer_enablement.audit_forbidden_timer(unit, runner=runner))["safe"]
+        ]
+        results.extend(
+            {
+                "grade": "forbidden",
+                "category": "unsafe_forbidden_timer_or_service",
+                "name": row["unit"],
+            }
+            for row in forbidden_drift
+        )
+        ok = not (
+            drift.missing_required_units
+            or drift.missing_required_packages
+            or timer_drift
+            or forbidden_drift
+        )
         return {"role": role, "mode": "check", "results": results, "ok": ok}
 
     # mode == "apply": gate BEFORE computing drift. is_frozen/actuation_enabled
@@ -350,14 +368,47 @@ def run_install(
     if not converge.actuation_enabled(paths, node):
         raise ActuationNotAllowed(role)
 
+    profile = _profile_spec(paths, role)
     drift = load_drift(paths, role)
     install_plan = plan(drift, only=only)
+    selected = set(only) if only is not None else None
+    core_units = sorted(
+        unit
+        for unit in (profile.get("units") or {}).get("required", [])
+        if install_backends.resolve(unit, "unit") == "core"
+        and (selected is None or unit in selected)
+    )
+    if core_units:
+        install_plan = InstallPlan(
+            steps=[step for step in install_plan.steps if step.name not in core_units]
+        )
     install_results = apply(install_plan, backends, dry_run=dry_run, enable=enable, start=start)
+    if core_units:
+        backend = backends.get("core")
+        try:
+            if backend is None:
+                core_status, core_detail = "needs_manual", "backend core unregistered"
+            else:
+                core_status, core_detail = backend(
+                    core_units,
+                    dry_run=dry_run,
+                    enable=False,
+                    start=False,
+                )
+        except Exception as exc:
+            core_status, core_detail = "failed", str(exc)
+        install_results.extend(
+            InstallResult(
+                InstallStep(unit, "unit", install_backends.tier_of("core"), "core"),
+                core_status,
+                core_detail,
+            )
+            for unit in core_units
+        )
     results = [_result_dict(r) for r in install_results]
     ok = all(r["status"] in _OK_STEP_STATUSES for r in results)
 
     if ok and enable and not dry_run:
-        profile = _profile_spec(paths, role)
         evidence_path = paths.root.parent / "evidence" / "timer-enablement.jsonl"
         actor = (
             os.environ.get("SKAGENT") or os.environ.get("SKCAPSTONE_AGENT") or "skfleet-install"
@@ -389,7 +440,6 @@ def run_install(
             ok = ok and row["safe"]
         if not ok:
             return {"role": role, "mode": "apply", "results": results, "ok": False}
-        selected = set(only) if only is not None else None
         required = timer_enablement.required_timers(profile)
         if selected is not None:
             required = [unit for unit in required if unit in selected]

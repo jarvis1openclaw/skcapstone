@@ -2,9 +2,11 @@
 
 from __future__ import annotations
 
+import argparse
 import hashlib
 import json
 import os
+import subprocess
 from collections.abc import Callable
 from datetime import datetime, timezone
 from pathlib import Path
@@ -63,18 +65,21 @@ def _state(unit: str, runner: Runner) -> dict[str, str]:
             "UnitFileState": "unknown",
             "ActiveState": "unknown",
         }
-    if getattr(result, "returncode", 1) != 0:
+    state = dict(
+        line.split("=", 1)
+        for line in str(getattr(result, "stdout", "")).splitlines()
+        if "=" in line
+    )
+    authoritative_absence = (
+        state.get("LoadState") == "not-found" and state.get("ActiveState") == "inactive"
+    )
+    if getattr(result, "returncode", 1) != 0 and not authoritative_absence:
         return {
             "_known": "false",
             "LoadState": "unknown",
             "UnitFileState": "unknown",
             "ActiveState": "unknown",
         }
-    state = dict(
-        line.split("=", 1)
-        for line in str(getattr(result, "stdout", "")).splitlines()
-        if "=" in line
-    )
     state["_known"] = "true"
     return state
 
@@ -98,6 +103,35 @@ def audit_timer(unit: str, *, runner: Runner, config_home: Path) -> dict:
         "wants_link_ok": link_ok,
         "fragment_path": fragment_text,
         "drift": not (state.get("LoadState") == "loaded" and enabled and active),
+    }
+
+
+def audit_forbidden_timer(unit: str, *, runner: Runner) -> dict:
+    """Prove a forbidden timer and its paired service cannot execute."""
+
+    timer = _state(unit, runner)
+    service_name = unit.removesuffix(".timer") + ".service"
+    service = _state(service_name, runner)
+    timer_safe = timer.get("_known") == "true" and (
+        (
+            timer.get("LoadState") == "loaded"
+            and timer.get("UnitFileState") == "disabled"
+            and timer.get("ActiveState") == "inactive"
+        )
+        or (timer.get("LoadState") == "not-found" and timer.get("ActiveState") == "inactive")
+    )
+    service_safe = service.get("_known") == "true" and (
+        (service.get("LoadState") == "loaded" and service.get("ActiveState") == "inactive")
+        or (service.get("LoadState") == "not-found" and service.get("ActiveState") == "inactive")
+    )
+    return {
+        "unit": unit,
+        "loaded": timer.get("LoadState") == "loaded",
+        "enabled": timer.get("LoadState") == "loaded" and timer.get("UnitFileState") != "disabled",
+        "active": timer.get("ActiveState") != "inactive",
+        "service": service_name,
+        "service_inactive": service_safe,
+        "safe": timer_safe and service_safe,
     }
 
 
@@ -239,25 +273,8 @@ def converge_forbidden_timers(
         except Exception as exc:
             stop_ok = False
             detail = (detail + "; " + str(exc))[-500:]
-        after = _state(unit, runner)
-        service_after = _state(service, runner)
-        timer_disabled = (
-            after.get("_known") == "true"
-            and after.get("LoadState") == "loaded"
-            and after.get("UnitFileState") == "disabled"
-            and after.get("ActiveState") == "inactive"
-        )
-        timer_absent = (
-            after.get("_known") == "true"
-            and after.get("LoadState") == "not-found"
-            and after.get("ActiveState") == "inactive"
-        )
-        service_inactive = (
-            service_after.get("_known") == "true"
-            and service_after.get("LoadState") == "loaded"
-            and service_after.get("ActiveState") == "inactive"
-        )
-        safe = stop_ok and service_inactive and ((disable_ok and timer_disabled) or timer_absent)
+        row = audit_forbidden_timer(unit, runner=runner)
+        safe = row["safe"]
         _append(
             evidence_path,
             {
@@ -267,20 +284,72 @@ def converge_forbidden_timers(
                 "requested_state": "disabled_inactive",
                 "result": "ok" if safe else "failed",
                 "result_detail": detail,
+                "disable_result": "ok" if disable_ok else "failed",
+                "stop_result": "ok" if stop_ok else "failed",
                 "source_revision": revision,
                 "timestamp": datetime.now(timezone.utc).isoformat(),
                 "unit": unit,
             },
         )
-        results.append(
-            {
-                "unit": unit,
-                "loaded": after.get("LoadState") == "loaded",
-                "enabled": after.get("UnitFileState") == "enabled",
-                "active": after.get("ActiveState") == "active",
-                "service": service,
-                "service_inactive": service_inactive,
-                "safe": safe,
-            }
-        )
+        results.append(row)
     return results
+
+
+def rollback_to_legacy_timers(
+    legacy_timers: list[str],
+    *,
+    runner: Runner,
+    config_home: Path,
+    evidence_path: Path,
+    actor: str,
+) -> dict:
+    """Stop the orchestrator fence before restoring legacy seat timers."""
+
+    profile = legacy_timer_rollback_profile(legacy_timers)
+    forbidden = converge_forbidden_timers(
+        profile,
+        runner=runner,
+        config_home=config_home,
+        evidence_path=evidence_path,
+        actor=actor,
+    )
+    if not all(row["safe"] for row in forbidden):
+        return {"ok": False, "forbidden": forbidden, "required": []}
+    required = converge_required_timers(
+        profile,
+        runner=runner,
+        config_home=config_home,
+        evidence_path=evidence_path,
+        actor=actor,
+    )
+    return {
+        "ok": len(required) == len(required_timers(profile))
+        and all(not row["drift"] for row in required),
+        "forbidden": forbidden,
+        "required": required,
+    }
+
+
+def main() -> int:
+    """Run the guarded operational rollback to legacy timers."""
+
+    parser = argparse.ArgumentParser()
+    parser.add_argument("command", choices=("rollback-legacy",))
+    parser.add_argument("--legacy-timer", action="append", required=True)
+    parser.add_argument("--config-home", type=Path, default=Path("~/.config").expanduser())
+    parser.add_argument("--evidence", type=Path, required=True)
+    parser.add_argument("--actor", required=True)
+    args = parser.parse_args()
+    result = rollback_to_legacy_timers(
+        args.legacy_timer,
+        runner=subprocess.run,
+        config_home=args.config_home,
+        evidence_path=args.evidence,
+        actor=args.actor,
+    )
+    print(json.dumps(result, sort_keys=True))
+    return 0 if result["ok"] else 1
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

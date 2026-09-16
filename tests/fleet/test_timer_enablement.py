@@ -58,18 +58,22 @@ class TransitionSystemd:
         timer_load="loaded",
         timer_file="disabled",
         timer_active="inactive",
+        service_load="loaded",
         service_active="inactive",
         show_failure=False,
         disable_failure=False,
         stop_failure=False,
+        config_home=None,
     ):
         self.timer_load = timer_load
         self.timer_file = timer_file
         self.timer_active = timer_active
+        self.service_load = service_load
         self.service_active = service_active
         self.show_failure = show_failure
         self.disable_failure = disable_failure
         self.stop_failure = stop_failure
+        self.config_home = config_home
         self.calls = []
 
     def __call__(self, command, **_kwargs):
@@ -82,11 +86,14 @@ class TransitionSystemd:
                 return CompletedProcess(command, 1, "", "show failed")
             active = self.timer_active if is_timer else self.service_active
             output = (
-                f"LoadState={self.timer_load if is_timer else 'loaded'}\n"
+                f"LoadState={self.timer_load if is_timer else self.service_load}\n"
                 f"UnitFileState={self.timer_file if is_timer else 'static'}\n"
-                f"ActiveState={active}\nSubState=dead\nFragmentPath=/unit\n"
+                f"ActiveState={active}\n"
+                f"SubState={'waiting' if is_timer and active == 'active' else 'dead'}\n"
+                "FragmentPath=/unit\n"
             )
-            return CompletedProcess(command, 0, output, "")
+            load = self.timer_load if is_timer else self.service_load
+            return CompletedProcess(command, 4 if load == "not-found" else 0, output, "")
         if verb == "disable":
             if self.disable_failure:
                 return CompletedProcess(command, 1, "", "unit not found")
@@ -94,6 +101,11 @@ class TransitionSystemd:
             self.timer_active = "inactive"
         elif verb == "enable":
             self.timer_file = "enabled"
+            if self.config_home is not None:
+                link = self.config_home / "systemd/user/timers.target.wants" / unit
+                link.parent.mkdir(parents=True, exist_ok=True)
+                if not link.exists():
+                    link.symlink_to("/unit")
         elif verb == "start":
             self.timer_active = "active"
         elif verb == "stop":
@@ -304,31 +316,103 @@ def test_absent_and_unknown_forbidden_timer_states_are_distinct(tmp_path):
     assert rows[0]["safe"] is False
 
 
-def test_rollback_stops_orchestrator_before_enabling_legacy_timers(tmp_path):
-    """Reverse migration uses the same fail-closed forbidden-first fence."""
-
-    policy = timer_enablement.legacy_timer_rollback_profile(["skfleet-tank.timer"])
-    assert policy["units"]["mustNot"] == ["skfleet-seat-cycle.timer"]
+def test_authoritative_post_state_allows_absent_pair_and_benign_command_failure(tmp_path):
     systemd = TransitionSystemd(
-        timer_file="enabled", timer_active="active", service_active="active"
+        timer_load="not-found",
+        timer_file="",
+        service_load="not-found",
+        disable_failure=True,
+        stop_failure=True,
     )
     rows = timer_enablement.converge_forbidden_timers(
-        policy,
+        {"units": {"mustNot": ["skfleet-seat-cycle.timer"]}},
         runner=systemd,
         config_home=tmp_path,
         evidence_path=tmp_path / "evidence.jsonl",
         actor="jarvis",
     )
     assert rows[0]["safe"] is True
-    timer_enablement.converge_required_timers(
-        policy,
+    evidence = json.loads((tmp_path / "evidence.jsonl").read_text())
+    assert evidence["disable_result"] == "failed"
+    assert evidence["stop_result"] == "failed"
+
+
+def test_authoritative_disabled_post_state_wins_over_disable_return_code(tmp_path):
+    systemd = TransitionSystemd(disable_failure=True)
+    rows = timer_enablement.converge_forbidden_timers(
+        {"units": {"mustNot": ["skfleet-tank.timer"]}},
         runner=systemd,
         config_home=tmp_path,
         evidence_path=tmp_path / "evidence.jsonl",
         actor="jarvis",
     )
+    assert rows[0]["safe"] is True
+
+
+@pytest.mark.parametrize("state", ["active", "activating", "deactivating"])
+def test_read_only_forbidden_audit_fails_closed_on_service_runtime_state(tmp_path, state):
+    row = timer_enablement.audit_forbidden_timer(
+        "skfleet-tank.timer", runner=TransitionSystemd(service_active=state)
+    )
+    assert row["safe"] is False
+
+
+@pytest.mark.parametrize("state", ["active", "activating", "deactivating"])
+def test_read_only_forbidden_audit_fails_closed_on_timer_runtime_state(tmp_path, state):
+    row = timer_enablement.audit_forbidden_timer(
+        "skfleet-tank.timer", runner=TransitionSystemd(timer_active=state)
+    )
+    assert row["safe"] is False
+
+
+def test_read_only_forbidden_audit_distinguishes_absent_from_unknown(tmp_path):
+    absent = TransitionSystemd(timer_load="not-found", service_load="not-found")
+    assert (
+        timer_enablement.audit_forbidden_timer("skfleet-seat-cycle.timer", runner=absent)["safe"]
+        is True
+    )
+    assert (
+        timer_enablement.audit_forbidden_timer(
+            "skfleet-seat-cycle.timer", runner=TransitionSystemd(show_failure=True)
+        )["safe"]
+        is False
+    )
+
+
+def test_rollback_stops_orchestrator_before_enabling_legacy_timers(tmp_path):
+    """Reverse migration uses the same fail-closed forbidden-first fence."""
+
+    policy = timer_enablement.legacy_timer_rollback_profile(["skfleet-tank.timer"])
+    assert policy["units"]["mustNot"] == ["skfleet-seat-cycle.timer"]
+    systemd = TransitionSystemd(
+        timer_file="enabled",
+        timer_active="active",
+        service_active="active",
+        config_home=tmp_path,
+    )
+    result = timer_enablement.rollback_to_legacy_timers(
+        ["skfleet-tank.timer"],
+        runner=systemd,
+        config_home=tmp_path,
+        evidence_path=tmp_path / "evidence.jsonl",
+        actor="jarvis",
+    )
+    assert result["ok"] is True
     verbs = [call[2] for call in systemd.calls]
     assert verbs.index("disable") < verbs.index("stop") < verbs.index("enable")
+
+
+def test_rollback_entrypoint_never_enables_legacy_when_reverse_fence_unknown(tmp_path):
+    systemd = TransitionSystemd(show_failure=True)
+    result = timer_enablement.rollback_to_legacy_timers(
+        ["skfleet-tank.timer"],
+        runner=systemd,
+        config_home=tmp_path,
+        evidence_path=tmp_path / "evidence.jsonl",
+        actor="jarvis",
+    )
+    assert result["ok"] is False
+    assert not any(call[2] == "enable" for call in systemd.calls)
 
 
 def test_failed_mutation_is_recorded(tmp_path):
@@ -422,6 +506,68 @@ def test_installer_check_reports_missing_link_even_when_inventory_is_clean(tmp_p
             "category": "missing_required_timer_enablement",
             "name": "skfleet-link.timer",
         }
+    ]
+
+
+def test_installer_check_reads_forbidden_timer_and_service_runtime_state(tmp_path, monkeypatch):
+    paths = type("Paths", (), {"root": tmp_path / "fleet"})()
+    policy = {"units": {"required": [], "mustNot": ["skfleet-tank.timer"]}}
+    monkeypatch.setattr(installer, "load_drift", lambda *args, **kwargs: DriftReport())
+    monkeypatch.setattr(installer, "_profile_spec", lambda *args: policy)
+
+    result = installer.run_install(
+        paths,
+        "control",
+        node="node",
+        mode="check",
+        dry_run=False,
+        enable=False,
+        start=False,
+        only=None,
+        backends={},
+        timer_runner=TransitionSystemd(service_active="activating"),
+    )
+
+    assert result["ok"] is False
+    assert result["results"] == [
+        {
+            "grade": "forbidden",
+            "category": "unsafe_forbidden_timer_or_service",
+            "name": "skfleet-tank.timer",
+        }
+    ]
+
+
+def test_apply_refreshes_required_core_unit_bytes_even_without_inventory_drift(
+    tmp_path, monkeypatch
+):
+    paths = type("Paths", (), {"root": tmp_path / "fleet"})()
+    policy = {"units": {"required": ["skfleet-seat-cycle.timer"], "mustNot": []}}
+    monkeypatch.setattr(installer.store, "is_frozen", lambda paths: False)
+    monkeypatch.setattr(installer.converge, "actuation_enabled", lambda paths, node: True)
+    monkeypatch.setattr(installer, "load_drift", lambda *args, **kwargs: DriftReport())
+    monkeypatch.setattr(installer, "_profile_spec", lambda *args: policy)
+    calls = []
+
+    def core(names, **kwargs):
+        calls.append((names, kwargs))
+        return "ok", ""
+
+    result = installer.run_install(
+        paths,
+        "control",
+        node="node",
+        mode="apply",
+        dry_run=False,
+        enable=False,
+        start=False,
+        only=None,
+        backends={"core": core},
+    )
+
+    assert result["ok"] is True
+    assert calls == [
+        (["skfleet-seat-cycle.timer"], {"dry_run": False, "enable": False, "start": False})
     ]
 
 

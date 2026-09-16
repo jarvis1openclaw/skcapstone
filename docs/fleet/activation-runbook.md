@@ -142,9 +142,18 @@ orchestrator timer, independently stop the active orchestrator service with a
 310-second bound, and prove the timer is exactly `disabled`/`inactive` and the
 service exactly `inactive`. A failed `systemctl show`, an unknown or transitional
 state, or a failed stop aborts rollback before any legacy timer is enabled.
-`timer_enablement.legacy_timer_rollback_profile(...)` constructs this reverse
-profile; `converge_forbidden_timers(...)` must succeed before
-`converge_required_timers(...)` is called. Preserve both convergence receipts.
+Use the operational entrypoint below; it constructs the reverse profile and
+will not call required-timer convergence unless the forbidden-first proof
+succeeds. Preserve its append-only evidence file.
+
+```bash
+python -m skcapstone.fleet.timer_enablement rollback-legacy \
+  --legacy-timer skfleet-tank.timer \
+  --legacy-timer skfleet-seraph.timer \
+  --legacy-timer skfleet-niobe.timer \
+  --evidence "$HOME/.skcapstone/evidence/seat-scheduler-rollback.jsonl" \
+  --actor "${SKAGENT:-jarvis}"
+```
 
 ```bash
 systemctl --user disable --now skfleet-link.timer
