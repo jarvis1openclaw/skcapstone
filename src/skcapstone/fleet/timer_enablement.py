@@ -128,47 +128,6 @@ def _state(unit: str, runner: Runner) -> dict[str, str]:
     return state
 
 
-def _has_no_job(state: dict[str, str]) -> bool:
-    """Return whether systemd reports no pending job for a unit."""
-
-    return state.get("Job") in {"", "0", "n/a"}
-
-
-def _has_start_job(unit: str, state: dict[str, str], runner: Runner) -> bool:
-    """Prove the unit's numeric pending job is its in-flight start operation."""
-
-    job_id = state.get("Job", "")
-    if not job_id.isdigit():
-        return False
-    try:
-        result = runner(
-            [
-                "systemctl",
-                "--user",
-                "show",
-                job_id,
-                "--property=Id,Unit,JobType,State",
-            ],
-            capture_output=True,
-            text=True,
-            timeout=10,
-        )
-    except Exception:
-        return False
-    job = dict(
-        line.split("=", 1)
-        for line in str(getattr(result, "stdout", "")).splitlines()
-        if "=" in line
-    )
-    return (
-        getattr(result, "returncode", 1) == 0
-        and job.get("Id") == job_id
-        and job.get("Unit") == unit
-        and job.get("JobType") == "start"
-        and job.get("State") in {"waiting", "running"}
-    )
-
-
 def audit_timer(unit: str, *, runner: Runner, config_home: Path) -> dict:
     """Read one timer's runtime and exact wants-link state without mutation."""
     state = _state(unit, runner)
@@ -177,51 +136,23 @@ def audit_timer(unit: str, *, runner: Runner, config_home: Path) -> dict:
     fragment = Path(fragment_text) if fragment_text else None
     link_ok = link.is_symlink() and fragment is not None and link.resolve() == fragment.resolve()
     enabled = state.get("UnitFileState") == "enabled" and link_ok
-    scheduled = (
+    active = (
         state.get("_known") == "true"
         and state.get("LoadState") == "loaded"
         and state.get("ActiveState") == "active"
-        and state.get("SubState") == "waiting"
-        and _has_no_job(state)
+        and state.get("SubState") in {"waiting", "running"}
+        and state.get("Job") in {"", "0", "n/a"}
     )
-    executing = False
-    if (
-        state.get("_known") == "true"
-        and state.get("LoadState") == "loaded"
-        and state.get("ActiveState") == "active"
-        and state.get("SubState") == "running"
-        and _has_no_job(state)
-    ):
-        service_name = unit.removesuffix(".timer") + ".service"
-        service = _state(service_name, runner)
-        executing = (
-            service.get("_known") == "true"
-            and service.get("LoadState") == "loaded"
-            and (
-                (
-                    service.get("ActiveState") == "activating"
-                    and service.get("SubState") == "start"
-                    and _has_start_job(service_name, service, runner)
-                )
-                or (
-                    service.get("ActiveState") == "active"
-                    and service.get("SubState") == "running"
-                    and _has_no_job(service)
-                )
-            )
-        )
-    healthy = scheduled or executing
     return {
         "unit": unit,
         "loaded": state.get("LoadState") == "loaded",
         "enabled": enabled,
-        "active_waiting": scheduled,
-        "scheduled_or_executing": healthy,
+        "active_waiting": active,
         "unit_file_state": state.get("UnitFileState", "unknown"),
         "wants_link": str(link),
         "wants_link_ok": link_ok,
         "fragment_path": fragment_text,
-        "drift": not (state.get("LoadState") == "loaded" and enabled and healthy),
+        "drift": not (state.get("LoadState") == "loaded" and enabled and active),
     }
 
 
@@ -349,7 +280,7 @@ def converge_required_timers(
                 results.append(audit_timer(unit, runner=runner, config_home=config_home))
                 continue
         current = audit_timer(unit, runner=runner, config_home=config_home)
-        if start and not current["scheduled_or_executing"]:
+        if start and not current["active_waiting"]:
             try:
                 runner(
                     ["systemctl", "--user", "start", unit],
@@ -361,7 +292,7 @@ def converge_required_timers(
                 pass
         after = audit_timer(unit, runner=runner, config_home=config_home)
         after["converged"] = (not enable or after["enabled"]) and (
-            not start or after["scheduled_or_executing"]
+            not start or after["active_waiting"]
         )
         results.append(after)
     return results

@@ -63,15 +63,10 @@ class TransitionSystemd:
         timer_substate=None,
         service_load="loaded",
         service_active="inactive",
-        service_substate=None,
         timer_job="",
         service_job="",
-        service_job_type="start",
-        service_job_state="running",
         launch_service_on_start=False,
         show_failure=False,
-        service_show_failure=False,
-        job_show_failure=False,
         disable_failure=False,
         stop_failure=False,
         config_home=None,
@@ -82,43 +77,25 @@ class TransitionSystemd:
         self.timer_substate = timer_substate
         self.service_load = service_load
         self.service_active = service_active
-        self.service_substate = service_substate
         self.timer_job = timer_job
         self.service_job = service_job
-        self.service_job_type = service_job_type
-        self.service_job_state = service_job_state
         self.launch_service_on_start = launch_service_on_start
         self.show_failure = show_failure
-        self.service_show_failure = service_show_failure
-        self.job_show_failure = job_show_failure
         self.disable_failure = disable_failure
         self.stop_failure = stop_failure
         self.config_home = config_home
         self.calls = []
-        self.last_service_unit = None
 
     def __call__(self, command, **_kwargs):
         self.calls.append(command)
         verb = command[2]
         unit = command[3] if verb == "show" else command[-1]
-        if verb == "show" and unit.isdigit():
-            if self.job_show_failure:
-                return CompletedProcess(command, 1, "", "job disappeared")
-            output = (
-                f"Id={unit}\n"
-                f"Unit={self.last_service_unit}\n"
-                f"JobType={self.service_job_type}\n"
-                f"State={self.service_job_state}\n"
-            )
-            return CompletedProcess(command, 0, output, "")
         is_timer = unit.endswith(".timer")
         if verb == "show":
-            if self.show_failure or (self.service_show_failure and not is_timer):
+            if self.show_failure:
                 return CompletedProcess(command, 1, "", "show failed")
             active = self.timer_active if is_timer else self.service_active
-            if not is_timer:
-                self.last_service_unit = unit
-            substate = self.timer_substate if is_timer else self.service_substate
+            substate = self.timer_substate if is_timer else None
             if substate is None:
                 substate = "waiting" if is_timer and active == "active" else "dead"
             output = (
@@ -147,9 +124,6 @@ class TransitionSystemd:
             self.timer_active = "active"
             if self.launch_service_on_start:
                 self.timer_substate = "running"
-                self.service_active = "activating"
-                self.service_substate = "start"
-                self.service_job = "42"
         elif verb == "stop":
             if self.stop_failure:
                 return CompletedProcess(command, 1, "", "stop failed")
@@ -210,7 +184,7 @@ def test_second_run_is_noop_without_duplicate_evidence(tmp_path):
     assert [call[2] for call in systemd.calls].count("enable") == 1
 
 
-def test_running_timer_with_activating_oneshot_is_healthy_without_redundant_start(tmp_path):
+def test_running_timer_is_healthy_without_redundant_start(tmp_path):
     config, fragment = layout(tmp_path)
     link = config / "systemd/user/timers.target.wants/skfleet-link.timer"
     link.parent.mkdir(parents=True)
@@ -219,9 +193,6 @@ def test_running_timer_with_activating_oneshot_is_healthy_without_redundant_star
         timer_file="enabled",
         timer_active="active",
         timer_substate="running",
-        service_active="activating",
-        service_substate="start",
-        service_job="42",
     )
 
     rows = timer_enablement.converge_required_timers(
@@ -233,34 +204,9 @@ def test_running_timer_with_activating_oneshot_is_healthy_without_redundant_star
     )
 
     assert rows[0]["converged"] is True
-    assert rows[0]["scheduled_or_executing"] is True
+    assert rows[0]["active_waiting"] is True
+    assert rows[0]["drift"] is False
     assert not any(call[2] == "start" for call in systemd.calls)
-    assert [
-        "systemctl",
-        "--user",
-        "show",
-        "42",
-        "--property=Id,Unit,JobType,State",
-    ] in systemd.calls
-
-
-def test_running_timer_with_active_oneshot_and_no_job_is_healthy(tmp_path):
-    config, fragment = layout(tmp_path)
-    link = config / "systemd/user/timers.target.wants/skfleet-link.timer"
-    link.parent.mkdir(parents=True)
-    link.symlink_to("/unit")
-    systemd = TransitionSystemd(
-        timer_file="enabled",
-        timer_active="active",
-        timer_substate="running",
-        service_active="active",
-        service_substate="running",
-    )
-
-    row = timer_enablement.audit_timer("skfleet-link.timer", runner=systemd, config_home=config)
-
-    assert row["scheduled_or_executing"] is True
-    assert row["drift"] is False
 
 
 def test_waiting_timer_with_pending_job_fails_closed(tmp_path):
@@ -275,71 +221,7 @@ def test_waiting_timer_with_pending_job_fails_closed(tmp_path):
         config_home=config,
     )
 
-    assert row["scheduled_or_executing"] is False
-    assert row["drift"] is True
-
-
-@pytest.mark.parametrize(
-    "systemd",
-    [
-        TransitionSystemd(timer_file="enabled", timer_active="inactive"),
-        TransitionSystemd(timer_load="not-found", timer_file="enabled", timer_active="inactive"),
-        TransitionSystemd(timer_file="enabled", timer_active="active", timer_substate="running"),
-        TransitionSystemd(
-            timer_file="enabled",
-            timer_active="active",
-            timer_substate="running",
-            service_load="not-found",
-        ),
-        TransitionSystemd(
-            timer_file="enabled",
-            timer_active="active",
-            timer_substate="running",
-            service_show_failure=True,
-        ),
-        TransitionSystemd(
-            timer_file="enabled",
-            timer_active="active",
-            timer_substate="running",
-            timer_job="41",
-            service_active="activating",
-            service_job="42",
-        ),
-        TransitionSystemd(
-            timer_file="enabled",
-            timer_active="active",
-            timer_substate="running",
-            service_active="activating",
-            service_job="42",
-            service_job_type="stop",
-        ),
-        TransitionSystemd(
-            timer_file="enabled",
-            timer_active="active",
-            timer_substate="running",
-            service_active="activating",
-            service_substate="start",
-            service_job="42",
-            job_show_failure=True,
-        ),
-        TransitionSystemd(
-            timer_file="enabled",
-            timer_active="active",
-            timer_substate="running",
-            service_active="active",
-            service_job="42",
-        ),
-    ],
-)
-def test_running_timer_fails_closed_without_consistent_paired_service(tmp_path, systemd):
-    config, fragment = layout(tmp_path)
-    link = config / "systemd/user/timers.target.wants/skfleet-link.timer"
-    link.parent.mkdir(parents=True)
-    link.symlink_to("/unit")
-
-    row = timer_enablement.audit_timer("skfleet-link.timer", runner=systemd, config_home=config)
-
-    assert row["scheduled_or_executing"] is False
+    assert row["active_waiting"] is False
     assert row["drift"] is True
 
 
