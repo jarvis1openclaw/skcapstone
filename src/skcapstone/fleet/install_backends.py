@@ -254,15 +254,14 @@ def default_backends(runner: Callable = subprocess.run) -> dict[str, Callable]:
         return status, detail
 
     def core(names: list[str], *, dry_run: bool, enable: bool, start: bool) -> tuple[str, str]:
-        # Same underlying installer as "packages", run the same way
-        # (--non-interactive: never prompt, never let install.sh touch
-        # systemd itself). "core" is what actually enables/starts units,
-        # and it does so explicitly via systemctl below (the installer
-        # itself takes no --enable flag).
+        # Preserve the established installer for externally-owned names, but
+        # refresh this distribution's reviewed units with the narrow packaged
+        # resource copier so unrelated bootstrap state is never mutated.
         cmd = ["bash", str(repos / "skcapstone" / "scripts" / "install.sh"), "--non-interactive"]
+        external_names = [name for name in names if not ships_core_unit(name)]
         if dry_run:
             copy_commands = _core_copy_commands(names)
-            commands = [cmd, *copy_commands]
+            commands = ([cmd] if external_names else []) + copy_commands
             if copy_commands:
                 commands.append(["systemctl", "--user", "daemon-reload"])
             commands.extend(
@@ -272,7 +271,9 @@ def default_backends(runner: Callable = subprocess.run) -> dict[str, Callable]:
                 if requested
             )
             return "would-write", " && ".join(" ".join(command) for command in commands)
-        status, detail = _run(runner, cmd, dry_run=dry_run)
+        status, detail = "ok", ""
+        if external_names:
+            status, detail = _run(runner, cmd, dry_run=False)
         if status == "ok":
             status, detail = _install_core_units(names)
         if status == "ok" and (enable or start):

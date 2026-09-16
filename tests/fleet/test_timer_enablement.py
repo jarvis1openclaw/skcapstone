@@ -802,6 +802,40 @@ def test_scheduler_dry_run_reports_complete_cutover_without_systemd_calls(tmp_pa
     assert calls == []
 
 
+@pytest.mark.parametrize(("enable", "start"), [(True, False), (False, True)])
+def test_scheduler_cutover_rejects_partial_activation_without_mutation(
+    tmp_path, monkeypatch, enable, start
+):
+    paths = type("Paths", (), {"root": tmp_path / "fleet"})()
+    policy = {
+        "units": {
+            "required": ["skfleet-seat-cycle.timer"],
+            "mustNot": ["skfleet-tank.timer"],
+        }
+    }
+    monkeypatch.setattr(installer.store, "is_frozen", lambda paths: False)
+    monkeypatch.setattr(installer.converge, "actuation_enabled", lambda paths, node: True)
+    monkeypatch.setattr(installer, "_profile_spec", lambda *args: policy)
+    monkeypatch.setattr(installer, "load_drift", lambda *args, **kwargs: DriftReport())
+    mutations = []
+
+    with pytest.raises(ValueError, match="requires --enable and --start together"):
+        installer.run_install(
+            paths,
+            "control",
+            node="node",
+            mode="apply",
+            dry_run=False,
+            enable=enable,
+            start=start,
+            only=None,
+            backends={"core": lambda *args, **kwargs: mutations.append((args, kwargs))},
+            timer_runner=lambda *args, **kwargs: mutations.append((args, kwargs)),
+        )
+
+    assert mutations == []
+
+
 def test_check_rejects_mutation_flags_and_apply_rejects_unknown_only(tmp_path, monkeypatch):
     paths = type("Paths", (), {"root": tmp_path / "fleet"})()
     policy = {"units": {"required": ["skgateway.service"], "mustNot": []}}

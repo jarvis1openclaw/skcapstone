@@ -193,6 +193,20 @@ def test_core_copy_uses_packaged_bytes_on_wheel_only_host(monkeypatch, tmp_path)
     assert installed.read_bytes() == packaged_timer.read_bytes()
 
 
+def test_packaged_core_unit_copy_does_not_run_broad_install_script(monkeypatch, tmp_path):
+    monkeypatch.setenv("SKCAPSTONE_REPOS", "/opt/custom-repos")
+    monkeypatch.setenv("XDG_CONFIG_HOME", str(tmp_path / "config"))
+    runner = _FakeRunner()
+
+    status, detail = default_backends(runner=runner)["core"](
+        ["skfleet-seat-cycle.timer"], dry_run=False, enable=False, start=False
+    )
+
+    assert (status, detail) == ("ok", "")
+    assert not any(call and call[0] == "bash" for call in runner.calls)
+    assert any(call and call[0] == "install" for call in runner.calls)
+
+
 def test_core_backend_skips_systemctl_enable_in_dry_run():
     runner = _FakeRunner()
     b = default_backends(runner=runner)
@@ -206,7 +220,7 @@ def test_core_dry_run_reports_install_reload_enable_and_start_without_mutation()
     backend = default_backends(runner=runner)["core"]
     status, detail = backend(["skcapstone.service"], dry_run=True, enable=True, start=True)
     assert status == "would-write"
-    assert "scripts/install.sh --non-interactive" in detail
+    assert "scripts/install.sh --non-interactive" not in detail
     assert "install -D -m 0644" in detail
     assert "systemctl --user daemon-reload" in detail
     assert "systemctl --user enable skcapstone.service" in detail

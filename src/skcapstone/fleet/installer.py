@@ -394,9 +394,18 @@ def run_install(
 
     profile = _profile_spec(paths, role)
     _validate_only(profile, only)
+    selected = set(only) if only is not None else None
+    scheduler_unit = "skfleet-seat-cycle.timer"
+    selected_required_timers = [
+        unit
+        for unit in timer_enablement.required_timers(profile)
+        if selected is None or unit in selected
+    ]
+    scheduler_selected = scheduler_unit in selected_required_timers
+    if scheduler_selected and enable != start:
+        raise ValueError("scheduler migration requires --enable and --start together")
     drift = load_drift(paths, role)
     install_plan = plan(drift, only=only)
-    selected = set(only) if only is not None else None
     core_units = sorted(
         unit
         for unit in (profile.get("units") or {}).get("required", [])
@@ -439,8 +448,7 @@ def run_install(
     results = [_result_dict(r) for r in install_results]
     ok = all(r["status"] in _OK_STEP_STATUSES for r in results)
 
-    scheduler_selected = selected is None or "skfleet-seat-cycle.timer" in selected
-    scheduler_requested = scheduler_selected and (enable or start)
+    scheduler_requested = bool(selected_required_timers) and (enable or start)
     if ok and dry_run and scheduler_requested:
         for unit in timer_enablement.forbidden_timers(profile):
             service = unit.removesuffix(".timer") + ".service"
@@ -482,13 +490,12 @@ def run_install(
             os.environ.get("SKAGENT") or os.environ.get("SKCAPSTONE_AGENT") or "skfleet-install"
         )
         revision = timer_enablement.policy_revision(profile)
-        required = timer_enablement.required_timers(profile)
-        if selected is not None:
-            required = [unit for unit in required if unit in selected]
         timer_profile = {
             "units": {
-                "required": required,
-                "mustNot": timer_enablement.forbidden_timers(profile),
+                "required": selected_required_timers,
+                "mustNot": (
+                    timer_enablement.forbidden_timers(profile) if scheduler_selected else []
+                ),
             }
         }
         config_home = Path(os.environ.get("XDG_CONFIG_HOME", "~/.config")).expanduser()
