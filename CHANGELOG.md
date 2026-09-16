@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- Card `ab2a3244`: accept systemd's active/running timer state during a proven
+  timer execution, avoiding a false rollout failure and redundant timer start.
+
 - Card `f6d18fcf`: serialize Tank, Seraph, and activation-selected Niobe in one
   non-overlapping systemd generation, continue after bounded seat failures,
   and retain the shared rotation lock as defense in depth.

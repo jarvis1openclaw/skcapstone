@@ -136,7 +136,13 @@ def audit_timer(unit: str, *, runner: Runner, config_home: Path) -> dict:
     fragment = Path(fragment_text) if fragment_text else None
     link_ok = link.is_symlink() and fragment is not None and link.resolve() == fragment.resolve()
     enabled = state.get("UnitFileState") == "enabled" and link_ok
-    active = state.get("ActiveState") == "active" and state.get("SubState") == "waiting"
+    active = (
+        state.get("_known") == "true"
+        and state.get("LoadState") == "loaded"
+        and state.get("ActiveState") == "active"
+        and state.get("SubState") in {"waiting", "running"}
+        and state.get("Job") in {"", "0", "n/a"}
+    )
     return {
         "unit": unit,
         "loaded": state.get("LoadState") == "loaded",
