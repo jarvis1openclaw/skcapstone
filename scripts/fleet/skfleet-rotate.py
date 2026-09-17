@@ -15,6 +15,7 @@ from pathlib import Path
 from urllib.parse import urlsplit
 
 from skcapstone.card_store import CardStore
+from skcapstone.coord_completion import GATED_EXIT_CODE
 from skcapstone.coordination import Board
 from skcapstone.fleet.worker_watchdog import StartupObservation, startup_actuation_fenced
 from skcapstone.fleet.worker_liveness_runtime import run_production_cycle
@@ -441,6 +442,7 @@ GLM_TARGET=_required_lane_target("SKFLEET_GLM_TARGET")
 QWEN_TARGET=_required_lane_target("SKFLEET_QWEN_TARGET", default="6")
 KIMI_TARGET=_required_lane_target("SKFLEET_KIMI_TARGET", default="0")
 MAX_LAUNCH=int(os.environ.get("SKFLEET_MAX_LAUNCH","11"))
+_MAX_CLAIMS=int(os.environ.get("SKFLEET_MAX_CLAIMS","5"))
 MAX_CANDIDATE_SCAN=max(
     MAX_LAUNCH,
     int(os.environ.get("SKFLEET_MAX_CANDIDATE_SCAN",str(MAX_LAUNCH*8))),
@@ -1172,7 +1174,7 @@ def event_rows(cid):
     _rows[cid]=out; return out
 
 def acts(cid):
-    return [e.get("action") for e in event_rows(cid)]
+    return collections.Counter(e.get("action") for e in event_rows(cid))
 
 def _dependency_value(event):
     payload=event.get("payload") if isinstance(event.get("payload"),dict) else {}
@@ -1803,6 +1805,20 @@ _SENSITIVE_CATEGORY = re.compile(
     r"(capauth|credential|custody|issuer|secret|\bkey\b|rollback|"
     r"deploy|production|release|migrat)", re.I)
 _CATEGORY_OPT_IN = "dispatch-approved"
+# Criteria a worker CANNOT satisfy alone: they name another seat's verdict or a
+# merge. Measured 2026-09-16: 160 of 444 open SKLegal cards carried one, and
+# those cards averaged 3.39 claims against 1.96 for cards without.
+# Paired with GATE_LANGUAGE_RE in scripts/fleet/backfill_exit_gates.py. Keep
+# both in sync: a card split by one definition and judged unsatisfiable by
+# the other reintroduces the claim-loop this gate exists to cure. Tightened
+# 2026-09-17: bare approval/reviewer/merged were 44 percent false positives
+# (an adjective, a negation, a worker's own test name), so only phrase forms
+# that denote waiting on someone else remain.
+_GATE_LANGUAGE_RE = re.compile(
+    r"independent review|review pass|before merge|approved by|sign-?off"
+    r"|reviewed by|merged to main|awaiting review",
+    re.I,
+)
 _OVERLAY_ACTIONS = {
     "move": "move", "assign": "assign", "unassign": "unassign",
     "add_label": "add_label", "remove_label": "remove_label",
@@ -1962,6 +1978,8 @@ def _fold_claimability(core, rows):
         },
         "labels": [str(x) for x in (core.get("initial_labels") or [])],
         "dependencies": [str(x) for x in (core.get("dependencies") or [])],
+        "awaiting_gates": False,
+        "satisfied_gates": set(),
     }
     review_link_keys = {
         "pr", "pull_request", "open_pr", "candidate_evidence_sha256",
@@ -2033,9 +2051,16 @@ def _fold_claimability(core, rows):
             state["terminal"] = True
         elif action == "archive":
             state["archived"] = True
+        elif action == "await_gates":
+            state["awaiting_gates"] = True
+        elif action == "gate_satisfied":
+            name = event.get("gate")
+            if isinstance(name, str) and name:
+                state["satisfied_gates"].add(name)
         elif action == "reopen":
             state["archived"] = False
             state["terminal"] = False
+            state["awaiting_gates"] = False
             column = str(event.get("column") or "").strip().lower()
             if column in _COLUMNS:
                 state["status"] = column
@@ -2087,6 +2112,30 @@ def _fold_claimability(core, rows):
                 state["dependencies"].append(dep)
             elif action == "remove_dependency" and dep:
                 state["dependencies"] = [x for x in state["dependencies"] if x != dep]
+    # gate_satisfied is written by coord satisfy-gate and read here, never
+    # through CardCore/CardStore.fold(): exit_gates only exists on core.json,
+    # not on the installed CardCore, so this must stay a raw-JSON read. Once
+    # every gate declared on core.json has a matching gate_satisfied event,
+    # the card must stop reporting awaiting-gates on its own, without
+    # depending on an operator running reopen to unstick it. An await_gates
+    # event with no exit_gates on core.json (a stale or malformed read) must
+    # not be auto-cleared: that is positive evidence of nothing, and fails
+    # closed exactly like the pre-existing behaviour it must not regress.
+    if state["awaiting_gates"]:
+        declared_gates = {
+            str(gate.get("gate"))
+            for gate in (core.get("exit_gates") or [])
+            if isinstance(gate, dict) and isinstance(gate.get("gate"), str)
+            and gate.get("gate")
+        }
+        if declared_gates and declared_gates <= state["satisfied_gates"]:
+            state["awaiting_gates"] = False
+    # This state dict is returned verbatim as legacy["decision"], which
+    # nearby code hashes, fingerprints, and may eventually json.dumps. A set
+    # is neither JSON-safe nor deterministically ordered, so convert to a
+    # sorted list at the exit boundary. Every membership check above runs on
+    # the set form, before this line, so the fold semantics are unchanged.
+    state["satisfied_gates"] = sorted(state["satisfied_gates"])
     return state
 
 
@@ -2106,6 +2155,12 @@ def _claimability_reason(core, state):
         return "archive"
     if state["status"] == "done":
         return "done"
+    if state.get("awaiting_gates"):
+        return "awaiting-gates"
+    if int(core.get("spec_version") or 1) >= 2:
+        criteria = " ".join(str(c) for c in (core.get("acceptance_criteria") or []))
+        if _GATE_LANGUAGE_RE.search(criteria):
+            return "criteria-not-satisfiable"
     if state["owner"] and state["status"] in {"ready", "doing", "review"}:
         return "owned-%s" % state["status"]
     # Review work is a separate lane.  An unowned review card must not fall
@@ -2917,8 +2972,27 @@ def _wake_retry_available(cid,generation):
     retries=sum(1 for launched in _wake_launch_times.get(cid,()) if launched>generation)
     return retries<_WAKE_RETRY_LIMIT
 
+def _claim_ceiling_hit(cid):
+    """True when a card has been claimed repeatedly and never finished.
+
+    Keyed on CLAIM EVENTS, not launch evidence. blocked_backoff already caps
+    relaunches, but launch_attempts() reads worker logs and the outcomes store,
+    and card 06a95c23 produced ZERO worker logs across 402 claims while the
+    ledger recorded every one. Evidence the failing path never writes cannot
+    gate the failing path.
+
+    A card that completed, or that finished its worker-owned criteria and is
+    waiting on another seat, is never runaway no matter how many claims it took.
+    """
+    counts=acts(cid)
+    if counts.get("complete") or counts.get("await_gates"):
+        return False
+    return counts.get("claim",0)>_MAX_CLAIMS
+
 def blocked_backoff(cid):
     """True if this card should stay out of the pool for now."""
+    if _claim_ceiling_hit(cid):
+        return True
     ts, val = _load_outcomes().get(cid, (None, None))
     # Missing or mixed blocker metadata fails closed. Guessing at its meaning
     # would turn an unresolved human or dependency hold into execution.
@@ -3736,7 +3810,8 @@ def _release_failed_startups():
                 (HOST, cid, owner, revision))
             result = subprocess.run(
                 [SKC, "coord", "release-claim", cid, "--owner", owner,
-                 "--expected-claim-revision", revision, "--agent", "jarvis"],
+                 "--expected-claim-revision", revision, "--agent", "jarvis",
+                 "--abandon-reason", "error"],
                 capture_output=True, text=True, timeout=10)
             fresh_owner, _, fresh_revision = _current_claim_identity_fresh(cid)
             released = (fresh_owner, fresh_revision) != (owner, revision)
@@ -4056,7 +4131,7 @@ def reap_dead_claims():
         r = subprocess.run(
             [SKC, "coord", "release-claim", cid, "--owner", str(fresh_owner),
              "--expected-claim-revision", str(fresh_revision),
-             "--agent", "jarvis"],
+             "--agent", "jarvis", "--abandon-reason", "error"],
             capture_output=True, text=True)
         if r.returncode == 0:
             _rows.pop(cid, None)          # the fold below must re-read from disk
@@ -4639,6 +4714,12 @@ def close_reviewed_parents():
                 _rows.pop(parent, None)
                 closed += 1
                 log(d, "CLOSED_REVIEWED|%s|%s|review=%s|%s" % (HOST, parent, rev, rv[:40]))
+            elif c.returncode == GATED_EXIT_CODE:
+                # coord complete recorded await_gates instead of completing.
+                # This is not a failure and must not claim a close that did
+                # not happen: the card stays open, and the next cycle tries
+                # again once every gate is satisfied.
+                log(d, "CLOSE_GATED|%s|%s|review=%s|%s" % (HOST, parent, rev, rv[:40]))
             else:
                 log(d, "CLOSE_FAILED|%s|%s|%s" % (HOST, parent, (c.stderr or "").strip()[:110]))
             break
@@ -4755,7 +4836,12 @@ def release_finished_review_claims():
             continue
         result = subprocess.run(
             [SKC, "coord", "release-claim", cid, "--owner", owner,
-             "--expected-claim-revision", revision, "--agent", "fleet-review-closer"],
+             "--expected-claim-revision", revision, "--agent", "fleet-review-closer",
+             # Not an abandonment: the verdict is durable and the process
+             # already exited cleanly. not-abandoned says exactly that, so
+             # this success release is never counted alongside the releases
+             # nobody can explain.
+             "--abandon-reason", "not-abandoned"],
             capture_output=True, text=True,
         )
         if result.returncode != 0:
@@ -4793,6 +4879,13 @@ def _legacy_selector_decision(cid, core_p):
     if outcome_bucket != "open":
         return {"eligible": False, "reason": outcome_bucket}
     if blocked_backoff(cid):
+        # _claim_ceiling_hit folds into blocked_backoff, so a ceiling-hit card
+        # is also blocked_backoff-true. Claim counts are monotonic and never
+        # decrease, so a ceiling exclusion is permanent; ordinary backoff is
+        # expected to clear on its own. Reporting both as plain "backoff" hid
+        # which cards were frozen for good behind ones that would retry.
+        if _claim_ceiling_hit(cid):
+            return {"eligible": False, "reason": "claim_ceiling"}
         return {
             "eligible": False,
             "reason": "awaiting_review" if awaiting_review(cid) else "backoff",
@@ -4831,6 +4924,7 @@ foreign_skipped=0
 skipped_unclaimable=0
 skipped_terminal=0
 skipped_blocked=0
+skipped_claim_ceiling=0
 skipped_review=0
 not_claimable_skipped=0
 pinned_elsewhere=0
@@ -4900,6 +4994,14 @@ for cd in sorted(glob.glob(CARDS+"/*")):
             if DRY:
                 log(d,"DRY_SELECTION|%s|%s|excluded=authoritative-blocked-unchanged"%
                     (HOST,cid))
+        elif legacy_reason == "claim_ceiling":
+            # Claim counts are monotonic, so this exclusion never clears on
+            # its own the way ordinary backoff does. Logged per card, not
+            # just counted, so an operator can tell which cards are frozen
+            # and act (satisfy the gate, void, or raise SKFLEET_MAX_CLAIMS)
+            # instead of finding out only by their absence from the pool.
+            skipped_claim_ceiling += 1
+            log(d,"CLAIM_CEILING_EXCLUDED|%s|%s|max_claims=%d"%(HOST,cid,_MAX_CLAIMS))
         elif legacy_reason in ("done", "void", "archive"):
             skipped_terminal += 1
         elif legacy_reason.startswith("owned-"):
@@ -4961,13 +5063,15 @@ if claimability_errors:
     log(d,"CLAIMABILITY_EXCLUDED|%s|%s"%(HOST,",".join(claimability_errors)))
 log(d,"POOL|%s|ready=%d sklegal=%d eng=%d biz=%d dep_blocked=%d "
       "unclaimable=%d claimed=%d itil_closed=%d blocked_backoff=%d "
+      "claim_ceiling=%d "
       "awaiting_review=%d pinned_elsewhere=%d foreign=%d not_claimable=%d "
       "historical_review_terminal=%d historical_review_claimed=%d "
       "category_withheld=%d owned_ready=%d "
       "structural_leaf=%d human_gated=%d "
       "safety_filtered=%d top_unblocks=%d"
       %(HOST,len(pool),lc[0],lc[1],lc[2],blocked,skipped_unclaimable,
-        skipped_claimed,skipped_terminal,skipped_blocked,skipped_review,
+        skipped_claimed,skipped_terminal,skipped_blocked,
+        skipped_claim_ceiling,skipped_review,
         pinned_elsewhere,foreign_skipped,not_claimable_skipped,
         historical_review_terminal,historical_review_claimed,
         sensitive_withheld,owned_ready,
@@ -5094,6 +5198,7 @@ def _pool_v2_overlay(cid, core, reason):
         "terminal_review": bool(terminal_review_verdict(cid, core)),
         "awaiting_review": awaiting_review(cid),
         "backoff": blocked_backoff(cid),
+        "claim_ceiling": _claim_ceiling_hit(cid),
         "attempt_limit": unclaimable(cid),
         "class_facets": sorted(
             name for name, ids in _POOL_V2_CLASSES.items() if cid in ids
@@ -5347,6 +5452,7 @@ def _shadow_pool_v2():
                         and reason != "governed-review"
                         and not (seraph_review_admitted or elastic_review_admitted)
                     ),
+                    claim_ceiling=_claim_ceiling_hit(cid),
                     backoff=blocked_backoff(cid),
                     attempt_limit=unclaimable(cid),
                     host_pin_elsewhere=reason.startswith("host-pin:"),
@@ -6379,7 +6485,10 @@ for _pick_index,(_LANE,(_,_,cid,core,_labels,_nb)) in enumerate(picks):
         if not _same_generation:
             subprocess.run(
                 [SKC,"coord","release-claim",cid,"--owner",name,
-                 "--expected-claim-revision",claimed_revision,"--agent","niobe"],
+                 "--expected-claim-revision",claimed_revision,"--agent","niobe",
+                 # A live holder already exists for this card; our duplicate
+                 # claim yields to the standing one.
+                 "--abandon-reason","superseded"],
                 capture_output=True,text=True)
         continue
     # Recheck under the lock: the claim won before admission, but the
@@ -6398,7 +6507,10 @@ for _pick_index,(_LANE,(_,_,cid,core,_labels,_nb)) in enumerate(picks):
                 name,claimed_revision))
         subprocess.run(
             [SKC,"coord","release-claim",cid,"--owner",name,
-             "--expected-claim-revision",claimed_revision,"--agent","niobe"],
+             "--expected-claim-revision",claimed_revision,"--agent","niobe",
+             # reason=claim-displaced above: a concurrent owner's earlier
+             # claim already won the authoritative fold.
+             "--abandon-reason","superseded"],
             capture_output=True,text=True)
         continue
     if _fanout_request is not None:
@@ -6410,7 +6522,8 @@ for _pick_index,(_LANE,(_,_,cid,core,_labels,_nb)) in enumerate(picks):
         except (FanoutBoundaryError, OSError, ValueError) as exc:
             subprocess.run(
                 [SKC,"coord","release-claim",cid,"--owner",name,
-                 "--expected-claim-revision",claimed_revision,"--agent","niobe"],
+                 "--expected-claim-revision",claimed_revision,"--agent","niobe",
+                 "--abandon-reason","error"],
                 capture_output=True,text=True)
             log(d,"FANOUT_CLAIM_RECEIPT_FAILED|%s|%s|%s"%(HOST,cid,exc))
             continue
@@ -6525,8 +6638,11 @@ for _pick_index,(_LANE,(_,_,cid,core,_labels,_nb)) in enumerate(picks):
         except (BoundaryError, OSError, ValueError) as exc:
             log(d, "MERO_OBSERVATION_FAILED|%s|%s|%s" % (HOST, cid, exc))
     if not ok:
+        # LAUNCH_FAILED above: the launch command itself returned nonzero,
+        # so the claimed worker never came alive.
         subprocess.run([SKC,"coord","release-claim",cid,"--owner",name,
-                        "--expected-claim-revision",claimed_revision,"--agent",name],
+                        "--expected-claim-revision",claimed_revision,"--agent",name,
+                        "--abandon-reason","error"],
                        capture_output=True,text=True)
     else:
         launched+=1

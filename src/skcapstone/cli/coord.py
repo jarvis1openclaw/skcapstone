@@ -543,13 +543,59 @@ def register_coord_commands(main: click.Group) -> None:
             agent, Action.COMPLETE_CARD, task_id, casey_authorization, casey_change_id
         )
 
+        from ..coord_completion import GATED_EXIT_CODE, GatesPending
+
         try:
-            ag = complete_coord_task(home_path, agent, task_id)
+            result = complete_coord_task(home_path, agent, task_id)
         except ValueError as e:
             console.print(f"\n  [red]Error:[/] {e}\n")
             sys.exit(1)
+
+        if isinstance(result, GatesPending):
+            console.print(f"\n  [yellow]Awaiting gates:[/] [{task_id}] not completed\n")
+            for gate in result.outstanding:
+                console.print(f"    - {gate.get('gate')} (owner: {gate.get('owner')})")
+            console.print()
+            # GATED_EXIT_CODE, distinct from the 0 a caller reads as "closed"
+            # and the 1 an actual error already uses on this command. A caller
+            # that only checks returncode == 0 must not be able to mistake a
+            # gated, still-open card for a completion; a script that wants to
+            # treat gated as fine can check for this exact code instead of
+            # guessing.
+            sys.exit(GATED_EXIT_CODE)
+
         # board.complete_task() automatically mints Joules via _mint_joules_for_task
-        console.print(f"\n  [green]Completed:[/] [{task_id}] by [bold]{ag.agent}[/]\n")
+        console.print(f"\n  [green]Completed:[/] [{task_id}] by [bold]{result.agent}[/]\n")
+
+    @coord.command("satisfy-gate")
+    @click.argument("task_id")
+    @click.option("--home", default=AGENT_HOME, type=click.Path())
+    @click.option("--gate", "gate_name", required=True, help="Exit gate name to satisfy.")
+    @click.option("--agent", required=True, help="Seat satisfying the gate.")
+    def coord_satisfy_gate(task_id, home, gate_name, agent):
+        """Record one exit gate as satisfied by its owning seat.
+
+        Rejects a gate name that is not in the card's exit_gates. Satisfying
+        an already-satisfied gate is not an error and appends nothing.
+        """
+        validate_task_id(task_id)
+        validate_agent_name(agent)
+
+        home_path = Path(home).expanduser()
+        from ..coord_completion import satisfy_gate
+
+        try:
+            appended = satisfy_gate(home_path, task_id, gate_name, agent)
+        except ValueError as e:
+            console.print(f"\n  [red]Error:[/] {e}\n")
+            sys.exit(1)
+
+        if appended:
+            console.print(
+                f"\n  [green]Gate satisfied:[/] [{task_id}] {gate_name} by [bold]{agent}[/]\n"
+            )
+        else:
+            console.print(f"\n  [yellow]Already satisfied:[/] [{task_id}] {gate_name}\n")
 
     @coord.command("release-claim")
     @click.argument("task_id")
@@ -560,14 +606,25 @@ def register_coord_commands(main: click.Group) -> None:
         help="Exact current claim revision. A newer generation is never released.",
     )
     @click.option("--agent", required=True, help="Audited release actor.")
+    @click.option(
+        "--abandon-reason",
+        default=None,
+        help=(
+            "Why the worker stopped: criteria-unsatisfiable, dependency-unsatisfied, "
+            "capability-missing, error, superseded, not-abandoned. Use not-abandoned "
+            "when the release follows a durable finish, not a stoppage. Omit and it "
+            "records unspecified."
+        ),
+    )
     @click.option("--home", default=AGENT_HOME, type=click.Path())
-    def coord_release_claim(task_id, owner, expected_claim_revision, agent, home):
+    def coord_release_claim(task_id, owner, expected_claim_revision, agent, abandon_reason, home):
         """Release one exact claim generation without completing the task."""
+        import uuid
+
         from skcoord.card_store import (
             CardStore,
             card_mutation_lock,
             current_claim_precondition,
-            mirror_coord_release,
         )
         from skcoord.coordination import _board_mutation_lock
 
@@ -612,12 +669,18 @@ def register_coord_commands(main: click.Group) -> None:
                         )
                 owner_projection = board.load_agent(owner)
                 if current_revision is not None:
-                    mirror_coord_release(
-                        home_path,
+                    # Inlined from skcoord.card_store.mirror_coord_release, which
+                    # does not accept abandon_reason. This is the one CardStore
+                    # write the dispatcher and CLI callers share, so it is the
+                    # place a real reason (or an honest unspecified) lands.
+                    CardStore(home_path).append_event(
                         task_id,
-                        owner,
+                        "release_claim",
                         agent,
-                        expected_claim_revision,
+                        released_owner=owner,
+                        expected_claim_revision=expected_claim_revision,
+                        transition_id=uuid.uuid4().hex,
+                        abandon_reason=abandon_reason,
                     )
                     if restore_review:
                         CardStore(home_path).append_event(task_id, "move", agent, column="review")
