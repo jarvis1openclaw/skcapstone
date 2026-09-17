@@ -921,6 +921,76 @@ def _worker_search_instructions():
     )
 
 
+def _worker_done_instructions(pr_required_now):
+    """Build the DEFINITION OF DONE fragment for the worker launch brief.
+
+    A pushed branch plus a recorded commit SHA is the default handoff, not an
+    open pull request: a routine card no longer pays a 20 to 30 minute PR
+    cycle. ``pr_required_now`` (the caller passes ``pr_required(core, labels)``)
+    adds the immediate-PR clause for sensitive cards only.
+
+    This intentionally does NOT consult the dispatch-approved label.
+    dispatch-approved answers whether a worker may take a sensitive card at
+    all; pr_required answers how the result must be published. A sensitive
+    card approved for dispatch still touches credentials or deploys, so it
+    still earns a PR, not a waiver.
+    """
+    done = (
+        "DEFINITION OF DONE, applies to every card that touches a repository:\n"
+        "Work is NOT done until the branch is pushed and the exact commit SHA is\n"
+        "recorded. An edit left uncommitted, or a commit left unpushed, is not\n"
+        "delivered: a later pull or checkout by any session sharing that checkout\n"
+        "destroys it without trace. Two entire repositories were found emptied on\n"
+        "disk this way, and a night of agent work was found sitting untracked in\n"
+        "live checkouts. So, in this exact order:\n"
+        "1. Branch first. NEVER commit to main or master. Use fix/, feat/ or chore/.\n"
+        "2. Commit as soon as the code is written and a fast check passes. Do NOT\n"
+        "   wait for a long test run: commit, then run it, then amend or add a\n"
+        "   follow-up commit. Never gate a commit on a job you are waiting on.\n"
+        "3. Push the branch. An unpushed commit is destroyed by any other session's\n"
+        "   checkout of that tree, so pushing is mandatory: the pushed branch plus\n"
+        "   the recorded SHA is the handoff.\n"
+        "4. Record the branch and the exact commit SHA as their own evidence\n"
+        "   links, not only as prose: skcapstone coord link <card> branch\n"
+        "   <repo>:<branch-name> and skcapstone coord link <card> commit_sha\n"
+        "   <the 40-character SHA>. A link is what another host and the\n"
+        "   Integrator actually query; a SHA mentioned only in verdict prose\n"
+        "   or in skmail is not a queryable field, and that gap is exactly\n"
+        "   what PR-per-change used to close. Qualify the branch with its\n"
+        "   repository (skcapstone:fix/abc123), because this fleet spans\n"
+        "   several repositories and a bare branch name does not say which\n"
+        "   one to fetch from. Also put the exact commit SHA\n"
+        "   and the branch name in your verdict AND in your skmail. A verdict\n"
+        "   claiming work was done with no coord link commit_sha is incomplete.\n"
+        "   If the card needed no repository change, link commit_sha to the\n"
+        "   literal value none, so that is a recorded decision rather than a\n"
+        "   gap indistinguishable from a worker who simply forgot.\n"
+        "5. Open a PR only when the card is sensitive (title or label matches\n"
+        "   capauth, credential, custody, issuer, secret, key, rollback, deploy,\n"
+        "   production, release, or migration) or when you are asked to. A PR is\n"
+        "   what costs the CI cycle and the wait, so it is reserved for changes\n"
+        "   that earn it. Otherwise the Integrator seat opens one PR per batch,\n"
+        "   not you.\n"
+        "6. Attribute the commit to yourself, the agent that did the work. Never\n"
+        "   claim co-authorship you cannot evidence.\n"
+        "7. Clean up: remove scratch files and temp worktrees. Scratch belongs\n"
+        "   outside the repo.\n"
+        "If the card needs no repository change, say so explicitly in your verdict\n"
+        "so the absence of a PR is a recorded decision rather than an omission.\n"
+        "- Never use an em dash or en dash.\n"
+    )
+    if pr_required_now:
+        done += (
+            "THIS CARD REQUIRES AN IMMEDIATE PR. Its title or a label matches a\n"
+            "sensitive category (capauth, credential, custody, issuer, secret, key,\n"
+            "rollback, deploy, production, release, or migration), so open a PR now\n"
+            "with gh pr create and put the PR URL in your verdict, in addition to\n"
+            "the commit SHA above. This is separate from dispatch-approved: that\n"
+            "label only says you may take the card, it does not waive the PR.\n"
+        )
+    return done
+
+
 def _seraph_terminal_noop(
     host, only_seat, dry, pick_count, processed_picks, launch_receipts
 ):
@@ -1801,10 +1871,72 @@ for _f in glob.glob(os.path.join(EVID,"*","actions.log")):
 # unconditionally. reopen is the one explicit path that clears terminality.
 _COLUMNS = {"backlog", "ready", "doing", "review", "done"}
 _NOT_CLAIMABLE = {"not-claimable", "sprint-container", "do-not-claim"}
+# Answers: does this card need the dispatch-approved opt-in before it can be
+# dispatched at all. This is an ADMISSION gate, not a routing gate.
+# _QWEN_UNSUITABLE (elsewhere in this same file) answers a
+# different question: can the qwen lane specifically take this card. The two
+# share a subject-matter prefix (capauth, credential, custody, and so on) on
+# purpose, because the same categories that require sign-off also tend to be
+# ones a cheap lane should not touch unsupervised. That overlap is deliberate,
+# not duplication. Do not merge these two patterns: collapsing them folds an
+# admission policy into a routing policy and breaks lane selection with no
+# test catching it at the call sites, since the two are read at different
+# points in the pipeline for different purposes.
 _SENSITIVE_CATEGORY = re.compile(
     r"(capauth|credential|custody|issuer|secret|\bkey\b|rollback|"
     r"deploy|production|release|migrat)", re.I)
 _CATEGORY_OPT_IN = "dispatch-approved"
+
+
+def pr_required(core, labels=()) -> bool:
+    """Return True when a card's work needs a pull request, not just a pushed branch.
+
+    Title is read from the raw core.json dict, on purpose: a model read
+    through CardCore/CardStore.fold silently drops unknown fields on a node
+    running an older skcoord, which produces a check that passes every test
+    against real data and enforces nothing in production, and title is not
+    subject to any folding a caller could get wrong.
+
+    Labels are different: they are not read off core here at all. They must
+    be passed in already folded (initial_labels plus every add_label /
+    remove_label event, via this file's own folded_labels(cid, core) or an
+    equivalent read), never core.get("initial_labels") directly. Measured
+    2026-09-17: reading raw initial_labels missed a sensitive label added
+    after a card's creation via `coord label` in about 0.3 percent of live
+    cards, because coord_completion.py's commit-evidence gate reads folded
+    labels while this used to read only the raw pre-events list, so the two
+    silently disagreed about the same card. The raw-JSON justification above
+    does not apply to labels the way it applies to title: labels is a field
+    CardCore does carry, so a folded read through the normal machinery does
+    not lose it.
+
+    Matches the card's title or any label against _SENSITIVE_CATEGORY, the
+    same pattern the admission gate at _claimability_reason uses. A missing,
+    empty, or non-string title never raises; it is simply not a match.
+    """
+    if not isinstance(core, dict):
+        return False
+    title = core.get("title")
+    if isinstance(title, str) and _SENSITIVE_CATEGORY.search(title):
+        return True
+    for tag in labels or ():
+        if isinstance(tag, str) and _SENSITIVE_CATEGORY.search(tag):
+            return True
+    return False
+
+
+# Genuine-SHA validation for a commit_sha link used to be a second copy here
+# (_COMMIT_SHA_RE / _valid_commit_sha), stranded because this file is a
+# script, not a package module, and so cannot be imported BY anything else.
+# That stranding was never actually necessary: this file already imports
+# FROM the skcapstone package (see the `from skcapstone.coord_completion
+# import GATED_EXIT_CODE` near the top), so it is not a bare, importless
+# script either. The one shared implementation now lives in
+# skcapstone.coord_completion.commit_sha_is_valid, next to the gate that
+# actually enforces it, and this file has no call site of its own that needs
+# it: it only ever wrote the worker prompt, never validated evidence itself.
+
+
 # Criteria a worker CANNOT satisfy alone: they name another seat's verdict or a
 # merge. Measured 2026-09-16: 160 of 444 open SKLegal cards carried one, and
 # those cards averaged 3.39 claims against 1.96 for cards without.
@@ -5730,6 +5862,17 @@ def needs_escalation(cid, core=None, labels=None):
         return False
     return bool(_ts and _CAPABILITY_VERDICT_RE.search(str(_val or "")))
 
+# Answers: can the qwen lane specifically take this card. This is a ROUTING
+# gate, not an admission gate. _SENSITIVE_CATEGORY (elsewhere in this same
+# file) answers a different question: does this card need the
+# dispatch-approved opt-in before it can be dispatched at all. The shared
+# prefix (capauth, credential, custody, and so on) is deliberate subject-matter
+# overlap, not duplication: this pattern extends that prefix with terms
+# (schema, architecture, [HUMAN], [XL]) that are fine for a supervised lane
+# but wrong for qwen unsupervised. Do not merge these two patterns: collapsing
+# them folds a routing policy into an admission policy and breaks lane
+# selection with no test catching it at the call sites, since the two are
+# read at different points in the pipeline for different purposes.
 _QWEN_UNSUITABLE = re.compile(
     r"(capauth|credential|custody|issuer|secret|\bkey\b|rollback|deploy|"
     r"production|release|migrat|schema|architecture|\[HUMAN\]|\[XL\])", re.I)
@@ -6127,9 +6270,10 @@ for _pick_index,(_LANE,(_,_,cid,core,_labels,_nb)) in enumerate(picks):
       "directly. Read your inbox before you start and before you finish: someone may have\n"
       "answered the question you are about to spend an hour on, or told you the card is\n"
       "void. Coordination beats duplicated effort.\n"
-      "- PUBLISH YOUR WORK. Commit to a feature branch, push it, and open a PR. This is\n"
-      "  required, not optional: a candidate that exists only in your worktree cannot be\n"
-      "  reviewed, is one pull away from being erased, and does not count as done.\n"
+      "- PUBLISH YOUR WORK. Commit to a feature branch and push it. This is required,\n"
+      "  not optional: an unpushed commit is destroyed by any other session's checkout\n"
+      "  of that tree and does not count as done. Open a PR only when the card is\n"
+      "  sensitive or you are asked to; see DEFINITION OF DONE below.\n"
       "- Do NOT commit or push to main, and do NOT merge. Landing is a separate decision\n"
       "  a human makes on a reviewed PR.\n"
       "- No deploy, restart, live gateway or config mutation, credential disclosure,\n"
@@ -6189,25 +6333,7 @@ for _pick_index,(_LANE,(_,_,cid,core,_labels,_nb)) in enumerate(picks):
       "- If you push a branch, say so and name it, because a pushed branch IS durable\n"
       "  and reachable from any host. That is the cheapest way to satisfy this.\n"
       "A SHA with no reachable bytes is not evidence. It is a promise that expired.\n"
-      "DEFINITION OF DONE, applies to every card that touches a repository:\n"
-      "Work is NOT done until it is an open pull request. An edit left uncommitted,\n"
-      "or a commit left unpushed, is not delivered: a later pull or checkout by any\n"
-      "session sharing that checkout destroys it without trace. Two entire repositories\n"
-      "were found emptied on disk this way, and a night of agent work was found sitting\n"
-      "untracked in live checkouts. So, in this exact order:\n"
-      "1. Branch first. NEVER commit to main or master. Use fix/, feat/ or chore/.\n"
-      "2. Commit as soon as the code is written and a fast check passes. Do NOT wait for\n"
-      "   a long test run: commit, then run it, then amend or add a follow-up commit.\n"
-      "   Never gate a commit on a job you are waiting on.\n"
-      "3. Push the branch and open a PR with gh pr create.\n"
-      "4. Put the PR URL in your verdict AND in your skmail. A verdict claiming work was\n"
-      "   done with no PR URL is incomplete and will be treated as unverified.\n"
-      "5. Attribute the commit to yourself, the agent that did the work. Never claim\n"
-      "   co-authorship you cannot evidence.\n"
-      "6. Clean up: remove scratch files and temp worktrees. Scratch belongs outside the repo.\n"
-      "If the card needs no repository change, say so explicitly in your verdict so the\n"
-      "absence of a PR is a recorded decision rather than an omission.\n"
-      "- Never use an em dash or en dash.\n")
+      + _worker_done_instructions(pr_required(core, _labels)))
     brief=_RAILS + ("Work only SKCapstone card %s. The fleet selector has already claimed it "
       "for your exact agent identity. Verify that ownership before working and never "
       "claim or substitute another card. If ownership is absent, or a dependency is "
