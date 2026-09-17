@@ -976,6 +976,12 @@ def _worker_done_instructions(pr_required_now):
         "   claim co-authorship you cannot evidence.\n"
         "7. Clean up: remove scratch files and temp worktrees. Scratch belongs\n"
         "   outside the repo.\n"
+        "8. Never delete your own workspace, the one you are running in, as part\n"
+        "   of finishing. Once the branch and commit SHA above are linked, that\n"
+        "   workspace's content survives elsewhere; deleting it yourself before\n"
+        "   that link is written destroys the only copy with nothing to recover.\n"
+        "   A later, separate cleanup pass decides when it is actually safe to\n"
+        "   remove, not you.\n"
         "If the card needs no repository change, say so explicitly in your verdict\n"
         "so the absence of a PR is a recorded decision rather than an omission.\n"
         "- Never use an em dash or en dash.\n"
@@ -5887,10 +5893,19 @@ def needs_escalation(cid, core=None, labels=None):
 # read at different points in the pipeline for different purposes.
 _QWEN_UNSUITABLE = re.compile(
     r"(capauth|credential|custody|issuer|secret|\bkey\b|rollback|deploy|"
-    r"production|release|migrat|schema|architecture|\[HUMAN\]|\[XL\])", re.I)
+    r"production|release|migrat|schema|architecture|gateway|skgw|kimi|"
+    r"model[-_ ]?registr|provider[-_ ]?rout|\[HUMAN\]|\[XL\])", re.I)
 
-def qwen_suitable(core):
-    """Return whether Qwen may receive this card before a paid lane."""
+def qwen_suitable(core, labels=None):
+    """Return whether Qwen may receive this card before a paid lane.
+
+    Gateway/provider routing work is not Qwen work by default: a card must
+    explicitly carry ``qwen-suitable`` to opt back in.  Ordinary cards retain
+    the previous title-based suitability rules.
+    """
+    normalized={str(label).strip().lower() for label in (labels or [])}
+    if "qwen-suitable" in normalized:
+        return True
     return not _QWEN_UNSUITABLE.search(str((core or {}).get("title") or ""))
 
 
@@ -5974,7 +5989,7 @@ def _has_launchable_pick(picks, remaining, elastic_remaining, lane_order,
             if elastic else remaining
         )
         lane_name, _reason = select_compatible_lane(
-            labels, escalation, lane_order, available, qwen_suitable(core),
+            labels, escalation, lane_order, available, qwen_suitable(core, labels),
             qwen_exclusive, health, qwen_enabled, glm_enabled,
         )
         if lane_name is not None:
@@ -6032,7 +6047,7 @@ while _i<len(owned) and _i<len(_candidate_scan):
          for name in remaining}
         if _elastic_review else remaining)
     _lane_name,_defer=select_compatible_lane(
-        _labels,_esc,lane_order,_selection_remaining,qwen_suitable(_card[3]),_qwen_exclusive,
+        _labels,_esc,lane_order,_selection_remaining,qwen_suitable(_card[3],_labels),_qwen_exclusive,
         _card_lane_health,QWEN_TARGET>0,GLM_TARGET>0)
     if _lane_name is None:
         _lane_deferred[_defer]+=1
@@ -6239,7 +6254,7 @@ for _pick_index,(_LANE,(_,_,cid,core,_labels,_nb)) in enumerate(picks):
     )
     _attempt_lane_name,_attempt_defer=select_compatible_lane(
         _labels,_attempt_escalation,lane_order,_attempt_remaining,
-        qwen_suitable(core),qwen_first_exclusive(cid,_labels),_attempt_health,
+        qwen_suitable(core,_labels),qwen_first_exclusive(cid,_labels),_attempt_health,
         QWEN_TARGET>0,GLM_TARGET>0)
     if _attempt_lane_name is None:
         log(d,"SKIPPED_ATTEMPT_ADMISSION|%s|%s|reason=%s"%
@@ -6425,7 +6440,7 @@ for _pick_index,(_LANE,(_,_,cid,core,_labels,_nb)) in enumerate(picks):
         cid,fresh_claimability["core"],fresh_claimability["labels"])
     compatible,affinity_reason=lane_compatibility(
         fresh_claimability["labels"],fresh_escalation,
-        qwen_suitable(fresh_claimability["core"]),
+        qwen_suitable(fresh_claimability["core"],fresh_claimability["labels"]),
         qwen_first_exclusive(cid,fresh_claimability["labels"]),
         QWEN_TARGET>0,GLM_TARGET>0)
     if _LANE["name"] not in compatible:
@@ -6681,7 +6696,11 @@ for _pick_index,(_LANE,(_,_,cid,core,_labels,_nb)) in enumerate(picks):
         "\"beat_at\":'$(date +%%s)',\"elapsed_s\":'$SECONDS'}' "
         "> %s.tmp 2>/dev/null && mv %s.tmp %s 2>/dev/null || true; "
         "sleep %s & wait $!; done; }; "
-        "beat & BEAT=$!; "
+        # The Python wrapper captures the worker shell's stderr. A background
+        # beat that inherits that pipe keeps it open after the shell exits and
+        # strands the wrapper and transient unit. The beat is file-only, so
+        # detach all three standard streams before it enters the background.
+        "beat </dev/null >/dev/null 2>&1 & BEAT=$!; "
         "stop_beat() { kill $BEAT 2>/dev/null || true; wait $BEAT 2>/dev/null || true; }; "
         'trap "stop_beat; exit 143" HUP INT TERM; '
         'trap "stop_beat" EXIT; '
