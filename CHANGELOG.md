@@ -31,6 +31,27 @@
   have had its card reclaimed while the dispatcher was actively recording it
   alive. Found by phase 2 of the rollout, which is what report mode is for.
   A liveness link naming a different owner still does not count.
+- **The dispatcher sends each lane's own model, not the bare size bucket.**
+  `_lane_model` resolves a card to the model its lane actually uses (a glm
+  level, the `SKFLEET_CODEX_MODEL_` override, `kimi-for-coding` or `k3`). It
+  existed and was called by NOTHING, so every lane shipped the bare bucket
+  `sk-s`/`sk-m`/`sk-l`/`sk-xl` as its model.
+
+    - This never errored, which is why it survived: the bare bucket IS a valid
+      gateway route, and it resolves to the LOCAL QWEN38 FALLBACK. A card sent
+      to the codex lane asked for `sk-m`, was answered by qwen38, and came back
+      with good work. The subscription backends were simply never asked.
+    - Measured on chi 2026-09-18 from 03:58 at the gateway: qwen38 served 467
+      requests from 5 local slots, while codex (32 slots) served 6, zai 1 and
+      kimi 2. A codex target of 30 could never be met.
+    - The size bucket stays the card's ROUTE IDENTITY. `logical_route` keeps the
+      bucket; only the model actually sent becomes the lane's resolution. The
+      unsized-card skip is unchanged, because a silent downgrade would hide lost
+      capability behind work that quietly got weaker.
+    - The guard in `tests/test_skfleet_logical_routes.py` now asserts at the
+      source level that both the launch site and the post-race recheck resolve a
+      lane model, and that the identity is never assigned the sent model. A test
+      of `_lane_model` alone passed for the entire time the fleet was misrouting.
 
 - **New runbook: `docs/fleet/starting-a-new-project.md`.** Start-to-finish guide
   for standing up a new project on the coordination board: decomposition into
