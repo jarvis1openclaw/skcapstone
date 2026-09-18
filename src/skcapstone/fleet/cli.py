@@ -6,6 +6,7 @@ Available standalone as `skfleet` and as `skcapstone fleet ...`.
 from __future__ import annotations
 
 import json as jsonlib
+import os
 import subprocess
 from datetime import datetime, timezone
 from pathlib import Path
@@ -759,6 +760,232 @@ def node_endpoint_audit_cmd(status_file, as_json: bool, strict: bool) -> None:
                 click.echo(f"  plan  retirement_candidate        {peer_id}")
     if strict and report["summary"]["unsafe"]:
         raise SystemExit(1)
+
+
+def _drift_is_role_ambiguous(drift) -> bool:
+    """True when ``drift`` cannot be told from a legitimate role difference.
+
+    See ``.superpowers/sdd/2026-09-17-rollout-observability/task-5-brief.md``
+    Part 1, and the incident it names: run against a real workstation or
+    against chiap01/chiap03, most of the ``missing`` findings on a shipped
+    unit or the dispatcher script are units that host's ROLE never installs
+    on purpose, not a rollout gap. This estate has no per-host role
+    manifest, so nothing here can tell those two apart -- and Task 3/4's own
+    documented rule is that ``unit_in_scope`` returning False already
+    suppresses the cases it CAN judge; what reaches ``detect_drift`` as
+    ``missing`` is exactly the residue that is genuinely undecidable.
+
+    ``changed``, ``enablement_mismatch``, and ``failed`` are never
+    ambiguous: the artifact is demonstrably installed, so a content or
+    activation difference is a fact about this host, not a guess about its
+    role. A ``missing`` finding on ``git_sha`` is not ambiguous either: it
+    means the installed distribution itself could not be read at all,
+    which is not a per-unit role question.
+
+    Neither is a ``missing`` finding on a ``script:``-prefixed artifact
+    (a ``pyproject.toml`` ``script-files`` entry, Fix 4 of the same
+    review). Unlike a shipped unit, which a host's role may legitimately
+    never install, pip installs every ``script-files`` entry into
+    ``~/.skenv/bin`` unconditionally on every host that has the package
+    installed at all -- there is no role for which a script-files entry is
+    supposed to be absent. Measured live: ``skfleet_readiness.py`` is
+    genuinely missing from chiap01's ``~/.skenv/bin``, which is exactly
+    the kind of finding this default output exists to surface, not bury.
+    """
+    return (
+        drift.kind == "missing"
+        and drift.artifact != "git_sha"
+        and not drift.artifact.startswith("script:")
+    )
+
+
+def _default_repo_root() -> Path:
+    """The checkout `node drift` reads EXPECTED content from.
+
+    ``SKCAPSTONE_REPO_ROOT`` when set, otherwise ``~/work/skcapstone``: the
+    shared-checkout convention documented in
+    ``docs/runbooks/chatgpt-codex-sk-client.md`` and confirmed, read-only,
+    on the live fleet (chiap01/02/03/04/08) -- every host that has a
+    checkout to diagnose itself against keeps it there. Deliberately not
+    ``install_backends._repos_root()`` (``~/clawd/skcapstone-repos``): that is
+    a different, developer-workstation convention, and no rotate host in
+    the live fleet has anything under it.
+    """
+    env = os.environ.get("SKCAPSTONE_REPO_ROOT")
+    return Path(env).expanduser() if env else Path.home() / "work" / "skcapstone"
+
+
+@node_group.command("drift")
+@click.option(
+    "--repo-root",
+    "repo_root",
+    type=click.Path(path_type=Path),
+    default=None,
+    help="Checkout with expected content (default: $SKCAPSTONE_REPO_ROOT or ~/work/skcapstone)",
+)
+@click.option(
+    "--home",
+    "home",
+    type=click.Path(path_type=Path),
+    default=None,
+    help="Estate home to inspect for installed artifacts (default: $HOME).",
+)
+@click.option("--json", "as_json", is_flag=True, help="Machine-readable output.")
+@click.option("--strict", is_flag=True, help="Exit 1 when any drift is found.")
+def node_drift_cmd(repo_root: Path | None, home: Path | None, as_json: bool, strict: bool) -> None:
+    """Report rollout drift for this node against a fresh manifest. REPORT ONLY.
+
+    Builds a deployment manifest (Task 1's ``build_manifest``) from
+    --repo-root and compares it against what this node actually has
+    installed (Task 3's ``detect_drift``): content digests for unit files
+    and the dispatcher script, the installed distribution's embedded
+    git_sha, and enabled-versus-active state, never a version label alone.
+    See ``fleet/rollout_drift.py`` for why: a version check reported every
+    host healthy during all four real drift incidents this exists to catch.
+
+    Local only, like ``node doctor``: both the manifest and the installed
+    state it is compared against are facts about THIS machine. Grading a
+    remote node from a local repo checkout would be a confident wrong
+    answer dressed up as a report, not a report.
+
+    Cheap enough to run from a systemd timer independently of the rest of
+    ``skcapstone doctor``: every check here is a file read, a glob, or a
+    handful of ``systemctl --user show`` calls, the same read-only cost
+    Task 2's readiness gate already pays every 15 minutes.
+
+    Default text output shows every ``changed`` and ``enablement_mismatch``
+    finding, plus any ``git_sha`` finding, by name: those are unambiguous
+    drift regardless of what this host's role is. A ``missing`` unit or
+    dispatcher script is summarised as a count instead of printed by name,
+    because this estate has no per-host role manifest, so "this role never
+    installs it" cannot be told apart from "a rollout should have installed
+    it and did not" -- see ``_drift_is_role_ambiguous``. ``--json`` and
+    ``--strict`` are unaffected by this split: both see and act on every
+    finding, missing included.
+    """
+    from . import deployment_manifest, rollout_drift
+
+    resolved_repo_root = repo_root or _default_repo_root()
+    resolved_home = home or Path.home()
+
+    try:
+        manifest = deployment_manifest.build_manifest(resolved_repo_root, resolved_home)
+        drifts = rollout_drift.detect_drift(manifest, resolved_home, resolved_repo_root)
+    except (OSError, RuntimeError) as exc:
+        raise click.ClickException(
+            f"could not compute drift from repo root {resolved_repo_root}: {exc}"
+        ) from exc
+
+    node = self_node_name()
+    if as_json:
+        click.echo(
+            jsonlib.dumps(
+                {
+                    "node": node,
+                    "git_sha": manifest["git_sha"],
+                    "drifts": [
+                        {
+                            "artifact": d.artifact,
+                            "kind": d.kind,
+                            "expected": d.expected,
+                            "found": d.found,
+                        }
+                        for d in drifts
+                    ],
+                },
+                indent=2,
+                sort_keys=True,
+            )
+        )
+    elif not drifts:
+        click.echo(f"{node}: no drift (matches {manifest['git_sha']})")
+    else:
+        ambiguous = [d for d in drifts if _drift_is_role_ambiguous(d)]
+        unambiguous = [d for d in drifts if not _drift_is_role_ambiguous(d)]
+        click.echo(
+            f"{node}\t{len(drifts)} drift(s) against manifest git_sha={manifest['git_sha']}"
+        )
+        if not unambiguous:
+            click.echo("  (no unambiguous drift: no changed content, enablement, or git_sha)")
+        for d in unambiguous:
+            click.echo(f"  {d.kind:20} {d.artifact:40} expected={d.expected!r} found={d.found!r}")
+        if ambiguous:
+            click.echo(
+                f"  {len(ambiguous)} unit(s)/dispatcher script reported missing, not listed: "
+                "this estate has no per-host role manifest, so 'this host's role never "
+                "installs it' cannot be told apart from 'a rollout should have installed "
+                "it and did not'. Re-run with --json to see each by name."
+            )
+
+    if strict and drifts:
+        raise SystemExit(1)
+
+
+@node_group.command("manifest")
+@click.option(
+    "--repo-root",
+    "repo_root",
+    type=click.Path(path_type=Path),
+    default=None,
+    help="Checkout to build the manifest from (default: $SKCAPSTONE_REPO_ROOT or "
+    "~/work/skcapstone)",
+)
+@click.option(
+    "--home",
+    "home",
+    type=click.Path(path_type=Path),
+    default=None,
+    help="Estate home to publish under (default: $HOME).",
+)
+@click.option("--json", "as_json", is_flag=True, help="Print the published manifest as JSON.")
+def node_manifest_cmd(repo_root: Path | None, home: Path | None, as_json: bool) -> None:
+    """Build this node's deployment manifest and publish it to disk. WRITES.
+
+    ``deployment_manifest.write_manifest`` had no non-test caller before
+    this command: the manifest pipeline (Task 1) built a fresh manifest in
+    memory every time it was needed, but nothing ever pinned one to a
+    well-known path (``docs/fleet/rollout-drift.md`` said this outright).
+    This command is that caller: it builds the same manifest ``node drift``
+    builds (Task 1's ``build_manifest``) and publishes it to the FLEET tree
+    (``default_paths()``, i.e. the ``$SKFLEET_ROOT`` override or its
+    documented default -- see ``fleet/paths.py``) at
+    ``status/node-<node>/manifest/manifest.json``, the same
+    ``status/<node>/<kind>/<name>.json`` shape every other status write in
+    this package already uses (``fleet/paths.py``). Publishing through
+    ``default_paths()`` rather than a path built from ``--home`` here is
+    deliberate: this is fleet STATE, and ``paths.py`` is the one module
+    allowed to name where the fleet tree lives (see
+    ``tests/fleet/test_root_relocation.py``), so a relocated
+    ``SKFLEET_ROOT`` must relocate this too.
+
+    Unlike ``node drift`` / ``node doctor``, this command WRITES on
+    purpose -- publishing is its entire job, so it carries no
+    ``--strict``/report-only contract to violate. ``node drift`` itself
+    still compares against a freshly built manifest, not this pinned one
+    (deliberately unchanged here); publishing a comparison artifact a
+    future check could read against is exactly what closes the "no
+    caller" gap without also changing what ``node drift`` means today.
+    """
+    from . import deployment_manifest
+
+    resolved_repo_root = repo_root or _default_repo_root()
+    resolved_home = home or Path.home()
+
+    try:
+        manifest = deployment_manifest.build_manifest(resolved_repo_root, resolved_home)
+    except (OSError, RuntimeError) as exc:
+        raise click.ClickException(
+            f"could not build a manifest from repo root {resolved_repo_root}: {exc}"
+        ) from exc
+
+    node = self_node_name()
+    manifest_path = default_paths().status_path(node, "manifest", "manifest")
+    deployment_manifest.write_manifest(manifest_path, manifest)
+
+    if as_json:
+        click.echo(jsonlib.dumps(manifest, indent=2, sort_keys=True))
+    else:
+        click.echo(f"{node}: published manifest git_sha={manifest['git_sha']} to {manifest_path}")
 
 
 def _parse_taint(spec: str) -> tuple[str, str, str]:
