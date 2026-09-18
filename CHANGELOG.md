@@ -12,6 +12,33 @@
   dispatch and was starvation, 27 ready cards against a 5-host hash partition,
   with the real constraint 357 cards behind a review gate reporting
   `capacity=2 eligible=0` every cycle.
+- **Every coord mutation entrypoint now consults one per-seat capability
+  table, and an unknown identity is refused.** PR 766 fixed one seat by name;
+  the structural defect was that the gate was a deny-list with one entry, so
+  link, seraph, niobe, tank, atlas, and any future seat mutated the board
+  unchecked, and eleven mutating verbs (`void`, `describe`, `label`, `link`,
+  `reprioritize`, `amend-criteria`, `add/remove-dependency`, `satisfy-gate`,
+  `rehome`, `score`, and the archive/migrate/reconcile maintenance sweeps)
+  carried no authorization call at all. `seat_boundaries` now holds the single
+  decision function `require_coord_authority` over `COORD_SEAT_CAPABILITIES`
+  (base seat authority plus the named `SEAT_CARD_LIFECYCLE_ALLOWANCES`), and
+  `authorize_coord_mutation` (the generalized `authorize_jarvis_entrypoint`,
+  which remains as an alias) is called by every mutating coord CLI verb, MCP
+  handler, and the SDK. Identities are classified explicitly: exact seat names
+  are bound by their table row, known operators (chef, casey, lumina, ...) and
+  fleet workers / automation (`pi-codex-chiap04-<cardid>`, `cursor-*`,
+  `archive-done`, ...) pass as their own classes, the identityless CLI default
+  passes as the tool class, and a bare name the table does not know fails
+  closed. The card-lifecycle allowance for link, seraph, niobe, atlas, and
+  tank is deliberate and documented in place: measured on chi over 14 days,
+  those seats claim, move, and complete their own seat-labeled cards
+  (seraph 282 claims, link 118 moves) even though the charters read as if
+  they never touch card lifecycle, and refusing that silently would stop the
+  review and verification lanes. Mero gets no allowance. A coverage test
+  parses the entrypoint modules and fails when a mutating verb exists without
+  an authorization call, which is exactly how `release-claim` shipped without
+  one.
+
 
 - **Docs: the Mero (Overseer) seat boundary is now a verb list backed by
   measurement, not the word "read-only".** The old prose boundary was violated
@@ -281,6 +308,41 @@
       its own state instead of falling through to "ALL QUIET".
     - soak samples carry `freeze_state`, and the operator HTTP act refusal
       payload includes it beside the raw `frozen` boolean.
+- **The read-only Overseer identity (`mero`) is now refused at the coord
+  mutation entrypoints.** ADR-0005 and `docs/fleet/seat-charters.md` define the
+  Overseer as read-only (observe, recommend, create), and the charter even
+  claims runtime enforcement, but the only identity the mutation surfaces ever
+  checked was Jarvis: `authorize_jarvis_entrypoint` returned immediately for
+  every other actor, and `coord release-claim` had no gate at all. Measured on
+  the chi estate (per-card shard store, writer `mero`, 14 days to 2026-09-18):
+  324 `move` and 147 `release_claim` events, written by an interactive
+  controller session passing `--agent mero`, not by the `skfleet-mero` timer,
+  whose census cycle is genuinely read-only. 55 of the 149 all-time releases
+  hit a claim whose owner had been active on the card within the previous
+  hour. `authorize_jarvis_entrypoint` now calls `require_authority` for the
+  exact `mero` identity before the Jarvis check, so `claim`, `move`,
+  `complete`, and `release-claim` fail closed as `mero` across the CLI and the
+  MCP handlers, while `coord create --by mero` and mero verdict links keep
+  working exactly as the coord briefing documents. `pi-mero-*` lane workers
+  are ordinary workers and are not affected.
+
+- **The read-only Overseer identity (`mero`) is now refused at the coord
+  mutation entrypoints.** ADR-0005 and `docs/fleet/seat-charters.md` define the
+  Overseer as read-only (observe, recommend, create), and the charter even
+  claims runtime enforcement, but the only identity the mutation surfaces ever
+  checked was Jarvis: `authorize_jarvis_entrypoint` returned immediately for
+  every other actor, and `coord release-claim` had no gate at all. Measured on
+  the chi estate (per-card shard store, writer `mero`, 14 days to 2026-09-18):
+  324 `move` and 147 `release_claim` events, written by an interactive
+  controller session passing `--agent mero`, not by the `skfleet-mero` timer,
+  whose census cycle is genuinely read-only. 55 of the 149 all-time releases
+  hit a claim whose owner had been active on the card within the previous
+  hour. `authorize_jarvis_entrypoint` now calls `require_authority` for the
+  exact `mero` identity before the Jarvis check, so `claim`, `move`,
+  `complete`, and `release-claim` fail closed as `mero` across the CLI and the
+  MCP handlers, while `coord create --by mero` and mero verdict links keep
+  working exactly as the coord briefing documents. `pi-mero-*` lane workers
+  are ordinary workers and are not affected.
 
 - **Readiness checks each unit against the interpreter it declares.** The gate
   tested every unit's module imports against one interpreter (`--python-bin`),
