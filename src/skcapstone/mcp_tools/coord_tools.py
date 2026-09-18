@@ -246,6 +246,7 @@ async def _handle_coord_claim(args: dict) -> list[TextContent]:
     )
     board = Board(_home())
     try:
+        from ..fleet.churn_breaker import assert_claim_permitted
         from ..human_wait import assert_human_claim
         from ..review_admission import assert_governed_review_claim
 
@@ -253,6 +254,7 @@ async def _handle_coord_claim(args: dict) -> list[TextContent]:
         # Board.claim_task is not a gate, it is a mutation.
         assert_human_claim(_home(), task_id, agent_name)
         assert_governed_review_claim(_home(), task_id, agent_name)
+        assert_claim_permitted(_home(), task_id, agent_name)
         agent = board.claim_task(agent_name, task_id, force=bool(args.get("force", False)))
         return _json_response(
             {
