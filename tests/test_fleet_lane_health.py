@@ -7,6 +7,8 @@ import json
 import os
 import re
 import subprocess
+import urllib.error
+import urllib.parse
 from pathlib import Path
 from typing import Any
 
@@ -16,6 +18,7 @@ from skcapstone.fleet_lane_health import (
     ENDPOINT_TIMEOUT_SECONDS,
     MAX_ENDPOINT_BYTES,
     acquire_lane_snapshot,
+    gateway_root,
     active_gateway_revision,
     lane_health,
 )
@@ -407,3 +410,148 @@ def test_snapshot_freshness_is_still_enforced_independently(tmp_path: Path) -> N
     )
     assert _admit(snapshot, "codex", "sk-codex") == (True, "healthy")
     assert _admit(snapshot, "codex", "sk-codex", now=2_000_000_600.0) == (False, "stale")
+
+
+# ---------------------------------------------------------------------------
+# Regression: a base URL carrying the OpenAI-compatible /v1 prefix.
+#
+# On 2026-09-18 all three chi rotate hosts had
+# SKFLEET_GATEWAY_URL=http://<host>:18790/v1, so the probe requested
+# /v1/health and /v1/queue. Both 404, both became HTTPError, every lane went
+# "unknown", and lane admission (fail-closed by design) blocked every card.
+# The fleet had not launched a worker in three days while the gateway was
+# healthy throughout.
+#
+# The pre-existing _opener mock could not catch this: it resolves a request
+# by taking only the final path segment (`"/" + url.rsplit("/", 1)[-1]`), so
+# ".../v1/health" and ".../health" are indistinguishable to it. The strict
+# opener below routes on the FULL path, the way a real server does.
+# ---------------------------------------------------------------------------
+
+
+def _strict_opener(documents: dict[str, dict[str, Any]], calls: list[str]):
+    """Route on the full URL path, and 404 anything that is not an exact hit."""
+
+    def open_url(url: str, *, timeout: float) -> Response:
+        calls.append(url)
+        path = urllib.parse.urlsplit(url).path.rstrip("/") or "/"
+        if path not in documents:
+            raise urllib.error.HTTPError(url, 404, "Not Found", {}, None)  # type: ignore[arg-type]
+        value = documents[path]
+        if isinstance(value, Exception):
+            raise value
+        return Response(value)
+
+    return open_url
+
+
+def test_gateway_root_discards_any_path_component() -> None:
+    assert gateway_root("http://chiap01:18790/v1") == "http://chiap01:18790"
+    assert gateway_root("http://chiap01:18790/v1/") == "http://chiap01:18790"
+    assert gateway_root("http://chiap01:18790") == "http://chiap01:18790"
+    assert gateway_root("  http://chiap01:18790/v1  ") == "http://chiap01:18790"
+    assert gateway_root("https://gw.example/v1/extra") == "https://gw.example"
+
+
+def test_gateway_root_leaves_an_undecomposable_value_alone() -> None:
+    """Never invent an origin out of something that is not a URL."""
+    assert gateway_root("not-a-url") == "not-a-url"
+    assert gateway_root("localhost:18790/") == "localhost:18790"
+
+
+def test_v1_suffixed_base_url_still_probes_the_root_endpoints(tmp_path: Path) -> None:
+    """The production failure, reproduced end to end with a strict server."""
+    calls: list[str] = []
+    snapshot = acquire_lane_snapshot(
+        ENDPOINT + "/v1",
+        LANES,
+        DOMAINS,
+        tmp_path / "lane-health.json",
+        "cycle-v1",
+        opener=_strict_opener(_documents(), calls),
+        revision_resolver=lambda _base: REVISION,
+        now=lambda: 2_000_000_000.0,
+    )
+    assert calls == [ENDPOINT + "/health", ENDPOINT + "/queue"], calls
+    assert snapshot["errors"] == []
+    assert snapshot["endpoint"] == ENDPOINT
+    healthy = [domain["state"] for lane in snapshot["lanes"] for domain in lane["domains"]]
+    assert "healthy" in healthy, healthy
+
+
+def test_strict_opener_would_have_caught_the_bug(tmp_path: Path) -> None:
+    """Guard the guard: prove the strict opener actually 404s a /v1 path, so
+    this regression test cannot silently start passing for the wrong reason.
+    """
+    calls: list[str] = []
+    opener = _strict_opener(_documents(), calls)
+    with pytest.raises(urllib.error.HTTPError):
+        opener(ENDPOINT + "/v1/health", timeout=8)
+
+
+def test_a_v1_base_url_is_admissible_end_to_end_not_just_sealed(tmp_path: Path) -> None:
+    """The blocker this test exists to prevent.
+
+    Normalizing only inside acquire_lane_snapshot seals the ROOT into
+    snapshot["endpoint"] while callers still pass the RAW env value to
+    lane_health, whose endpoint comparison then fails. That does not fix the
+    outage, it relabels it: every lane is refused with "endpoint-mismatch"
+    instead of "unknown", and because the probe now succeeds, errors is []
+    and the one signal that exposed the original 373-NOOP outage is gone.
+
+    So the assertion has to reach admissibility, not stop at the snapshot.
+    """
+    calls: list[str] = []
+    snapshot = acquire_lane_snapshot(
+        ENDPOINT + "/v1",
+        LANES,
+        DOMAINS,
+        tmp_path / "lane-health.json",
+        "cycle-v1-admit",
+        opener=_strict_opener(_documents(), calls),
+        revision_resolver=lambda _base: REVISION,
+        now=lambda: 2_000_000_000.0,
+    )
+    assert snapshot["errors"] == []
+
+    # The raw, /v1-suffixed value is what a caller actually holds.
+    admitted, reason = lane_health(
+        snapshot,
+        "codex",
+        "sk-codex",
+        cycle_id="cycle-v1-admit",
+        endpoint=ENDPOINT + "/v1",
+        capacity_domains=DOMAINS["codex"],
+        active_revision=REVISION,
+        now=2_000_000_000.0,
+    )
+    assert (admitted, reason) == (
+        True,
+        "healthy",
+    ), f"a /v1 base URL must be admissible end to end, got {(admitted, reason)}"
+
+
+def test_the_root_form_is_still_admissible(tmp_path: Path) -> None:
+    """Complement: normalizing must not break the correct form."""
+    calls: list[str] = []
+    snapshot = acquire_lane_snapshot(
+        ENDPOINT,
+        LANES,
+        DOMAINS,
+        tmp_path / "lh.json",
+        "cycle-root",
+        opener=_strict_opener(_documents(), calls),
+        revision_resolver=lambda _base: REVISION,
+        now=lambda: 2_000_000_000.0,
+    )
+    admitted, reason = lane_health(
+        snapshot,
+        "codex",
+        "sk-codex",
+        cycle_id="cycle-root",
+        endpoint=ENDPOINT,
+        capacity_domains=DOMAINS["codex"],
+        active_revision=REVISION,
+        now=2_000_000_000.0,
+    )
+    assert (admitted, reason) == (True, "healthy")
