@@ -106,6 +106,30 @@ def test_builder_withheld_count_is_always_reported() -> None:
 
 
 @pytest.mark.parametrize(
+    ("capacity", "expected", "excluded"),
+    [
+        ({}, "owner_free=chiap04:unknown", "owner_free=chiap04:0"),
+        ({"chiap04": 0}, "owner_free=chiap04:0", "owner_free=chiap04:unknown"),
+    ],
+    ids=("missing-is-unknown", "reported-zero-remains-zero"),
+)
+def test_owner_capacity_diagnostic_distinguishes_absent_from_zero(
+    capacity: dict[str, int], expected: str, excluded: str
+) -> None:
+    helpers = _load_helpers()
+    detail = helpers["_selection_diagnostic"](
+        [_row("deadbeef")],
+        [],
+        _lanes(target=4, free=4),
+        lambda _card_id: "chiap04",
+        capacity,
+    )
+
+    assert expected in detail
+    assert excluded not in detail
+
+
+@pytest.mark.parametrize(
     ("pool", "owned", "lanes", "expected"),
     [
         ([], [], _lanes(target=4, free=4), "reason=empty-pool"),
