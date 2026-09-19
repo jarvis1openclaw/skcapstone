@@ -14,6 +14,7 @@ Coverage audit (task 945325c8, 2026-03-02):
 
 from __future__ import annotations
 
+import functools
 import json
 import shutil
 import subprocess
@@ -260,3 +261,129 @@ def initialized_agent_home(tmp_agent_home: Path) -> Path:
     )
 
     return tmp_agent_home
+
+
+# --------------------------------------------------------------------------
+# Skip ledger: a skipped test must be DECLARED, never silent.
+#
+# THE INVARIANT (CONTRIBUTING.md): a green that can be produced by absence is
+# not a green. A skip is exactly that -- it reads as coverage in every summary
+# a human or an agent looks at, while being structurally unable to fail the
+# build. On 2026-09-19 this suite held 72 tests that can only ever skip on a
+# runner, including one that has been RED for months on the single machine
+# capable of executing it, invisibly, because CI always skipped it.
+#
+# So: any skip whose nodeid is not declared in tests/skip_ledger.txt fails the
+# run. Enforcement is one-directional on purpose -- "observed skip must be
+# declared", never "declared skip must be observed" -- so that running a subset
+# of the suite is still correct, and so that FIXING a skip never reds the build.
+# --------------------------------------------------------------------------
+
+_LEDGER_PATH = Path(__file__).parent / "skip_ledger.txt"
+_UNDECLARED_SKIPS: dict[str, str] = {}
+
+
+@functools.lru_cache(maxsize=1)
+def _ledger_prefixes() -> tuple[str, ...]:
+    """Declared prefixes, read once. An ABSENT ledger yields none, so deleting
+    the file makes every skip undeclared rather than making every skip allowed.
+    The failure mode of the guard has to point the same way as the guard."""
+    if not _LEDGER_PATH.exists():
+        return ()
+    return tuple(
+        line.strip()
+        for line in _LEDGER_PATH.read_text(encoding="utf-8").splitlines()
+        if line.strip() and not line.lstrip().startswith("#")
+    )
+
+
+def _matches(nodeid: str, entry: str) -> bool:
+    """Prefix match, plus a single `*` wildcard.
+
+    A parametrized gate puts its discriminator at the END of the nodeid
+    (`...::test_x[skvoice]`), which no prefix can reach without also
+    whitelisting every other param of the same test.
+
+    Deliberately NOT fnmatch: a nodeid's param suffix is `[skvoice]`, which
+    fnmatch reads as a character class meaning "one of s,k,v,o,i,c,e". It
+    matched nothing and would have silently let 16 skvoice skips through as
+    "declared". A matcher that quietly matches nothing is the same defect as a
+    gate that quietly observes nothing, so this stays boring on purpose."""
+    if "*" not in entry:
+        return nodeid.startswith(entry)
+    pre, _, post = entry.partition("*")
+    return nodeid.startswith(pre) and nodeid.endswith(post)
+
+
+def _record_skip(nodeid: str, reason: str) -> None:
+    if any(_matches(nodeid, e) for e in _ledger_prefixes()):
+        return
+    _UNDECLARED_SKIPS[nodeid] = reason
+
+
+def _reason_of(report) -> str:
+    lr = getattr(report, "longrepr", None)
+    if isinstance(lr, tuple) and len(lr) == 3:
+        return str(lr[2])
+    return str(lr) if lr else "(no reason given)"
+
+
+@pytest.hookimpl(tryfirst=True)
+def pytest_runtest_logreport(report):
+    """Record a skip from ANY phase, not just setup.
+
+    The first version of this hook watched `when == "setup"` only, and CI
+    proved it blind to exactly the worst case: `pytest.importorskip` called
+    INSIDE a test body reports at the `call` phase, so
+    test_human_wait.py::test_sync_gtd_is_idempotent_on_source_and_card_id
+    skipped in CI and this guard said nothing. A mid-test skip is the most
+    dangerous kind there is, because it can fire AFTER some assertions have
+    passed and BEFORE the rest ever run, so a PARTIAL pass is reported as a
+    clean skip. A guard blind to that is the defect it was written to catch.
+
+    An xfail also reports as `skipped` but carries `wasxfail`. That is a
+    declared expectation, not a silent absence, and the ledger must not cry
+    wolf about it: a gate that reds on legitimate things gets disabled, and a
+    disabled gate is the absence this whole exercise is about.
+    """
+    if report.skipped and not hasattr(report, "wasxfail"):
+        _record_skip(report.nodeid, _reason_of(report))
+
+
+@pytest.hookimpl(tryfirst=True)
+def pytest_collectreport(report):
+    # Module-level skips (pytest.skip(..., allow_module_level=True)) never
+    # produce a test report at all. They are the most invisible kind and so the
+    # most important to catch: tests/test_cli_completions.py silences 35 tests
+    # this way.
+    if report.skipped:
+        _record_skip(report.nodeid, _reason_of(report))
+
+
+def pytest_sessionfinish(session, exitstatus):
+    if not _LEDGER_PATH.exists():
+        print(
+            f"\nSKIP LEDGER MISSING at {_LEDGER_PATH}. Every skip is undeclared "
+            "until it is restored; this run cannot certify anything about skips."
+        )
+        session.exitstatus = 1
+        return
+    if not _UNDECLARED_SKIPS:
+        return
+    lines = [
+        "",
+        "=" * 72,
+        f"UNDECLARED SKIP ({len(_UNDECLARED_SKIPS)}): a test skipped without being in the ledger.",
+        "",
+        "A skip reads as coverage while being unable to fail the build, so every",
+        "one must be declared with a disposition. If this skip is legitimate, add",
+        "the line(s) below to tests/skip_ledger.txt under the right heading. If it",
+        "is not, fix the gate so the test actually runs.",
+        "",
+    ]
+    for nodeid, reason in sorted(_UNDECLARED_SKIPS.items()):
+        lines.append(f"  # reason: {reason}")
+        lines.append(f"  {nodeid}")
+    lines.append("=" * 72)
+    print("\n".join(lines))
+    session.exitstatus = 1
