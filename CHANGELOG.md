@@ -50,6 +50,25 @@
   `BUILDER_RELEASED_TO_LANE` line per released card, and `builder_returned=` on
   the `SELECTION_EMPTY` diagnostic.
 
+- **Rollout deploys and grades every per-host artifact, and the checkout
+  surface is finally visible.** A chi host carries three version surfaces that
+  can each go stale alone: the git checkout, the installed package, and the
+  artifacts explicitly copied to `~/.local/bin`. Nothing compared them, which
+  is how the 2026-09-19 dispatch outage ran for an hour with every check
+  green. `staged_rollout`'s copy steps and `rollout_drift.detect_drift` now
+  both derive from one declared `deployment_manifest.PER_HOST_ARTIFACTS`
+  tuple, so `skfleet-worker-wrapper.py` (which the dispatcher loads from its
+  own directory, never from the installed package) is deployed and graded
+  instead of being correct by accident. `fleet node drift --expect-git-sha`
+  adds the `checkout:git_sha` finding, which is the only check that can catch
+  a uniformly stale node: every other expected value is read FROM the
+  checkout being graded. The rollout gate passes the manifest's sha to each
+  remote, so cross-host agreement falls out of the existing gate rather than
+  a second fleet-wide report. The installed-package finding is renamed
+  `git_sha` -> `package:git_sha` so a report names which surface is stale.
+  `skwork-sweep.py`, which was declared in no package at all yet runs from
+  a live unit on all five hosts, is now a declared per-host artifact.
+
 - **The readiness gate grades the rotate script that actually runs.**
   `skfleet-readiness.service` graded `~/.skenv/bin/skfleet-rotate.py`, but the
   live drop-in on chiap01/02/03/04/08 runs `~/.local/bin/skfleet-rotate.py`.
@@ -1920,6 +1939,17 @@
   Added per-seat nonblocking guards with immutable cycle receipts and exact Linux
   boot and process-generation evidence for crash recovery. Overlaps now record
   honest no-ops, while old timestamps and quiet output never imply abandonment.
+
+- **Three more sites named a per-host artifact's path by convention.**
+  `skfleet-niobe-live.service` passed `--dispatcher %h/.skenv/bin/skfleet-rotate.py`
+  and `seat_cycle_entrypoint.py` derived the dispatcher twice as
+  `Path(sys.executable).parent / "skfleet-rotate.py"`. Both resolve to the
+  copy pip leaves in `~/.skenv/bin`, not the copy the rollout deploys to
+  `~/.local/bin` that the units actually execute. The failure mode was worse
+  than a missing file: the wrong path exists, so the `is_file()` guard passed
+  and a stale dispatcher would have run silently instead of failing closed.
+  All three now resolve through `deployment_manifest.deployed_artifact_path()`,
+  and a regression guard fails the build on a fourth.
 
 All notable changes to **skcapstone** are documented here.
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
