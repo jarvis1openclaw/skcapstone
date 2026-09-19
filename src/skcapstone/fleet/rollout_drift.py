@@ -37,6 +37,7 @@ from __future__ import annotations
 
 import hashlib
 import importlib.util
+import json
 import re
 import subprocess
 import sys
@@ -51,7 +52,7 @@ from .deployment_manifest import (
     PER_HOST_ARTIFACTS,
     PER_HOST_BIN_RELATIVE_DIR,
 )
-from .paths import self_node_name
+from .paths import paths_for_home, self_node_name
 
 #: Not in the shipped systemd/ tree (see the module docstring: the dispatcher
 #: script is deployed by a separate mechanism from the package), but it is
@@ -289,6 +290,121 @@ def _load_readiness_module(repo_root: Path):
     sys.modules["skfleet_readiness"] = module
     spec.loader.exec_module(module)
     return module
+
+
+def detect_fleet_incoherence(home: Path | str) -> list[Drift]:
+    """Do the estate's nodes agree with EACH OTHER about what they run?
+
+    ``detect_drift`` answers "is THIS node internally consistent" and
+    structurally cannot answer this one: every expected value it compares
+    against is READ FROM the node's own checkout, so a host that never
+    pulled agrees with itself perfectly, on every surface, forever. Five of
+    them doing that at once is 2026-09-19, when all five chi hosts sat on a
+    commit none of them had any way to notice was not the one being rolled
+    out.
+
+    Read from the readiness verdict each node already publishes every 15
+    minutes to ``status/node-<host>/readiness/verdict.json`` under the one
+    Syncthing folder the estate shares -- the same file
+    ``staged_rollout._readiness_verdict`` already reads. So there is no ssh,
+    no new publishing step and no second reporting channel; findings come
+    back as ordinary ``Drift`` records that every existing reader handles
+    unchanged.
+
+    NOT read from ``rollout_history``, which is the obvious-looking
+    substrate and the wrong one. That store is written only by
+    ``staged_rollout.record_deployment``, and this fleet's deployments do
+    not all go through it: measured on 2026-09-19, every node's recorded
+    manifest said ``0c8dcd6b`` while every node's checkout was actually on
+    ``112b2ef4``, about an hour stale. A check built on it would have
+    answered "coherent" from records that agreed only because they were all
+    equally out of date -- a confident wrong answer, which is worse than no
+    answer. The readiness verdict is rewritten on a timer whether anything
+    deployed or not, so it describes the node now.
+
+    The rule is PLURALITY, not "compare everyone to me": the largest group
+    agreeing on one sha is expected, and every node outside it is reported.
+    A compare-to-me rule would report the three healthy hosts as drifted
+    when run from the one stale host, so two operators reading the same
+    shared tree would get two contradictory answers about the same estate.
+    An exact tie is broken deterministically on the sha rather than on dict
+    ordering.
+
+    Fail-closed on a node that cannot say. A verdict that is absent,
+    unreadable, or carries no ``installed_git_sha`` yields a ``missing``
+    finding for that node, never silent agreement -- "unknown is never
+    ready" is the rule the readiness gate itself is built on, and a
+    coherence check that treats unknown as agreement is exactly the failure
+    it exists to prevent. When NO node publishes the field, that is the one
+    situation with a single cause (the gate publishing it is not deployed
+    yet), so it is reported as one finding naming that cause rather than as
+    a finding per node.
+
+    Returns an empty list when fewer than two nodes publish a verdict at
+    all: one node cannot disagree with itself.
+    """
+    home = Path(home)
+    # Derived from the same paths_for_home the readiness gate's own writer
+    # uses, via a throwaway probe path, so this can never disagree with it
+    # about where the fleet status tree lives.
+    status_root = paths_for_home(home).status_path("node", "readiness", "verdict").parents[2]
+    if not status_root.is_dir():
+        return []
+
+    shas: dict[str, str] = {}
+    unreadable: list[str] = []
+    for node_dir in sorted(status_root.glob("node-*")):
+        node = node_dir.name[len("node-") :]
+        try:
+            payload = json.loads(
+                (node_dir / "readiness" / "verdict.json").read_text(encoding="utf-8")
+            )
+        except (OSError, json.JSONDecodeError):
+            continue  # no verdict at all: this node is not participating
+        sha = payload.get("installed_git_sha") if isinstance(payload, dict) else None
+        if isinstance(sha, str) and sha:
+            shas[node] = sha.lower()
+        else:
+            unreadable.append(node)
+
+    if not shas and not unreadable:
+        return []
+    if not shas:
+        # Every participating node lacks the field: one cause, one finding.
+        return [
+            Drift(
+                "fleet:installed_git_sha",
+                "missing",
+                "every node publishes installed_git_sha in its readiness verdict",
+                f"no node does ({len(unreadable)} checked); the readiness gate that "
+                "publishes it is not deployed yet",
+                self_node_name(),
+            )
+        ]
+
+    drifts = [
+        Drift("fleet:installed_git_sha", "missing", "a published sha", None, node)
+        for node in sorted(unreadable)
+    ]
+    if len(shas) < 2:
+        return drifts
+
+    groups: dict[str, list[str]] = {}
+    for node, sha in shas.items():
+        groups.setdefault(sha, []).append(node)
+    if len(groups) == 1:
+        return drifts
+
+    # max() over (group size, reverse-ordered sha) keeps ties deterministic:
+    # on an exact tie the lowest-sorted sha wins, so two hosts reading the
+    # same tree report the same set.
+    expected = max(groups, key=lambda sha: (len(groups[sha]), [-ord(c) for c in sha]))
+    drifts += [
+        Drift("fleet:installed_git_sha", "changed", expected, shas[node], node)
+        for node in sorted(shas)
+        if shas[node] != expected
+    ]
+    return drifts
 
 
 def detect_drift(manifest: dict[str, Any], home: Path | str, repo_root: Path | str) -> list[Drift]:
