@@ -15,7 +15,6 @@ from pathlib import Path
 import pytest
 
 from skcapstone.card_store import CardCore
-from skcapstone.fleet import gateway_failure
 
 ROOT = Path(__file__).resolve().parents[1]
 ROTATE = ROOT / "scripts" / "fleet" / "skfleet-rotate.py"
@@ -66,7 +65,6 @@ def _scheduler_namespace() -> dict[str, object]:
         "os": os,
         "time": time,
         "HOME": "/unused",
-        "TRANSPORT_FAILURE_CLASSES": gateway_failure.TRANSPORT_FAILURE_CLASSES,
         "_ts_epoch": lambda value: time.mktime(time.strptime(value[:19], "%Y-%m-%dT%H:%M:%S")),
     }
     exec(compile(ast.Module(nodes, type_ignores=[]), str(ROTATE), "exec"), namespace)
@@ -173,6 +171,16 @@ def test_known_transport_failures_are_classified(diagnostic: str, kind: str) -> 
 def test_scheduler_transport_classes_match_wrapper_exactly() -> None:
     namespace = _scheduler_namespace()
     assert namespace["_TRANSPORT_FAILURE_CLASSES"] == frozenset(_wrapper().TRANSPORT_PATTERNS)
+
+
+def test_runtime_route_identity_is_explicitly_an_admission_proxy() -> None:
+    args = argparse.Namespace(logical_route="sk-s", provider="kimi-for-coding", capacity_domain=("kimi-for-coding",))
+    record = _wrapper().runtime_route_identity(args)
+    assert record["route_schema"] == "skfleet.admission-proxy/v1"
+    assert record["admission_logical_route"] == "sk-s"
+    assert record["admission_capacity_domains"] == ["kimi-for-coding"]
+    assert "logical_route" not in record
+    assert "capacity_domains" not in record
 
 
 def test_zero_stdout_exit_records_bounded_redacted_claim_evidence(tmp_path: Path) -> None:
@@ -645,10 +653,6 @@ def test_wrapper_exit_path_calls_workspace_lifecycle_decision_end_to_end(
     coord_home.mkdir(parents=True)
     store = _wrapper().CardStore(coord_home)
     store.create(CardCore(id="deadbeef", title="synthetic"))
-    # A real worker always holds its claim at launch (skfleet-rotate.py claims
-    # before launching), and the wrapper's startup ownership fence refuses to
-    # run without one, so the fixture claims the way production does.
-    store.append_event("deadbeef", "claim", "worker", owner="worker", claim_revision="rev-1")
     store.append_event("deadbeef", "link", "worker", link_key="commit_sha", link_value=head)
     store.append_event(
         "deadbeef", "link", "worker", link_key="branch", link_value="fixture:card-branch"
