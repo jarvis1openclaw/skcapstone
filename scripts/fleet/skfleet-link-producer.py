@@ -5,10 +5,11 @@ from __future__ import annotations
 
 import json
 import os
-import re
 import subprocess
 import sys
 from pathlib import Path
+
+from skcapstone.forgejo import SKGIT_REPOSITORY
 
 REPOSITORY_SCOPE_ENV = "SKFLEET_LINK_REPOSITORIES"
 REQUIRED_REPOSITORIES = frozenset(
@@ -19,7 +20,6 @@ REQUIRED_REPOSITORIES = frozenset(
         "smilinTux/sk-standards",
     }
 )
-REPOSITORY_PATTERN = re.compile(r"[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+")
 
 
 def repository_scope() -> tuple[str, ...] | None:
@@ -31,8 +31,11 @@ def repository_scope() -> tuple[str, ...] | None:
         not repositories
         or any(not repository for repository in repositories)
         or len(repositories) != len(set(repositories))
-        or any(REPOSITORY_PATTERN.fullmatch(repository) is None for repository in repositories)
-        or set(repositories) != REQUIRED_REPOSITORIES
+        or set(repositories)
+        not in (
+            REQUIRED_REPOSITORIES,
+            REQUIRED_REPOSITORIES | {SKGIT_REPOSITORY},
+        )
     ):
         return None
     return repositories

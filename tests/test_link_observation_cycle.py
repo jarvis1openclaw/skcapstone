@@ -5,6 +5,8 @@ import json
 from pathlib import Path
 from types import SimpleNamespace
 
+from skcapstone.forgejo import SKGIT_REPOSITORY
+
 SCRIPT = Path(__file__).parents[1] / "scripts/fleet/skfleet-link-producer.py"
 SPEC = importlib.util.spec_from_file_location("skfleet_link_producer", SCRIPT)
 MODULE = importlib.util.module_from_spec(SPEC)
@@ -57,6 +59,9 @@ def test_repository_scope_rejects_malformed_or_non_exact_values(
         ",".join((*REPOSITORIES, REPOSITORIES[-1])),
         ",".join(REPOSITORIES) + ",",
         ",,".join(REPOSITORIES),
+        ",".join((*REPOSITORIES, SKGIT_REPOSITORY + ".git")),
+        ",".join((*REPOSITORIES, SKGIT_REPOSITORY + "?token=bad")),
+        ",".join((*REPOSITORIES, "https://other.invalid/smilinTux/sklegal")),
     )
     monkeypatch.setattr(
         MODULE.subprocess,
@@ -121,7 +126,27 @@ def test_packaged_units_are_identical() -> None:
 
 def test_service_supplies_exact_repository_scope() -> None:
     service = (Path(__file__).parents[1] / "systemd/skfleet-link-producer.service").read_text()
-    assert "Environment=SKFLEET_LINK_REPOSITORIES=" + ",".join(REPOSITORIES) in service
+    assert (
+        "Environment=SKFLEET_LINK_REPOSITORIES=" + ",".join((*REPOSITORIES, SKGIT_REPOSITORY))
+        in service
+    )
+    assert "EnvironmentFile=-%h/api-keys/link-skgit.env" in service
+
+
+def test_private_route_is_optional_and_passed_to_both_steps(tmp_path, monkeypatch):
+    configure(monkeypatch)
+    assert MODULE.repository_scope() == REPOSITORIES
+    monkeypatch.setenv("SKFLEET_LINK_REPOSITORIES", ",".join((*REPOSITORIES, SKGIT_REPOSITORY)))
+    calls = []
+
+    def run(command, **kwargs):
+        calls.append(command)
+        return SimpleNamespace(returncode=0, stdout="", stderr="")
+
+    monkeypatch.setattr(MODULE.subprocess, "run", run)
+    assert MODULE.run(home=tmp_path) == 0
+    assert len(calls) == 2
+    assert all(SKGIT_REPOSITORY in command for command in calls)
 
 
 def test_installer_wires_wrapper_and_units() -> None:

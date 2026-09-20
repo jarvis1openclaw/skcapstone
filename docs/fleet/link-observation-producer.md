@@ -1,7 +1,7 @@
 # Mediated Link observation producer
 
-The producer is separate from the Link seat. It may use a read-only GitHub
-connector such as `gh api`, but Link never receives that connector, its token,
+The producer is separate from the Link seat. It uses read-only GitHub
+and private SKGit connectors, but Link never receives either connector, its token,
 or its process environment.
 
 The producer requires a lineage manifest with schema
@@ -34,16 +34,41 @@ independent PASS.
 The service supplies the exact lifecycle repository scope through
 `SKFLEET_LINK_REPOSITORIES`: `smilinTux/skcapstone`,
 `smilinTux/skdashboard`, `smilinTux/skworld`, and
-`smilinTux/sk-standards`. The producer fails closed before connector access
+`smilinTux/sk-standards`, with the optional exact private route
+`https://skgit.skstack01.douno.it/smilinTux/sklegal`. These four GitHub
+repositories remain mandatory. Both lineage discovery and feed observation use
+the same forge selector. The producer fails closed before connector access
 when this setting is empty, malformed, duplicated, missing a product, or
-contains an additional repository.
+contains any other repository. Missing or malformed checks remain unknown.
 
-Install and activate the producer independently:
+The service template includes the private route and reads the optional producer-only
+`%h/api-keys/link-skgit.env` environment file. Its
+`SKFLEET_SKGIT_READ_TOKEN` grants read access only to the exact private route;
+it must never be configured on the Link seat. The environment file must be owned
+by the operator and readable only by that account. Without usable credentials,
+private observation fails closed and preserves the previous feed. Updating this
+template does not activate or qualify the live service.
+
+Review lineage binds the forge-qualified repository, PR number, and exact candidate
+head. Review cards may pin the head in `links.commit`, `links.head_commit`,
+`links.head`, or `meta.link_head_revision`; conflicting pins fail closed. A bare
+PR number cannot bind a terminal review. Private source discovery requires explicit
+repository metadata or an exact card reference in the PR body. Legacy unscoped
+GitHub title discovery is accepted only when that PR number occurs once across the
+observation set. Exclusions use `repository#number` keys for private or colliding
+PR numbers. Card PASS evidence and a published feed do not constitute an actual
+forge approval or authorize a merge.
+
+Independent approval publication and its remaining runtime prerequisites are
+documented in [Seraph private-forge review](seraph-private-forge-review.md).
+
+Install the reviewed package revision into `~/.skenv` first so the scripts and
+imported modules agree. Then install and activate the producer independently:
 
 ```bash
-install -m 0755 scripts/fleet/link-lineage.py ~/.local/bin/link-lineage.py
+install -m 0755 scripts/fleet/link-lineage.py ~/.skenv/bin/link-lineage.py
 install -m 0755 scripts/fleet/skfleet-link-producer.py \
-  ~/.local/bin/skfleet-link-producer.py
+  ~/.skenv/bin/skfleet-link-producer.py
 install -m 0644 systemd/skfleet-link-producer.{service,timer} \
   ~/.config/systemd/user/
 systemctl --user daemon-reload
