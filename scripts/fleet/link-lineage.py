@@ -12,10 +12,10 @@ import argparse
 import hashlib
 import json
 import re
-import subprocess
 from pathlib import Path
 from typing import Any
 
+from skcapstone.forgejo import SKGIT_REPOSITORY, MultiForgeReadOnlyConnector
 from skcapstone.link_review_work import card_generation
 
 PR_RE = re.compile(r"\bPR\s*#?\s*(\d+)\b", re.I)
@@ -124,14 +124,58 @@ def _review_is_bound_to_pr(
     """Return true only for a review explicitly bound to this PR and head."""
     links = card.get("links") if isinstance(card.get("links"), dict) else {}
     pr_link = str(links.get("pr") or "").strip().rstrip("/")
-    commit = str(links.get("commit") or links.get("head_commit") or "").strip()
     head = str(head_revision or "").strip()
+    url = (
+        f"{repository}/pulls/{number}"
+        if repository == SKGIT_REPOSITORY
+        else f"https://github.com/{repository}/pull/{number}"
+    )
     pr_matches = pr_link in {
-        str(number),
         f"{repository}#{number}",
-        f"https://github.com/{repository}/pull/{number}",
+        url,
     }
-    return bool(pr_matches and head and commit == head)
+    return bool(
+        pr_matches
+        and head
+        and _card_heads(card) == {head}
+        and _card_repositories(card) == {repository}
+    )
+
+
+def _card_heads(card: dict[str, Any]) -> set[str]:
+    """Collect explicit source or review pins without choosing between conflicts."""
+    links = card.get("links") if isinstance(card.get("links"), dict) else {}
+    meta = card.get("meta") if isinstance(card.get("meta"), dict) else {}
+    pins = [links.get(k) for k in ("commit", "head_commit", "head")]
+    pins.append(meta.get("link_head_revision"))
+    return {str(pin).strip() for pin in pins if pin}
+
+
+def _card_repositories(card: dict[str, Any]) -> set[str]:
+    """Read explicit forge scope without inferring it from a bare PR number."""
+    repositories = set()
+    for name in ("links", "meta"):
+        values = card.get(name) if isinstance(card.get(name), dict) else {}
+        repository = str(values.get("repository") or "").strip().rstrip("/")
+        if repository:
+            repositories.add(repository.removesuffix(".git").removeprefix("https://github.com/"))
+        pr = str(values.get("pr") or "").strip().rstrip("/")
+        if "/pull/" in pr or "/pulls/" in pr:
+            repositories.add(re.split(r"/pulls?/", pr)[0].removeprefix("https://github.com/"))
+        elif "#" in pr:
+            repositories.add(pr.rsplit("#", 1)[0])
+    return repositories
+
+
+def _card_pr_numbers(card: dict[str, Any]) -> set[int]:
+    """Read explicit PR links before falling back to legacy title discovery."""
+    numbers = set()
+    for name in ("links", "meta"):
+        values = card.get(name) if isinstance(card.get(name), dict) else {}
+        match = re.search(r"(?:/pulls?/|#)(\d+)/?$", str(values.get("pr") or ""))
+        if match:
+            numbers.add(int(match.group(1)))
+    return numbers
 
 
 def _mapping_hash(
@@ -174,8 +218,11 @@ def reconcile(
         text = " ".join(
             str(card.get(k, "")) for k in ("title", "description", "acceptance_criteria")
         )
+        numbers = _card_pr_numbers(card)
         n = _pr_number(text)
-        if n is not None:
+        if not numbers and n is not None:
+            numbers.add(n)
+        for n in numbers:
             by_pr.setdefault(n, []).append(card)
     records: dict[str, dict[str, Any]] = {}
     diagnostics = []
@@ -185,9 +232,19 @@ def reconcile(
         if not repository:
             raise ValueError("open PR missing repository")
         number = int(pr["number"])
-        if str(number) in exclusions:
+        key = f"{repository}#{number}"
+        unique_number = sum(int(item["number"]) == number for item in open_prs) == 1
+        exclusion = exclusions.get(key)
+        if exclusion is None and unique_number and repository != SKGIT_REPOSITORY:
+            exclusion = exclusions.get(str(number))
+        if exclusion is not None:
             diagnostics.append(
-                {"pr": number, "classification": "excluded", "reason": exclusions[str(number)]}
+                {
+                    "repository": repository,
+                    "pr": number,
+                    "classification": "excluded",
+                    "reason": exclusion,
+                }
             )
             continue
         pr_text = " ".join(str(pr.get(k, "")) for k in ("title", "body"))
@@ -196,6 +253,21 @@ def reconcile(
         ]
         candidates = []
         for candidate in by_pr.get(number, []) + referenced:
+            scopes = _card_repositories(candidate)
+            if scopes and scopes != {repository}:
+                continue
+            numbers = _card_pr_numbers(candidate)
+            if numbers and numbers != {number}:
+                continue
+            heads = _card_heads(candidate)
+            if heads and heads != {str(pr.get("headRefOid") or "").strip()}:
+                continue
+            if (
+                not scopes
+                and candidate not in referenced
+                and (not unique_number or repository == SKGIT_REPOSITORY)
+            ):
+                continue
             if candidate not in candidates:
                 candidates.append(candidate)
 
@@ -339,11 +411,8 @@ def reconcile(
 
 
 def fetch_prs(repo: str) -> list[dict[str, Any]]:
-    cmd = ["gh", "api", "--paginate", f"repos/{repo}/pulls?state=open&per_page=100", "--jq", ".[]"]
-    completed = subprocess.run(cmd, check=True, capture_output=True, text=True)
     rows: list[dict[str, Any]] = []
-    for line in completed.stdout.splitlines():
-        item = json.loads(line)
+    for item in MultiForgeReadOnlyConnector().list_open(repo):
         rows.append(
             {
                 "number": item["number"],

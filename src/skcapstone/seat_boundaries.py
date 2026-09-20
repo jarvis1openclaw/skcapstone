@@ -40,6 +40,7 @@ class Action(StrEnum):
     TRIAGE = "triage"
     ASSIGN_REVIEWER = "assign_reviewer"
     EVALUATE_MERGE = "evaluate_merge"
+    PUBLISH_REVIEW = "publish_review"
     MERGE = "merge"
     CLAIM = "claim"
     RELEASE = "release"
@@ -107,7 +108,7 @@ _ALLOWED = {
             Action.CREATE_CARD,
         }
     ),
-    Seat.SERAPH: frozenset({Action.OBSERVE, Action.CREATE_CARD}),
+    Seat.SERAPH: frozenset({Action.OBSERVE, Action.CREATE_CARD, Action.PUBLISH_REVIEW}),
     Seat.NIOBE: frozenset(
         {
             Action.OBSERVE,
