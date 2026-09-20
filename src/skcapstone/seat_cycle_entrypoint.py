@@ -26,6 +26,7 @@ from skcoord.card_store import CardStore
 
 from .estate import host_lifecycle_claim
 from .fleet.deployment_manifest import DISPATCHER_RELATIVE_PATH, deployed_artifact_path
+from .fleet.rotation_lock import SERAPH_LOCK_WAIT_SECONDS
 from .lifecycle_seats import LIFECYCLE_SEATS
 from .link_cycle import recommend_one_reviewer
 from .link_observation_feed import ObservationFeedError, load_observation_feed
@@ -44,7 +45,63 @@ _LAUNCH = re.compile(
 )
 _MAX_SERAPH_BATCH = 8
 _MAX_ROLE_BATCH = 8
-_SERAPH_DISPATCH_TIMEOUT_SECONDS = 180
+# Seraph's total wall-clock budget for one service invocation is NOT free to
+# raise on its own. It is fenced by two production constants this module
+# does not own:
+#   - src/skcapstone/data/systemd/skfleet-seraph.service sets
+#     TimeoutStartSec=300, so systemd itself SIGKILLs the whole unit at 300s,
+#     uncontrolled, if our own bounded reap has not already finished.
+#   - src/skcapstone/data/systemd/skfleet-seraph.timer fires the service
+#     every five minutes (300s) on the clock (see its OnCalendar). A cycle
+#     that runs past 300s overlaps its own next scheduled firing.
+# test_dispatcher_routes_niobe_and_seraph_through_safe_bounded_waits (in
+# tests/test_rotation_lock_fairness.py) enforces the resulting invariant:
+#   SERAPH_LOCK_WAIT_SECONDS + _SERAPH_DISPATCH_TIMEOUT_SECONDS + 30 < 300
+# which, with SERAPH_LOCK_WAIT_SECONDS == 75, caps this constant at 194.
+# Do NOT weaken or delete that test to make room for a bigger number here;
+# it is the thing that caught this constant being raised past what the
+# service timeout and timer cadence can actually absorb.
+#
+# Default Seraph dispatcher wall-clock timeout, in seconds. Overridable via
+# SKFLEET_SERAPH_DISPATCH_TIMEOUT_SECONDS (bounded by
+# _SERAPH_DISPATCH_TIMEOUT_MAX_SECONDS below); see
+# _resolve_seraph_dispatch_timeout_seconds for how the override is read.
+#
+# WHY 190, not 180: measured on the chi estate 2026-09-20, folding a card
+# store of roughly 7,000 cards, a normal Seraph dispatcher run already takes
+# close to 180s on its own (00:36:33 to 00:39:10, 2m37s), and the next run
+# hit the old 180s timeout exactly and was killed (01:15:00 to 01:18:00,
+# reason=seraph_dispatch_timeout), even though the cycle had already
+# launched two reviewer units. 190 is the largest round value this module
+# can hold without sitting exactly on the 300s ceiling above (75 + 190 + 30
+# = 295, a 5s margin) -- it is ONLY a modest improvement over 180, and a run
+# that lands anywhere near the measured 180s point is still at real risk of
+# being killed. The actual fix for that is making the dispatcher run faster
+# against a growing card store, or deliberately raising the whole budget
+# (TimeoutStartSec and the timer cadence together, with the cadence proven
+# to tolerate it) rather than this constant in isolation.
+#
+# _run_seraph_dispatcher reaps a timeout with
+# os.killpg(process.pid, signal.SIGTERM) across the whole process group. A
+# dispatcher killed mid-run can be interrupted between claiming a card and
+# launching its worker, leaving a claimed card with no worker behind it.
+# That orphaned claim then occupies the card until a reaper clears it, which
+# is why an unbounded dispatcher is worse than one that occasionally gets
+# killed -- do not remove the timeout to dodge this ceiling.
+_SERAPH_DISPATCH_TIMEOUT_SECONDS = 190
+_SERAPH_DISPATCH_TIMEOUT_ENV = "SKFLEET_SERAPH_DISPATCH_TIMEOUT_SECONDS"
+# Mirrors skfleet-seraph.service's TimeoutStartSec and the 30s cleanup_margin
+# test_dispatcher_routes_niobe_and_seraph_through_safe_bounded_waits budgets
+# alongside SERAPH_LOCK_WAIT_SECONDS. Kept here, not imported, because the
+# test asserts against its OWN literal 300/30 to catch either side drifting;
+# importing would let both drift together silently.
+_SERAPH_SERVICE_DEADLINE_SECONDS = 300
+_SERAPH_CLEANUP_MARGIN_SECONDS = 30
+# An env override at or above this is rejected (falls back to the default)
+# rather than accepted, because it would violate the invariant above outright.
+_SERAPH_DISPATCH_TIMEOUT_MAX_SECONDS = (
+    _SERAPH_SERVICE_DEADLINE_SECONDS - SERAPH_LOCK_WAIT_SECONDS - _SERAPH_CLEANUP_MARGIN_SECONDS
+)
 _DISPATCH_TERMINATE_GRACE_SECONDS = 5
 _SUBPROCESS_RUN = subprocess.run
 _NOOP = re.compile(
@@ -551,18 +608,59 @@ def _failed_launch_is_retryable(
     )
 
 
+def _resolve_seraph_dispatch_timeout_seconds() -> int:
+    """Resolve the Seraph dispatcher wall-clock timeout, in seconds.
+
+    Reads SKFLEET_SERAPH_DISPATCH_TIMEOUT_SECONDS, following the same
+    env-reading shape as the SKFLEET_SERAPH_BATCH_SIZE read in
+    seraph_operation. Unlike the batch size, an invalid override here does
+    NOT suppress the dispatch: a non-integer, zero, or negative value falls
+    back to the default rather than crashing or disabling the timeout
+    outright. Disabling the timeout is not an acceptable failure mode - see
+    the comment on _SERAPH_DISPATCH_TIMEOUT_SECONDS for why an unbounded
+    dispatcher is worse than one that occasionally gets killed.
+
+    A value that is otherwise well-formed but at or above
+    _SERAPH_DISPATCH_TIMEOUT_MAX_SECONDS is ALSO rejected in favour of the
+    default, for a different reason: that ceiling is load-bearing, not
+    advisory. It is what keeps SERAPH_LOCK_WAIT_SECONDS +
+    _SERAPH_DISPATCH_TIMEOUT_SECONDS + _SERAPH_CLEANUP_MARGIN_SECONDS under
+    the 300s systemd TimeoutStartSec and the 300s timer cadence on
+    skfleet-seraph.service/.timer. An env var that could push this module
+    past that ceiling would let a single operator override silently break
+    an invariant a dedicated test exists to protect
+    (test_dispatcher_routes_niobe_and_seraph_through_safe_bounded_waits in
+    tests/test_rotation_lock_fairness.py). Accepting no override at all is
+    strictly better than accepting one that can do that.
+    """
+
+    raw = os.environ.get(_SERAPH_DISPATCH_TIMEOUT_ENV)
+    if raw is None:
+        return _SERAPH_DISPATCH_TIMEOUT_SECONDS
+    try:
+        timeout = int(raw)
+    except ValueError:
+        return _SERAPH_DISPATCH_TIMEOUT_SECONDS
+    if timeout <= 0:
+        return _SERAPH_DISPATCH_TIMEOUT_SECONDS
+    if timeout >= _SERAPH_DISPATCH_TIMEOUT_MAX_SECONDS:
+        return _SERAPH_DISPATCH_TIMEOUT_SECONDS
+    return timeout
+
+
 def _run_seraph_dispatcher(
     command: list[str], *, environment: dict[str, str]
 ) -> subprocess.CompletedProcess[str]:
     """Run Seraph in an isolated process group and reap it on timeout."""
 
+    timeout = _resolve_seraph_dispatch_timeout_seconds()
     if subprocess.run is not _SUBPROCESS_RUN:
         return subprocess.run(
             command,
             env=environment,
             capture_output=True,
             text=True,
-            timeout=_SERAPH_DISPATCH_TIMEOUT_SECONDS,
+            timeout=timeout,
         )
     process = subprocess.Popen(
         command,
@@ -573,7 +671,7 @@ def _run_seraph_dispatcher(
         start_new_session=True,
     )
     try:
-        stdout, stderr = process.communicate(timeout=_SERAPH_DISPATCH_TIMEOUT_SECONDS)
+        stdout, stderr = process.communicate(timeout=timeout)
     except subprocess.TimeoutExpired as exc:
         try:
             os.killpg(process.pid, signal.SIGTERM)
@@ -589,7 +687,7 @@ def _run_seraph_dispatcher(
             stdout, stderr = process.communicate()
         raise subprocess.TimeoutExpired(
             command,
-            _SERAPH_DISPATCH_TIMEOUT_SECONDS,
+            timeout,
             output=stdout if stdout is not None else exc.stdout,
             stderr=stderr if stderr is not None else exc.stderr,
         ) from exc
