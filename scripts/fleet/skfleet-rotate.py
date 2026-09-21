@@ -26,6 +26,7 @@ from skcapstone.fleet.gateway_failure import (
 from skcapstone.fleet.worker_watchdog import (
     DEFAULT_PROGRESS_TIMEOUT_S,
     DEFAULT_WEDGE_TIMEOUT_S,
+    transcript_limit_bytes,
     WEDGE_ACTUATING_STATES,
     ProgressObservation,
     StartupObservation,
@@ -3254,6 +3255,39 @@ def _session_progress_at(workspace, root=_SESSION_ROOT):
     return newest, seen
 
 
+def _session_transcript_bytes(workspace, root=_SESSION_ROOT):
+    """Bytes in the agent's largest transcript for this worker, or None.
+
+    Size is the signal mtime cannot give. A worker stuck in an exploration
+    loop keeps its transcript mtime perfectly fresh, so classify_progress
+    reports progress-fresh and classify_wedge exempts it indefinitely.
+
+    Measured 2026-09-21 on card a81000a2, which held a codex slot for 9.5
+    hours at state=progress-fresh: a 165MB transcript containing 4,459 `read`,
+    3,609 `bash` and 2,555 `grep` calls against FOUR `edit` calls totalling 520
+    bytes. It was not wedged and it was not idle; it was looping on
+    exploration and producing nothing.
+
+    That shape is not rare. Across chiap02/03/04, 33 of 1,253 worker sessions
+    exceed 50MB and account for a large share of 5.4GB of transcript.
+
+    REPORTED ONLY. os.stat is already being called here for mtime, so this
+    costs nothing extra, and no kill decision reads it.
+    """
+    base = os.path.basename(str(workspace).rstrip("/"))
+    if not base:
+        return None
+    largest = None
+    for path in glob.glob(os.path.join(root, "*" + base + "--", "*.jsonl")):
+        try:
+            size = os.stat(path).st_size
+        except OSError:
+            continue
+        if largest is None or size > largest:
+            largest = size
+    return largest
+
+
 def _report_worker_progress(session_names, units=(), now=None):
     """Log one WORKER_PROGRESS classification per live local worker.
 
@@ -3328,11 +3362,13 @@ def _report_worker_progress(session_names, units=(), now=None):
                 datetime.datetime.fromtimestamp(
                     progress_ts, datetime.timezone.utc).isoformat()
                 if progress_ts is not None else None)
+            transcript_bytes = _session_transcript_bytes(workspace)
             observation = ProgressObservation(
                 owner=owner, card_id=cid, session_id=session,
                 claim_revision=claim_revision,
                 expected_claim_revision=fresh_revision or "",
-                progress_at=progress_at, session_alive=True)
+                progress_at=progress_at, session_alive=True,
+                transcript_bytes=transcript_bytes)
             state = classify_progress(observation, now=now_dt)
             age = ("none" if progress_ts is None
                    else str(int(max(0, now - progress_ts))))
@@ -3353,17 +3389,38 @@ def _report_worker_progress(session_names, units=(), now=None):
             # built for, and a slow-starting worker is now covered twice over,
             # because pi writes its transcript from the first turn.
             measurable = progress_ts is None or source == "session-mtime"
-            wedge = ("wedge-unmeasured"
+            runaway = (
+                isinstance(transcript_bytes, int)
+                and transcript_bytes > transcript_limit_bytes()
+            )
+            wedge = ("wedge-transcript-runaway"
+                     if runaway
+                     else "wedge-unmeasured"
                      if truncated or not measurable
                      else classify_wedge(
                          observation, now=now_dt, claim_age_s=claim_age,
                          receipt_local=local))
+            # claim_age_s is REPORTED, never acted on. classify_wedge returns
+            # "wedge-progressing" for any progress-fresh worker no matter how
+            # long it has held its claim, and that exemption is deliberate:
+            # "Long is not the same as wedged. Elapsed time is never evidence."
+            # Arming a time deadline was measured to reap about half of all
+            # active work, so this line does not change that decision, it just
+            # stops the condition being invisible. Measured 2026-09-21: cards
+            # a81000a2 (chiap03) and cf460fde (chiap04) each held a codex slot
+            # for 9.5 HOURS reporting state=progress-fresh with
+            # progress_age_s=4 and 0, and nothing in any log said how long they
+            # had been running. Both had to be found and stopped by hand.
             log(d, "WORKER_PROGRESS|%s|%s|%s|owner=%s|claim_revision=%s|"
                    "state=%s|progress_age_s=%s|timeout_s=%d|"
+                   "claim_age_s=%s|transcript_bytes=%s|"
                    "source=%s|scanned=%d|truncated=%s|receipt=%s|"
                    "wedge=%s|wedge_timeout_s=%d|actuation=%s" %
                 (HOST, session, cid, owner, claim_revision, state, age,
-                 int(DEFAULT_PROGRESS_TIMEOUT_S), source, scanned,
+                 int(DEFAULT_PROGRESS_TIMEOUT_S),
+                 "none" if claim_age is None else str(int(max(0, claim_age))),
+                 "none" if transcript_bytes is None else str(transcript_bytes),
+                 source, scanned,
                  str(truncated).lower(), "local" if local else "absent",
                  wedge, int(DEFAULT_WEDGE_TIMEOUT_S), _wedge_mode() or "off"))
             records.append({
