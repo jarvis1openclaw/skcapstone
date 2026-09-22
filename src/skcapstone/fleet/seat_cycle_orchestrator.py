@@ -247,6 +247,8 @@ def _prove_recovery_inactive(runner: Callable[..., Any], *, cancel_jobs: bool = 
             return False
         if state.get("Job") not in {"", "0", "n/a"}:
             return False
+        if state.get("MainPID") != "0":
+            return False
     return True
 
 

@@ -81,6 +81,7 @@ def test_recovery_accepts_authoritatively_missing_governed_units() -> None:
     ("active", "job", "main_pid"),
     [
         ("active", "", "42"),
+        ("inactive", "", "42"),
         ("activating", "", "0"),
         ("deactivating", "", "0"),
         ("unknown", "", "0"),
@@ -104,6 +105,28 @@ def test_recovery_never_resets_unsafe_unit_state(active: str, job: str, main_pid
 
     assert seat_cycle_orchestrator._prove_recovery_inactive(runner, cancel_jobs=True) is False
     assert not any(call[2] == "reset-failed" for call in calls)
+
+
+def test_recovery_rejects_process_appearing_after_failed_state_reset() -> None:
+    """Post-reset process appearance cannot satisfy exact inactivity proof."""
+
+    calls: list[list[str]] = []
+    show_count = 0
+
+    def runner(command: list[str], **_kwargs: object) -> SimpleNamespace:
+        """Expose a process-bearing state only after failed-state cleanup."""
+
+        nonlocal show_count
+        calls.append(command)
+        if command[2] == "show":
+            show_count += 1
+            if show_count == 1:
+                return _result(stdout=_state(active="failed"))
+            return _result(stdout=_state(active="inactive", main_pid="42"))
+        return _result()
+
+    assert seat_cycle_orchestrator._prove_recovery_inactive(runner, cancel_jobs=True) is False
+    assert any(call[2] == "reset-failed" for call in calls)
 
 
 def test_recovery_never_resets_failed_unit_after_stop_failure() -> None:

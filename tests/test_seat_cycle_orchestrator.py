@@ -29,7 +29,9 @@ def test_generation_runs_exact_order_and_continues_after_failure(tmp_path, monke
         calls.append(command)
         if command[2] == "show":
             return SimpleNamespace(
-                returncode=0, stdout="LoadState=loaded\nActiveState=inactive\nJob=\n", stderr=""
+                returncode=0,
+                stdout="LoadState=loaded\nActiveState=inactive\nJob=\nMainPID=0\n",
+                stderr="",
             )
         return SimpleNamespace(
             returncode=(
@@ -74,7 +76,7 @@ def test_nonzero_start_aborts_when_service_cannot_be_proven_inactive(tmp_path, m
         if command[2] == "show":
             return SimpleNamespace(
                 returncode=0,
-                stdout=f"LoadState=loaded\nActiveState={state}\nJob=\n",
+                stdout=f"LoadState=loaded\nActiveState={state}\nJob=\nMainPID=0\n",
                 stderr="",
             )
         return SimpleNamespace(returncode=0, stdout="", stderr="")
@@ -99,7 +101,9 @@ def test_timeout_stops_and_proves_seat_inactive_before_continuing(tmp_path, monk
             raise subprocess.TimeoutExpired(command, 310)
         if command[2] == "show":
             return SimpleNamespace(
-                returncode=0, stdout="LoadState=loaded\nActiveState=inactive\nJob=\n", stderr=""
+                returncode=0,
+                stdout="LoadState=loaded\nActiveState=inactive\nJob=\nMainPID=0\n",
+                stderr="",
             )
         return SimpleNamespace(returncode=0, stdout="", stderr="")
 
@@ -129,7 +133,7 @@ def test_timeout_aborts_generation_when_inactive_state_cannot_be_proven(tmp_path
         if command[2] == "show":
             return SimpleNamespace(
                 returncode=0,
-                stdout="LoadState=loaded\nActiveState=deactivating\nJob=\n",
+                stdout="LoadState=loaded\nActiveState=deactivating\nJob=\nMainPID=0\n",
                 stderr="",
             )
         return SimpleNamespace(returncode=0, stdout="", stderr="")
@@ -156,7 +160,7 @@ def test_timeout_cleanup_rejects_inactive_service_with_pending_job(tmp_path, mon
         if command[2] == "show":
             return SimpleNamespace(
                 returncode=0,
-                stdout="LoadState=loaded\nActiveState=inactive\nJob=99\n",
+                stdout="LoadState=loaded\nActiveState=inactive\nJob=99\nMainPID=0\n",
                 stderr="",
             )
         return SimpleNamespace(returncode=0, stdout="", stderr="")
@@ -185,7 +189,7 @@ def test_next_generation_stays_blocked_on_lingering_middle_seat(tmp_path, monkey
         state = "active" if unit == "skfleet-seraph.service" else "inactive"
         return SimpleNamespace(
             returncode=0,
-            stdout=f"LoadState=loaded\nActiveState={state}\nJob=\n",
+            stdout=f"LoadState=loaded\nActiveState={state}\nJob=\nMainPID=0\n",
             stderr="",
         )
 
@@ -206,7 +210,7 @@ def test_malformed_recovery_receipt_fails_closed_before_any_seat_start(tmp_path)
         calls.append(command)
         return SimpleNamespace(
             returncode=0,
-            stdout="LoadState=loaded\nActiveState=active\nJob=\n",
+            stdout="LoadState=loaded\nActiveState=active\nJob=\nMainPID=0\n",
             stderr="",
         )
 
@@ -267,7 +271,9 @@ def test_untrusted_receipt_shapes_require_recovery_proof(tmp_path, receipt):
     def runner(command, **_kwargs):
         calls.append(command)
         return SimpleNamespace(
-            returncode=0, stdout="LoadState=loaded\nActiveState=active\nJob=\n", stderr=""
+            returncode=0,
+            stdout="LoadState=loaded\nActiveState=active\nJob=\nMainPID=0\n",
+            stderr="",
         )
 
     result = run_generation(tmp_path, runner=runner)
@@ -317,7 +323,9 @@ def test_contradictory_success_receipts_require_recovery_proof(tmp_path, mutatio
     def runner(command, **_kwargs):
         calls.append(command)
         return SimpleNamespace(
-            returncode=0, stdout="LoadState=loaded\nActiveState=active\nJob=\n", stderr=""
+            returncode=0,
+            stdout="LoadState=loaded\nActiveState=active\nJob=\nMainPID=0\n",
+            stderr="",
         )
 
     result = run_generation(tmp_path, runner=runner)
@@ -366,7 +374,9 @@ def test_receipt_fsync_failure_leaves_durable_fence_for_next_cycle(tmp_path, mon
     def healthy_runner(command, **_kwargs):
         if command[2] == "show":
             return SimpleNamespace(
-                returncode=0, stdout="LoadState=loaded\nActiveState=inactive\nJob=\n", stderr=""
+                returncode=0,
+                stdout="LoadState=loaded\nActiveState=inactive\nJob=\nMainPID=0\n",
+                stderr="",
             )
         return SimpleNamespace(returncode=0, stdout="", stderr="")
 
@@ -389,7 +399,7 @@ def test_receipt_fsync_failure_leaves_durable_fence_for_next_cycle(tmp_path, mon
         state = "active" if unit == "skfleet-seraph.service" else "inactive"
         return SimpleNamespace(
             returncode=0,
-            stdout=f"LoadState=loaded\nActiveState={state}\nJob=\n",
+            stdout=f"LoadState=loaded\nActiveState={state}\nJob=\nMainPID=0\n",
             stderr="",
         )
 
@@ -414,7 +424,7 @@ def test_concurrent_process_cannot_enter_or_clear_owner_fence(tmp_path):
             if command[2] == "show":
                 return SimpleNamespace(
                     returncode=0,
-                    stdout="LoadState=loaded\nActiveState=inactive\nJob=\n",
+                    stdout="LoadState=loaded\nActiveState=inactive\nJob=\nMainPID=0\n",
                     stderr="",
                 )
             return SimpleNamespace(returncode=0, stdout="", stderr="")
@@ -474,7 +484,7 @@ def test_dead_lock_owner_releases_flock_but_leaves_recovery_fence(tmp_path):
         if command[2] == "show":
             return SimpleNamespace(
                 returncode=0,
-                stdout="LoadState=loaded\nActiveState=inactive\nJob=\n",
+                stdout="LoadState=loaded\nActiveState=inactive\nJob=\nMainPID=0\n",
                 stderr="",
             )
         return SimpleNamespace(returncode=0, stdout="", stderr="")
@@ -500,7 +510,7 @@ def test_recovery_cancels_queued_jobs_before_starting_new_generation(tmp_path):
         if command[2] == "show":
             return SimpleNamespace(
                 returncode=0,
-                stdout=f"LoadState=loaded\nActiveState=inactive\nJob={jobs[unit]}\n",
+                stdout=(f"LoadState=loaded\nActiveState=inactive\nJob={jobs[unit]}\nMainPID=0\n"),
                 stderr="",
             )
         return SimpleNamespace(returncode=0, stdout="", stderr="")
