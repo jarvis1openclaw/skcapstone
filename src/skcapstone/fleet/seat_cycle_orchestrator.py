@@ -164,10 +164,41 @@ def _recovery_required(home: Path) -> bool:
     return receipt["failures"] != failures
 
 
+def _recovery_state(unit: str, runner: Callable[..., Any]) -> dict[str, str] | None:
+    """Read the exact systemd state needed to prove recovery safety."""
+
+    try:
+        shown = runner(
+            [
+                "systemctl",
+                "--user",
+                "show",
+                unit,
+                "--property=LoadState,ActiveState,Job,MainPID",
+            ],
+            check=False,
+            capture_output=True,
+            text=True,
+            timeout=5,
+        )
+    except (OSError, subprocess.TimeoutExpired):
+        return None
+    state = dict(
+        line.split("=", 1)
+        for line in str(getattr(shown, "stdout", "")).splitlines()
+        if "=" in line
+    )
+    known_absent = state.get("LoadState") == "not-found" and state.get("ActiveState") == "inactive"
+    if int(getattr(shown, "returncode", 1)) != 0 and not known_absent:
+        return None
+    return state
+
+
 def _prove_recovery_inactive(runner: Callable[..., Any], *, cancel_jobs: bool = False) -> bool:
     """Fail closed unless every governed service is exactly inactive."""
 
     for unit in _GOVERNED_SERVICES:
+        stop_ok = True
         try:
             if cancel_jobs:
                 stopped = runner(
@@ -177,38 +208,46 @@ def _prove_recovery_inactive(runner: Callable[..., Any], *, cancel_jobs: bool = 
                     text=True,
                     timeout=5,
                 )
-                if int(getattr(stopped, "returncode", 1)) != 0:
-                    return False
-            shown = runner(
-                [
-                    "systemctl",
-                    "--user",
-                    "show",
-                    unit,
-                    "--property=LoadState,ActiveState,Job",
-                ],
-                check=False,
-                capture_output=True,
-                text=True,
-                timeout=5,
-            )
+                stop_ok = int(getattr(stopped, "returncode", 1)) == 0
         except (OSError, subprocess.TimeoutExpired):
             return False
-        state = dict(
-            line.split("=", 1)
-            for line in str(getattr(shown, "stdout", "")).splitlines()
-            if "=" in line
-        )
+        state = _recovery_state(unit, runner)
+        if state is None:
+            return False
         known_absent = (
             state.get("LoadState") == "not-found" and state.get("ActiveState") == "inactive"
         )
-        if int(getattr(shown, "returncode", 1)) != 0 and not known_absent:
+        if not stop_ok and not known_absent:
             return False
+        if cancel_jobs and state.get("ActiveState") == "failed":
+            if (
+                state.get("LoadState") != "loaded"
+                or state.get("Job") not in {"", "0", "n/a"}
+                or state.get("MainPID") != "0"
+            ):
+                return False
+            try:
+                reset = runner(
+                    ["systemctl", "--user", "reset-failed", unit],
+                    check=False,
+                    capture_output=True,
+                    text=True,
+                    timeout=5,
+                )
+            except (OSError, subprocess.TimeoutExpired):
+                return False
+            if int(getattr(reset, "returncode", 1)) != 0:
+                return False
+            state = _recovery_state(unit, runner)
+            if state is None:
+                return False
         if state.get("LoadState") not in {"loaded", "not-found"}:
             return False
         if state.get("ActiveState") != "inactive":
             return False
         if state.get("Job") not in {"", "0", "n/a"}:
+            return False
+        if state.get("MainPID") != "0":
             return False
     return True
 
