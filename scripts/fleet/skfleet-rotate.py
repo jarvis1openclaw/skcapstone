@@ -499,6 +499,7 @@ if not _LIFECYCLE_OK:
     assess=None
 
 HOST=os.uname().nodename
+os.environ["SKFLEET_EVIDENCE_HOST"]=HOST
 # The worker fleet is ESTATE configuration, not a property of this script. Card
 # ownership is partitioned by hashing across this tuple, so its membership and
 # its order together decide which host may claim which card. An estate names its
@@ -1662,7 +1663,7 @@ def _log_once_per_hour(d, event, cid, message, state_dir=None, now=None):
     return True
 
 os.makedirs(os.path.join(HOME,".skcapstone/fleet"),exist_ok=True)
-d=os.path.join(EVID,STAMP)
+d=os.path.join(EVID,"%s-%s"%(HOST,STAMP))
 lock=acquire_rotation_lock(
     Path(HOME)/".skcapstone/fleet/rotate.lock",
     seat=ONLY_SEAT or "niobe",
@@ -1727,7 +1728,7 @@ if ONLY_SEAT in {"", "link", "mero", "seraph"}:
     )
     _review_route_snapshot=acquire_review_route_snapshot(
         _GATEWAY_ENDPOINT,
-        Path(HOME)/".skcapstone/evidence/fleet-review-routes.json",
+        Path(HOME)/(".skcapstone/evidence/fleet-review-routes.%s.json"%HOST),
         new_cycle_id(HOST,STAMP),
         occupancy=_review_route_occupancy,
         occupancy_ambiguous=_review_route_ambiguous,
@@ -7520,7 +7521,7 @@ def _lane_model(lane, core):
 
 _LANE_HEALTH_PATH=os.environ.get(
     "SKFLEET_LANE_HEALTH_PATH",
-    os.path.join(HOME,".skcapstone/evidence/fleet-lane-health.json"))
+    os.path.join(HOME,".skcapstone/evidence/fleet-lane-health.%s.json"%HOST))
 _health_lanes=list(LANES)
 for _glm_model in sorted(set(_GLM_LEVELS.values())):
     if _glm_model!=next(lane for lane in LANES if lane["name"]=="glm")["model"]:
