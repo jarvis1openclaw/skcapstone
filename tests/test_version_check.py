@@ -20,6 +20,8 @@ def test_ecosystem_uses_canonical_distribution_names():
 
 def test_newer_development_build_is_not_outdated(monkeypatch):
     """A build from the next version is newer than the last stable release."""
-    monkeypatch.setattr("skcapstone.version_check._get_installed_version", lambda _: "0.14.266.dev24")
+    monkeypatch.setattr(
+        "skcapstone.version_check._get_installed_version", lambda _: "0.14.266.dev24"
+    )
     monkeypatch.setattr("skcapstone.version_check._get_pypi_version", lambda _: "0.14.265")
     assert check_versions(["skchat-sovereign"]).packages[0].up_to_date
