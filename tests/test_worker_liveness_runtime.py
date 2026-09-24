@@ -500,8 +500,11 @@ def test_production_cycle_invokes_all_four_real_adapters(
     assert any("work.help.request" in command for command in commands)
     assert any("worker_liveness" in command for command in commands)
     assert any(command[-2:] == ["stop", terminal.unit] for command in commands)
-    assert (tmp_path / "evidence" / "fleet-liveness" / "metrics.json").is_file()
-    assert (tmp_path / "evidence" / "fleet-liveness" / "retirements.sqlite3").is_file()
+    import socket
+
+    host = socket.gethostname().split(".")[0].lower()
+    assert (tmp_path / "evidence" / "fleet-liveness" / f"metrics.{host}.json").is_file()
+    assert (tmp_path / "evidence" / "fleet-liveness" / f"retirements.{host}.sqlite3").is_file()
 
 
 def test_timer_entrypoint_uses_relocated_fleet_root(
@@ -519,7 +522,10 @@ def test_timer_entrypoint_uses_relocated_fleet_root(
 
     runtime.run_production_cycle(observations=(), projections=(), actions_factory=Actions, now=NOW)
     assert captured == [fleet_root.parent]
-    assert (fleet_root.parent / "evidence" / "fleet-liveness" / "metrics.json").is_file()
+    import socket
+
+    host = socket.gethostname().split(".")[0].lower()
+    assert (fleet_root.parent / "evidence" / "fleet-liveness" / f"metrics.{host}.json").is_file()
 
     tree = ast.parse((ROOT / "scripts/fleet/skfleet-rotate.py").read_text(encoding="utf-8"))
     calls = [

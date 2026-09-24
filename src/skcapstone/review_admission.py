@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import os
 import re
 from collections.abc import Mapping, Sequence
 from pathlib import Path
@@ -176,7 +177,12 @@ def reviewer_capacity_evaluation(
         if title and len(title_sizes) == 1
         else next(iter(label_sizes)) if not title and len(label_sizes) == 1 else None
     )
-    path = home / "evidence" / "fleet-review-routes.json"
+    host = (os.environ.get("SKFLEET_EVIDENCE_HOST") or os.uname().nodename).split(".")[0].lower()
+    if not re.fullmatch(r"[a-z0-9-]+", host):
+        host = os.uname().nodename.split(".")[0].lower()
+    path = home / "evidence" / f"fleet-review-routes.{host}.json"
+    if not path.is_file():
+        path = home / "evidence" / "fleet-review-routes.json"
     try:
         snapshot = json.loads(path.read_text(encoding="utf-8"))
     except (OSError, ValueError, TypeError, json.JSONDecodeError):

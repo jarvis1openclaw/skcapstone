@@ -482,12 +482,12 @@ cycle("replay", "seraph")
     assert "LAUNCHED|" not in replay_output
 
     lane_snapshot = json.loads(
-        (home / ".skcapstone" / "evidence" / "fleet-lane-health.json").read_text(encoding="utf-8")
+        (home / ".skcapstone" / "evidence" / "fleet-lane-health.chiap08.json").read_text(encoding="utf-8")
     )
     assert lane_snapshot["runtime_revision"] == GATEWAY_REVISION
     assert lane_snapshot["errors"] == []
     route_snapshot = json.loads(
-        (home / ".skcapstone" / "evidence" / "fleet-review-routes.json").read_text(
+        (home / ".skcapstone" / "evidence" / "fleet-review-routes.chiap08.json").read_text(
             encoding="utf-8"
         )
     )
@@ -782,7 +782,7 @@ print(output.getvalue(), end="")
     assert "LANE_DEFER|" not in completed.stdout
     assert elapsed < 15
     route_snapshot = json.loads(
-        (home / ".skcapstone/evidence/fleet-review-routes.json").read_text(encoding="utf-8")
+        (home / ".skcapstone/evidence/fleet-review-routes.chiap08.json").read_text(encoding="utf-8")
     )
     assert {route["logical_route"] for route in route_snapshot["routes"]} == {
         "review-provider-alpha",
