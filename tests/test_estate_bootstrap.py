@@ -334,17 +334,34 @@ def test_doctor_sknoded_interval_pass_fail_and_unknown(tmp_path: Path) -> None:
 def test_doctor_seat_units_pass_fail_and_unknown(tmp_path: Path) -> None:
     """Happy, failure and unanswerable paths for the workflow layer."""
     unit_dir = tmp_path / "units"
-    missing_dir = _check_estate_seat_units(unit_dir)
+    home = tmp_path / "home"
+    missing_dir = _check_estate_seat_units(unit_dir, home)
     assert missing_dir.unknown and not missing_dir.passed
 
     unit_dir.mkdir()
-    none_installed = _check_estate_seat_units(unit_dir)
+    none_installed = _check_estate_seat_units(unit_dir, home)
     assert not none_installed.passed and not none_installed.unknown
     assert "5 of 5 seat timers absent" in none_installed.detail
 
     for seat in ("atlas", "link", "mero", "niobe", "seraph"):
         (unit_dir / f"skfleet-{seat}.timer").write_text("[Timer]\n")
-    assert _check_estate_seat_units(unit_dir).passed
+    assert _check_estate_seat_units(unit_dir, home).passed
+
+
+def test_doctor_seat_units_not_required_on_unelected_host(tmp_path: Path) -> None:
+    """A worker host must not be told to start the elected host's timers."""
+    from unittest.mock import patch
+
+    unit_dir = tmp_path / "units"
+    unit_dir.mkdir()
+    home = tmp_path / "home"
+    control = home / "coordination" / "seat-control-plane.json"
+    control.parent.mkdir(parents=True)
+    control.write_text('{"active_host":"chiap08"}')
+    with patch("skcapstone.estate.local_host", return_value="chiwk12"):
+        result = _check_estate_seat_units(unit_dir, home)
+    assert result.passed
+    assert "not elected" in result.detail
 
 
 def test_doctor_catches_a_unit_naming_a_module_nobody_ships(tmp_path: Path) -> None:

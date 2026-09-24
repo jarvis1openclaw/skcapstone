@@ -511,7 +511,7 @@ def _check_estate_sknoded_interval(unit_dir: Path) -> Check:
     )
 
 
-def _check_estate_seat_units(unit_dir: Path) -> Check:
+def _check_estate_seat_units(unit_dir: Path, home: Path) -> Check:
     """Verify the bounded lifecycle seat timers are installed on this host.
 
     Args:
@@ -527,6 +527,21 @@ def _check_estate_seat_units(unit_dir: Path) -> Check:
             passed=False,
             unknown=True,
             detail=f"{unit_dir} does not exist, so no unit can be observed",
+            category="estate",
+        )
+    from .estate import local_host
+
+    control = home / "coordination" / "seat-control-plane.json"
+    try:
+        elected = json.loads(control.read_text(encoding="utf-8")).get("active_host")
+    except (OSError, ValueError, AttributeError):
+        elected = None
+    if elected and elected != local_host():
+        return Check(
+            name="estate:seat-units",
+            description="Bounded lifecycle seat units installed",
+            passed=True,
+            detail=f"seat host is {elected}; this host is not elected",
             category="estate",
         )
     missing = [name for name in SEAT_CYCLE_TIMERS if not (unit_dir / name).is_file()]
@@ -713,7 +728,7 @@ def _check_estate(home: Path) -> list[Check]:
         )
         return checks
     checks.append(_check_estate_sknoded_interval(unit_dir))
-    checks.append(_check_estate_seat_units(unit_dir))
+    checks.append(_check_estate_seat_units(unit_dir, home))
     checks.append(_check_estate_unit_entrypoints(unit_dir))
     return checks
 
