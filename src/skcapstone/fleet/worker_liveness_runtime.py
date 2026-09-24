@@ -387,7 +387,12 @@ class ProductionActions:
 
     def publish_metrics(self, values: Mapping[str, float | int]) -> None:
         """Atomically publish fleet liveness metrics for scraping."""
-        path = self.home / "evidence" / "fleet-liveness" / f"metrics.{socket.gethostname().split('.')[0].lower()}.json"
+        path = (
+            self.home
+            / "evidence"
+            / "fleet-liveness"
+            / f"metrics.{socket.gethostname().split('.')[0].lower()}.json"
+        )
         path.parent.mkdir(parents=True, exist_ok=True)
         temporary = path.with_suffix(".tmp")
         temporary.write_text(json.dumps(values, sort_keys=True) + "\n", encoding="utf-8")
@@ -396,7 +401,10 @@ class ProductionActions:
     def retire(self, receipt: RetirementReceipt) -> None:
         """Journal the authority fence, then retire only its exact unit."""
         SQLiteReceiptJournal(
-            self.home / "evidence" / "fleet-liveness" / f"retirements.{socket.gethostname().split('.')[0].lower()}.sqlite3"
+            self.home
+            / "evidence"
+            / "fleet-liveness"
+            / f"retirements.{socket.gethostname().split('.')[0].lower()}.sqlite3"
         ).append(receipt)
         if not _cgroup_is_freshly_empty(receipt.cgroup, self.cgroup_root):
             raise RuntimeError(f"retirement authority changed for {receipt.unit}")
