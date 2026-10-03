@@ -484,6 +484,42 @@ def check_all_services() -> list[dict[str, Any]]:
         name = entry.get("name")
         if not name or name in known:
             continue
+        readiness_options = any(
+            key in entry
+            for key in (
+                "health_readiness",
+                "health_readiness_url",
+                "health_expected_json",
+                "health_user_agent",
+            )
+        )
+        if readiness_options:
+            from .service_readiness import check_http_readiness
+
+            if entry.get("health_readiness") is True:
+                results.append(
+                    check_http_readiness(
+                        name,
+                        entry.get("health_readiness_url"),
+                        expected_json=entry.get("health_expected_json"),
+                        user_agent=entry.get("health_user_agent"),
+                        timeout=CHECK_TIMEOUT,
+                    )
+                )
+            else:
+                results.append(
+                    {
+                        "name": name,
+                        "url": entry.get("health_readiness_url"),
+                        "status": "unknown",
+                        "latency_ms": None,
+                        "version": None,
+                        "error": "readiness options require health_readiness=true",
+                        "error_class": "invalid_config",
+                    }
+                )
+            known.add(name)
+            continue
         health_url = entry.get("health_url")
         pid_file = entry.get("pid_file")
         if health_url and str(health_url).lower() != "disabled":
