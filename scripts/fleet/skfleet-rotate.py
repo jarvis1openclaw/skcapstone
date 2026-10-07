@@ -551,14 +551,15 @@ _cycle_started=time.monotonic()
 PRODUCTION_POLICY=production_policy_from_environment(os.environ, HOST)
 _SCAN_BUDGET=int((PRODUCTION_POLICY or {}).get("scan_budget", 256))
 os.environ["SKFLEET_EVIDENCE_HOST"]=HOST
-# The worker fleet is ESTATE configuration, not a property of this script. Card
-# ownership is partitioned by hashing across this tuple, so its membership and
-# its order together decide which host may claim which card. An estate names its
-# own roster once, as rotation_hosts in its estate record (config/estate.json,
-# else cluster.json), or through SKFLEET_ROTATION_HOSTS on a host that is
-# bootstrapping before that record has synced. Declaring nothing keeps the chi
-# fleet this file has always carried, unchanged in value and in order.
-ROTATION_HOSTS=_resolve_rotation_hosts(declared=_estate_rotation_hosts())
+# The worker fleet is ESTATE configuration, not a property of this script. It
+# remains the full roster for reports, placement, and worker-owner validation.
+# An estate names it as rotation_hosts in estate.json (else cluster.json), or
+# through SKFLEET_ROTATION_HOSTS while bootstrapping before that record syncs.
+# Declaring nothing keeps the historic chi fleet unchanged and in the same order.
+FLEET_WORKER_HOSTS=_resolve_rotation_hosts(declared=_estate_rotation_hosts())
+# ROTATION_HOSTS is the scheduler authority roster. In production, the one
+# authority publishes and partitions; it must not narrow worker visibility.
+ROTATION_HOSTS=FLEET_WORKER_HOSTS
 # The reconciliation publisher is the same kind of estate configuration, so it
 # is declared the same way and resolved in the same order: authority_host in the
 # estate record, SKFLEET_AUTHORITY_HOST for a host bootstrapping ahead of it.
@@ -2436,7 +2437,7 @@ def reporting_capacity():
 def live_report_health(expected_hosts=None, now=None):
     """Return fleet reports plus per-host transport and freshness faults."""
     now = time.time() if now is None else now
-    expected = tuple(expected_hosts or ROTATION_HOSTS)
+    expected = tuple(expected_hosts or FLEET_WORKER_HOSTS)
     stamps = []
     running = set()
     reporting = set()
@@ -4912,7 +4913,7 @@ def outcome_lifecycle_bucket(lifecycle, historical_review):
 # ever used for membership, but dict.fromkeys says so rather than leaving a
 # reader to work it out.
 KNOWN_HOSTS = tuple(dict.fromkeys(
-    ROTATION_HOSTS + ("chiap04", "chiap08", "chiwk11", "chiwk12", "noroc2027")))
+    FLEET_WORKER_HOSTS + ("chiwk11", "chiwk12", "noroc2027")))
 
 def host_pin(core,labels):
     """Host this card must run on, or None to leave it unpinned."""
@@ -4922,7 +4923,7 @@ def host_pin(core,labels):
     if len(named) != 1:
         return None                      # ambiguous or unnamed
     only = named.pop()
-    return only if only in ROTATION_HOSTS else None   # never strand
+    return only if only in FLEET_WORKER_HOSTS else None   # never strand
 
 # A launch only counts as EVIDENCE that a card is unclaimable if the worker
 # actually got far enough to report. Two failure modes were being conflated:
@@ -5313,7 +5314,7 @@ def _parse_worker_owner(owner, cid, expected_seat=None):
     cid = str(cid or "")
     if not re.fullmatch(r"[0-9a-f]{8}", cid):
         return None
-    for host in ROTATION_HOSTS:
+    for host in FLEET_WORKER_HOSTS:
         for lane in ("codex", "glm", "deepseek", "qwen", "kimi", "escalate"):
             if owner == "pi-%s-%s-%s" % (lane, host, cid):
                 return "lane", lane, host
@@ -5631,7 +5632,7 @@ def _fleet_launch_provenance(cid, owner, claim_revision):
                             launch_owner, launch_cid, expected_seats[launch_cid]
                         )
                         if (
-                            parts[1] not in ROTATION_HOSTS
+                            parts[1] not in FLEET_WORKER_HOSTS
                             or session_prefix is None
                             or parts[2] != session_prefix + parts[3]
                             or parsed_owner is None
