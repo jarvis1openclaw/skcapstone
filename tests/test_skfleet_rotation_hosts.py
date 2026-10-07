@@ -68,8 +68,7 @@ def test_unset_configuration_reproduces_the_original_tuple_exactly() -> None:
     assert resolve({}, ()) == FROZEN_DEFAULT
     source = ROTATE.read_text(encoding="utf-8")
     assert (
-        "FLEET_WORKER_HOSTS=_resolve_rotation_hosts(declared=_estate_rotation_hosts())"
-        in source
+        "FLEET_WORKER_HOSTS=_resolve_rotation_hosts(declared=_estate_rotation_hosts())" in source
     )
 
 

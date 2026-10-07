@@ -544,9 +544,7 @@ def test_launch_provenance_resolves_seat_for_each_card(tmp_path: Path) -> None:
     other.mkdir()
     (other / "core.json").write_text('{"initial_labels": []}\n', encoding="utf-8")
     namespace["ROTATION_HOSTS"] = ("chiap08",)
-    namespace["FLEET_WORKER_HOSTS"] = (
-        "chiap01", "chiap02", "chiap03", "chiap04", "chiap08"
-    )
+    namespace["FLEET_WORKER_HOSTS"] = ("chiap01", "chiap02", "chiap03", "chiap04", "chiap08")
 
     assert namespace["_fleet_launch_provenance"](
         "deadbeef", "pi-link-chiap02-deadbeef", "link-revision"
